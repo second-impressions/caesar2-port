@@ -51,23 +51,21 @@ for artifact boundaries, report semantics, and troubleshooting.
 
 ## CLI Commands
 
+The toolkit is deliberately small — build the binary and verify it:
+
 ```
 c2 export data/PS.EXE              # Parse EXE, write data/out/symbols.json
+c2 export data/PS.EXE --symbols    # Also print full symbol listing
+c2 delink --list                   # Recover third-party OMF objects from PS.EXE
 c2 rebuild                         # Link and bind the runnable reconstruction
 c2 reccmp prepare                  # Validate the local original and configure reports
 c2 reccmp code                     # Function alignment/accuracy report
 c2 reccmp data                     # Initialized-data and relocation report
-c2 export data/PS.EXE --symbols    # Also print full symbol listing
-c2 run                             # Launch game in DOSBox-X with GDB stub (port 1234)
-c2 run --no-gdb                    # Launch without GDB stub
-c2 run --cd path/to/cd-root        # Launch with CD mounted as D: (minimal install)
-c2 cd unpack CDs/<name>.zip        # Unpack CD zip → extracted directory
-c2 cd install <cd-root>            # Minimal install (HD/ tree only, CD needed at runtime)
-c2 cd install --full <cd-root>     # Full install (copies all assets, no CD needed)
-c2 cd hash CDs/extracted/<name>/   # Compute SHA256 hashes for a CD directory
-c2 cd compare                      # Compare EXE versions across CD releases
-c2 cd compare --file "HD/PS.EXE"   # Compare a specific file
 ```
+
+(The burn-down era's diagnostic tooling — per-function byte oracle, regalloc
+trace machinery, game-asset and CD/runtime helpers — was retired once the
+reconstruction reached byte-exact; it lives in git history, 2026-07-15.)
 
 ## Static Analysis Workflow
 
@@ -87,14 +85,25 @@ c2 cd compare --file "HD/PS.EXE"   # Compare a specific file
    - Edit `config/program_tree.jsonc` to adjust subsystem groupings
    - Re-run `ImportCaesar2.java` to apply changes
 
-## Runtime Debugging with Ghidra + DOSBox-X
+## Running the game
 
-DOSBox-X has a built-in GDB remote stub.  `c2 run` enables it by default on
-port 1234, allowing Ghidra's debugger to attach to the live DOS process.
+`c2 rebuild` produces a self-contained `build/PS.EXE`. Install the game
+assets from a CD (copy the CD's `HD/` tree plus the media directories
+`xmi/`, `smk/`, `raw/`, `pl8/` into an install directory), drop the rebuilt
+`PS.EXE` next to them, and run it in DOSBox-X. A display-free smoke test
+that proves DOS/4GW + CRT startup + the recovered `main()`:
+
+```bash
+podman run --rm -v "$PWD/install/caesar2:/src" \
+    localhost/watcom-10.0a-dosemu2 PSREBLD.EXE   # expect the CD-check prompt
+```
+
+DOSBox-X has a built-in GDB remote stub (`gdbserver` machine option) for
+attaching Ghidra's debugger to the live DOS process.
 
 ### Which CD to use
 
-The `data/PS.EXE` in this repository is the **debug-symbol build**
+The `data/PS.EXE` this project reconstructs is the **debug-symbol build**
 (SHA-256: `4a41f68d0c322785d9a174d4728c3095ab5c6e0d24624af2d3ce67540d8eca5c`).
 It ships on the following CD releases:
 
@@ -107,57 +116,3 @@ It ships on the following CD releases:
 | Caesar II (USA) (Rerelease) (1996-08-29) | `CDs/Caesar II (USA) (Rerelease) (1996-08-29).zip` |
 | Caesar II (USA) (Rerelease) (1997-03-10) | `CDs/Caesar II (USA) (Rerelease) (1997-03-10).zip` |
 | Caesar II (USA) (Rerelease) (1997-11-12) | `CDs/Caesar II (USA) (Rerelease) (1997-11-12).zip` |
-
-### Setup: full install (no CD required at runtime)
-
-```bash
-# 1. Unpack a CD that contains the debug-symbol PS.EXE
-c2 cd unpack "CDs/Caesar II (USA) (Rerelease) (1996-08-29).zip"
-
-# 2. Full install — copies HD/ tree + all CD media assets (xmi/, smk/, raw/, pl8/)
-c2 cd install --full "CDs/extracted/Caesar II (USA) (Rerelease) (1996-08-29)"
-
-# 3. Launch with GDB stub (enabled by default, port 1234)
-c2 run
-```
-
-### Setup: minimal install (CD mounted at runtime)
-
-```bash
-# 1. Unpack a CD
-c2 cd unpack "CDs/Caesar II (USA) (Rerelease) (1996-08-29).zip"
-
-# 2. Minimal install — HD/ tree only
-c2 cd install "CDs/extracted/Caesar II (USA) (Rerelease) (1996-08-29)"
-
-# 3. Launch with CD mounted as D: and GDB stub on port 1234
-c2 run --cd "CDs/extracted/Caesar II (USA) (Rerelease) (1996-08-29)"
-```
-
-### Connecting Ghidra to the live process
-
-1. In Ghidra open the project containing `PS.EXE`
-2. Go to **Debugger → Connect → Remote GDB**
-3. Set **host** = `localhost`, **port** = `1234`
-4. Click **Connect** — DOSBox-X will resume execution
-5. Set breakpoints, inspect memory, and step through code as normal
-
-> **Tip**: Use `--no-gdb` if you just want to play the game without the
-> debugger pausing at startup:
-> ```bash
-> c2 run --no-gdb
-> ```
-
-## CD Management
-
-```bash
-# Unpack a CD image
-c2 cd unpack "CDs/Caesar II (Germany) (Rerelease) (1996-12-18).zip"
-
-# Compute hashes for comparison
-c2 cd hash CDs/extracted/
-
-# Compare EXE versions across all CDs
-c2 cd compare
-c2 cd compare --file "HD/PS.EXE"
-```

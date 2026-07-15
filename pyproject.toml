@@ -8,11 +8,8 @@ dependencies = [
     "reccmp",
     "capstone>=5.0.7",
     "construct>=2.10.0",
-    "pillow>=12.1.1",
     "pydantic>=2.12.5",
-    "tomli-w>=1.2.0",
     "typer>=0.24.1",
-    "pycparser>=3.0",
     "pyyaml>=6.0.3",
 ]
 

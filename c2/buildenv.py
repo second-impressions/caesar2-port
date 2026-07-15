@@ -10,9 +10,8 @@ pieces the surviving reconstruction toolchain (``c2 rebuild``,
   (``_STOCK_IMAGE``),
 * the podman container runner (``_run_in_container``),
 * the DOS-FAT-bucket-aware staging writer (``_write_if_changed``),
-* LE code/fixup extraction (``_load_le_code_and_fixups``) and the
-  masked byte comparison (``_compare_bytes``) used by the final-link
-  audit.
+* the masked byte comparison (``_compare_bytes``) used by the
+  final-link audit.
 """
 
 from __future__ import annotations
@@ -21,9 +20,7 @@ import os
 import shlex
 import subprocess
 import uuid
-from functools import lru_cache
 from pathlib import Path
-from typing import Optional
 
 import capstone
 
@@ -35,17 +32,6 @@ _STOCK_IMAGE = "localhost/watcom-10.0a-wibo"
 # The canonical PS.EXE compile flags (Watcom 10.0a; default OptSize=50,
 # unsigned char).  Proven settled — see AGENTS.md "Compiler flags".
 PS_CFLAGS = "-bt=dos -mf -4r -s -d1"
-
-_EXEC_CONTAINER: Optional[str] = None
-
-
-def set_exec_container(name: Optional[str]) -> None:
-    """Route subsequent ``_run_in_container`` calls through ``podman exec``
-    into an existing warm container (or back to one-shot ``podman run``
-    when *name* is None)."""
-    global _EXEC_CONTAINER
-    _EXEC_CONTAINER = name
-
 
 def _run_in_container(
     work: Path,
@@ -68,37 +54,7 @@ def _run_in_container(
         That prompt blocks forever in our headless setup.  Callers
         that invoke wmake should pass the ``-e`` option (erase
         failed targets without prompting).
-      * When `set_exec_container(name)` has been called, this routes
-        the command through `podman exec` into the existing warm
-        container instead of spawning a new one.
     """
-    if _EXEC_CONTAINER is not None:
-        # The image's ENTRYPOINT (/usr/local/bin/watcom) runs the
-        # wrapper that interprets the DOS command.  podman exec
-        # bypasses ENTRYPOINT, so we invoke the wrapper explicitly
-        # with the same `command` arg that podman run would have
-        # appended as CMD.  The wibo shim takes argv (TOOL=$1; shift),
-        # not one command string — split here.
-        cmd = [
-            "podman", "exec", _EXEC_CONTAINER,
-            "/usr/local/bin/watcom", *shlex.split(command),
-        ]
-        try:
-            result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=timeout,
-            )
-        except subprocess.TimeoutExpired:
-            raise
-        combined = result.stdout + "\n" + result.stderr
-        filtered = "\n".join(
-            ln for ln in combined.splitlines()
-            if not any(skip in ln for skip in (
-                "Running dosemu2", "recommended with",
-                "dosemu -s", "DOSEMU",
-            ))
-        ).strip()
-        return result.returncode == 0, filtered
-
     container_name = f"c2vrf_{uuid.uuid4().hex[:12]}"
     cmd = [
         "podman", "run", "--rm",
@@ -171,52 +127,6 @@ def _write_if_changed(path: Path, content: bytes) -> bool:
     except OSError:
         pass
     return True
-
-
-# ── LE code / fixup extraction ───────────────────────────────────────────────
-
-def _load_le_code_and_fixups(exe_path: Path) -> tuple[bytes, set[int]]:
-    """Extract code section bytes + fixup byte-offset set from an LE exe.
-
-    Memoised by (path, mtime, size); the result is read-only (the fixup
-    set is only membership-tested), so caching is safe."""
-    st = exe_path.stat()
-    return _load_le_code_and_fixups_cached(str(exe_path), st.st_mtime_ns, st.st_size)
-
-
-@lru_cache(maxsize=8)
-def _load_le_code_and_fixups_cached(path_str: str, _mtime_ns: int,
-                                    _size: int) -> tuple[bytes, set[int]]:
-    exe_path = Path(path_str)
-    from c2.parsers.exe import parse_exe
-    from c2.commands.fixups import parse_le_fixups
-
-    _, bw_headers, le = parse_exe(exe_path)
-
-    code_fm, _ = parse_le_fixups(
-        exe_path,
-        le.le_offset,
-        le.page_size,
-        le.num_pages,
-        le.objects[0].num_pages,
-        le.objects[1].num_pages,
-    )
-    fix_bytes: set[int] = set()
-    for off in code_fm:
-        for k in range(4):
-            fix_bytes.add(off + k)
-
-    code_bin = _extract_le_code(exe_path, le)
-    return code_bin, fix_bytes
-
-
-def _extract_le_code(exe_path: Path, le) -> bytes:
-    """Read the raw code-section pages from an LE executable."""
-    raw  = exe_path.read_bytes()
-    obj  = le.objects[0]
-    off  = le.object_file_offset(obj)
-    size = le.object_file_size(obj)
-    return raw[off : off + size]
 
 
 # ── Masked byte comparison ───────────────────────────────────────────────────

@@ -56,12 +56,9 @@ thousands of spurious `FUN_` fragments.  To fix the DB, rebuild it.
 ### Build & link
 
 ```bash
+uv run c2 export data/PS.EXE # parse LE + Watcom debug info → data/out/symbols.json
 uv run c2 rebuild            # authentic 1995 link → build/PS.EXE (runnable)
 uv run c2 delink --list      # recover third-party OMF objects from PS.EXE
-uv run c2 decomp --force data/out/symbols.json --exe data/PS.EXE
-                             # regenerate the 8 hand-written asm modules
-uv run c2 export data/PS.EXE # parse LE + Watcom debug info → data/out/symbols.json
-uv run c2 gen-header         # regenerate decomp/include/c2_data.h + c2_funcs.h
 ```
 
 **`c2 rebuild`** emits the authentic link shape (`SYSTEM dos4g`;
@@ -106,51 +103,31 @@ workflow: `docs/reccmp-workflow.md`.
 
 ### Run the game
 
-```bash
-uv run c2 cd unpack "CDs/<name>.zip"
-uv run c2 cd install --full "CDs/extracted/<name>"   # → install/caesar2
-uv run c2 run                # DOSBox-X, RECOMPILED game (auto-rebuilds)
-uv run c2 run --original     # the shipped PS.EXE
-```
-
-Headless smoke test:
+`c2 rebuild` produces a self-contained `build/PS.EXE`; install the CD's
+`HD/` tree + media dirs and run it in DOSBox-X (see README).  Headless
+smoke test:
 `podman run --rm -v "$PWD/install/caesar2:/src" localhost/watcom-10.0a-dosemu2 PSREBLD.EXE`
 (expect the CD-check prompt).  AV runtime test: `tools/smk-player/`
 (links the reconstructed ail.lib/smack.lib and decodes real `.SMK`
 cinematics — run it after delinker changes).
 
-### Inspection
-
-```bash
-uv run c2 disasm <fn>        # PS.EXE asm with -d1 line numbers + fixups
-uv run c2 sym 0x726f8        # address → symbol
-uv run c2 xrefs <symbol>     # who calls / reads / writes
-```
-
-### Game assets
-
-`c2 image` (PL8 sprite export/import), `c2 textfile` (.ENG/.GER text
-binaries), `tools/imhex/` (ImHex patterns for every reverse-engineered game
-file format — see `docs/*-format.md`).
-
 ---
 
-## Headers: `c2_data.h`, `c2_types.h`, `c2_funcs.h`
+## Frozen generated artifacts
 
-`uv run c2 gen-header` regenerates the generated headers from
-`data/out/symbols.json` + the `.c` definitions:
+The corpus being closed, several tracked files are now FROZEN generated
+artifacts — their generators were retired with the diagnostic toolkit
+(git history ≤ 2026-07-15 has them):
 
-1. **`decomp/include/c2_data.h`** — externs for all non-static data symbols,
-   with `_TYPE_OVERRIDES` for known structs/arrays.  The only generated
-   header normal `.c` files should include.
-2. **`decomp/include/c2_funcs.h`** — canonical prototypes for tooling;
-   **must not be included broadly** (prototype visibility changes Watcom
-   call-site codegen; PS source had no global registry).
+* **`decomp/include/c2_data.h` / `c2_funcs.h`** — were produced by
+  `c2 gen-header` from symbols.json + `_TYPE_OVERRIDES`.  Do not patch by
+  hand; if types must change, resurrect the generator from history.
+  `c2_funcs.h` **must not be included broadly** (prototype visibility
+  changes Watcom call-site codegen; PS source had no global registry).
+* **The 8 hand-written `.asm` modules** in `decomp/src/` — were produced by
+  `c2 decomp` from PS.EXE bytes.
 
 Hand-written: **`decomp/include/c2_types.h`** (wrapper around `entities.h`).
-**Never patch generated headers by hand** — fix `_TYPE_OVERRIDES` in
-`c2/commands/c_source.py` and re-run `gen-header`.
-
 Per-file `extern` decls in `.c` files are authentic 1990s practice, not a
 smell — PS source had `globals.h`-style shared types but no central
 function registry (many cross-TU calls had no prototype at all).
@@ -185,7 +162,8 @@ function registry (many cross-TU calls had no prototype at all).
   they drove the retired diagnostic tooling and are kept as the record).
 - `docs/delinking.md`, `docs/reccmp-workflow.md` — mechanism docs for the
   build/verify pipeline.
-- `docs/*-format.md` — game file-format specs (PL8, GD8, INF, LBM, …).
+- `docs/*-format.md` — game file-format specs (PL8, GD8, INF, LBM, …);
+  `tools/imhex/` has the matching ImHex patterns.
 - The **watcom10.0a sibling repo** — the compiler RE: the instrumented
   wcc386 trace image, `docs/wcc386-re/` (regalloc model, symbol maps),
   the vendor manuals (`docs/references/manuals/`).

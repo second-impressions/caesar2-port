@@ -16,7 +16,7 @@ devenv.local.nix
 __pycache__/
 *.pyc
 
-# CD extraction artifacts (regenerable via: c2 unpack CDs/<name>.zip)
+# CD extraction artifacts (unzip CDs/<name>.zip)
 # Keep only .zip files and .hashes files in git
 CDs/extracted/
 
@@ -24,7 +24,7 @@ CDs/extracted/
 # Keep only .zip files and .hashes files in git
 Demos/extracted/
 
-# Install directory (regenerable via: c2 install <cd_root> <dest>)
+# Install directory (game assets copied from an extracted CD)
 install/
 
 # Ghidra project files (regenerable)
@@ -43,10 +43,10 @@ reccmp-build.yml
 # Generated output files (regenerable via: c2 export data/PS.EXE)
 data/out/
 
-# Decomp original binaries (regenerable via: c2 decomp --exe data/PS.EXE)
+# Decomp original binaries (legacy c2 decomp output)
 decomp/original/
 
-# Disassembly output (regenerable via: c2 disasm data/out/symbols.json --exe data/PS.EXE)
+# Disassembly output (legacy c2 disasm output)
 decomp/src/disasm/
 
 # Watcom compiler toolchains (extracted from ISOs, not tracked)
