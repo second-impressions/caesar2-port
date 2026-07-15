@@ -1,8 +1,24 @@
 # TODO — live remaining work
 
-Updated 2026-07-15 (toolkit-retirement pass).  This file is intentionally a
-short list of unfinished work.  Completed campaigns, the retired tooling,
-and the burn-down documentation all live in git history (≤ 2026-07-15).
+Updated 2026-07-15 (toolkit-retirement + reccmp-formats-migration pass).
+This file is intentionally a short list of unfinished work.  Completed
+campaigns, the retired tooling, and the burn-down documentation all live
+in git history (≤ 2026-07-15).
+
+## 0. Push the reccmp fork, flip the pin  ⬅ BLOCKS FRESH CLONES
+
+The LE + Watcom-debug parsers were migrated onto the reccmp fork
+(commits `d0a743c5` + `e9bb551f` on its `watcom-reconstruction` branch,
+still local-only).  Until those are pushed, `pyproject.toml` sources
+reccmp from the sibling `../reccmp` checkout — a fresh clone's
+`uv sync` will fail.  To finish:
+
+```bash
+cd ../reccmp && git push origin watcom-reconstruction
+# then in this repo's pyproject.toml: delete the temp local-path line,
+# uncomment the staged git pin (e9bb551f…), and run:
+uv lock && uv sync && uv run pytest
+```
 
 ## Current verified state
 
@@ -18,7 +34,9 @@ and the burn-down documentation all live in git history (≤ 2026-07-15).
     loader fixups masked and every relative branch displacement visible.
 
 The burn-down diagnostic toolkit was retired 2026-07-15 (see git history);
-verification is `c2 rebuild` + the reccmp fork.
+verification is `c2 rebuild` + the reccmp fork.  All figures above were
+re-verified after the parser migration onto `reccmp.formats` (whole file
+0 differing bytes / 1,304,734 incl. the regenerated debug trailer).
 
 ## 1. Header provenance, not data placement
 
