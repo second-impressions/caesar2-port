@@ -25,6 +25,12 @@ document over the current tools.
     fixed);
   - **strict whole-code-object: 0 differing bytes / 508368** with only
     loader fixups masked and every relative branch displacement visible.
+- Pre-bind reccmp reference report: **2231/2234 functions aligned at 100%
+  accuracy; 1578 initialized-data symbols, 0 issues**. The three unaligned
+  identities are not byte defects: `sound_error_` is the known public/debug
+  alias-location exception, while the two private `_XMI_write_log` copies are
+  ambiguous because their reconstructed archive modules are `ailxmidi` and
+  `ailxdig` rather than the original debug names `ailxmidi.c` and `ailxdig.c`.
 
 ## Closed 2026-07-14 (this pass — see git for postmortems)
 
@@ -82,6 +88,10 @@ pinning, Score-coalesce `lcx0` history).
 Unchanged: corroborate original header filenames / include graph and the 35
 non-data lib32 slots only if an external source artifact appears.  Do not
 sacrifice exact BSS placement for an unsupported filename guess.
+
+Also recover the original module spellings for the two private
+`_XMI_write_log` symbols if an authoritative Miles debug/source artifact
+appears. Do not resolve the ambiguity by guessing a suffix in reccmp.
 
 ## 3. Optional inverse-compiler research
 
