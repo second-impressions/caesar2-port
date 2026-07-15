@@ -1,0 +1,144 @@
+rules:
+  # Convert inline ((struct city_cell *)((char *)city_map + REF))->FIELD
+  # accesses to the corresponding CM_* macro.  One rule per field
+  # because semgrep cannot dispatch macro names from metavariables.
+
+  - id: city-cell-cast-base_kind
+    languages: [c]
+    severity: INFO
+    message: "use CM_KIND($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->base_kind
+    fix: CM_KIND($REF)
+
+  - id: city-cell-cast-terrain
+    languages: [c]
+    severity: INFO
+    message: "use CM_TERRAIN($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->terrain
+    fix: CM_TERRAIN($REF)
+
+  - id: city-cell-cast-road_aqueduct
+    languages: [c]
+    severity: INFO
+    message: "use CM_ROAD_AQUA($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->road_aqueduct
+    fix: CM_ROAD_AQUA($REF)
+
+  - id: city-cell-cast-edge_bits
+    languages: [c]
+    severity: INFO
+    message: "use CM_EDGE_BITS($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->edge_bits
+    fix: CM_EDGE_BITS($REF)
+
+  - id: city-cell-cast-extra_edge
+    languages: [c]
+    severity: INFO
+    message: "use CM_EXTRA_EDGE($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->extra_edge
+    fix: CM_EXTRA_EDGE($REF)
+
+  - id: city-cell-cast-activity_a
+    languages: [c]
+    severity: INFO
+    message: "use CM_ACTIVITY_A($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->activity_a
+    fix: CM_ACTIVITY_A($REF)
+
+  - id: city-cell-cast-activity_b
+    languages: [c]
+    severity: INFO
+    message: "use CM_ACTIVITY_B($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->activity_b
+    fix: CM_ACTIVITY_B($REF)
+
+  - id: city-cell-cast-citizen_a
+    languages: [c]
+    severity: INFO
+    message: "use CM_CITIZEN_A($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->citizen_a
+    fix: CM_CITIZEN_A($REF)
+
+  - id: city-cell-cast-citizen_b
+    languages: [c]
+    severity: INFO
+    message: "use CM_CITIZEN_B($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->citizen_b
+    fix: CM_CITIZEN_B($REF)
+
+  - id: city-cell-cast-building
+    languages: [c]
+    severity: INFO
+    message: "use CM_BUILDING($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->building
+    fix: CM_BUILDING($REF)
+
+  - id: city-cell-cast-range_flag
+    languages: [c]
+    severity: INFO
+    message: "use CM_RANGE_FLAG($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->range_flag
+    fix: CM_RANGE_FLAG($REF)
+
+  - id: city-cell-cast-fpu_flag
+    languages: [c]
+    severity: INFO
+    message: "use CM_FPU_FLAG($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->fpu_flag
+    fix: CM_FPU_FLAG($REF)
+
+  - id: city-cell-cast-entertainment
+    languages: [c]
+    severity: INFO
+    message: "use CM_ENTERTAIN($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->entertainment
+    fix: CM_ENTERTAIN($REF)
+
+  - id: city-cell-cast-education
+    languages: [c]
+    severity: INFO
+    message: "use CM_EDUCATION($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->education
+    fix: CM_EDUCATION($REF)
+
+  - id: city-cell-cast-health
+    languages: [c]
+    severity: INFO
+    message: "use CM_HEALTH($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->health
+    fix: CM_HEALTH($REF)
+
+  - id: city-cell-cast-land_value
+    languages: [c]
+    severity: INFO
+    message: "use CM_LAND_VALUE($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->land_value
+    fix: CM_LAND_VALUE($REF)
+
+  - id: city-cell-cast-fire
+    languages: [c]
+    severity: INFO
+    message: "use CM_FIRE($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->fire
+    fix: CM_FIRE($REF)
+
+  - id: city-cell-cast-security
+    languages: [c]
+    severity: INFO
+    message: "use CM_SECURITY($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->security
+    fix: CM_SECURITY($REF)
+
+  - id: city-cell-cast-industrial
+    languages: [c]
+    severity: INFO
+    message: "use CM_INDUSTRIAL($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->industrial
+    fix: CM_INDUSTRIAL($REF)
+
+  - id: city-cell-cast-business
+    languages: [c]
+    severity: INFO
+    message: "use CM_BUSINESS($REF)"
+    pattern: ((struct city_cell *)((char *)city_map + $REF))->business
+    fix: CM_BUSINESS($REF)

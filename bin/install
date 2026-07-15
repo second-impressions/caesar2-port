@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# bin/install — wire up the c2-decompile sub-agent into the user's pi env.
+#
+# Idempotent.  Run once after cloning (or after the c2_ext / agent /
+# extension files change in ways the symlinks can't track).
+#
+# What this does:
+#   1. pi install ./pi-extensions/c2-subagent   (so pi can resolve it by name)
+#   2. symlink .pi/agents/c2-decompile.md  →  ~/.pi/agent/agents/
+#         so pi-subagents finds the agent from any cwd
+#   3. symlink ./pi-extensions/c2-subagent  →  ~/.pi/agent/extensions/c2-subagent
+#         so the agent's frontmatter `extensions:` field has a stable
+#         absolute path
+#
+# The c2-orchestrator extension auto-loads from .pi/extensions/ (project
+# local) and needs no install.
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+
+echo "==> pi install ./pi-extensions/c2-subagent"
+pi install ./pi-extensions/c2-subagent --no-approve
+
+USER_AGENTS_DIR="$HOME/.pi/agent/agents"
+USER_EXTS_DIR="$HOME/.pi/agent/extensions"
+
+mkdir -p "$USER_AGENTS_DIR" "$USER_EXTS_DIR"
+
+echo "==> symlink agent: $USER_AGENTS_DIR/c2-decompile.md"
+ln -sfn "$REPO_ROOT/.pi/agents/c2-decompile.md" "$USER_AGENTS_DIR/c2-decompile.md"
+
+echo "==> symlink extension: $USER_EXTS_DIR/c2-subagent"
+ln -sfn "$REPO_ROOT/pi-extensions/c2-subagent" "$USER_EXTS_DIR/c2-subagent"
+
+echo
+echo "Done.  Verify with:"
+echo "  pi -p 'List your tools'  # parent should NOT show verify/disasm/etc."
+echo "  ./bin/c2-decompile <function_name>"

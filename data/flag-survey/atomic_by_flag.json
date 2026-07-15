@@ -1,0 +1,1357 @@
+{
+ "note": "CLEAN run: tail-merge-aware _dm + fixed FIXUPP parser + pruned flags. atomic single-flag reductions vs PS.",
+ "flag_global": {
+  "-os": {
+   "nfns": 75,
+   "total_redux": 2188,
+   "nflip": 0
+  },
+  "-3r": {
+   "nfns": 63,
+   "total_redux": 1674,
+   "nflip": 0
+  },
+  "-ee": {
+   "nfns": 36,
+   "total_redux": 877,
+   "nflip": 0
+  },
+  "-ol": {
+   "nfns": 48,
+   "total_redux": 875,
+   "nflip": 1
+  },
+  "-ox": {
+   "nfns": 48,
+   "total_redux": 872,
+   "nflip": 0
+  },
+  "-or": {
+   "nfns": 53,
+   "total_redux": 809,
+   "nflip": 0
+  },
+  "-zu": {
+   "nfns": 27,
+   "total_redux": 688,
+   "nflip": 1
+  },
+  "-oo": {
+   "nfns": 27,
+   "total_redux": 688,
+   "nflip": 1
+  },
+  "-oa": {
+   "nfns": 37,
+   "total_redux": 652,
+   "nflip": 1
+  },
+  "-ot": {
+   "nfns": 37,
+   "total_redux": 608,
+   "nflip": 1
+  },
+  "-od": {
+   "nfns": 19,
+   "total_redux": 398,
+   "nflip": 0
+  },
+  "-of": {
+   "nfns": 15,
+   "total_redux": 356,
+   "nflip": 1
+  },
+  "-zdf": {
+   "nfns": 25,
+   "total_redux": 333,
+   "nflip": 0
+  },
+  "-j": {
+   "nfns": 25,
+   "total_redux": 303,
+   "nflip": 0
+  },
+  "-st": {
+   "nfns": 22,
+   "total_redux": 267,
+   "nflip": 1
+  },
+  "-5r": {
+   "nfns": 14,
+   "total_redux": 170,
+   "nflip": 0
+  },
+  "-zp2": {
+   "nfns": 5,
+   "total_redux": 118,
+   "nflip": 1
+  },
+  "-zp4": {
+   "nfns": 4,
+   "total_redux": 84,
+   "nflip": 0
+  },
+  "-zp8": {
+   "nfns": 4,
+   "total_redux": 84,
+   "nflip": 0
+  },
+  "-oe": {
+   "nfns": 5,
+   "total_redux": 64,
+   "nflip": 0
+  },
+  "-en": {
+   "nfns": 3,
+   "total_redux": 3,
+   "nflip": 3
+  }
+ },
+ "per_tu": {
+  "action": {
+   "residue_fns": 8,
+   "residue_bytes": 2322,
+   "flags": {
+    "-3r": {
+     "nfns": 6,
+     "total_redux": 106,
+     "nflip": 0
+    },
+    "-os": {
+     "nfns": 6,
+     "total_redux": 92,
+     "nflip": 0
+    },
+    "-ee": {
+     "nfns": 4,
+     "total_redux": 34,
+     "nflip": 0
+    },
+    "-oa": {
+     "nfns": 2,
+     "total_redux": 31,
+     "nflip": 0
+    },
+    "-od": {
+     "nfns": 1,
+     "total_redux": 31,
+     "nflip": 0
+    },
+    "-oe": {
+     "nfns": 1,
+     "total_redux": 22,
+     "nflip": 0
+    },
+    "-st": {
+     "nfns": 1,
+     "total_redux": 21,
+     "nflip": 0
+    },
+    "-ox": {
+     "nfns": 3,
+     "total_redux": 20,
+     "nflip": 0
+    },
+    "-or": {
+     "nfns": 4,
+     "total_redux": 19,
+     "nflip": 0
+    },
+    "-j": {
+     "nfns": 2,
+     "total_redux": 14,
+     "nflip": 0
+    },
+    "-ol": {
+     "nfns": 1,
+     "total_redux": 12,
+     "nflip": 0
+    },
+    "-ot": {
+     "nfns": 3,
+     "total_redux": 11,
+     "nflip": 0
+    },
+    "-zu": {
+     "nfns": 1,
+     "total_redux": 9,
+     "nflip": 0
+    },
+    "-oo": {
+     "nfns": 1,
+     "total_redux": 9,
+     "nflip": 0
+    },
+    "-zdf": {
+     "nfns": 1,
+     "total_redux": 8,
+     "nflip": 0
+    },
+    "-of": {
+     "nfns": 1,
+     "total_redux": 2,
+     "nflip": 0
+    }
+   }
+  },
+  "battle": {
+   "residue_fns": 32,
+   "residue_bytes": 4975,
+   "flags": {
+    "-os": {
+     "nfns": 11,
+     "total_redux": 237,
+     "nflip": 0
+    },
+    "-ee": {
+     "nfns": 8,
+     "total_redux": 219,
+     "nflip": 0
+    },
+    "-3r": {
+     "nfns": 6,
+     "total_redux": 137,
+     "nflip": 0
+    },
+    "-j": {
+     "nfns": 10,
+     "total_redux": 133,
+     "nflip": 0
+    },
+    "-od": {
+     "nfns": 4,
+     "total_redux": 128,
+     "nflip": 0
+    },
+    "-oa": {
+     "nfns": 9,
+     "total_redux": 122,
+     "nflip": 0
+    },
+    "-or": {
+     "nfns": 9,
+     "total_redux": 117,
+     "nflip": 0
+    },
+    "-zp2": {
+     "nfns": 3,
+     "total_redux": 99,
+     "nflip": 0
+    },
+    "-ol": {
+     "nfns": 9,
+     "total_redux": 92,
+     "nflip": 0
+    },
+    "-ox": {
+     "nfns": 8,
+     "total_redux": 79,
+     "nflip": 0
+    },
+    "-zp4": {
+     "nfns": 3,
+     "total_redux": 77,
+     "nflip": 0
+    },
+    "-zp8": {
+     "nfns": 3,
+     "total_redux": 77,
+     "nflip": 0
+    },
+    "-zu": {
+     "nfns": 4,
+     "total_redux": 73,
+     "nflip": 0
+    },
+    "-oo": {
+     "nfns": 4,
+     "total_redux": 73,
+     "nflip": 0
+    },
+    "-zdf": {
+     "nfns": 3,
+     "total_redux": 53,
+     "nflip": 0
+    },
+    "-ot": {
+     "nfns": 2,
+     "total_redux": 28,
+     "nflip": 0
+    },
+    "-of": {
+     "nfns": 2,
+     "total_redux": 20,
+     "nflip": 0
+    },
+    "-5r": {
+     "nfns": 1,
+     "total_redux": 10,
+     "nflip": 0
+    },
+    "-st": {
+     "nfns": 1,
+     "total_redux": 5,
+     "nflip": 0
+    },
+    "-en": {
+     "nfns": 1,
+     "total_redux": 1,
+     "nflip": 1
+    }
+   }
+  },
+  "bbarian": {
+   "residue_fns": 4,
+   "residue_bytes": 838,
+   "flags": {
+    "-os": {
+     "nfns": 1,
+     "total_redux": 79,
+     "nflip": 0
+    },
+    "-3r": {
+     "nfns": 1,
+     "total_redux": 32,
+     "nflip": 0
+    },
+    "-oa": {
+     "nfns": 1,
+     "total_redux": 16,
+     "nflip": 0
+    }
+   }
+  },
+  "census": {
+   "residue_fns": 3,
+   "residue_bytes": 999,
+   "flags": {
+    "-ol": {
+     "nfns": 3,
+     "total_redux": 74,
+     "nflip": 0
+    },
+    "-ee": {
+     "nfns": 1,
+     "total_redux": 42,
+     "nflip": 0
+    },
+    "-zu": {
+     "nfns": 1,
+     "total_redux": 38,
+     "nflip": 0
+    },
+    "-oo": {
+     "nfns": 1,
+     "total_redux": 38,
+     "nflip": 0
+    },
+    "-ox": {
+     "nfns": 1,
+     "total_redux": 37,
+     "nflip": 0
+    },
+    "-zdf": {
+     "nfns": 1,
+     "total_redux": 22,
+     "nflip": 0
+    },
+    "-or": {
+     "nfns": 1,
+     "total_redux": 14,
+     "nflip": 0
+    },
+    "-oa": {
+     "nfns": 1,
+     "total_redux": 6,
+     "nflip": 0
+    },
+    "-3r": {
+     "nfns": 1,
+     "total_redux": 5,
+     "nflip": 0
+    },
+    "-os": {
+     "nfns": 1,
+     "total_redux": 5,
+     "nflip": 0
+    },
+    "-od": {
+     "nfns": 1,
+     "total_redux": 2,
+     "nflip": 0
+    }
+   }
+  },
+  "controls": {
+   "residue_fns": 7,
+   "residue_bytes": 1164,
+   "flags": {
+    "-os": {
+     "nfns": 3,
+     "total_redux": 90,
+     "nflip": 0
+    },
+    "-ol": {
+     "nfns": 4,
+     "total_redux": 77,
+     "nflip": 0
+    },
+    "-zu": {
+     "nfns": 1,
+     "total_redux": 61,
+     "nflip": 0
+    },
+    "-oo": {
+     "nfns": 1,
+     "total_redux": 61,
+     "nflip": 0
+    },
+    "-ee": {
+     "nfns": 1,
+     "total_redux": 59,
+     "nflip": 0
+    },
+    "-of": {
+     "nfns": 1,
+     "total_redux": 59,
+     "nflip": 0
+    },
+    "-3r": {
+     "nfns": 3,
+     "total_redux": 54,
+     "nflip": 0
+    },
+    "-or": {
+     "nfns": 3,
+     "total_redux": 51,
+     "nflip": 0
+    },
+    "-5r": {
+     "nfns": 2,
+     "total_redux": 43,
+     "nflip": 0
+    },
+    "-zdf": {
+     "nfns": 2,
+     "total_redux": 31,
+     "nflip": 0
+    },
+    "-ox": {
+     "nfns": 3,
+     "total_redux": 24,
+     "nflip": 0
+    },
+    "-od": {
+     "nfns": 1,
+     "total_redux": 21,
+     "nflip": 0
+    },
+    "-ot": {
+     "nfns": 2,
+     "total_redux": 16,
+     "nflip": 0
+    },
+    "-st": {
+     "nfns": 1,
+     "total_redux": 7,
+     "nflip": 0
+    },
+    "-zp4": {
+     "nfns": 1,
+     "total_redux": 7,
+     "nflip": 0
+    },
+    "-zp8": {
+     "nfns": 1,
+     "total_redux": 7,
+     "nflip": 0
+    }
+   }
+  },
+  "empire": {
+   "residue_fns": 1,
+   "residue_bytes": 269,
+   "flags": {
+    "-zu": {
+     "nfns": 1,
+     "total_redux": 51,
+     "nflip": 0
+    },
+    "-oo": {
+     "nfns": 1,
+     "total_redux": 51,
+     "nflip": 0
+    },
+    "-os": {
+     "nfns": 1,
+     "total_redux": 51,
+     "nflip": 0
+    },
+    "-ol": {
+     "nfns": 1,
+     "total_redux": 43,
+     "nflip": 0
+    },
+    "-3r": {
+     "nfns": 1,
+     "total_redux": 40,
+     "nflip": 0
+    },
+    "-ox": {
+     "nfns": 1,
+     "total_redux": 40,
+     "nflip": 0
+    },
+    "-oa": {
+     "nfns": 1,
+     "total_redux": 28,
+     "nflip": 0
+    },
+    "-ot": {
+     "nfns": 1,
+     "total_redux": 23,
+     "nflip": 0
+    },
+    "-zdf": {
+     "nfns": 1,
+     "total_redux": 15,
+     "nflip": 0
+    },
+    "-ee": {
+     "nfns": 1,
+     "total_redux": 9,
+     "nflip": 0
+    },
+    "-5r": {
+     "nfns": 1,
+     "total_redux": 4,
+     "nflip": 0
+    },
+    "-or": {
+     "nfns": 1,
+     "total_redux": 3,
+     "nflip": 0
+    }
+   }
+  },
+  "evolver": {
+   "residue_fns": 21,
+   "residue_bytes": 7438,
+   "flags": {
+    "-os": {
+     "nfns": 11,
+     "total_redux": 573,
+     "nflip": 0
+    },
+    "-3r": {
+     "nfns": 11,
+     "total_redux": 411,
+     "nflip": 0
+    },
+    "-ot": {
+     "nfns": 8,
+     "total_redux": 187,
+     "nflip": 1
+    },
+    "-zu": {
+     "nfns": 6,
+     "total_redux": 127,
+     "nflip": 0
+    },
+    "-oo": {
+     "nfns": 6,
+     "total_redux": 127,
+     "nflip": 0
+    },
+    "-ee": {
+     "nfns": 4,
+     "total_redux": 122,
+     "nflip": 0
+    },
+    "-od": {
+     "nfns": 2,
+     "total_redux": 107,
+     "nflip": 0
+    },
+    "-of": {
+     "nfns": 3,
+     "total_redux": 105,
+     "nflip": 0
+    },
+    "-ox": {
+     "nfns": 8,
+     "total_redux": 97,
+     "nflip": 0
+    },
+    "-or": {
+     "nfns": 8,
+     "total_redux": 65,
+     "nflip": 0
+    },
+    "-zdf": {
+     "nfns": 2,
+     "total_redux": 50,
+     "nflip": 0
+    },
+    "-ol": {
+     "nfns": 5,
+     "total_redux": 48,
+     "nflip": 0
+    },
+    "-st": {
+     "nfns": 7,
+     "total_redux": 29,
+     "nflip": 0
+    },
+    "-oa": {
+     "nfns": 3,
+     "total_redux": 21,
+     "nflip": 0
+    },
+    "-5r": {
+     "nfns": 1,
+     "total_redux": 9,
+     "nflip": 0
+    },
+    "-oe": {
+     "nfns": 1,
+     "total_redux": 2,
+     "nflip": 0
+    }
+   }
+  },
+  "int_c2": {
+   "residue_fns": 24,
+   "residue_bytes": 2512,
+   "flags": {
+    "-os": {
+     "nfns": 4,
+     "total_redux": 71,
+     "nflip": 0
+    },
+    "-3r": {
+     "nfns": 4,
+     "total_redux": 45,
+     "nflip": 0
+    },
+    "-5r": {
+     "nfns": 5,
+     "total_redux": 45,
+     "nflip": 0
+    },
+    "-oa": {
+     "nfns": 3,
+     "total_redux": 37,
+     "nflip": 0
+    },
+    "-ee": {
+     "nfns": 2,
+     "total_redux": 29,
+     "nflip": 0
+    },
+    "-ot": {
+     "nfns": 1,
+     "total_redux": 26,
+     "nflip": 0
+    },
+    "-od": {
+     "nfns": 4,
+     "total_redux": 25,
+     "nflip": 0
+    },
+    "-zdf": {
+     "nfns": 5,
+     "total_redux": 22,
+     "nflip": 0
+    },
+    "-ol": {
+     "nfns": 2,
+     "total_redux": 16,
+     "nflip": 0
+    },
+    "-or": {
+     "nfns": 1,
+     "total_redux": 8,
+     "nflip": 0
+    },
+    "-ox": {
+     "nfns": 1,
+     "total_redux": 8,
+     "nflip": 0
+    },
+    "-st": {
+     "nfns": 2,
+     "total_redux": 5,
+     "nflip": 1
+    },
+    "-j": {
+     "nfns": 2,
+     "total_redux": 5,
+     "nflip": 0
+    },
+    "-en": {
+     "nfns": 2,
+     "total_redux": 2,
+     "nflip": 2
+    },
+    "-zp2": {
+     "nfns": 1,
+     "total_redux": 1,
+     "nflip": 1
+    },
+    "-zu": {
+     "nfns": 1,
+     "total_redux": 1,
+     "nflip": 1
+    },
+    "-of": {
+     "nfns": 1,
+     "total_redux": 1,
+     "nflip": 1
+    },
+    "-oo": {
+     "nfns": 1,
+     "total_redux": 1,
+     "nflip": 1
+    }
+   }
+  },
+  "landfill": {
+   "residue_fns": 9,
+   "residue_bytes": 1301,
+   "flags": {
+    "-ol": {
+     "nfns": 2,
+     "total_redux": 55,
+     "nflip": 1
+    },
+    "-oa": {
+     "nfns": 2,
+     "total_redux": 51,
+     "nflip": 0
+    },
+    "-ox": {
+     "nfns": 2,
+     "total_redux": 41,
+     "nflip": 0
+    },
+    "-os": {
+     "nfns": 3,
+     "total_redux": 24,
+     "nflip": 0
+    },
+    "-3r": {
+     "nfns": 2,
+     "total_redux": 9,
+     "nflip": 0
+    },
+    "-ee": {
+     "nfns": 2,
+     "total_redux": 9,
+     "nflip": 0
+    },
+    "-ot": {
+     "nfns": 1,
+     "total_redux": 7,
+     "nflip": 0
+    },
+    "-zdf": {
+     "nfns": 2,
+     "total_redux": 2,
+     "nflip": 0
+    },
+    "-or": {
+     "nfns": 1,
+     "total_redux": 1,
+     "nflip": 0
+    }
+   }
+  },
+  "lib32": {
+   "residue_fns": 12,
+   "residue_bytes": 1217,
+   "flags": {
+    "-st": {
+     "nfns": 1,
+     "total_redux": 33,
+     "nflip": 0
+    },
+    "-3r": {
+     "nfns": 1,
+     "total_redux": 21,
+     "nflip": 0
+    },
+    "-os": {
+     "nfns": 2,
+     "total_redux": 17,
+     "nflip": 0
+    },
+    "-j": {
+     "nfns": 1,
+     "total_redux": 15,
+     "nflip": 0
+    },
+    "-or": {
+     "nfns": 2,
+     "total_redux": 3,
+     "nflip": 0
+    },
+    "-zdf": {
+     "nfns": 1,
+     "total_redux": 1,
+     "nflip": 0
+    },
+    "-ox": {
+     "nfns": 1,
+     "total_redux": 1,
+     "nflip": 0
+    }
+   }
+  },
+  "map": {
+   "residue_fns": 35,
+   "residue_bytes": 7229,
+   "flags": {
+    "-3r": {
+     "nfns": 12,
+     "total_redux": 222,
+     "nflip": 0
+    },
+    "-os": {
+     "nfns": 10,
+     "total_redux": 198,
+     "nflip": 0
+    },
+    "-or": {
+     "nfns": 9,
+     "total_redux": 164,
+     "nflip": 0
+    },
+    "-zu": {
+     "nfns": 6,
+     "total_redux": 140,
+     "nflip": 0
+    },
+    "-oo": {
+     "nfns": 6,
+     "total_redux": 140,
+     "nflip": 0
+    },
+    "-ol": {
+     "nfns": 5,
+     "total_redux": 139,
+     "nflip": 0
+    },
+    "-ee": {
+     "nfns": 6,
+     "total_redux": 112,
+     "nflip": 0
+    },
+    "-ot": {
+     "nfns": 8,
+     "total_redux": 107,
+     "nflip": 0
+    },
+    "-ox": {
+     "nfns": 2,
+     "total_redux": 86,
+     "nflip": 0
+    },
+    "-st": {
+     "nfns": 6,
+     "total_redux": 75,
+     "nflip": 0
+    },
+    "-zdf": {
+     "nfns": 4,
+     "total_redux": 68,
+     "nflip": 0
+    },
+    "-od": {
+     "nfns": 2,
+     "total_redux": 31,
+     "nflip": 0
+    },
+    "-j": {
+     "nfns": 4,
+     "total_redux": 27,
+     "nflip": 0
+    },
+    "-of": {
+     "nfns": 2,
+     "total_redux": 21,
+     "nflip": 0
+    },
+    "-oa": {
+     "nfns": 1,
+     "total_redux": 12,
+     "nflip": 0
+    }
+   }
+  },
+  "pcsound": {
+   "residue_fns": 9,
+   "residue_bytes": 511,
+   "flags": {
+    "-ee": {
+     "nfns": 2,
+     "total_redux": 161,
+     "nflip": 0
+    },
+    "-oa": {
+     "nfns": 1,
+     "total_redux": 42,
+     "nflip": 0
+    },
+    "-ot": {
+     "nfns": 3,
+     "total_redux": 39,
+     "nflip": 0
+    },
+    "-3r": {
+     "nfns": 3,
+     "total_redux": 31,
+     "nflip": 0
+    },
+    "-os": {
+     "nfns": 3,
+     "total_redux": 31,
+     "nflip": 0
+    },
+    "-ox": {
+     "nfns": 3,
+     "total_redux": 25,
+     "nflip": 0
+    },
+    "-ol": {
+     "nfns": 3,
+     "total_redux": 21,
+     "nflip": 0
+    },
+    "-or": {
+     "nfns": 3,
+     "total_redux": 20,
+     "nflip": 0
+    },
+    "-oe": {
+     "nfns": 1,
+     "total_redux": 20,
+     "nflip": 0
+    },
+    "-zdf": {
+     "nfns": 2,
+     "total_redux": 17,
+     "nflip": 0
+    },
+    "-od": {
+     "nfns": 1,
+     "total_redux": 7,
+     "nflip": 0
+    },
+    "-zu": {
+     "nfns": 1,
+     "total_redux": 2,
+     "nflip": 0
+    },
+    "-of": {
+     "nfns": 1,
+     "total_redux": 2,
+     "nflip": 0
+    },
+    "-oo": {
+     "nfns": 1,
+     "total_redux": 2,
+     "nflip": 0
+    }
+   }
+  },
+  "pm_map0": {
+   "residue_fns": 1,
+   "residue_bytes": 713,
+   "flags": {
+    "-os": {
+     "nfns": 1,
+     "total_redux": 155,
+     "nflip": 0
+    },
+    "-ol": {
+     "nfns": 1,
+     "total_redux": 120,
+     "nflip": 0
+    },
+    "-3r": {
+     "nfns": 1,
+     "total_redux": 112,
+     "nflip": 0
+    },
+    "-ox": {
+     "nfns": 1,
+     "total_redux": 69,
+     "nflip": 0
+    },
+    "-ee": {
+     "nfns": 1,
+     "total_redux": 36,
+     "nflip": 0
+    },
+    "-zu": {
+     "nfns": 1,
+     "total_redux": 34,
+     "nflip": 0
+    },
+    "-oo": {
+     "nfns": 1,
+     "total_redux": 34,
+     "nflip": 0
+    },
+    "-ot": {
+     "nfns": 1,
+     "total_redux": 18,
+     "nflip": 0
+    },
+    "-or": {
+     "nfns": 1,
+     "total_redux": 13,
+     "nflip": 0
+    }
+   }
+  },
+  "pm_map1": {
+   "residue_fns": 8,
+   "residue_bytes": 2450,
+   "flags": {
+    "-ox": {
+     "nfns": 4,
+     "total_redux": 252,
+     "nflip": 0
+    },
+    "-or": {
+     "nfns": 3,
+     "total_redux": 221,
+     "nflip": 0
+    },
+    "-3r": {
+     "nfns": 4,
+     "total_redux": 156,
+     "nflip": 0
+    },
+    "-os": {
+     "nfns": 6,
+     "total_redux": 149,
+     "nflip": 0
+    },
+    "-oa": {
+     "nfns": 4,
+     "total_redux": 106,
+     "nflip": 0
+    },
+    "-j": {
+     "nfns": 4,
+     "total_redux": 99,
+     "nflip": 0
+    },
+    "-zu": {
+     "nfns": 2,
+     "total_redux": 96,
+     "nflip": 0
+    },
+    "-oo": {
+     "nfns": 2,
+     "total_redux": 96,
+     "nflip": 0
+    },
+    "-of": {
+     "nfns": 2,
+     "total_redux": 90,
+     "nflip": 0
+    },
+    "-st": {
+     "nfns": 2,
+     "total_redux": 90,
+     "nflip": 0
+    },
+    "-ol": {
+     "nfns": 3,
+     "total_redux": 75,
+     "nflip": 0
+    },
+    "-ot": {
+     "nfns": 3,
+     "total_redux": 55,
+     "nflip": 0
+    },
+    "-5r": {
+     "nfns": 2,
+     "total_redux": 49,
+     "nflip": 0
+    },
+    "-zdf": {
+     "nfns": 1,
+     "total_redux": 44,
+     "nflip": 0
+    },
+    "-od": {
+     "nfns": 1,
+     "total_redux": 33,
+     "nflip": 0
+    },
+    "-ee": {
+     "nfns": 1,
+     "total_redux": 1,
+     "nflip": 0
+    }
+   }
+  },
+  "pm_map2": {
+   "residue_fns": 7,
+   "residue_bytes": 2450,
+   "flags": {
+    "-os": {
+     "nfns": 4,
+     "total_redux": 261,
+     "nflip": 0
+    },
+    "-3r": {
+     "nfns": 4,
+     "total_redux": 234,
+     "nflip": 0
+    },
+    "-oa": {
+     "nfns": 2,
+     "total_redux": 80,
+     "nflip": 0
+    },
+    "-or": {
+     "nfns": 2,
+     "total_redux": 78,
+     "nflip": 0
+    },
+    "-ox": {
+     "nfns": 3,
+     "total_redux": 55,
+     "nflip": 0
+    },
+    "-ee": {
+     "nfns": 2,
+     "total_redux": 35,
+     "nflip": 0
+    },
+    "-zu": {
+     "nfns": 1,
+     "total_redux": 32,
+     "nflip": 0
+    },
+    "-of": {
+     "nfns": 1,
+     "total_redux": 32,
+     "nflip": 0
+    },
+    "-oo": {
+     "nfns": 1,
+     "total_redux": 32,
+     "nflip": 0
+    },
+    "-ol": {
+     "nfns": 3,
+     "total_redux": 23,
+     "nflip": 0
+    },
+    "-ot": {
+     "nfns": 1,
+     "total_redux": 20,
+     "nflip": 0
+    }
+   }
+  },
+  "pm_map3": {
+   "residue_fns": 4,
+   "residue_bytes": 904,
+   "flags": {
+    "-os": {
+     "nfns": 3,
+     "total_redux": 53,
+     "nflip": 0
+    },
+    "-3r": {
+     "nfns": 2,
+     "total_redux": 45,
+     "nflip": 0
+    },
+    "-zu": {
+     "nfns": 1,
+     "total_redux": 24,
+     "nflip": 0
+    },
+    "-of": {
+     "nfns": 1,
+     "total_redux": 24,
+     "nflip": 0
+    },
+    "-oo": {
+     "nfns": 1,
+     "total_redux": 24,
+     "nflip": 0
+    },
+    "-zp2": {
+     "nfns": 1,
+     "total_redux": 18,
+     "nflip": 0
+    },
+    "-od": {
+     "nfns": 1,
+     "total_redux": 4,
+     "nflip": 0
+    },
+    "-ox": {
+     "nfns": 1,
+     "total_redux": 3,
+     "nflip": 0
+    },
+    "-ol": {
+     "nfns": 1,
+     "total_redux": 1,
+     "nflip": 0
+    }
+   }
+  },
+  "screens": {
+   "residue_fns": 11,
+   "residue_bytes": 3865,
+   "flags": {
+    "-oa": {
+     "nfns": 4,
+     "total_redux": 90,
+     "nflip": 1
+    },
+    "-os": {
+     "nfns": 2,
+     "total_redux": 59,
+     "nflip": 0
+    },
+    "-ol": {
+     "nfns": 2,
+     "total_redux": 32,
+     "nflip": 0
+    },
+    "-or": {
+     "nfns": 4,
+     "total_redux": 23,
+     "nflip": 0
+    },
+    "-ot": {
+     "nfns": 1,
+     "total_redux": 21,
+     "nflip": 0
+    },
+    "-ox": {
+     "nfns": 4,
+     "total_redux": 15,
+     "nflip": 0
+    },
+    "-3r": {
+     "nfns": 1,
+     "total_redux": 14,
+     "nflip": 0
+    },
+    "-od": {
+     "nfns": 1,
+     "total_redux": 9,
+     "nflip": 0
+    },
+    "-j": {
+     "nfns": 1,
+     "total_redux": 4,
+     "nflip": 0
+    },
+    "-oe": {
+     "nfns": 1,
+     "total_redux": 2,
+     "nflip": 0
+    }
+   }
+  },
+  "formulae": {
+   "residue_fns": 6,
+   "residue_bytes": 1036,
+   "flags": {
+    "-os": {
+     "nfns": 3,
+     "total_redux": 43,
+     "nflip": 0
+    },
+    "-ot": {
+     "nfns": 1,
+     "total_redux": 20,
+     "nflip": 0
+    },
+    "-ox": {
+     "nfns": 2,
+     "total_redux": 20,
+     "nflip": 0
+    },
+    "-ol": {
+     "nfns": 2,
+     "total_redux": 14,
+     "nflip": 0
+    },
+    "-5r": {
+     "nfns": 2,
+     "total_redux": 10,
+     "nflip": 0
+    },
+    "-oa": {
+     "nfns": 3,
+     "total_redux": 10,
+     "nflip": 0
+    },
+    "-ee": {
+     "nfns": 1,
+     "total_redux": 9,
+     "nflip": 0
+    },
+    "-or": {
+     "nfns": 1,
+     "total_redux": 9,
+     "nflip": 0
+    },
+    "-st": {
+     "nfns": 1,
+     "total_redux": 2,
+     "nflip": 0
+    }
+   }
+  },
+  "mmedia": {
+   "residue_fns": 1,
+   "residue_bytes": 152,
+   "flags": {
+    "-ol": {
+     "nfns": 1,
+     "total_redux": 33,
+     "nflip": 0
+    },
+    "-oe": {
+     "nfns": 1,
+     "total_redux": 18,
+     "nflip": 0
+    },
+    "-j": {
+     "nfns": 1,
+     "total_redux": 6,
+     "nflip": 0
+    }
+   }
+  },
+  "c2": {
+   "residue_fns": 1,
+   "residue_bytes": 36,
+   "flags": {
+    "-ot": {
+     "nfns": 1,
+     "total_redux": 30,
+     "nflip": 0
+    }
+   }
+  }
+ }
+}

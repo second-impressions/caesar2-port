@@ -1,0 +1,2719 @@
+[
+ {
+  "tu": "action",
+  "fn": "action",
+  "baseline": 854,
+  "min": 566,
+  "reduction": 288,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-j",
+   "-oa"
+  ]
+ },
+ {
+  "tu": "pm_map1",
+  "fn": "place_a_building_top",
+  "baseline": 406,
+  "min": 223,
+  "reduction": 183,
+  "flipped": false,
+  "n_configs": 12,
+  "flags": [
+   "-oa",
+   "-oacer",
+   "-oacir",
+   "-oacr",
+   "-oacru",
+   "-oaeir",
+   "-oaer",
+   "-oaeru",
+   "-oair",
+   "-oairu"
+  ]
+ },
+ {
+  "tu": "pm_map0",
+  "fn": "get_pseudo_map",
+  "baseline": 713,
+  "min": 545,
+  "reduction": 168,
+  "flipped": false,
+  "n_configs": 38,
+  "flags": [
+   "-oacrs",
+   "-oadrs",
+   "-oaers",
+   "-oafrs",
+   "-oairs",
+   "-oaors",
+   "-oars",
+   "-oarsu",
+   "-ocdrs",
+   "-ocers"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "check_goods_in_region_warehouses",
+  "baseline": 177,
+  "min": 22,
+  "reduction": 155,
+  "flipped": false,
+  "n_configs": 92,
+  "flags": [
+   "-j",
+   "-oades",
+   "-oadis",
+   "-oadrs",
+   "-oadsu",
+   "-oaeis",
+   "-oaeos",
+   "-oaes",
+   "-oaesu",
+   "-oaios"
+  ]
+ },
+ {
+  "tu": "pcsound",
+  "fn": "get_city_mood",
+  "baseline": 275,
+  "min": 122,
+  "reduction": 153,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-ee"
+  ]
+ },
+ {
+  "tu": "controls",
+  "fn": "control_menus",
+  "baseline": 204,
+  "min": 58,
+  "reduction": 146,
+  "flipped": false,
+  "n_configs": 11,
+  "flags": [
+   "-oaotx",
+   "-ocotx",
+   "-odotx",
+   "-oeotx",
+   "-oiotx",
+   "-olort",
+   "-olotx",
+   "-oortx",
+   "-oostx",
+   "-ootux"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "sf14_opertunist_fire",
+  "baseline": 693,
+  "min": 568,
+  "reduction": 125,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-or",
+   "-zp2"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "build_wall_from_elastic",
+  "baseline": 238,
+  "min": 131,
+  "reduction": 107,
+  "flipped": false,
+  "n_configs": 8,
+  "flags": [
+   "-oa",
+   "-oacil",
+   "-oacl",
+   "-oaclu",
+   "-oail",
+   "-oailu",
+   "-oal",
+   "-oalu",
+   "-ol"
+  ]
+ },
+ {
+  "tu": "pm_map2",
+  "fn": "show_regionmap_top",
+  "baseline": 133,
+  "min": 27,
+  "reduction": 106,
+  "flipped": false,
+  "n_configs": 135,
+  "flags": [
+   "-3r",
+   "-j",
+   "-oades",
+   "-oadfs",
+   "-oadls",
+   "-oadsu",
+   "-oaeis",
+   "-oaels",
+   "-oaeos",
+   "-oaesu"
+  ]
+ },
+ {
+  "tu": "bbarian",
+  "fn": "battle_auto_resolve",
+  "baseline": 671,
+  "min": 566,
+  "reduction": 105,
+  "flipped": false,
+  "n_configs": 7,
+  "flags": [
+   "-oacfs",
+   "-oadfs",
+   "-oaefs",
+   "-oafis",
+   "-oafos",
+   "-oafs",
+   "-oafsu"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "spread_fire_and_plague_and_unrest",
+  "baseline": 466,
+  "min": 362,
+  "reduction": 104,
+  "flipped": false,
+  "n_configs": 30,
+  "flags": [
+   "-oacls",
+   "-oadls",
+   "-oaels",
+   "-oails",
+   "-oalos",
+   "-oals",
+   "-oalsu",
+   "-ocdls",
+   "-ocels",
+   "-ocils"
+  ]
+ },
+ {
+  "tu": "pm_map1",
+  "fn": "place_sprite",
+  "baseline": 677,
+  "min": 575,
+  "reduction": 102,
+  "flipped": false,
+  "n_configs": 7,
+  "flags": [
+   "-ocfls",
+   "-odfls",
+   "-oefls",
+   "-ofils",
+   "-oflos",
+   "-ofls",
+   "-oflsu"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "get_highlight_position",
+  "baseline": 144,
+  "min": 46,
+  "reduction": 98,
+  "flipped": false,
+  "n_configs": 30,
+  "flags": [
+   "-ocdlt",
+   "-ocelt",
+   "-ocflt",
+   "-ocilt",
+   "-oclst",
+   "-oclt",
+   "-ocltu",
+   "-odelt",
+   "-odflt",
+   "-odilt"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "evolve_region",
+  "baseline": 1394,
+  "min": 1299,
+  "reduction": 95,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-oafls"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "business_output",
+  "baseline": 484,
+  "min": 390,
+  "reduction": 94,
+  "flipped": false,
+  "n_configs": 117,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oacet",
+   "-oacit",
+   "-oaclt",
+   "-oacst",
+   "-oadet",
+   "-oadst",
+   "-oadt",
+   "-oadtu"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "figure_update",
+  "baseline": 138,
+  "min": 45,
+  "reduction": 93,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-ee"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "road_ramifications",
+  "baseline": 187,
+  "min": 108,
+  "reduction": 79,
+  "flipped": false,
+  "n_configs": 38,
+  "flags": [
+   "-oa",
+   "-oacdt",
+   "-oacet",
+   "-oacft",
+   "-oacit",
+   "-oacot",
+   "-oacst",
+   "-oact",
+   "-oactu",
+   "-oadet"
+  ]
+ },
+ {
+  "tu": "pm_map2",
+  "fn": "place2_sprite",
+  "baseline": 1026,
+  "min": 951,
+  "reduction": 75,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-j",
+   "-ox"
+  ]
+ },
+ {
+  "tu": "controls",
+  "fn": "show_selections",
+  "baseline": 374,
+  "min": 304,
+  "reduction": 70,
+  "flipped": false,
+  "n_configs": 69,
+  "flags": [
+   "-j",
+   "-oc",
+   "-ocdes",
+   "-ocdis",
+   "-ocdos",
+   "-ocds",
+   "-ocdsu",
+   "-oceis",
+   "-oceos",
+   "-oces"
+  ]
+ },
+ {
+  "tu": "empire",
+  "fn": "set_new_province",
+  "baseline": 269,
+  "min": 199,
+  "reduction": 70,
+  "flipped": false,
+  "n_configs": 30,
+  "flags": [
+   "-oacls",
+   "-oadls",
+   "-oaels",
+   "-oails",
+   "-oalos",
+   "-oals",
+   "-oalsu",
+   "-ocdls",
+   "-ocels",
+   "-ocils"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "citymap_evolution",
+  "baseline": 520,
+  "min": 454,
+  "reduction": 66,
+  "flipped": false,
+  "n_configs": 133,
+  "flags": [
+   "-oacd",
+   "-oacde",
+   "-oacdi",
+   "-oacdu",
+   "-oad",
+   "-oader",
+   "-oadeu",
+   "-oadil",
+   "-oadir",
+   "-oadl"
+  ]
+ },
+ {
+  "tu": "census",
+  "fn": "init_census",
+  "baseline": 93,
+  "min": 29,
+  "reduction": 64,
+  "flipped": false,
+  "n_configs": 53,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oacel",
+   "-oacfl",
+   "-oacil",
+   "-oacl",
+   "-oaclu",
+   "-oaefl",
+   "-oaeil",
+   "-oael"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "generate_cm_river",
+  "baseline": 215,
+  "min": 151,
+  "reduction": 64,
+  "flipped": false,
+  "n_configs": 115,
+  "flags": [
+   "-j",
+   "-oc",
+   "-ocdix",
+   "-ocdlx",
+   "-ocdux",
+   "-ocdx",
+   "-ocelx",
+   "-ocer",
+   "-ocerx",
+   "-ocex"
+  ]
+ },
+ {
+  "tu": "action",
+  "fn": "act_forum",
+  "baseline": 189,
+  "min": 127,
+  "reduction": 62,
+  "flipped": false,
+  "n_configs": 23,
+  "flags": [
+   "-ocdlt",
+   "-ocelt",
+   "-ocilt",
+   "-oclst",
+   "-oclt",
+   "-ocltu",
+   "-odelt",
+   "-odilt",
+   "-odlst",
+   "-odlt"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "evolve_a_cm_row",
+  "baseline": 1059,
+  "min": 998,
+  "reduction": 61,
+  "flipped": false,
+  "n_configs": 69,
+  "flags": [
+   "-j",
+   "-oc",
+   "-ocdes",
+   "-ocdis",
+   "-ocdos",
+   "-ocds",
+   "-ocdsu",
+   "-oceis",
+   "-oceos",
+   "-oces"
+  ]
+ },
+ {
+  "tu": "screens",
+  "fn": "show_people_query_panel",
+  "baseline": 631,
+  "min": 571,
+  "reduction": 60,
+  "flipped": false,
+  "n_configs": 132,
+  "flags": [
+   "-ocesx",
+   "-oclrs",
+   "-oclsx",
+   "-ocosx",
+   "-ocrsx",
+   "-ocsx",
+   "-odesx",
+   "-odlrs",
+   "-odsxi",
+   "-odsxu"
+  ]
+ },
+ {
+  "tu": "pm_map3",
+  "fn": "mid3_line_with_sides_base",
+  "baseline": 339,
+  "min": 282,
+  "reduction": 57,
+  "flipped": false,
+  "n_configs": 30,
+  "flags": [
+   "-oa",
+   "-oacds",
+   "-oaces",
+   "-oacfs",
+   "-oacis",
+   "-oacos",
+   "-oacs",
+   "-oacsu",
+   "-oades",
+   "-oadfs"
+  ]
+ },
+ {
+  "tu": "screens",
+  "fn": "forum_industry_screen",
+  "baseline": 433,
+  "min": 378,
+  "reduction": 55,
+  "flipped": false,
+  "n_configs": 22,
+  "flags": [
+   "-oa",
+   "-oac",
+   "-oace",
+   "-oacei",
+   "-oaceu",
+   "-oaci",
+   "-oaciu",
+   "-oacu",
+   "-oae",
+   "-oaei"
+  ]
+ },
+ {
+  "tu": "pm_map2",
+  "fn": "place2_a_building_roof",
+  "baseline": 381,
+  "min": 328,
+  "reduction": 53,
+  "flipped": false,
+  "n_configs": 123,
+  "flags": [
+   "-j",
+   "-oc",
+   "-ocdes",
+   "-ocdfs",
+   "-ocdis",
+   "-ocdos",
+   "-ocds",
+   "-oceis",
+   "-ocels",
+   "-oceos"
+  ]
+ },
+ {
+  "tu": "landfill",
+  "fn": "get_water_ov_image",
+  "baseline": 52,
+  "min": 0,
+  "reduction": 52,
+  "flipped": true,
+  "n_configs": 53,
+  "flags": [
+   "-j",
+   "-oc",
+   "-ocefl",
+   "-oceil",
+   "-ocel",
+   "-ocelo",
+   "-ocelu",
+   "-ocfil",
+   "-ocfl",
+   "-ocflo"
+  ]
+ },
+ {
+  "tu": "pm_map2",
+  "fn": "place2_a_building_top",
+  "baseline": 681,
+  "min": 630,
+  "reduction": 51,
+  "flipped": false,
+  "n_configs": 93,
+  "flags": [
+   "-j",
+   "-oc",
+   "-ocdes",
+   "-ocdfs",
+   "-ocdis",
+   "-ocdos",
+   "-ocds",
+   "-ocdsu",
+   "-ocefs",
+   "-oceis"
+  ]
+ },
+ {
+  "tu": "screens",
+  "fn": "get_query_info",
+  "baseline": 467,
+  "min": 416,
+  "reduction": 51,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-os",
+   "-st"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "get_fig_fight_image",
+  "baseline": 202,
+  "min": 153,
+  "reduction": 49,
+  "flipped": false,
+  "n_configs": 12,
+  "flags": [
+   "-3r",
+   "-j",
+   "-ri",
+   "-zp2"
+  ]
+ },
+ {
+  "tu": "formulae",
+  "fn": "get_new_tribute",
+  "baseline": 359,
+  "min": 310,
+  "reduction": 49,
+  "flipped": false,
+  "n_configs": 30,
+  "flags": [
+   "-oa",
+   "-oacdt",
+   "-oacet",
+   "-oacit",
+   "-oaclt",
+   "-oacst",
+   "-oact",
+   "-oactu",
+   "-oadet",
+   "-oadit"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "evolve_forum_activity",
+  "baseline": 227,
+  "min": 183,
+  "reduction": 44,
+  "flipped": false,
+  "n_configs": 12,
+  "flags": [
+   "-3r",
+   "-j",
+   "-ri",
+   "-zp2"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "put_rm_area",
+  "baseline": 243,
+  "min": 202,
+  "reduction": 41,
+  "flipped": false,
+  "n_configs": 31,
+  "flags": [
+   "-ocdls",
+   "-ocels",
+   "-ocfls",
+   "-ocils",
+   "-oclos",
+   "-ocls",
+   "-oclsu",
+   "-odels",
+   "-odfls",
+   "-odils"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "test_range_for_road",
+  "baseline": 117,
+  "min": 77,
+  "reduction": 40,
+  "flipped": false,
+  "n_configs": 36,
+  "flags": [
+   "-j",
+   "-oc",
+   "-ocefo",
+   "-oceio",
+   "-oceo",
+   "-oceou",
+   "-ocfio",
+   "-ocfo",
+   "-ocfou",
+   "-ocio"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "trace_back_route_elastic",
+  "baseline": 355,
+  "min": 315,
+  "reduction": 40,
+  "flipped": false,
+  "n_configs": 8,
+  "flags": [
+   "-oacrs",
+   "-oadrs",
+   "-oaers",
+   "-oafrs",
+   "-oairs",
+   "-oaors",
+   "-oars",
+   "-oarsu"
+  ]
+ },
+ {
+  "tu": "landfill",
+  "fn": "get_industry_ov_image",
+  "baseline": 58,
+  "min": 19,
+  "reduction": 39,
+  "flipped": false,
+  "n_configs": 76,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oac",
+   "-oace",
+   "-oacef",
+   "-oacei",
+   "-oaceo",
+   "-oacer",
+   "-oaceu",
+   "-oacf"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "fill_warehouses_with",
+  "baseline": 270,
+  "min": 231,
+  "reduction": 39,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-os",
+   "-st"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "get_start_points",
+  "baseline": 148,
+  "min": 110,
+  "reduction": 38,
+  "flipped": false,
+  "n_configs": 38,
+  "flags": [
+   "-oa",
+   "-oacds",
+   "-oaces",
+   "-oacfs",
+   "-oacis",
+   "-oacls",
+   "-oacos",
+   "-oacs",
+   "-oacsu",
+   "-oades"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "test_elastic_range",
+  "baseline": 358,
+  "min": 320,
+  "reduction": 38,
+  "flipped": false,
+  "n_configs": 12,
+  "flags": [
+   "-3r",
+   "-j",
+   "-ri",
+   "-zp2"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "evolve_water_table",
+  "baseline": 353,
+  "min": 316,
+  "reduction": 37,
+  "flipped": false,
+  "n_configs": 8,
+  "flags": [
+   "-oafls",
+   "-ocfls",
+   "-odfls",
+   "-oefls",
+   "-ofils",
+   "-oflos",
+   "-ofls",
+   "-oflsu"
+  ]
+ },
+ {
+  "tu": "mmedia",
+  "fn": "do_a_tutorial_page",
+  "baseline": 152,
+  "min": 116,
+  "reduction": 36,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-j",
+   "-ol"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "cap_land_value",
+  "baseline": 516,
+  "min": 481,
+  "reduction": 35,
+  "flipped": false,
+  "n_configs": 17,
+  "flags": [
+   "-oa",
+   "-oaceo",
+   "-oacio",
+   "-oaclo",
+   "-oaco",
+   "-oacou",
+   "-oaeio",
+   "-oaelo",
+   "-oaeo",
+   "-oaeou"
+  ]
+ },
+ {
+  "tu": "formulae",
+  "fn": "fill_cohort_centuries",
+  "baseline": 263,
+  "min": 228,
+  "reduction": 35,
+  "flipped": false,
+  "n_configs": 8,
+  "flags": [
+   "-oaclt",
+   "-oadlt",
+   "-oaelt",
+   "-oaflt",
+   "-oailt",
+   "-oalst",
+   "-oalt",
+   "-oaltu"
+  ]
+ },
+ {
+  "tu": "int_c2",
+  "fn": "test_fire_zones",
+  "baseline": 155,
+  "min": 120,
+  "reduction": 35,
+  "flipped": false,
+  "n_configs": 123,
+  "flags": [
+   "-j",
+   "-oc",
+   "-ocdes",
+   "-ocdfs",
+   "-ocdis",
+   "-ocdos",
+   "-ocds",
+   "-oceis",
+   "-ocels",
+   "-oceos"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "evolve_amenity_cover",
+  "baseline": 439,
+  "min": 405,
+  "reduction": 34,
+  "flipped": false,
+  "n_configs": 172,
+  "flags": [
+   "-oacrs",
+   "-oacsx",
+   "-oaesx",
+   "-oaisx",
+   "-oaosx",
+   "-oarsu",
+   "-oasux",
+   "-ocers",
+   "-ocesx",
+   "-oclrs"
+  ]
+ },
+ {
+  "tu": "int_c2",
+  "fn": "new_army_route_point",
+  "baseline": 83,
+  "min": 49,
+  "reduction": 34,
+  "flipped": false,
+  "n_configs": 35,
+  "flags": [
+   "-oa",
+   "-oacdx",
+   "-oacex",
+   "-oacix",
+   "-oaclr",
+   "-oaclx",
+   "-oacrx",
+   "-oacux",
+   "-oacx",
+   "-oadex"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "clear_an_area",
+  "baseline": 287,
+  "min": 253,
+  "reduction": 34,
+  "flipped": false,
+  "n_configs": 8,
+  "flags": [
+   "-oafrs",
+   "-ocfrs",
+   "-odfrs",
+   "-oefrs",
+   "-ofirs",
+   "-ofors",
+   "-ofrs",
+   "-ofrsu"
+  ]
+ },
+ {
+  "tu": "controls",
+  "fn": "get_selection_goods_list",
+  "baseline": 124,
+  "min": 91,
+  "reduction": 33,
+  "flipped": false,
+  "n_configs": 12,
+  "flags": [
+   "-3r",
+   "-j",
+   "-ri",
+   "-zp2"
+  ]
+ },
+ {
+  "tu": "lib32",
+  "fn": "convert_lbm_file",
+  "baseline": 228,
+  "min": 195,
+  "reduction": 33,
+  "flipped": false,
+  "n_configs": 8,
+  "flags": [
+   "-j",
+   "-oc",
+   "-oi",
+   "-ri",
+   "-sg",
+   "-st",
+   "-zc",
+   "-zp2"
+  ]
+ },
+ {
+  "tu": "action",
+  "fn": "build_city_item",
+  "baseline": 950,
+  "min": 918,
+  "reduction": 32,
+  "flipped": false,
+  "n_configs": 12,
+  "flags": [
+   "-3r",
+   "-j",
+   "-ri",
+   "-zp2"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "evolve_security_activity",
+  "baseline": 213,
+  "min": 182,
+  "reduction": 31,
+  "flipped": false,
+  "n_configs": 27,
+  "flags": [
+   "-oacrs",
+   "-oacsx",
+   "-oadrs",
+   "-oadsx",
+   "-oaers",
+   "-oaesx",
+   "-oairs",
+   "-oaisx",
+   "-oalrs",
+   "-oalsx"
+  ]
+ },
+ {
+  "tu": "action",
+  "fn": "perform_region_strip_action",
+  "baseline": 34,
+  "min": 4,
+  "reduction": 30,
+  "flipped": false,
+  "n_configs": 364,
+  "flags": [
+   "-3r",
+   "-j",
+   "-oacrs",
+   "-oacsx",
+   "-oades",
+   "-oadfs",
+   "-oadls",
+   "-oadrs",
+   "-oaeos",
+   "-oaesx"
+  ]
+ },
+ {
+  "tu": "c2",
+  "fn": "load_battle_graphics",
+  "baseline": 36,
+  "min": 6,
+  "reduction": 30,
+  "flipped": false,
+  "n_configs": 116,
+  "flags": [
+   "-oa",
+   "-oacft",
+   "-oacit",
+   "-oacot",
+   "-oacst",
+   "-oadft",
+   "-oadst",
+   "-oadt",
+   "-oadtu",
+   "-oafit"
+  ]
+ },
+ {
+  "tu": "pm_map1",
+  "fn": "top_it",
+  "baseline": 542,
+  "min": 512,
+  "reduction": 30,
+  "flipped": false,
+  "n_configs": 9,
+  "flags": [
+   "-oc",
+   "-oe",
+   "-oi",
+   "-ol",
+   "-ri",
+   "-sg",
+   "-st",
+   "-zc",
+   "-zp2"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "build_road_from_elastic",
+  "baseline": 615,
+  "min": 586,
+  "reduction": 29,
+  "flipped": false,
+  "n_configs": 133,
+  "flags": [
+   "-oacsx",
+   "-oaisx",
+   "-oaosx",
+   "-oasux",
+   "-oclrs",
+   "-oclsx",
+   "-ocosx",
+   "-ocrsx",
+   "-ocsx",
+   "-odlrs"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "instant_reform",
+  "baseline": 119,
+  "min": 91,
+  "reduction": 28,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-j",
+   "-ol"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "update_units_morale",
+  "baseline": 140,
+  "min": 112,
+  "reduction": 28,
+  "flipped": false,
+  "n_configs": 183,
+  "flags": [
+   "-oacsx",
+   "-oaisx",
+   "-oaosx",
+   "-oasux",
+   "-ocers",
+   "-ocesx",
+   "-oclrs",
+   "-ocors",
+   "-ocosx",
+   "-ocrsx"
+  ]
+ },
+ {
+  "tu": "int_c2",
+  "fn": "try_this_citymap_square",
+  "baseline": 216,
+  "min": 188,
+  "reduction": 28,
+  "flipped": false,
+  "n_configs": 38,
+  "flags": [
+   "-oa",
+   "-oacds",
+   "-oaces",
+   "-oacfs",
+   "-oacis",
+   "-oacls",
+   "-oacos",
+   "-oacs",
+   "-oacsu",
+   "-oades"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "test_rm_elastic_range",
+  "baseline": 349,
+  "min": 322,
+  "reduction": 27,
+  "flipped": false,
+  "n_configs": 12,
+  "flags": [
+   "-3r",
+   "-j",
+   "-ri",
+   "-zp2"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "build_aquaduct_from_elastic",
+  "baseline": 223,
+  "min": 196,
+  "reduction": 27,
+  "flipped": false,
+  "n_configs": 65,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oacer",
+   "-oacir",
+   "-oacr",
+   "-oacrt",
+   "-oacru",
+   "-oadrt",
+   "-oaeir",
+   "-oaer"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "get_units_status",
+  "baseline": 264,
+  "min": 238,
+  "reduction": 26,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-j",
+   "-ol"
+  ]
+ },
+ {
+  "tu": "int_c2",
+  "fn": "try_a_regionmap_square",
+  "baseline": 159,
+  "min": 133,
+  "reduction": 26,
+  "flipped": false,
+  "n_configs": 202,
+  "flags": [
+   "-j",
+   "-oacit",
+   "-oadet",
+   "-oadft",
+   "-oadtu",
+   "-oaelt",
+   "-oaeot",
+   "-oaest",
+   "-oaetu",
+   "-oafit"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "do_heavy_ai",
+  "baseline": 118,
+  "min": 93,
+  "reduction": 25,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-j",
+   "-oa"
+  ]
+ },
+ {
+  "tu": "screens",
+  "fn": "show_battle_intro_screen",
+  "baseline": 292,
+  "min": 267,
+  "reduction": 25,
+  "flipped": false,
+  "n_configs": 38,
+  "flags": [
+   "-oa",
+   "-oacdt",
+   "-oacet",
+   "-oacft",
+   "-oacit",
+   "-oacot",
+   "-oacst",
+   "-oact",
+   "-oactu",
+   "-oadet"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "evolve_fort_activity",
+  "baseline": 150,
+  "min": 126,
+  "reduction": 24,
+  "flipped": false,
+  "n_configs": 12,
+  "flags": [
+   "-3r",
+   "-j",
+   "-ri",
+   "-zp2"
+  ]
+ },
+ {
+  "tu": "action",
+  "fn": "get_icon_over",
+  "baseline": 125,
+  "min": 102,
+  "reduction": 23,
+  "flipped": false,
+  "n_configs": 135,
+  "flags": [
+   "-3r",
+   "-j",
+   "-oaces",
+   "-oacos",
+   "-oacrs",
+   "-oacs",
+   "-oacsu",
+   "-oades",
+   "-oadrs",
+   "-oadsu"
+  ]
+ },
+ {
+  "tu": "controls",
+  "fn": "show_menu_items",
+  "baseline": 172,
+  "min": 149,
+  "reduction": 23,
+  "flipped": false,
+  "n_configs": 35,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oacel",
+   "-oacil",
+   "-oacl",
+   "-oaclu",
+   "-oaeil",
+   "-oael",
+   "-oaelu",
+   "-oail"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "build_reg_road_from_elastic",
+  "baseline": 355,
+  "min": 332,
+  "reduction": 23,
+  "flipped": false,
+  "n_configs": 11,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oc",
+   "-oe",
+   "-oi",
+   "-ot",
+   "-ri",
+   "-sg",
+   "-st",
+   "-zc"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "set_route_elastic_range",
+  "baseline": 514,
+  "min": 491,
+  "reduction": 23,
+  "flipped": false,
+  "n_configs": 142,
+  "flags": [
+   "-ocesx",
+   "-oclrs",
+   "-oclsx",
+   "-ocosx",
+   "-ocrsx",
+   "-ocsx",
+   "-odesx",
+   "-odlrs",
+   "-odsxi",
+   "-odsxu"
+  ]
+ },
+ {
+  "tu": "pm_map1",
+  "fn": "place_a_building_roof",
+  "baseline": 368,
+  "min": 345,
+  "reduction": 23,
+  "flipped": false,
+  "n_configs": 8,
+  "flags": [
+   "-oacrs",
+   "-oadrs",
+   "-oaers",
+   "-oafrs",
+   "-oairs",
+   "-oaors",
+   "-oars",
+   "-oarsu"
+  ]
+ },
+ {
+  "tu": "pm_map2",
+  "fn": "mid2_line_with_sides_base",
+  "baseline": 31,
+  "min": 8,
+  "reduction": 23,
+  "flipped": false,
+  "n_configs": 24,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oac",
+   "-oace",
+   "-oacei",
+   "-oaceu",
+   "-oaci",
+   "-oaciu",
+   "-oacu",
+   "-oae"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "start_move",
+  "baseline": 180,
+  "min": 158,
+  "reduction": 22,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-ee"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "sf11_fire_missile",
+  "baseline": 106,
+  "min": 84,
+  "reduction": 22,
+  "flipped": false,
+  "n_configs": 2,
+  "flags": [
+   "-j",
+   "-zp2"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "get_wf_dirc",
+  "baseline": 168,
+  "min": 146,
+  "reduction": 22,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-j",
+   "-oa"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "get_best_elastic_value",
+  "baseline": 74,
+  "min": 52,
+  "reduction": 22,
+  "flipped": false,
+  "n_configs": 88,
+  "flags": [
+   "-j",
+   "-oc",
+   "-ocdet",
+   "-ocdft",
+   "-ocdit",
+   "-ocdst",
+   "-ocdt",
+   "-ocdtu",
+   "-oceft",
+   "-oceit"
+  ]
+ },
+ {
+  "tu": "pcsound",
+  "fn": "neg_sound",
+  "baseline": 23,
+  "min": 1,
+  "reduction": 22,
+  "flipped": false,
+  "n_configs": 118,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oacet",
+   "-oacit",
+   "-oaclt",
+   "-oacst",
+   "-oadet",
+   "-oadst",
+   "-oadt",
+   "-oadtu"
+  ]
+ },
+ {
+  "tu": "lib32",
+  "fn": "set_svga_640_480",
+  "baseline": 410,
+  "min": 389,
+  "reduction": 21,
+  "flipped": false,
+  "n_configs": 12,
+  "flags": [
+   "-3r",
+   "-j",
+   "-ri",
+   "-zp2"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "get_best_rm_elastic_value",
+  "baseline": 71,
+  "min": 51,
+  "reduction": 20,
+  "flipped": false,
+  "n_configs": 88,
+  "flags": [
+   "-j",
+   "-oc",
+   "-ocdet",
+   "-ocdft",
+   "-ocdit",
+   "-ocdst",
+   "-ocdt",
+   "-ocdtu",
+   "-oceft",
+   "-oceit"
+  ]
+ },
+ {
+  "tu": "pcsound",
+  "fn": "start_samples",
+  "baseline": 74,
+  "min": 54,
+  "reduction": 20,
+  "flipped": false,
+  "n_configs": 16,
+  "flags": [
+   "-j",
+   "-oc",
+   "-oce",
+   "-ocei",
+   "-oceiu",
+   "-oceu",
+   "-oe",
+   "-oei",
+   "-oeiu",
+   "-oeu"
+  ]
+ },
+ {
+  "tu": "int_c2",
+  "fn": "try_a_seamap_square",
+  "baseline": 183,
+  "min": 164,
+  "reduction": 19,
+  "flipped": false,
+  "n_configs": 35,
+  "flags": [
+   "-oisd",
+   "-oisxd",
+   "-oitsd",
+   "-oitsxd",
+   "-oitxsd",
+   "-oixsd",
+   "-oixtsd",
+   "-osd",
+   "-osdi",
+   "-osdu"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "put_reg_x1_area",
+  "baseline": 53,
+  "min": 34,
+  "reduction": 19,
+  "flipped": false,
+  "n_configs": 12,
+  "flags": [
+   "-3r",
+   "-j",
+   "-ri",
+   "-zp2"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "show_aim_highlight",
+  "baseline": 121,
+  "min": 103,
+  "reduction": 18,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-j",
+   "-or"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "set_ai_flank_move",
+  "baseline": 182,
+  "min": 164,
+  "reduction": 18,
+  "flipped": false,
+  "n_configs": 38,
+  "flags": [
+   "-oacrs",
+   "-oadrs",
+   "-oaers",
+   "-oafrs",
+   "-oairs",
+   "-oaors",
+   "-oars",
+   "-oarsu",
+   "-ocdrs",
+   "-ocers"
+  ]
+ },
+ {
+  "tu": "formulae",
+  "fn": "check_for_promotion",
+  "baseline": 82,
+  "min": 64,
+  "reduction": 18,
+  "flipped": false,
+  "n_configs": 172,
+  "flags": [
+   "-oacrs",
+   "-oacsx",
+   "-oadrs",
+   "-oafrs",
+   "-oaisx",
+   "-oaosx",
+   "-oarsu",
+   "-oasux",
+   "-oclrs",
+   "-ocors"
+  ]
+ },
+ {
+  "tu": "landfill",
+  "fn": "get_entertainment_ov_image",
+  "baseline": 74,
+  "min": 56,
+  "reduction": 18,
+  "flipped": false,
+  "n_configs": 23,
+  "flags": [
+   "-oa",
+   "-oacel",
+   "-oacfl",
+   "-oacil",
+   "-oacl",
+   "-oaclo",
+   "-oaclu",
+   "-oaefl",
+   "-oaeil",
+   "-oael"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "flag_range3",
+  "baseline": 141,
+  "min": 123,
+  "reduction": 18,
+  "flipped": false,
+  "n_configs": 142,
+  "flags": [
+   "-ocesx",
+   "-oclrs",
+   "-oclsx",
+   "-ocosx",
+   "-ocrsx",
+   "-ocsx",
+   "-odesx",
+   "-odlrs",
+   "-odsxi",
+   "-odsxu"
+  ]
+ },
+ {
+  "tu": "pm_map3",
+  "fn": "place3_sprite",
+  "baseline": 222,
+  "min": 204,
+  "reduction": 18,
+  "flipped": false,
+  "n_configs": 12,
+  "flags": [
+   "-oa",
+   "-oc",
+   "-oe",
+   "-oi",
+   "-ol",
+   "-ri",
+   "-sg",
+   "-st",
+   "-zc",
+   "-zp2"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "arrow_intelligence",
+  "baseline": 98,
+  "min": 81,
+  "reduction": 17,
+  "flipped": false,
+  "n_configs": 352,
+  "flags": [
+   "-oacrs",
+   "-oacsx",
+   "-oades",
+   "-oadfs",
+   "-oadls",
+   "-oadrs",
+   "-oaeos",
+   "-oaesx",
+   "-oafsu",
+   "-oails"
+  ]
+ },
+ {
+  "tu": "int_c2",
+  "fn": "get_population_and_industry_count",
+  "baseline": 245,
+  "min": 229,
+  "reduction": 16,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-os",
+   "-st"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "put_reg_x2_area",
+  "baseline": 190,
+  "min": 174,
+  "reduction": 16,
+  "flipped": false,
+  "n_configs": 8,
+  "flags": [
+   "-oacrs",
+   "-oadrs",
+   "-oaers",
+   "-oafrs",
+   "-oairs",
+   "-oaors",
+   "-oars",
+   "-oarsu"
+  ]
+ },
+ {
+  "tu": "lib32",
+  "fn": "print_vesa_info",
+  "baseline": 64,
+  "min": 49,
+  "reduction": 15,
+  "flipped": false,
+  "n_configs": 18,
+  "flags": [
+   "-5r",
+   "-j",
+   "-oa",
+   "-oc",
+   "-oe",
+   "-oi",
+   "-ol",
+   "-ot",
+   "-ri",
+   "-sg"
+  ]
+ },
+ {
+  "tu": "screens",
+  "fn": "show_battle_outtro_screen",
+  "baseline": 658,
+  "min": 643,
+  "reduction": 15,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-os",
+   "-st"
+  ]
+ },
+ {
+  "tu": "int_c2",
+  "fn": "try_this_regionmap_square",
+  "baseline": 471,
+  "min": 457,
+  "reduction": 14,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-ol",
+   "-st"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "get_fig_missile_image",
+  "baseline": 135,
+  "min": 122,
+  "reduction": 13,
+  "flipped": false,
+  "n_configs": 161,
+  "flags": [
+   "-j",
+   "-oc",
+   "-ocdes",
+   "-ocdfs",
+   "-ocdos",
+   "-ocds",
+   "-oceis",
+   "-ocers",
+   "-oces",
+   "-ocesu"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "build_an_area",
+  "baseline": 159,
+  "min": 146,
+  "reduction": 13,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-st",
+   "-zu"
+  ]
+ },
+ {
+  "tu": "screens",
+  "fn": "show_region_query_panel",
+  "baseline": 598,
+  "min": 585,
+  "reduction": 13,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-j",
+   "-ol"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "put_out_a",
+  "baseline": 114,
+  "min": 102,
+  "reduction": 12,
+  "flipped": false,
+  "n_configs": 30,
+  "flags": [
+   "-oaclt",
+   "-oadlt",
+   "-oaelt",
+   "-oailt",
+   "-oalst",
+   "-oalt",
+   "-oaltu",
+   "-ocdlt",
+   "-ocelt",
+   "-ocilt"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "push_shell",
+  "baseline": 225,
+  "min": 213,
+  "reduction": 12,
+  "flipped": false,
+  "n_configs": 30,
+  "flags": [
+   "-ocdot",
+   "-oceot",
+   "-ocfot",
+   "-ociot",
+   "-ocost",
+   "-ocot",
+   "-ocotu",
+   "-odeot",
+   "-odfot",
+   "-odiot"
+  ]
+ },
+ {
+  "tu": "landfill",
+  "fn": "get_reg_geog_ov_image",
+  "baseline": 325,
+  "min": 313,
+  "reduction": 12,
+  "flipped": false,
+  "n_configs": 57,
+  "flags": [
+   "-oa",
+   "-oacds",
+   "-oaces",
+   "-oacfs",
+   "-oacis",
+   "-oacls",
+   "-oacos",
+   "-oacrs",
+   "-oacs",
+   "-oacsu"
+  ]
+ },
+ {
+  "tu": "int_c2",
+  "fn": "sail_to_target",
+  "baseline": 155,
+  "min": 144,
+  "reduction": 11,
+  "flipped": false,
+  "n_configs": 3,
+  "flags": [
+   "-j",
+   "-or",
+   "-ot",
+   "-ox"
+  ]
+ },
+ {
+  "tu": "landfill",
+  "fn": "show_battle_landfill",
+  "baseline": 135,
+  "min": 124,
+  "reduction": 11,
+  "flipped": false,
+  "n_configs": 69,
+  "flags": [
+   "-j",
+   "-oc",
+   "-ocdes",
+   "-ocdis",
+   "-ocdos",
+   "-ocds",
+   "-ocdsu",
+   "-oceis",
+   "-oceos",
+   "-oces"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "devolve_a_building",
+  "baseline": 95,
+  "min": 86,
+  "reduction": 9,
+  "flipped": false,
+  "n_configs": 30,
+  "flags": [
+   "-oacls",
+   "-oadls",
+   "-oaels",
+   "-oails",
+   "-oalos",
+   "-oals",
+   "-oalsu",
+   "-ocdls",
+   "-ocels",
+   "-ocils"
+  ]
+ },
+ {
+  "tu": "formulae",
+  "fn": "random_event",
+  "baseline": 233,
+  "min": 224,
+  "reduction": 9,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-ee"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "build_reg_wall_from_elastic",
+  "baseline": 244,
+  "min": 235,
+  "reduction": 9,
+  "flipped": false,
+  "n_configs": 17,
+  "flags": [
+   "-ocdrs",
+   "-ocirs",
+   "-ocors",
+   "-ocrs",
+   "-ocrsu",
+   "-odirs",
+   "-odors",
+   "-odrs",
+   "-odrsu",
+   "-oiors"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "get_closest_trading_post",
+  "baseline": 184,
+  "min": 175,
+  "reduction": 9,
+  "flipped": false,
+  "n_configs": 30,
+  "flags": [
+   "-oacrs",
+   "-oadrs",
+   "-oaers",
+   "-oairs",
+   "-oaors",
+   "-oars",
+   "-oarsu",
+   "-ocdrs",
+   "-ocers",
+   "-ocirs"
+  ]
+ },
+ {
+  "tu": "pcsound",
+  "fn": "get_new_sslot",
+  "baseline": 39,
+  "min": 30,
+  "reduction": 9,
+  "flipped": false,
+  "n_configs": 229,
+  "flags": [
+   "-oacfr",
+   "-oacsx",
+   "-oaeru",
+   "-oafir",
+   "-oafor",
+   "-oafr",
+   "-oairu",
+   "-oaisx",
+   "-oaor",
+   "-oaosx"
+  ]
+ },
+ {
+  "tu": "screens",
+  "fn": "show_history_graph",
+  "baseline": 9,
+  "min": 0,
+  "reduction": 9,
+  "flipped": true,
+  "n_configs": 23,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oac",
+   "-oace",
+   "-oacei",
+   "-oaceu",
+   "-oaci",
+   "-oaciu",
+   "-oacu",
+   "-oae"
+  ]
+ },
+ {
+  "tu": "action",
+  "fn": "get_region_2x2_start",
+  "baseline": 59,
+  "min": 51,
+  "reduction": 8,
+  "flipped": false,
+  "n_configs": 30,
+  "flags": [
+   "-oacls",
+   "-oadls",
+   "-oaels",
+   "-oails",
+   "-oalos",
+   "-oals",
+   "-oalsu",
+   "-ocdls",
+   "-ocels",
+   "-ocils"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "swap_2_figures",
+  "baseline": 12,
+  "min": 4,
+  "reduction": 8,
+  "flipped": false,
+  "n_configs": 18,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oacil",
+   "-oacl",
+   "-oaclu",
+   "-oail",
+   "-oailu",
+   "-oal",
+   "-oalu",
+   "-oceil"
+  ]
+ },
+ {
+  "tu": "census",
+  "fn": "take_census",
+  "baseline": 587,
+  "min": 579,
+  "reduction": 8,
+  "flipped": false,
+  "n_configs": 24,
+  "flags": [
+   "-j",
+   "-oc",
+   "-oceil",
+   "-ocel",
+   "-ocelu",
+   "-ocil",
+   "-ocilu",
+   "-ocl",
+   "-oclu",
+   "-oe"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "one_aquaduct_ramification",
+  "baseline": 178,
+  "min": 170,
+  "reduction": 8,
+  "flipped": false,
+  "n_configs": 15,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oc",
+   "-oe",
+   "-of",
+   "-oi",
+   "-ol",
+   "-ri",
+   "-sg",
+   "-st"
+  ]
+ },
+ {
+  "tu": "pm_map3",
+  "fn": "show_battlemap_base",
+  "baseline": 241,
+  "min": 233,
+  "reduction": 8,
+  "flipped": false,
+  "n_configs": 8,
+  "flags": [
+   "-oacls",
+   "-oadls",
+   "-oaels",
+   "-oafls",
+   "-oails",
+   "-oalos",
+   "-oals",
+   "-oalsu"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "fly_to_target",
+  "baseline": 202,
+  "min": 195,
+  "reduction": 7,
+  "flipped": false,
+  "n_configs": 22,
+  "flags": [
+   "-oc",
+   "-oceir",
+   "-ocer",
+   "-oceru",
+   "-ocir",
+   "-ociru",
+   "-ocr",
+   "-ocru",
+   "-oe",
+   "-oeir"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "stretch_to_3x3_house",
+  "baseline": 185,
+  "min": 178,
+  "reduction": 7,
+  "flipped": false,
+  "n_configs": 118,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oacet",
+   "-oacit",
+   "-oacst",
+   "-oadet",
+   "-oadst",
+   "-oadt",
+   "-oadtu",
+   "-oaeit"
+  ]
+ },
+ {
+  "tu": "pm_map1",
+  "fn": "show_overlay",
+  "baseline": 153,
+  "min": 146,
+  "reduction": 7,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-j",
+   "-or"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "setup_enemy_units",
+  "baseline": 578,
+  "min": 572,
+  "reduction": 6,
+  "flipped": false,
+  "n_configs": 22,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oac",
+   "-oace",
+   "-oacei",
+   "-oaceu",
+   "-oaci",
+   "-oaciu",
+   "-oacu",
+   "-oae"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "update_time",
+  "baseline": 6,
+  "min": 0,
+  "reduction": 6,
+  "flipped": true,
+  "n_configs": 88,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oacdt",
+   "-oacit",
+   "-oaclt",
+   "-oacst",
+   "-oact",
+   "-oactu",
+   "-oadit",
+   "-oadlt"
+  ]
+ },
+ {
+  "tu": "pm_map1",
+  "fn": "show_left_overlay",
+  "baseline": 142,
+  "min": 136,
+  "reduction": 6,
+  "flipped": false,
+  "n_configs": 221,
+  "flags": [
+   "-oc",
+   "-ocdfx",
+   "-ocdlx",
+   "-ocdux",
+   "-ocdx",
+   "-ocelu",
+   "-ocelx",
+   "-oceox",
+   "-ocex",
+   "-ocflo"
+  ]
+ },
+ {
+  "tu": "action",
+  "fn": "perform_city_strip_action",
+  "baseline": 35,
+  "min": 30,
+  "reduction": 5,
+  "flipped": false,
+  "n_configs": 573,
+  "flags": [
+   "-3r",
+   "-j",
+   "-oacrs",
+   "-oacsx",
+   "-oades",
+   "-oadfs",
+   "-oadls",
+   "-oadrs",
+   "-oaeos",
+   "-oaesx"
+  ]
+ },
+ {
+  "tu": "landfill",
+  "fn": "show_region_landfill",
+  "baseline": 249,
+  "min": 244,
+  "reduction": 5,
+  "flipped": false,
+  "n_configs": 1,
+  "flags": [
+   "-os",
+   "-st"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "show_move_highlight",
+  "baseline": 175,
+  "min": 171,
+  "reduction": 4,
+  "flipped": false,
+  "n_configs": 11,
+  "flags": [
+   "-j",
+   "-oc",
+   "-oe",
+   "-oi",
+   "-ri",
+   "-sg",
+   "-st",
+   "-zc",
+   "-zp2"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "try_a_battlemap_square",
+  "baseline": 132,
+  "min": 128,
+  "reduction": 4,
+  "flipped": false,
+  "n_configs": 69,
+  "flags": [
+   "-oacd",
+   "-oacdi",
+   "-oacdl",
+   "-oacdo",
+   "-oacdr",
+   "-oacdu",
+   "-oad",
+   "-oadi",
+   "-oadil",
+   "-oadio"
+  ]
+ },
+ {
+  "tu": "landfill",
+  "fn": "show_city_landfill",
+  "baseline": 181,
+  "min": 177,
+  "reduction": 4,
+  "flipped": false,
+  "n_configs": 23,
+  "flags": [
+   "-ocdls",
+   "-ocels",
+   "-ocils",
+   "-oclos",
+   "-ocls",
+   "-oclsu",
+   "-odels",
+   "-odils",
+   "-odlos",
+   "-odls"
+  ]
+ },
+ {
+  "tu": "pcsound",
+  "fn": "start_sequences",
+  "baseline": 61,
+  "min": 57,
+  "reduction": 4,
+  "flipped": false,
+  "n_configs": 38,
+  "flags": [
+   "-oacrs",
+   "-oadrs",
+   "-oaers",
+   "-oafrs",
+   "-oairs",
+   "-oaors",
+   "-oars",
+   "-oarsu",
+   "-ocdrs",
+   "-ocers"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "setup_roman_units",
+  "baseline": 286,
+  "min": 283,
+  "reduction": 3,
+  "flipped": false,
+  "n_configs": 22,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oac",
+   "-oace",
+   "-oacei",
+   "-oaceu",
+   "-oaci",
+   "-oaciu",
+   "-oacu",
+   "-oae"
+  ]
+ },
+ {
+  "tu": "int_c2",
+  "fn": "get_dirc_from_citizen_wf_run",
+  "baseline": 36,
+  "min": 33,
+  "reduction": 3,
+  "flipped": false,
+  "n_configs": 15,
+  "flags": [
+   "-j",
+   "-oc",
+   "-oe",
+   "-of",
+   "-oi",
+   "-ol",
+   "-ot",
+   "-ri",
+   "-sg",
+   "-st"
+  ]
+ },
+ {
+  "tu": "int_c2",
+  "fn": "try_a_citymap_square",
+  "baseline": 124,
+  "min": 121,
+  "reduction": 3,
+  "flipped": false,
+  "n_configs": 173,
+  "flags": [
+   "-ocers",
+   "-ocesx",
+   "-oclrs",
+   "-ocors",
+   "-ocosx",
+   "-ocrsx",
+   "-ocsx",
+   "-oders",
+   "-odesx",
+   "-odfrs"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "one_wall_ramification",
+  "baseline": 160,
+  "min": 157,
+  "reduction": 3,
+  "flipped": false,
+  "n_configs": 15,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oc",
+   "-oe",
+   "-of",
+   "-oi",
+   "-ol",
+   "-ri",
+   "-sg",
+   "-st"
+  ]
+ },
+ {
+  "tu": "map",
+  "fn": "test_range_for",
+  "baseline": 119,
+  "min": 116,
+  "reduction": 3,
+  "flipped": false,
+  "n_configs": 15,
+  "flags": [
+   "-5r",
+   "-j",
+   "-oc",
+   "-oe",
+   "-of",
+   "-oi",
+   "-ri",
+   "-sg",
+   "-zc",
+   "-zp2"
+  ]
+ },
+ {
+  "tu": "census",
+  "fn": "get_census",
+  "baseline": 319,
+  "min": 317,
+  "reduction": 2,
+  "flipped": false,
+  "n_configs": 24,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oacil",
+   "-oacl",
+   "-oaclu",
+   "-oail",
+   "-oailu",
+   "-oal",
+   "-oalu",
+   "-oc"
+  ]
+ },
+ {
+  "tu": "evolver",
+  "fn": "stretch_to_2x2_house",
+  "baseline": 78,
+  "min": 76,
+  "reduction": 2,
+  "flipped": false,
+  "n_configs": 23,
+  "flags": [
+   "-oa",
+   "-oaceo",
+   "-oacfo",
+   "-oacio",
+   "-oaco",
+   "-oacor",
+   "-oacou",
+   "-oaefo",
+   "-oaeio",
+   "-oaeo"
+  ]
+ },
+ {
+  "tu": "int_c2",
+  "fn": "get_dirc_from_army_wf_run",
+  "baseline": 38,
+  "min": 36,
+  "reduction": 2,
+  "flipped": false,
+  "n_configs": 81,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oacdt",
+   "-oacet",
+   "-oacft",
+   "-oacit",
+   "-oaclt",
+   "-oacot",
+   "-oacrt",
+   "-oacst"
+  ]
+ },
+ {
+  "tu": "lib32",
+  "fn": "timer",
+  "baseline": 25,
+  "min": 23,
+  "reduction": 2,
+  "flipped": false,
+  "n_configs": 57,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oacdx",
+   "-oacex",
+   "-oacix",
+   "-oaclr",
+   "-oaclx",
+   "-oacrx",
+   "-oacux",
+   "-oacx"
+  ]
+ },
+ {
+  "tu": "pcsound",
+  "fn": "start_sound",
+  "baseline": 9,
+  "min": 7,
+  "reduction": 2,
+  "flipped": false,
+  "n_configs": 24,
+  "flags": [
+   "-j",
+   "-oc",
+   "-oceil",
+   "-ocel",
+   "-ocelu",
+   "-ocil",
+   "-ocilu",
+   "-ocl",
+   "-oclu",
+   "-oe"
+  ]
+ },
+ {
+  "tu": "battle",
+  "fn": "try_this_battlemap_square",
+  "baseline": 1,
+  "min": 0,
+  "reduction": 1,
+  "flipped": true,
+  "n_configs": 1,
+  "flags": [
+   "-en"
+  ]
+ },
+ {
+  "tu": "formulae",
+  "fn": "get_army_totals",
+  "baseline": 91,
+  "min": 90,
+  "reduction": 1,
+  "flipped": false,
+  "n_configs": 24,
+  "flags": [
+   "-j",
+   "-oa",
+   "-oac",
+   "-oace",
+   "-oacei",
+   "-oaceu",
+   "-oaci",
+   "-oaciu",
+   "-oacu",
+   "-oae"
+  ]
+ },
+ {
+  "tu": "gloops",
+  "fn": "floop_end",
+  "baseline": 3,
+  "min": 2,
+  "reduction": 1,
+  "flipped": false,
+  "n_configs": 4,
+  "flags": [
+   "-5r",
+   "-j",
+   "-zp2"
+  ]
+ },
+ {
+  "tu": "int_c2",
+  "fn": "copy_ferret_run_to_citizen",
+  "baseline": 1,
+  "min": 0,
+  "reduction": 1,
+  "flipped": true,
+  "n_configs": 76,
+  "flags": [
+   "-en",
+   "-j",
+   "-oc",
+   "-ocef",
+   "-ocefi",
+   "-ocefo",
+   "-ocefu",
+   "-oceio",
+   "-oceo",
+   "-oceou"
+  ]
+ },
+ {
+  "tu": "int_c2",
+  "fn": "fight_barbarian",
+  "baseline": 1,
+  "min": 0,
+  "reduction": 1,
+  "flipped": true,
+  "n_configs": 1,
+  "flags": [
+   "-en"
+  ]
+ },
+ {
+  "tu": "lib32",
+  "fn": "grey_a_screen",
+  "baseline": 49,
+  "min": 48,
+  "reduction": 1,
+  "flipped": false,
+  "n_configs": 123,
+  "flags": [
+   "-j",
+   "-oaces",
+   "-oacfs",
+   "-oacos",
+   "-oacs",
+   "-oacsu",
+   "-oades",
+   "-oadfs",
+   "-oadsu",
+   "-oaeis"
+  ]
+ },
+ {
+  "tu": "lib32",
+  "fn": "one_letter",
+  "baseline": 134,
+  "min": 133,
+  "reduction": 1,
+  "flipped": false,
+  "n_configs": 113,
+  "flags": [
+   "-j",
+   "-oc",
+   "-ocdix",
+   "-ocdlx",
+   "-ocdux",
+   "-ocdx",
+   "-ocelx",
+   "-ocer",
+   "-ocerx",
+   "-ocex"
+  ]
+ }
+]

@@ -1,0 +1,9 @@
+CDs/*.zip filter=lfs diff=lfs merge=lfs -text
+MAC/*.zip filter=lfs diff=lfs merge=lfs -text
+MAC/*.sit filter=lfs diff=lfs merge=lfs -text
+Demos/*.zip filter=lfs diff=lfs merge=lfs -text
+Demos/*.sit filter=lfs diff=lfs merge=lfs -text
+ThirdParty/*.zip filter=lfs diff=lfs merge=lfs -text
+ThirdParty/*.lib filter=lfs diff=lfs merge=lfs -text
+ThirdParty/*.exe filter=lfs diff=lfs merge=lfs -text
+ThirdParty/*.EXE filter=lfs diff=lfs merge=lfs -text

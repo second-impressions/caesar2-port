@@ -1,0 +1,81 @@
+# c2 pi-extension project config.
+#
+# Drives `c2-ext` CLI + the .pi/extensions/c2-{subagent,orchestrator}
+# tools.  Two byte oracles are configured side-by-side:
+#
+#   * `watcom` -- the DOS PS.EXE oracle (Watcom 10.0a, the `-d1` debug
+#     build; primary oracle and historical default).
+#   * `msvc`   -- the Windows CAESAR2.EXE oracle (MSVC 4.0 /Od; the
+#     second source-shape oracle, mirrors `c2 win-verify`).
+#
+# `default_target:` picks which one the subagent harness uses when no
+# `--target` flag is supplied.  Either can be selected from the CLI
+# via `c2-ext compose --target=msvc <fn>` or from the orchestrator via
+# `/decompile <fn> --target=msvc`.
+#
+# All paths are relative to this file's directory unless absolute.
+
+default_target: watcom
+
+targets:
+
+  watcom:
+    toolchain:
+      name: watcom-10.0a
+      cc: wcc386
+      cflags: [-bt=dos, -mf, -4r, -s, -d1]
+      calling_convention: watcall
+      arch: x86-32
+      compiler_image: localhost/watcom-10.0a-wibo
+    project:
+      target_binary: data/PS.EXE
+      symbols: data/out/symbols.json
+      headers_dir: decomp/include
+      sources_dir: decomp/src
+      cache_dir: ~/.cache/c2-ext/caesar2
+
+  msvc:
+    toolchain:
+      name: msvc-4.0
+      cc: cl.exe
+      # MSVC 4.0 /Od — the proven CAESAR2.EXE recipe
+      # (data/windows-builds/ghidra-recreate.md).  /Zp1 = 1-byte struct
+      # packing.  The Watcom calling-convention keywords are stripped via
+      # -D so MSVC parses them as nothing.  /FIc2_funcs.h force-includes
+      # the sandbox's prototype header (same as the project win build):
+      # the include-split compose inlines only the TU's ORIGINAL header
+      # block, so call-before-definition sites otherwise implicitly
+      # declare `int f()` and MSVC C2371-errors at every later `void`
+      # definition (wcc386 tolerates it; only MSVC needs the /FI).
+      cflags:
+        - /nologo
+        - /c
+        - /Od
+        - /Zp1
+        - /FIc2_funcs.h
+        - /D__watcall=
+        - /D__pascal=
+        - /D__far=
+        - /D__near=
+        - /D__interrupt=
+        - /D__loadds=
+      calling_convention: cdecl
+      arch: x86-32
+      compiler_image: localhost/msvc-4.00-wibo
+    project:
+      target_binary: data/windows-builds/named/caesar2_A_1044480.exe
+      symbols: data/windows-builds/caesar2_symbols.json
+      func_map: data/windows-builds/func-map.json
+      globals_map: data/windows-builds/globals-map.json
+      headers_dir: decomp/include
+      sources_dir: decomp/src
+      cache_dir: ~/.cache/c2-ext/caesar2-win
+
+run:
+  root: ~/.cache/c2-ext/runs
+  default_body: existing       # 'existing' | 'blank'
+
+embed:
+  model: jinaai/jina-embeddings-v2-base-code
+  dim: 768
+  pool: byte_exact_only        # filter for nearest() results

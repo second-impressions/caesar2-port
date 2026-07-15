@@ -1,0 +1,100 @@
+# Devenv
+.devenv*
+devenv.local.nix
+
+# direnv
+.direnv
+
+# pre-commit
+.pre-commit-config.yaml
+
+# Roo/MCP config
+.roo/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# CD extraction artifacts (regenerable via: c2 unpack CDs/<name>.zip)
+# Keep only .zip files and .hashes files in git
+CDs/extracted/
+
+# Demo extraction artifacts (regenerable via: unzip Demos/<name>.zip)
+# Keep only .zip files and .hashes files in git
+Demos/extracted/
+
+# Install directory (regenerable via: c2 install <cd_root> <dest>)
+install/
+
+# Ghidra project files (regenerable)
+project/
+*.gpr
+*.rep/
+*.lock
+*.lock~
+!uv.lock
+
+# Generated output files (regenerable via: c2 export data/PS.EXE)
+data/out/*
+# ...except the cross-build function map: expensive to regenerate (needs the
+# CD images) and useful as a durable reference.  Rebuild: c2 crossbuild-map --rebuild
+!data/out/crossbuild-map.json
+
+# Decomp original binaries (regenerable via: c2 decomp --exe data/PS.EXE)
+decomp/original/
+
+# Disassembly output (regenerable via: c2 disasm data/out/symbols.json --exe data/PS.EXE)
+decomp/src/disasm/
+
+# Watcom compiler toolchains (extracted from ISOs, not tracked)
+data/watcom/
+CDs/*.iso
+CDs/*.ISO
+
+# Scratch / temp files
+tmp/
+*.err
+
+
+# decomp-verify build cache (wmake-driven incremental, content-addressed)
+.c2-cache/
+.c2-runs/
+
+# Local credentials for `c2 decompile` (DEEPSEEK_API_KEY etc.)
+.env
+.env.*
+!.env.example
+
+# Local cross-compiler study (copyrighted Watcom binaries + result JSON)
+.c2-compiler-study/
+
+# Nix build result symlink and stray object files
+/result
+*.o
+
+# Mac disc/demo extraction artifacts (regenerable)
+MAC/extracted/
+MacProject/
+.c2-cache/triage.json
+
+# Per-function byte-diff baseline snapshots — regenerable via `c2 baseline save`.
+# Keep only pre-phase1.json (the documented canonical reference in baseline.py).
+baselines/*
+!baselines/pre-phase1.json
+data/flag-survey/*.gz
+
+# Open Watcom source reference (algorithm oracle for the docs' bld/cg, bld/cc,
+# bld/clib, bld/wl citations). Large + regenerable from the open-watcom-v2
+# checkout — see vendor/README.md. Tracked: only vendor/README.md.
+vendor/open-watcom/
+C2WinProject/
+decomp/_objs/
+
+# Delinked third-party OMF objects + reconstructed vendor archives
+# (reproducible via 'c2 delink'; RAD/Miles code)
+decomp/lib/*.obj
+decomp/lib/av/
+
+# The functional rebuild (reproducible via 'c2 rebuild'; embeds delinked RAD/Miles code)
+build/

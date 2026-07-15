@@ -1,0 +1,317 @@
+// Static data initializers extracted from PS.EXE via `c2 data-init --all`.
+//
+// These globals are declared `extern` in c2_data.h or in a hand-written
+// header (entities.h / smacker.h / c2_types.h); their initial bytes are
+// taken verbatim from the LE data segment in PS.EXE so the rebuilt image
+// reproduces PS startup state.  Hand-decompiled .c files that own one
+// of these symbols should move the initializer there (with a matching
+// signature) and delete it from this file.
+
+#include "c2_data.h"
+
+/* Forward decls for callbacks referenced by initializers. */
+extern void a00_null(void);
+extern void a01_cohort(void);
+extern void a02_enemy(void);
+extern void a04_raider(void);
+extern void a05_revolt(void);
+extern void a06_roman_ship(void);
+extern void a08_raider_ship(void);
+extern void act_about(void);
+extern void act_adjust_down(void);
+extern void act_adjust_up(void);
+extern void act_aquaduct(void);
+extern void act_army_box_help(void);
+extern void act_army_wage_down(void);
+extern void act_army_wage_up(void);
+extern void act_back_to_front_panel(void);
+extern void act_barracks(void);
+extern void act_baths(void);
+extern void act_battle_autocalc(void);
+extern void act_battle_help(void);
+extern void act_battle_retreat(void);
+extern void act_battle_select_all(void);
+extern void act_battle_surrender(void);
+extern void act_business(void);
+extern void act_census(void);
+extern void act_choose_name(void);
+extern void act_clear(void);
+extern void act_clear_rm(void);
+extern void act_conscription_down(void);
+extern void act_conscription_up(void);
+extern void act_demob_cohort(void);
+extern void act_detailed_query(void);
+extern void act_do_exit(void);
+extern void act_donation(void);
+extern void act_donation_down(void);
+extern void act_donation_up(void);
+extern void act_dont_exit(void);
+extern void act_dos(void);
+extern void act_education(void);
+extern void act_entertainment(void);
+extern void act_exit_and_save(void);
+extern void act_exit_game(void);
+extern void act_forum(void);
+extern void act_forums(void);
+extern void act_fountain(void);
+extern void act_game_speed(void);
+extern void act_gardens(void);
+extern void act_gardens_plaza(void);
+extern void act_general_query(void);
+extern void act_gift_down(void);
+extern void act_gift_send(void);
+extern void act_gift_up(void);
+extern void act_goto_city(void);
+extern void act_goto_city_map(void);
+extern void act_goto_flags(void);
+extern void act_goto_message(void);
+extern void act_goto_prov_map(void);
+extern void act_health(void);
+extern void act_help_game(void);
+extern void act_help_history(void);
+extern void act_help_icons(void);
+extern void act_help_tips(void);
+extern void act_history_graph_longer(void);
+extern void act_history_graph_shorter(void);
+extern void act_hospital(void);
+extern void act_house1(void);
+extern void act_house2(void);
+extern void act_house3(void);
+extern void act_house4(void);
+extern void act_house5(void);
+extern void act_houses(void);
+extern void act_ind_tax_down(void);
+extern void act_ind_tax_up(void);
+extern void act_industries(void);
+extern void act_less_mercs(void);
+extern void act_load_game(void);
+extern void act_market(void);
+extern void act_more_mercs(void);
+extern void act_move_unit(void);
+extern void act_new_game(void);
+extern void act_next_cohort(void);
+extern void act_no(void);
+extern void act_nof_samples(void);
+extern void act_order_cohort(void);
+extern void act_out(void);
+extern void act_ov_admin(void);
+extern void act_ov_education(void);
+extern void act_ov_entertainment(void);
+extern void act_ov_geography(void);
+extern void act_ov_health(void);
+extern void act_ov_industry(void);
+extern void act_ov_landval(void);
+extern void act_ov_security(void);
+extern void act_ov_unrest(void);
+extern void act_ov_water(void);
+extern void act_pause(void);
+extern void act_people_query(void);
+extern void act_plaza(void);
+extern void act_pop_tax_down(void);
+extern void act_pop_tax_up(void);
+extern void act_prefecture(void);
+extern void act_preload(void);
+extern void act_prev_cohort(void);
+extern void act_query_help(void);
+extern void act_query_history(void);
+extern void act_query_mode(void);
+extern void act_query_tips(void);
+extern void act_request_down(void);
+extern void act_request_up(void);
+extern void act_resevoir(void);
+extern void act_review_in_10(void);
+extern void act_review_in_25(void);
+extern void act_rewind_help(void);
+extern void act_rm_farm(void);
+extern void act_rm_fort(void);
+extern void act_rm_industry(void);
+extern void act_rm_mine(void);
+extern void act_rm_port(void);
+extern void act_rm_quarry(void);
+extern void act_rm_security(void);
+extern void act_rm_shipyard(void);
+extern void act_rm_trading_post(void);
+extern void act_rm_warehouse(void);
+extern void act_rm_workhouse(void);
+extern void act_road(void);
+extern void act_road_rm(void);
+extern void act_rotate_anticlockwise(void);
+extern void act_rotate_clockwise(void);
+extern void act_salary_down(void);
+extern void act_salary_up(void);
+extern void act_samples_level(void);
+extern void act_save_game(void);
+extern void act_scroll_speed(void);
+extern void act_security(void);
+extern void act_select_arena(void);
+extern void act_select_cancel(void);
+extern void act_select_circus(void);
+extern void act_select_circus_max(void);
+extern void act_select_colosseum(void);
+extern void act_select_farm(void);
+extern void act_select_grammaticus(void);
+extern void act_select_large_forum(void);
+extern void act_select_large_temple(void);
+extern void act_select_library(void);
+extern void act_select_medium_forum(void);
+extern void act_select_medium_temple(void);
+extern void act_select_odium(void);
+extern void act_select_rhetor(void);
+extern void act_select_small_forum(void);
+extern void act_select_small_temple(void);
+extern void act_select_theatre(void);
+extern void act_send_donation(void);
+extern void act_send_gift(void);
+extern void act_set_marker1(void);
+extern void act_set_marker2(void);
+extern void act_set_marker3(void);
+extern void act_skill_down(void);
+extern void act_skill_up(void);
+extern void act_slave_city_road_down(void);
+extern void act_slave_city_road_up(void);
+extern void act_slave_city_wall_down(void);
+extern void act_slave_city_wall_up(void);
+extern void act_slave_city_water_down(void);
+extern void act_slave_city_water_up(void);
+extern void act_slave_fire_down(void);
+extern void act_slave_fire_up(void);
+extern void act_slave_reg_upkeep_down(void);
+extern void act_slave_reg_upkeep_up(void);
+extern void act_slave_reg_work_down(void);
+extern void act_slave_reg_work_up(void);
+extern void act_slave_welfare_down(void);
+extern void act_slave_welfare_up(void);
+extern void act_start_help(void);
+extern void act_stop_go(void);
+extern void act_take_promotion(void);
+extern void act_target_unit(void);
+extern void act_temple(void);
+extern void act_tog_ambients(void);
+extern void act_tog_anims(void);
+extern void act_tog_autosave(void);
+extern void act_tog_peace(void);
+extern void act_tog_samples(void);
+extern void act_tog_speech(void);
+extern void act_tog_tunes(void);
+extern void act_tog_yearend(void);
+extern void act_toggle_anims(void);
+extern void act_toggle_sound_fx(void);
+extern void act_toggle_tunes(void);
+extern void act_toggle_year_end(void);
+extern void act_tower(void);
+extern void act_tunes_level(void);
+extern void act_turbo(void);
+extern void act_tutorial(void);
+extern void act_unit_column_formation(void);
+extern void act_unit_line_formation(void);
+extern void act_unit_mop_up_formation(void);
+extern void act_unit_tortoise_formation(void);
+extern void act_wall(void);
+extern void act_wall_rm(void);
+extern void act_water(void);
+extern void act_well(void);
+extern void act_yes(void);
+extern void act_zoom_in(void);
+extern void act_zoom_level1(void);
+extern void act_zoom_level2(void);
+extern void act_zoom_out(void);
+extern void f00_null(void);
+extern void f01_regular(void);
+extern void f02_irregular(void);
+extern void f03_auxillary(void);
+extern void f05_barb_sword(void);
+extern void f06_barb_spear(void);
+extern void f07_barb_axe(void);
+extern void f08_barb_pike(void);
+extern void f11_barb_horse_heavy(void);
+extern void f12_barb_horse_light(void);
+extern void f15_barb_elephant(void);
+extern void f16_barb_bow(void);
+extern void get_admin_ov_image(void);
+extern void get_education_ov_image(void);
+extern void get_entertainment_ov_image(void);
+extern void get_health_ov_image(void);
+extern void get_industry_ov_image(void);
+extern void get_landval_ov_image(void);
+extern void get_no_ov_image(void);
+extern void get_security_ov_image(void);
+extern void get_unrest_ov_image(void);
+extern void get_water_ov_image(void);
+extern void i00_null(void);
+extern void i01_tax_man(void);
+extern void i02_market_man(void);
+extern void i03_barbarian_man(void);
+extern void i04_centurian_man(void);
+extern void i05_vigile_man(void);
+extern void i06_business_man(void);
+extern void i07_rioter_man(void);
+extern void s00_null(void);
+extern void s01_wait(void);
+extern void s02_death(void);
+extern void s03_map_admin(void);
+extern void s04_map_markets(void);
+extern void s05_maraude_to_top_spot(void);
+extern void s06_quell_trouble(void);
+extern void s07_army_patrol(void);
+extern void s08_vigile_patrol(void);
+extern void s09_fire_fight(void);
+extern void s10_get_business(void);
+extern void s11_riot(void);
+extern void s12_goto_riot(void);
+extern void sa00_null(void);
+extern void sa01_wait(void);
+extern void sa02_death(void);
+extern void sa03_army_move(void);
+extern void sa04_army_attack(void);
+extern void sa05_army_return(void);
+extern void sa06_army_land_raid(void);
+extern void sa07_army_land_invade(void);
+extern void sa08_army_stuck(void);
+extern void sa09_army_siege(void);
+extern void sa10_army_demobed(void);
+extern void sa11_army_sail_to_port(void);
+extern void sa12_army_sail_home(void);
+extern void sa13_army_sail_round_coast(void);
+extern void sa14_army_sail_to_shore(void);
+extern void sa15_sink(void);
+extern void sa16_army_lurk_round_coast(void);
+extern void sf00_null(void);
+extern void sf01_wait(void);
+extern void sf02_death(void);
+extern void sf03_move(void);
+extern void sf04_fight(void);
+extern void sf05_mop_up(void);
+extern void sf06_defend(void);
+extern void sf07_reform(void);
+extern void sf08_withdraw(void);
+extern void sf09_look_for_fight(void);
+extern void sf10_hunt_for_fight(void);
+extern void sf11_fire_missile(void);
+extern void sf12_rout(void);
+extern void sf13_autofire_missile(void);
+extern void sf14_opertunist_fire(void);
+extern void sf15_move_and_reform(void);
+extern void sf16_beserk(void);
+
+/* IFF / Deluxe Paint LBM file header written to disk by
+   write_lbm() before the pixel data.  Bytes spell:
+     'FORM' <size:BE> 'PBM ' 'BMHD' <14:BE>
+     <width=640> <height=480> <0> <0> <8bpp> <0> <0>
+     <0xff:transp> <1:compress> <1:pad>
+     <width=640> <height=480>
+     'CMAP' <0x300:BE>  (24-bit, 256-entry palette follows)
+   Declared int[] so the loader can `memcpy` 48 bytes in one
+   shot; the values are pure binary, not numeric. */
+
+
+/* IFF / Deluxe Paint LBM body chunk header: 'BODY' <size:BE>.
+   Written between the CMAP palette and the raw 640x480 pixel
+   data.  Same int[] storage rationale as LBM_HEADER1. */
+
+
+/* Slots 3+4 and 7+8 each point at ONE body in PS.EXE: the -d1 debug
+   info carries BOTH names (a03_horde == a04_raider @ 0x46349,
+   a07_enemy_ship == a08_raider_ship @ 0x463B7) for the same address.
+   int_c2.c recovers each body once under the a04/a08 name; the LE
+   fixups here only witness the shared address, not which spelling the
+   original initializer used. */

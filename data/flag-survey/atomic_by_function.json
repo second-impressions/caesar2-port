@@ -1,0 +1,1974 @@
+[
+ {
+  "tu": "pm_map1",
+  "fn": "place_a_building_top",
+  "baseline": 406,
+  "best_flag": "-or",
+  "best_redux": 175,
+  "flip": false,
+  "reducers": {
+   "-or": 175,
+   "-ox": 175,
+   "-zu": 89,
+   "-of": 89,
+   "-oo": 89,
+   "-3r": 70,
+   "-os": 68,
+   "-j": 67,
+   "-zdf": 44,
+   "-5r": 34,
+   "-oa": 34,
+   "-ol": 34,
+   "-od": 33,
+   "-ot": 6
+  }
+ },
+ {
+  "tu": "evolver",
+  "fn": "check_goods_in_region_warehouses",
+  "baseline": 177,
+  "best_flag": "-os",
+  "best_redux": 155,
+  "flip": false,
+  "reducers": {
+   "-os": 155,
+   "-3r": 154,
+   "-ol": 12,
+   "-ox": 6
+  }
+ },
+ {
+  "tu": "pm_map0",
+  "fn": "get_pseudo_map",
+  "baseline": 713,
+  "best_flag": "-os",
+  "best_redux": 155,
+  "flip": false,
+  "reducers": {
+   "-os": 155,
+   "-ol": 120,
+   "-3r": 112,
+   "-ox": 69,
+   "-ee": 36,
+   "-zu": 34,
+   "-oo": 34,
+   "-ot": 18,
+   "-or": 13
+  }
+ },
+ {
+  "tu": "pcsound",
+  "fn": "get_city_mood",
+  "baseline": 275,
+  "best_flag": "-ee",
+  "best_redux": 153,
+  "flip": false,
+  "reducers": {
+   "-ee": 153,
+   "-oa": 42,
+   "-3r": 19,
+   "-os": 19,
+   "-zdf": 13,
+   "-or": 10,
+   "-ox": 10,
+   "-od": 7,
+   "-ot": 5
+  }
+ },
+ {
+  "tu": "pm_map2",
+  "fn": "show_regionmap_top",
+  "baseline": 133,
+  "best_flag": "-3r",
+  "best_redux": 106,
+  "flip": false,
+  "reducers": {
+   "-3r": 106,
+   "-os": 106,
+   "-oa": 57,
+   "-or": 18,
+   "-ee": 14,
+   "-ol": 12,
+   "-ox": 8
+  }
+ },
+ {
+  "tu": "evolver",
+  "fn": "spread_fire_and_plague_and_unrest",
+  "baseline": 466,
+  "best_flag": "-3r",
+  "best_redux": 99,
+  "flip": false,
+  "reducers": {
+   "-3r": 99,
+   "-os": 94,
+   "-zdf": 44,
+   "-od": 41,
+   "-ot": 33,
+   "-ox": 10,
+   "-5r": 9,
+   "-st": 4
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "build_wall_from_elastic",
+  "baseline": 238,
+  "best_flag": "-ol",
+  "best_redux": 99,
+  "flip": false,
+  "reducers": {
+   "-ol": 99
+  }
+ },
+ {
+  "tu": "evolver",
+  "fn": "business_output",
+  "baseline": 484,
+  "best_flag": "-ot",
+  "best_redux": 94,
+  "flip": false,
+  "reducers": {
+   "-ot": 94,
+   "-zu": 90,
+   "-ee": 90,
+   "-of": 90,
+   "-oo": 90,
+   "-os": 20,
+   "-zdf": 6,
+   "-3r": 3
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "figure_update",
+  "baseline": 138,
+  "best_flag": "-ee",
+  "best_redux": 93,
+  "flip": false,
+  "reducers": {
+   "-ee": 93,
+   "-or": 12,
+   "-j": 10
+  }
+ },
+ {
+  "tu": "evolver",
+  "fn": "evolve_region",
+  "baseline": 1394,
+  "best_flag": "-os",
+  "best_redux": 91,
+  "flip": false,
+  "reducers": {
+   "-os": 91,
+   "-ot": 18,
+   "-zu": 5,
+   "-oo": 5,
+   "-st": 2
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "sf14_opertunist_fire",
+  "baseline": 693,
+  "best_flag": "-od",
+  "best_redux": 84,
+  "flip": false,
+  "reducers": {
+   "-od": 84,
+   "-zp2": 73,
+   "-os": 73,
+   "-zp4": 63,
+   "-zp8": 63,
+   "-j": 46,
+   "-3r": 40,
+   "-ee": 27,
+   "-or": 20,
+   "-ol": 3,
+   "-ox": 3
+  }
+ },
+ {
+  "tu": "bbarian",
+  "fn": "battle_auto_resolve",
+  "baseline": 671,
+  "best_flag": "-os",
+  "best_redux": 79,
+  "flip": false,
+  "reducers": {
+   "-os": 79,
+   "-3r": 32,
+   "-oa": 16
+  }
+ },
+ {
+  "tu": "controls",
+  "fn": "show_selections",
+  "baseline": 374,
+  "best_flag": "-os",
+  "best_redux": 70,
+  "flip": false,
+  "reducers": {
+   "-os": 70,
+   "-zu": 61,
+   "-oo": 61,
+   "-ee": 59,
+   "-of": 59,
+   "-or": 46,
+   "-5r": 27,
+   "-ol": 24,
+   "-od": 21,
+   "-3r": 12,
+   "-zdf": 10,
+   "-st": 7,
+   "-ot": 6,
+   "-ox": 2
+  }
+ },
+ {
+  "tu": "evolver",
+  "fn": "citymap_evolution",
+  "baseline": 520,
+  "best_flag": "-od",
+  "best_redux": 66,
+  "flip": false,
+  "reducers": {
+   "-od": 66,
+   "-os": 49,
+   "-3r": 35,
+   "-or": 21,
+   "-ox": 21,
+   "-ee": 17
+  }
+ },
+ {
+  "tu": "census",
+  "fn": "init_census",
+  "baseline": 93,
+  "best_flag": "-ol",
+  "best_redux": 64,
+  "flip": false,
+  "reducers": {
+   "-ol": 64,
+   "-ee": 42,
+   "-zu": 38,
+   "-oo": 38,
+   "-ox": 37,
+   "-zdf": 22,
+   "-or": 14,
+   "-3r": 5,
+   "-os": 5,
+   "-od": 2
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "generate_cm_river",
+  "baseline": 215,
+  "best_flag": "-or",
+  "best_redux": 64,
+  "flip": false,
+  "reducers": {
+   "-or": 64,
+   "-ox": 64,
+   "-os": 53,
+   "-3r": 36,
+   "-od": 30,
+   "-ot": 27,
+   "-zu": 22,
+   "-oo": 22,
+   "-ee": 16,
+   "-of": 16,
+   "-zdf": 13,
+   "-oa": 12
+  }
+ },
+ {
+  "tu": "pm_map1",
+  "fn": "place_sprite",
+  "baseline": 677,
+  "best_flag": "-3r",
+  "best_redux": 64,
+  "flip": false,
+  "reducers": {
+   "-3r": 64,
+   "-st": 60,
+   "-os": 60,
+   "-ox": 60,
+   "-oa": 51,
+   "-ol": 35,
+   "-or": 35,
+   "-ot": 34,
+   "-j": 27
+  }
+ },
+ {
+  "tu": "evolver",
+  "fn": "evolve_a_cm_row",
+  "baseline": 1059,
+  "best_flag": "-os",
+  "best_redux": 61,
+  "flip": false,
+  "reducers": {
+   "-os": 61,
+   "-3r": 24,
+   "-ot": 23,
+   "-or": 8,
+   "-st": 2
+  }
+ },
+ {
+  "tu": "pm_map2",
+  "fn": "place2_sprite",
+  "baseline": 1026,
+  "best_flag": "-3r",
+  "best_redux": 61,
+  "flip": false,
+  "reducers": {
+   "-3r": 61,
+   "-or": 60,
+   "-os": 51,
+   "-ox": 36,
+   "-ol": 5
+  }
+ },
+ {
+  "tu": "screens",
+  "fn": "forum_industry_screen",
+  "baseline": 433,
+  "best_flag": "-oa",
+  "best_redux": 55,
+  "flip": false,
+  "reducers": {
+   "-oa": 55
+  }
+ },
+ {
+  "tu": "pm_map2",
+  "fn": "place2_a_building_roof",
+  "baseline": 381,
+  "best_flag": "-os",
+  "best_redux": 53,
+  "flip": false,
+  "reducers": {
+   "-os": 53,
+   "-zu": 32,
+   "-of": 32,
+   "-oo": 32,
+   "-ee": 21,
+   "-3r": 18
+  }
+ },
+ {
+  "tu": "landfill",
+  "fn": "get_water_ov_image",
+  "baseline": 52,
+  "best_flag": "-ol",
+  "best_redux": 52,
+  "flip": true,
+  "reducers": {
+   "-ol": 52,
+   "-ox": 39
+  }
+ },
+ {
+  "tu": "empire",
+  "fn": "set_new_province",
+  "baseline": 269,
+  "best_flag": "-zu",
+  "best_redux": 51,
+  "flip": false,
+  "reducers": {
+   "-zu": 51,
+   "-oo": 51,
+   "-os": 51,
+   "-ol": 43,
+   "-3r": 40,
+   "-ox": 40,
+   "-oa": 28,
+   "-ot": 23,
+   "-zdf": 15,
+   "-ee": 9,
+   "-5r": 4,
+   "-or": 3
+  }
+ },
+ {
+  "tu": "pm_map2",
+  "fn": "place2_a_building_top",
+  "baseline": 681,
+  "best_flag": "-os",
+  "best_redux": 51,
+  "flip": false,
+  "reducers": {
+   "-os": 51,
+   "-3r": 49,
+   "-ot": 20,
+   "-ox": 11,
+   "-ol": 6
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "get_highlight_position",
+  "baseline": 144,
+  "best_flag": "-ee",
+  "best_redux": 49,
+  "flip": false,
+  "reducers": {
+   "-ee": 49,
+   "-zdf": 40,
+   "-or": 39,
+   "-ox": 39,
+   "-oa": 37,
+   "-os": 29,
+   "-3r": 28,
+   "-zu": 23,
+   "-oo": 23,
+   "-od": 20,
+   "-5r": 10
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "get_fig_fight_image",
+  "baseline": 202,
+  "best_flag": "-3r",
+  "best_redux": 49,
+  "flip": false,
+  "reducers": {
+   "-3r": 49,
+   "-os": 22,
+   "-ee": 10,
+   "-zdf": 7,
+   "-or": 6
+  }
+ },
+ {
+  "tu": "pm_map3",
+  "fn": "mid3_line_with_sides_base",
+  "baseline": 339,
+  "best_flag": "-os",
+  "best_redux": 46,
+  "flip": false,
+  "reducers": {
+   "-os": 46,
+   "-3r": 43,
+   "-zu": 24,
+   "-of": 24,
+   "-oo": 24,
+   "-od": 4
+  }
+ },
+ {
+  "tu": "evolver",
+  "fn": "evolve_forum_activity",
+  "baseline": 227,
+  "best_flag": "-3r",
+  "best_redux": 44,
+  "flip": false,
+  "reducers": {
+   "-3r": 44,
+   "-os": 38,
+   "-st": 4,
+   "-or": 4,
+   "-ox": 4
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "test_range_for_road",
+  "baseline": 117,
+  "best_flag": "-zu",
+  "best_redux": 40,
+  "flip": false,
+  "reducers": {
+   "-zu": 40,
+   "-oo": 40,
+   "-ee": 36,
+   "-zdf": 23,
+   "-or": 2
+  }
+ },
+ {
+  "tu": "landfill",
+  "fn": "get_industry_ov_image",
+  "baseline": 58,
+  "best_flag": "-oa",
+  "best_redux": 39,
+  "flip": false,
+  "reducers": {
+   "-oa": 39,
+   "-3r": 6,
+   "-os": 6,
+   "-ee": 5,
+   "-zdf": 1
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "test_elastic_range",
+  "baseline": 358,
+  "best_flag": "-3r",
+  "best_redux": 38,
+  "flip": false,
+  "reducers": {
+   "-3r": 38,
+   "-zu": 35,
+   "-oo": 35,
+   "-ee": 31,
+   "-st": 8,
+   "-ot": 7,
+   "-od": 1
+  }
+ },
+ {
+  "tu": "int_c2",
+  "fn": "test_fire_zones",
+  "baseline": 155,
+  "best_flag": "-os",
+  "best_redux": 35,
+  "flip": false,
+  "reducers": {
+   "-os": 35,
+   "-oa": 29,
+   "-3r": 25,
+   "-ol": 6,
+   "-5r": 5,
+   "-zdf": 1
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "put_rm_area",
+  "baseline": 243,
+  "best_flag": "-os",
+  "best_redux": 35,
+  "flip": false,
+  "reducers": {
+   "-os": 35,
+   "-zdf": 31,
+   "-or": 25,
+   "-st": 24,
+   "-ox": 22,
+   "-ol": 20,
+   "-zu": 19,
+   "-oo": 19,
+   "-ot": 17,
+   "-ee": 16,
+   "-3r": 11
+  }
+ },
+ {
+  "tu": "controls",
+  "fn": "get_selection_goods_list",
+  "baseline": 124,
+  "best_flag": "-3r",
+  "best_redux": 33,
+  "flip": false,
+  "reducers": {
+   "-3r": 33,
+   "-zdf": 21,
+   "-ox": 21,
+   "-ol": 19,
+   "-os": 19,
+   "-ot": 10,
+   "-or": 4
+  }
+ },
+ {
+  "tu": "mmedia",
+  "fn": "do_a_tutorial_page",
+  "baseline": 152,
+  "best_flag": "-ol",
+  "best_redux": 33,
+  "flip": false,
+  "reducers": {
+   "-ol": 33,
+   "-oe": 18,
+   "-j": 6
+  }
+ },
+ {
+  "tu": "lib32",
+  "fn": "convert_lbm_file",
+  "baseline": 228,
+  "best_flag": "-st",
+  "best_redux": 33,
+  "flip": false,
+  "reducers": {
+   "-st": 33
+  }
+ },
+ {
+  "tu": "action",
+  "fn": "build_city_item",
+  "baseline": 950,
+  "best_flag": "-3r",
+  "best_redux": 32,
+  "flip": false,
+  "reducers": {
+   "-3r": 32,
+   "-st": 21,
+   "-zu": 9,
+   "-ee": 9,
+   "-oo": 9,
+   "-of": 2
+  }
+ },
+ {
+  "tu": "action",
+  "fn": "act_forum",
+  "baseline": 189,
+  "best_flag": "-od",
+  "best_redux": 31,
+  "flip": false,
+  "reducers": {
+   "-od": 31,
+   "-os": 28,
+   "-ox": 16,
+   "-3r": 15,
+   "-ee": 13,
+   "-ol": 12,
+   "-zdf": 8,
+   "-j": 7,
+   "-or": 5,
+   "-ot": 5
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "fill_warehouses_with",
+  "baseline": 270,
+  "best_flag": "-os",
+  "best_redux": 31,
+  "flip": false,
+  "reducers": {
+   "-os": 31,
+   "-3r": 28,
+   "-or": 8
+  }
+ },
+ {
+  "tu": "screens",
+  "fn": "show_people_query_panel",
+  "baseline": 631,
+  "best_flag": "-os",
+  "best_redux": 31,
+  "flip": false,
+  "reducers": {
+   "-os": 31,
+   "-ol": 23,
+   "-oa": 20,
+   "-or": 11,
+   "-od": 9,
+   "-ox": 9
+  }
+ },
+ {
+  "tu": "action",
+  "fn": "perform_region_strip_action",
+  "baseline": 34,
+  "best_flag": "-3r",
+  "best_redux": 30,
+  "flip": false,
+  "reducers": {
+   "-3r": 30,
+   "-os": 30,
+   "-ee": 8,
+   "-ot": 3,
+   "-or": 2,
+   "-ox": 2
+  }
+ },
+ {
+  "tu": "pm_map1",
+  "fn": "top_it",
+  "baseline": 542,
+  "best_flag": "-st",
+  "best_redux": 30,
+  "flip": false,
+  "reducers": {
+   "-st": 30,
+   "-oa": 17,
+   "-5r": 15,
+   "-ot": 15,
+   "-or": 11,
+   "-os": 11,
+   "-ox": 11,
+   "-zu": 7,
+   "-oo": 7,
+   "-j": 3,
+   "-ee": 1,
+   "-of": 1
+  }
+ },
+ {
+  "tu": "formulae",
+  "fn": "get_new_tribute",
+  "baseline": 359,
+  "best_flag": "-os",
+  "best_redux": 30,
+  "flip": false,
+  "reducers": {
+   "-os": 30,
+   "-or": 9,
+   "-ox": 9,
+   "-oa": 2
+  }
+ },
+ {
+  "tu": "c2",
+  "fn": "load_battle_graphics",
+  "baseline": 36,
+  "best_flag": "-ot",
+  "best_redux": 30,
+  "flip": false,
+  "reducers": {
+   "-ot": 30
+  }
+ },
+ {
+  "tu": "action",
+  "fn": "action",
+  "baseline": 854,
+  "best_flag": "-oa",
+  "best_redux": 28,
+  "flip": false,
+  "reducers": {
+   "-oa": 28,
+   "-oe": 22,
+   "-j": 7,
+   "-3r": 1,
+   "-os": 1
+  }
+ },
+ {
+  "tu": "screens",
+  "fn": "get_query_info",
+  "baseline": 467,
+  "best_flag": "-os",
+  "best_redux": 28,
+  "flip": false,
+  "reducers": {
+   "-os": 28,
+   "-or": 8,
+   "-ox": 2
+  }
+ },
+ {
+  "tu": "evolver",
+  "fn": "evolve_security_activity",
+  "baseline": 213,
+  "best_flag": "-os",
+  "best_redux": 27,
+  "flip": false,
+  "reducers": {
+   "-os": 27,
+   "-3r": 7,
+   "-st": 4,
+   "-zu": 3,
+   "-oo": 3,
+   "-or": 1
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "test_rm_elastic_range",
+  "baseline": 349,
+  "best_flag": "-3r",
+  "best_redux": 27,
+  "flip": false,
+  "reducers": {
+   "-3r": 27,
+   "-j": 13,
+   "-ot": 7
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "get_start_points",
+  "baseline": 148,
+  "best_flag": "-oa",
+  "best_redux": 27,
+  "flip": false,
+  "reducers": {
+   "-oa": 27,
+   "-zu": 24,
+   "-oo": 24,
+   "-os": 23,
+   "-od": 20,
+   "-ee": 15,
+   "-or": 8,
+   "-ox": 8,
+   "-zdf": 6
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "build_aquaduct_from_elastic",
+  "baseline": 223,
+  "best_flag": "-or",
+  "best_redux": 27,
+  "flip": false,
+  "reducers": {
+   "-or": 27
+  }
+ },
+ {
+  "tu": "evolver",
+  "fn": "evolve_water_table",
+  "baseline": 353,
+  "best_flag": "-ox",
+  "best_redux": 26,
+  "flip": false,
+  "reducers": {
+   "-ox": 26,
+   "-ol": 25,
+   "-zu": 19,
+   "-oo": 19,
+   "-os": 15,
+   "-3r": 14,
+   "-ee": 13,
+   "-of": 13,
+   "-oa": 6,
+   "-or": 5
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "clear_an_area",
+  "baseline": 287,
+  "best_flag": "-os",
+  "best_redux": 26,
+  "flip": false,
+  "reducers": {
+   "-os": 26,
+   "-3r": 13
+  }
+ },
+ {
+  "tu": "int_c2",
+  "fn": "try_a_regionmap_square",
+  "baseline": 159,
+  "best_flag": "-ot",
+  "best_redux": 26,
+  "flip": false,
+  "reducers": {
+   "-ot": 26,
+   "-5r": 11,
+   "-zdf": 10,
+   "-od": 1
+  }
+ },
+ {
+  "tu": "int_c2",
+  "fn": "try_this_citymap_square",
+  "baseline": 216,
+  "best_flag": "-ee",
+  "best_redux": 25,
+  "flip": false,
+  "reducers": {
+   "-ee": 25,
+   "-os": 25,
+   "-od": 16,
+   "-3r": 13,
+   "-5r": 10,
+   "-zdf": 7,
+   "-oa": 6
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "update_units_morale",
+  "baseline": 140,
+  "best_flag": "-os",
+  "best_redux": 24,
+  "flip": false,
+  "reducers": {
+   "-os": 24,
+   "-oa": 16,
+   "-ox": 12,
+   "-ol": 8,
+   "-3r": 1
+  }
+ },
+ {
+  "tu": "evolver",
+  "fn": "evolve_fort_activity",
+  "baseline": 150,
+  "best_flag": "-3r",
+  "best_redux": 24,
+  "flip": false,
+  "reducers": {
+   "-3r": 24,
+   "-os": 15,
+   "-zu": 8,
+   "-oo": 8,
+   "-st": 6,
+   "-ox": 6,
+   "-ol": 3,
+   "-or": 3,
+   "-ee": 2,
+   "-of": 2
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "instant_reform",
+  "baseline": 119,
+  "best_flag": "-ol",
+  "best_redux": 24,
+  "flip": false,
+  "reducers": {
+   "-ol": 24,
+   "-os": 14,
+   "-j": 11,
+   "-ox": 7,
+   "-st": 5,
+   "-oa": 2
+  }
+ },
+ {
+  "tu": "action",
+  "fn": "get_icon_over",
+  "baseline": 125,
+  "best_flag": "-3r",
+  "best_redux": 23,
+  "flip": false,
+  "reducers": {
+   "-3r": 23,
+   "-os": 23,
+   "-or": 10,
+   "-oa": 3
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "build_reg_road_from_elastic",
+  "baseline": 355,
+  "best_flag": "-st",
+  "best_redux": 23,
+  "flip": false,
+  "reducers": {
+   "-st": 23,
+   "-or": 19,
+   "-3r": 16,
+   "-zu": 11,
+   "-oo": 11,
+   "-ol": 7,
+   "-ee": 5,
+   "-of": 5
+  }
+ },
+ {
+  "tu": "controls",
+  "fn": "show_menu_items",
+  "baseline": 172,
+  "best_flag": "-ol",
+  "best_redux": 23,
+  "flip": false,
+  "reducers": {
+   "-ol": 23,
+   "-5r": 16,
+   "-or": 1,
+   "-os": 1
+  }
+ },
+ {
+  "tu": "pm_map2",
+  "fn": "mid2_line_with_sides_base",
+  "baseline": 31,
+  "best_flag": "-oa",
+  "best_redux": 23,
+  "flip": false,
+  "reducers": {
+   "-oa": 23
+  }
+ },
+ {
+  "tu": "pcsound",
+  "fn": "neg_sound",
+  "baseline": 23,
+  "best_flag": "-ot",
+  "best_redux": 22,
+  "flip": false,
+  "reducers": {
+   "-ot": 22,
+   "-3r": 9,
+   "-os": 9
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "start_move",
+  "baseline": 180,
+  "best_flag": "-ee",
+  "best_redux": 22,
+  "flip": false,
+  "reducers": {
+   "-ee": 22,
+   "-or": 15,
+   "-j": 8,
+   "-ox": 2
+  }
+ },
+ {
+  "tu": "evolver",
+  "fn": "evolve_amenity_cover",
+  "baseline": 439,
+  "best_flag": "-ox",
+  "best_redux": 22,
+  "flip": false,
+  "reducers": {
+   "-ox": 22,
+   "-or": 19,
+   "-ol": 1
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "get_best_elastic_value",
+  "baseline": 74,
+  "best_flag": "-ot",
+  "best_redux": 22,
+  "flip": false,
+  "reducers": {
+   "-ot": 22
+  }
+ },
+ {
+  "tu": "lib32",
+  "fn": "set_svga_640_480",
+  "baseline": 410,
+  "best_flag": "-3r",
+  "best_redux": 21,
+  "flip": false,
+  "reducers": {
+   "-3r": 21,
+   "-os": 16,
+   "-zdf": 1
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "do_heavy_ai",
+  "baseline": 118,
+  "best_flag": "-j",
+  "best_redux": 21,
+  "flip": false,
+  "reducers": {
+   "-j": 21,
+   "-zu": 7,
+   "-oo": 7,
+   "-oa": 4,
+   "-os": 3,
+   "-ol": 2,
+   "-ox": 2,
+   "-ee": 1,
+   "-of": 1
+  }
+ },
+ {
+  "tu": "screens",
+  "fn": "show_battle_intro_screen",
+  "baseline": 292,
+  "best_flag": "-ot",
+  "best_redux": 21,
+  "flip": false,
+  "reducers": {
+   "-ot": 21
+  }
+ },
+ {
+  "tu": "formulae",
+  "fn": "fill_cohort_centuries",
+  "baseline": 263,
+  "best_flag": "-ot",
+  "best_redux": 20,
+  "flip": false,
+  "reducers": {
+   "-ot": 20,
+   "-ox": 11,
+   "-5r": 7,
+   "-oa": 7,
+   "-ol": 4,
+   "-st": 2,
+   "-os": 2
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "trace_back_route_elastic",
+  "baseline": 355,
+  "best_flag": "-os",
+  "best_redux": 20,
+  "flip": false,
+  "reducers": {
+   "-os": 20,
+   "-or": 8,
+   "-ol": 5,
+   "-st": 1
+  }
+ },
+ {
+  "tu": "pcsound",
+  "fn": "start_samples",
+  "baseline": 74,
+  "best_flag": "-oe",
+  "best_redux": 20,
+  "flip": false,
+  "reducers": {
+   "-oe": 20,
+   "-ot": 12,
+   "-ol": 11,
+   "-ox": 10,
+   "-ee": 8
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "get_wf_dirc",
+  "baseline": 168,
+  "best_flag": "-oa",
+  "best_redux": 20,
+  "flip": false,
+  "reducers": {
+   "-oa": 20,
+   "-ot": 20,
+   "-ol": 19
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "get_best_rm_elastic_value",
+  "baseline": 71,
+  "best_flag": "-ot",
+  "best_redux": 20,
+  "flip": false,
+  "reducers": {
+   "-ot": 20
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "put_reg_x1_area",
+  "baseline": 53,
+  "best_flag": "-3r",
+  "best_redux": 19,
+  "flip": false,
+  "reducers": {
+   "-3r": 19
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "get_units_status",
+  "baseline": 264,
+  "best_flag": "-zu",
+  "best_redux": 19,
+  "flip": false,
+  "reducers": {
+   "-zu": 19,
+   "-of": 19,
+   "-oo": 19,
+   "-j": 18,
+   "-ol": 12
+  }
+ },
+ {
+  "tu": "pm_map1",
+  "fn": "place_a_building_roof",
+  "baseline": 368,
+  "best_flag": "-3r",
+  "best_redux": 18,
+  "flip": false,
+  "reducers": {
+   "-3r": 18,
+   "-os": 6
+  }
+ },
+ {
+  "tu": "pm_map3",
+  "fn": "place3_sprite",
+  "baseline": 222,
+  "best_flag": "-zp2",
+  "best_redux": 18,
+  "flip": false,
+  "reducers": {
+   "-zp2": 18,
+   "-os": 4
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "arrow_intelligence",
+  "baseline": 98,
+  "best_flag": "-os",
+  "best_redux": 17,
+  "flip": false,
+  "reducers": {
+   "-os": 17,
+   "-zp2": 11,
+   "-ol": 11,
+   "-ox": 6,
+   "-zp4": 4,
+   "-zp8": 4
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "sf11_fire_missile",
+  "baseline": 106,
+  "best_flag": "-zp2",
+  "best_redux": 15,
+  "flip": false,
+  "reducers": {
+   "-zp2": 15,
+   "-os": 15,
+   "-zp4": 10,
+   "-zp8": 10,
+   "-j": 3,
+   "-ee": 2
+  }
+ },
+ {
+  "tu": "lib32",
+  "fn": "print_vesa_info",
+  "baseline": 64,
+  "best_flag": "-j",
+  "best_redux": 15,
+  "flip": false,
+  "reducers": {
+   "-j": 15
+  }
+ },
+ {
+  "tu": "evolver",
+  "fn": "cap_land_value",
+  "baseline": 516,
+  "best_flag": "-oa",
+  "best_redux": 14,
+  "flip": false,
+  "reducers": {
+   "-oa": 14,
+   "-3r": 1
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "build_road_from_elastic",
+  "baseline": 615,
+  "best_flag": "-3r",
+  "best_redux": 14,
+  "flip": false,
+  "reducers": {
+   "-3r": 14,
+   "-st": 14,
+   "-ol": 8,
+   "-or": 4,
+   "-zdf": 1
+  }
+ },
+ {
+  "tu": "screens",
+  "fn": "show_battle_outtro_screen",
+  "baseline": 658,
+  "best_flag": "-3r",
+  "best_redux": 14,
+  "flip": false,
+  "reducers": {
+   "-3r": 14,
+   "-or": 2,
+   "-ox": 2
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "get_fig_missile_image",
+  "baseline": 135,
+  "best_flag": "-os",
+  "best_redux": 13,
+  "flip": false,
+  "reducers": {
+   "-os": 13,
+   "-3r": 12,
+   "-ot": 8,
+   "-ol": 6,
+   "-j": 5
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "set_route_elastic_range",
+  "baseline": 514,
+  "best_flag": "-zu",
+  "best_redux": 13,
+  "flip": false,
+  "reducers": {
+   "-zu": 13,
+   "-oo": 13,
+   "-ee": 8,
+   "-3r": 3,
+   "-os": 2
+  }
+ },
+ {
+  "tu": "landfill",
+  "fn": "get_entertainment_ov_image",
+  "baseline": 74,
+  "best_flag": "-oa",
+  "best_redux": 12,
+  "flip": false,
+  "reducers": {
+   "-oa": 12,
+   "-os": 7,
+   "-ee": 4,
+   "-3r": 3,
+   "-ol": 3,
+   "-ox": 2,
+   "-zdf": 1,
+   "-or": 1
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "put_reg_x2_area",
+  "baseline": 190,
+  "best_flag": "-os",
+  "best_redux": 12,
+  "flip": false,
+  "reducers": {
+   "-os": 12,
+   "-ot": 2
+  }
+ },
+ {
+  "tu": "controls",
+  "fn": "control_menus",
+  "baseline": 204,
+  "best_flag": "-ol",
+  "best_redux": 11,
+  "flip": false,
+  "reducers": {
+   "-ol": 11,
+   "-3r": 9,
+   "-zp4": 7,
+   "-zp8": 7,
+   "-ox": 1
+  }
+ },
+ {
+  "tu": "formulae",
+  "fn": "check_for_promotion",
+  "baseline": 82,
+  "best_flag": "-os",
+  "best_redux": 11,
+  "flip": false,
+  "reducers": {
+   "-os": 11,
+   "-ol": 10,
+   "-5r": 3
+  }
+ },
+ {
+  "tu": "int_c2",
+  "fn": "try_this_regionmap_square",
+  "baseline": 471,
+  "best_flag": "-5r",
+  "best_redux": 11,
+  "flip": false,
+  "reducers": {
+   "-5r": 11,
+   "-st": 4,
+   "-oa": 2
+  }
+ },
+ {
+  "tu": "landfill",
+  "fn": "show_battle_landfill",
+  "baseline": 135,
+  "best_flag": "-os",
+  "best_redux": 11,
+  "flip": false,
+  "reducers": {
+   "-os": 11
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "road_ramifications",
+  "baseline": 187,
+  "best_flag": "-3r",
+  "best_redux": 10,
+  "flip": false,
+  "reducers": {
+   "-3r": 10
+  }
+ },
+ {
+  "tu": "int_c2",
+  "fn": "get_population_and_industry_count",
+  "baseline": 245,
+  "best_flag": "-ol",
+  "best_redux": 10,
+  "flip": false,
+  "reducers": {
+   "-ol": 10
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "flag_range3",
+  "baseline": 141,
+  "best_flag": "-os",
+  "best_redux": 10,
+  "flip": false,
+  "reducers": {
+   "-os": 10,
+   "-or": 7,
+   "-ot": 5
+  }
+ },
+ {
+  "tu": "int_c2",
+  "fn": "try_a_seamap_square",
+  "baseline": 183,
+  "best_flag": "-os",
+  "best_redux": 9,
+  "flip": false,
+  "reducers": {
+   "-os": 9,
+   "-5r": 8,
+   "-od": 6,
+   "-3r": 5,
+   "-ee": 4,
+   "-zdf": 1
+  }
+ },
+ {
+  "tu": "screens",
+  "fn": "show_region_query_panel",
+  "baseline": 598,
+  "best_flag": "-ol",
+  "best_redux": 9,
+  "flip": false,
+  "reducers": {
+   "-ol": 9,
+   "-oa": 6,
+   "-j": 4,
+   "-oe": 2,
+   "-or": 2,
+   "-ox": 2
+  }
+ },
+ {
+  "tu": "pcsound",
+  "fn": "get_new_sslot",
+  "baseline": 39,
+  "best_flag": "-or",
+  "best_redux": 9,
+  "flip": false,
+  "reducers": {
+   "-or": 9,
+   "-ol": 8,
+   "-ox": 5,
+   "-zdf": 4
+  }
+ },
+ {
+  "tu": "formulae",
+  "fn": "random_event",
+  "baseline": 233,
+  "best_flag": "-ee",
+  "best_redux": 9,
+  "flip": false,
+  "reducers": {
+   "-ee": 9
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "set_ai_flank_move",
+  "baseline": 182,
+  "best_flag": "-or",
+  "best_redux": 9,
+  "flip": false,
+  "reducers": {
+   "-or": 9,
+   "-oa": 7,
+   "-os": 4
+  }
+ },
+ {
+  "tu": "screens",
+  "fn": "show_history_graph",
+  "baseline": 9,
+  "best_flag": "-oa",
+  "best_redux": 9,
+  "flip": true,
+  "reducers": {
+   "-oa": 9
+  }
+ },
+ {
+  "tu": "evolver",
+  "fn": "devolve_a_building",
+  "baseline": 95,
+  "best_flag": "-os",
+  "best_redux": 8,
+  "flip": false,
+  "reducers": {
+   "-os": 8,
+   "-3r": 6
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "one_aquaduct_ramification",
+  "baseline": 178,
+  "best_flag": "-j",
+  "best_redux": 8,
+  "flip": false,
+  "reducers": {
+   "-j": 8,
+   "-3r": 7
+  }
+ },
+ {
+  "tu": "census",
+  "fn": "take_census",
+  "baseline": 587,
+  "best_flag": "-ol",
+  "best_redux": 8,
+  "flip": false,
+  "reducers": {
+   "-ol": 8,
+   "-oa": 6
+  }
+ },
+ {
+  "tu": "int_c2",
+  "fn": "sail_to_target",
+  "baseline": 155,
+  "best_flag": "-or",
+  "best_redux": 8,
+  "flip": false,
+  "reducers": {
+   "-or": 8,
+   "-ox": 8
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "show_aim_highlight",
+  "baseline": 121,
+  "best_flag": "-3r",
+  "best_redux": 7,
+  "flip": false,
+  "reducers": {
+   "-3r": 7,
+   "-j": 7
+  }
+ },
+ {
+  "tu": "evolver",
+  "fn": "push_shell",
+  "baseline": 225,
+  "best_flag": "-st",
+  "best_redux": 7,
+  "flip": false,
+  "reducers": {
+   "-st": 7,
+   "-ol": 7,
+   "-or": 4,
+   "-ot": 3,
+   "-ox": 2
+  }
+ },
+ {
+  "tu": "evolver",
+  "fn": "stretch_to_3x3_house",
+  "baseline": 185,
+  "best_flag": "-ot",
+  "best_redux": 7,
+  "flip": false,
+  "reducers": {
+   "-ot": 7,
+   "-zu": 2,
+   "-oo": 2,
+   "-oa": 1
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "swap_2_figures",
+  "baseline": 12,
+  "best_flag": "-ol",
+  "best_redux": 7,
+  "flip": false,
+  "reducers": {
+   "-ol": 7,
+   "-or": 1
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "fly_to_target",
+  "baseline": 202,
+  "best_flag": "-or",
+  "best_redux": 7,
+  "flip": false,
+  "reducers": {
+   "-or": 7
+  }
+ },
+ {
+  "tu": "landfill",
+  "fn": "get_reg_geog_ov_image",
+  "baseline": 325,
+  "best_flag": "-ot",
+  "best_redux": 7,
+  "flip": false,
+  "reducers": {
+   "-ot": 7
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "build_reg_wall_from_elastic",
+  "baseline": 244,
+  "best_flag": "-os",
+  "best_redux": 6,
+  "flip": false,
+  "reducers": {
+   "-os": 6,
+   "-st": 5
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "setup_enemy_units",
+  "baseline": 578,
+  "best_flag": "-oa",
+  "best_redux": 6,
+  "flip": false,
+  "reducers": {
+   "-oa": 6
+  }
+ },
+ {
+  "tu": "evolver",
+  "fn": "update_time",
+  "baseline": 6,
+  "best_flag": "-ot",
+  "best_redux": 6,
+  "flip": true,
+  "reducers": {
+   "-ot": 6,
+   "-oe": 2
+  }
+ },
+ {
+  "tu": "pm_map1",
+  "fn": "show_left_overlay",
+  "baseline": 142,
+  "best_flag": "-ol",
+  "best_redux": 6,
+  "flip": false,
+  "reducers": {
+   "-ol": 6,
+   "-ox": 6,
+   "-os": 2
+  }
+ },
+ {
+  "tu": "action",
+  "fn": "perform_city_strip_action",
+  "baseline": 35,
+  "best_flag": "-3r",
+  "best_redux": 5,
+  "flip": false,
+  "reducers": {
+   "-3r": 5,
+   "-os": 5,
+   "-ot": 3,
+   "-or": 2,
+   "-ox": 2
+  }
+ },
+ {
+  "tu": "action",
+  "fn": "get_region_2x2_start",
+  "baseline": 59,
+  "best_flag": "-os",
+  "best_redux": 5,
+  "flip": false,
+  "reducers": {
+   "-os": 5,
+   "-ee": 4
+  }
+ },
+ {
+  "tu": "pm_map1",
+  "fn": "show_overlay",
+  "baseline": 153,
+  "best_flag": "-3r",
+  "best_redux": 4,
+  "flip": false,
+  "reducers": {
+   "-3r": 4,
+   "-oa": 4,
+   "-j": 2,
+   "-os": 2
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "show_move_highlight",
+  "baseline": 175,
+  "best_flag": "-j",
+  "best_redux": 4,
+  "flip": false,
+  "reducers": {
+   "-j": 4
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "try_a_battlemap_square",
+  "baseline": 132,
+  "best_flag": "-od",
+  "best_redux": 4,
+  "flip": false,
+  "reducers": {
+   "-od": 4
+  }
+ },
+ {
+  "tu": "int_c2",
+  "fn": "try_a_citymap_square",
+  "baseline": 124,
+  "best_flag": "-zdf",
+  "best_redux": 3,
+  "flip": false,
+  "reducers": {
+   "-zdf": 3,
+   "-3r": 2,
+   "-os": 2
+  }
+ },
+ {
+  "tu": "pcsound",
+  "fn": "start_sequences",
+  "baseline": 61,
+  "best_flag": "-3r",
+  "best_redux": 3,
+  "flip": false,
+  "reducers": {
+   "-3r": 3,
+   "-os": 3,
+   "-zu": 2,
+   "-of": 2,
+   "-oo": 2,
+   "-or": 1
+  }
+ },
+ {
+  "tu": "pm_map3",
+  "fn": "show_battlemap_base",
+  "baseline": 241,
+  "best_flag": "-os",
+  "best_redux": 3,
+  "flip": false,
+  "reducers": {
+   "-os": 3,
+   "-ox": 3,
+   "-3r": 2,
+   "-ol": 1
+  }
+ },
+ {
+  "tu": "int_c2",
+  "fn": "get_dirc_from_citizen_wf_run",
+  "baseline": 36,
+  "best_flag": "-j",
+  "best_redux": 3,
+  "flip": false,
+  "reducers": {
+   "-j": 3,
+   "-od": 2
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "one_wall_ramification",
+  "baseline": 160,
+  "best_flag": "-j",
+  "best_redux": 3,
+  "flip": false,
+  "reducers": {
+   "-j": 3
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "test_range_for",
+  "baseline": 119,
+  "best_flag": "-j",
+  "best_redux": 3,
+  "flip": false,
+  "reducers": {
+   "-j": 3
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "setup_roman_units",
+  "baseline": 286,
+  "best_flag": "-oa",
+  "best_redux": 3,
+  "flip": false,
+  "reducers": {
+   "-oa": 3
+  }
+ },
+ {
+  "tu": "map",
+  "fn": "get_closest_trading_post",
+  "baseline": 184,
+  "best_flag": "-os",
+  "best_redux": 3,
+  "flip": false,
+  "reducers": {
+   "-os": 3
+  }
+ },
+ {
+  "tu": "evolver",
+  "fn": "put_out_a",
+  "baseline": 114,
+  "best_flag": "-ot",
+  "best_redux": 3,
+  "flip": false,
+  "reducers": {
+   "-ot": 3
+  }
+ },
+ {
+  "tu": "int_c2",
+  "fn": "get_dirc_from_army_wf_run",
+  "baseline": 38,
+  "best_flag": "-j",
+  "best_redux": 2,
+  "flip": false,
+  "reducers": {
+   "-j": 2
+  }
+ },
+ {
+  "tu": "census",
+  "fn": "get_census",
+  "baseline": 319,
+  "best_flag": "-ol",
+  "best_redux": 2,
+  "flip": false,
+  "reducers": {
+   "-ol": 2
+  }
+ },
+ {
+  "tu": "pcsound",
+  "fn": "start_sound",
+  "baseline": 9,
+  "best_flag": "-ol",
+  "best_redux": 2,
+  "flip": false,
+  "reducers": {
+   "-ol": 2
+  }
+ },
+ {
+  "tu": "lib32",
+  "fn": "timer",
+  "baseline": 25,
+  "best_flag": "-or",
+  "best_redux": 2,
+  "flip": false,
+  "reducers": {
+   "-or": 2
+  }
+ },
+ {
+  "tu": "int_c2",
+  "fn": "copy_ferret_run_to_citizen",
+  "baseline": 1,
+  "best_flag": "-st",
+  "best_redux": 1,
+  "flip": true,
+  "reducers": {
+   "-st": 1,
+   "-zp2": 1,
+   "-zu": 1,
+   "-en": 1,
+   "-of": 1,
+   "-oo": 1
+  }
+ },
+ {
+  "tu": "battle",
+  "fn": "try_this_battlemap_square",
+  "baseline": 1,
+  "best_flag": "-en",
+  "best_redux": 1,
+  "flip": true,
+  "reducers": {
+   "-en": 1
+  }
+ },
+ {
+  "tu": "int_c2",
+  "fn": "fight_barbarian",
+  "baseline": 1,
+  "best_flag": "-en",
+  "best_redux": 1,
+  "flip": true,
+  "reducers": {
+   "-en": 1
+  }
+ },
+ {
+  "tu": "formulae",
+  "fn": "get_army_totals",
+  "baseline": 91,
+  "best_flag": "-oa",
+  "best_redux": 1,
+  "flip": false,
+  "reducers": {
+   "-oa": 1
+  }
+ },
+ {
+  "tu": "lib32",
+  "fn": "one_letter",
+  "baseline": 134,
+  "best_flag": "-or",
+  "best_redux": 1,
+  "flip": false,
+  "reducers": {
+   "-or": 1,
+   "-ox": 1
+  }
+ },
+ {
+  "tu": "lib32",
+  "fn": "grey_a_screen",
+  "baseline": 49,
+  "best_flag": "-os",
+  "best_redux": 1,
+  "flip": false,
+  "reducers": {
+   "-os": 1
+  }
+ }
+]

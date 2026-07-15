@@ -1,0 +1,21 @@
+rules:
+  - id: region-cell-offset-row-first
+    message: |
+      Row-first region_map cell offset `(y * 60 + x) * 8` detected (Rule 113).
+      Write it column-first — `(x + y * 60) * 8` — so the final `lea` uses
+      `x` as the base register, matching PS.  Do NOT collapse it into an
+      RM_OFF macro: those were removed (they hard-coded the row-first order).
+    languages: [c]
+    severity: INFO
+    pattern-either:
+      # Row-first only: the Y*W term appears before X.
+      # W is REGION_W (60 / 0x3C), CB is REGION_CELL_BYTES (8).
+      - pattern: ($Y * 60 + $X) * 8
+      - pattern: (60 * $Y + $X) * 8
+      - pattern: 8 * ($Y * 60 + $X)
+      - pattern: 8 * (60 * $Y + $X)
+      - pattern: ($Y * 0x3C + $X) * 8
+      - pattern: (0x3C * $Y + $X) * 8
+      - pattern: 8 * ($Y * 0x3C + $X)
+      - pattern: 8 * (0x3C * $Y + $X)
+    fix: ($X + $Y * 60) * 8

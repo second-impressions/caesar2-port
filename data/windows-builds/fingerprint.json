@@ -1,0 +1,237 @@
+{
+  "caesar2_A_1044480.exe": {
+    "sha256": "caca2babb57d9450d8d500b51ffaa4c037b25c8fa0326d43002a281a7ba69f58",
+    "size": 1044480,
+    "role": "Caesar II game engine (Win95/Win32s)",
+    "carried_on_cds": [
+      "Caesar II (Europe) (Rerelease) (1997-09-12)",
+      "Caesar II (Italy) (Covermount)",
+      "Caesar II (USA) (Rerelease) (1996-08-29)"
+    ],
+    "cd_path": "C2WIN95/HD/CAESAR2.EXE",
+    "format": "PE32",
+    "linker": "3.00",
+    "compiler": "Visual C++ 4.0",
+    "link_date_utc": "1996-08-28T22:53:42",
+    "sections": [
+      ".text",
+      ".rdata",
+      ".data",
+      ".idata",
+      ".rsrc",
+      ".reloc"
+    ],
+    "debug_dir": null,
+    "pdb": null,
+    "pdb_age": null,
+    "crt": "static debug CRT (LIBCD/LIBCMTD)",
+    "config": "Debug /Od (no optimization)"
+  },
+  "caesar2_B_de_1059840.exe": {
+    "sha256": "f719cdc7a8dcf954b2c6dcb5d1b1aad81fba511e8753d94441f99101c53eb61d",
+    "size": 1059840,
+    "role": "Caesar II game engine (Win95/Win32s)",
+    "carried_on_cds": [
+      "Caesar II (Germany) (Rerelease) (1996-12-18)",
+      "Caesar II (Germany) (Rerelease) (1996-12-18) (Alt)"
+    ],
+    "cd_path": "C2WIN95/HD/CAESAR2.EXE",
+    "format": "PE32",
+    "linker": "3.00",
+    "compiler": "Visual C++ 4.0",
+    "link_date_utc": "1996-12-09T19:35:46",
+    "sections": [
+      ".text",
+      ".rdata",
+      ".data",
+      ".idata",
+      ".rsrc",
+      ".reloc"
+    ],
+    "debug_dir": [
+      "MISC",
+      "FPO",
+      "CODEVIEW"
+    ],
+    "pdb": "C:\\develop\\MSDEV\\Projects\\C2Win\\Caesar2.pdb",
+    "pdb_age": 1,
+    "crt": "static debug CRT (LIBCD/LIBCMTD)",
+    "config": "Debug /Od (no optimization)"
+  },
+  "caesar2_C_1060864.exe": {
+    "sha256": "af6401537c103290bf5cdbd205621f01c4d88f0a25c28584fd7c70e19f84dd01",
+    "size": 1060864,
+    "role": "Caesar II game engine (Win95/Win32s) \u2014 v1.01 patch engine",
+    "carried_on_cds": [
+      "Caesar II (USA) (Rerelease) (1997-03-10)",
+      "Caesar II (USA) (Rerelease) (1997-11-12)"
+    ],
+    "cd_path": "C2WIN95/HD/CAESAR2.EXE",
+    "format": "PE32",
+    "linker": "3.00",
+    "compiler": "Visual C++ 4.0",
+    "link_date_utc": "1997-02-28T20:39:11",
+    "sections": [
+      ".text",
+      ".rdata",
+      ".data",
+      ".idata",
+      ".rsrc",
+      ".reloc"
+    ],
+    "debug_dir": [
+      "MISC",
+      "FPO",
+      "CODEVIEW"
+    ],
+    "pdb": "C:\\develop\\MSDEV\\Projects\\C2Win\\Caesar2.pdb",
+    "pdb_age": 12,
+    "crt": "static debug CRT (LIBCD/LIBCMTD)",
+    "config": "Debug /Od (no optimization)"
+  },
+  "wail32.dll": {
+    "sha256": "1a9c8bf6fe5e08f8e28e80eb10b21b5b53f934fdda1dc28728961350d817b61e",
+    "size": 135680,
+    "role": "Miles Sound System AIL Win32s driver (3rd-party, RAD/Miles)",
+    "carried_on_cds": [
+      "Caesar II (Europe) (Rerelease) (1997-09-12)",
+      "Caesar II (Germany) (Rerelease) (1996-12-18)",
+      "Caesar II (Germany) (Rerelease) (1996-12-18) (Alt)",
+      "Caesar II (Italy) (Covermount)",
+      "Caesar II (USA) (Rerelease) (1996-08-29)",
+      "Caesar II (USA) (Rerelease) (1997-03-10)",
+      "Caesar II (USA) (Rerelease) (1997-11-12)"
+    ],
+    "cd_path": "C2WIN95/HD/WAIL32.DLL",
+    "format": "PE32",
+    "linker": "3.00",
+    "compiler": "Visual C++ 4.0",
+    "link_date_utc": "1996-04-17T06:48:16",
+    "sections": [
+      ".text",
+      ".rdata",
+      ".data",
+      ".idata",
+      ".reloc"
+    ],
+    "debug_dir": null,
+    "pdb": null,
+    "pdb_age": null,
+    "crt": "static release CRT (LIBC/LIBCMT)",
+    "config": "Release"
+  },
+  "smackw32.dll": {
+    "sha256": "1bceeb7d56fdb8f5d59c7d4ba893bd8779358c68d597a27b640f42771a12cc3c",
+    "size": 61952,
+    "role": "RAD Smacker Win32s video DLL (3rd-party)",
+    "carried_on_cds": [
+      "Caesar II (Europe) (Rerelease) (1997-09-12)",
+      "Caesar II (Germany) (Rerelease) (1996-12-18)",
+      "Caesar II (Germany) (Rerelease) (1996-12-18) (Alt)",
+      "Caesar II (Italy) (Covermount)",
+      "Caesar II (USA) (Rerelease) (1996-08-29)",
+      "Caesar II (USA) (Rerelease) (1997-03-10)",
+      "Caesar II (USA) (Rerelease) (1997-11-12)"
+    ],
+    "cd_path": "C2WIN95/HD/SMACKW32.DLL",
+    "format": "PE32",
+    "linker": "2.18",
+    "compiler": "Watcom C/C++32 (wlink 2.18)",
+    "link_date_utc": "1996-01-16T20:09:03",
+    "sections": [
+      "BEGTEXT",
+      "DGROUP",
+      ".bss",
+      ".idata",
+      ".edata",
+      ".reloc",
+      ".desc"
+    ],
+    "debug_dir": null,
+    "pdb": null,
+    "pdb_age": null,
+    "crt": "static release CRT (LIBC/LIBCMT)",
+    "config": "3rd-party (RAD)"
+  },
+  "winupd.exe": {
+    "sha256": "aeb6cb385d12565274abd34cf4fda9a47ca27a0e7b12a6f0f53dda99ed918958",
+    "size": 134144,
+    "role": "Sierra Win32s-setup launcher (installer plumbing)",
+    "carried_on_cds": [
+      "Caesar II (Europe) (OEM)",
+      "Caesar II (Europe) (Rerelease) (1996-04-25)",
+      "Caesar II (Europe) (Rerelease) (1997-09-12)",
+      "Caesar II (Germany) (Rerelease) (1996-12-18)",
+      "Caesar II (Germany) (Rerelease) (1996-12-18) (Alt)",
+      "Caesar II (Italy) (Covermount)",
+      "Caesar II (USA) (Rerelease) (1996-08-29)",
+      "Caesar II (USA) (Rerelease) (1997-03-10)",
+      "Caesar II (USA) (Rerelease) (1997-11-12)"
+    ],
+    "cd_path": "INSTALL/WINUPD.EXE",
+    "format": "PE32",
+    "linker": "2.55",
+    "compiler": "Visual C++ 2.x",
+    "link_date_utc": "1995-08-26T22:08:13",
+    "sections": [
+      ".text",
+      ".bss",
+      ".rdata",
+      ".data",
+      ".idata",
+      ".rsrc",
+      ".reloc"
+    ],
+    "debug_dir": null,
+    "pdb": null,
+    "pdb_age": null,
+    "crt": "static release CRT (LIBC/LIBCMT)",
+    "config": "Release"
+  },
+  "winupd16_a.exe": {
+    "sha256": "5c60d07a3f5af962a817eee1f1debfe8be3581fb56a147e9c035d25c10b57ec0",
+    "size": 53712,
+    "role": "16-bit MSSETUP/WinG launcher stub",
+    "carried_on_cds": [
+      "Caesar II (Europe) (OEM)",
+      "Caesar II (Europe) (Rerelease) (1996-04-25)"
+    ],
+    "cd_path": "INSTALL/WINUPD16.EXE",
+    "format": "NE (16-bit Windows)",
+    "linker": "5.60",
+    "compiler": "MS segmented LINK 5.60",
+    "target_os": "Windows"
+  },
+  "winupd16_b.exe": {
+    "sha256": "14484a328005abc249f60b544d993142d9c32ae473cedc9b2e304be34a9c15e6",
+    "size": 53712,
+    "role": "16-bit MSSETUP/WinG launcher stub",
+    "carried_on_cds": [
+      "Caesar II (Europe) (Rerelease) (1997-09-12)",
+      "Caesar II (Germany) (Rerelease) (1996-12-18)",
+      "Caesar II (Germany) (Rerelease) (1996-12-18) (Alt)",
+      "Caesar II (Italy) (Covermount)",
+      "Caesar II (USA) (Rerelease) (1996-08-29)",
+      "Caesar II (USA) (Rerelease) (1997-03-10)",
+      "Caesar II (USA) (Rerelease) (1997-11-12)"
+    ],
+    "cd_path": "INSTALL/WINUPD16.EXE",
+    "format": "NE (16-bit Windows)",
+    "linker": "5.60",
+    "compiler": "MS segmented LINK 5.60",
+    "target_os": "Windows"
+  },
+  "c2winpch_1999.exe": {
+    "sha256": "50d5c95a6d2143ea2924775892848d4b9be4dc7441814d9ddef23456a0536bb3",
+    "size": 417101,
+    "role": "1999 v1.01 Windows patch (PKSFX self-extracting ZIP wrapper)",
+    "carried_on_cds": [
+      "Caesar II (Italy) (Covermount)"
+    ],
+    "cd_path": "Patch/C2WINPCH.EXE",
+    "format": "NE (16-bit Windows)",
+    "linker": "5.60",
+    "compiler": "PKWARE PKSFX self-extractor (not compiled game code)",
+    "target_os": "Windows"
+  }
+}

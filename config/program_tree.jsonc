@@ -1,0 +1,141 @@
+// Program Tree configuration for Ghidra.
+//
+// Defines two trees:
+//   1. Default "Program Tree" — broad subsystem sections
+//   2. "Source Files" — individual source files with line number ranges
+//
+// The Ghidra script reads this file alongside symbols.json.
+// Edit "sections" to customize the default Program Tree layout.
+// Edit "source_tree" to customize source file grouping.
+//
+// Section addresses are hex strings derived from debug symbol markers
+// (AILDEBUG_start/end, AIL_start/end, AILSS_start/end, etc.)
+// and source file address ranges from line numbers.
+//
+// Source tree "match" patterns support * as wildcard.
+// Source files not matching any folder go into "default_folder".
+
+{
+    "sections": {
+        // Parent folder name in the default Program Tree
+        "folder": "Subsystems",
+
+        "entries": [
+            {
+                "name": "DOS/4GW Startup",
+                "start": "0x10000",
+                "end":   "0x1000F"
+                // cstrt386 entry, before game code
+            },
+            {
+                "name": "Game Code",
+                "start": "0x10010",
+                "end":   "0x72829"
+                // c2.c through debug.c (D:\C2\CODE\*)
+            },
+            {
+                "name": "Watcom C Runtime",
+                "start": "0x7282A",
+                "end":   "0x72FEB"
+                // getdrive, printf, malloc, open, close, etc.
+            },
+            {
+                "name": "Miles Sound System (AILDEBUG)",
+                "start": "0x72FEC",
+                "end":   "0x78321"
+                // AILDEBUG_start to AILDEBUG_end
+            },
+            {
+                "name": "Watcom C Library (mid)",
+                "start": "0x78322",
+                "end":   "0x7B08F"
+                // read, strcpy, strcmp, smackinp, palet, etc.
+            },
+            {
+                "name": "Watcom C Library (I/O)",
+                "start": "0x7B090",
+                "end":   "0x7C31F"
+                // memcpy, lseek, int386, memset, sound, etc.
+            },
+            {
+                "name": "Miles Sound System (AIL core)",
+                "start": "0x7C320",
+                "end":   "0x7D66D"
+                // aila.asm + AIL_start to AIL_end
+            },
+            {
+                "name": "Watcom C Library (file/time)",
+                "start": "0x7D66E",
+                "end":   "0x7DC5F"
+                // fopen, setbuf, time, localtime, asctime, fclose
+            },
+            {
+                "name": "Miles Sound System (AILSS)",
+                "start": "0x7DC60",
+                "end":   "0x7F750"
+                // AILSS_start to AILSS_end
+            },
+            {
+                "name": "Miles Sound System (AILSFILE)",
+                "start": "0x7F808",
+                "end":   "0x7FE22"
+                // AILSFILE_start to AILSFILE_end
+            },
+            {
+                "name": "Miles Sound System (AILXMIDI)",
+                "start": "0x7FE50",
+                "end":   "0x83350"
+                // AILXMIDI_start to AILXMIDI_end
+            },
+            {
+                "name": "Miles Sound System (AILXDIG)",
+                "start": "0x83644",
+                "end":   "0x83FA9"
+                // AILXDIG_start to AILXDIG_end
+            },
+            {
+                "name": "Watcom C Library (late)",
+                "start": "0x83FAA",
+                "end":   "0x8646B"
+                // stack386, error386, mktime, tzset, prtf, etc.
+            },
+            {
+                "name": "Miles Sound System (AILSSA)",
+                "start": "0x8646C",
+                "end":   "0x88C5F"
+                // ailssa.asm + strncmp, stricmp, sprintf, etc.
+            },
+            {
+                "name": "Smacker Video",
+                "start": "0x88C60",
+                "end":   "0x8C1CF"
+                // unsmack.ASM, rfile.ASM, SmackDoTables, etc.
+            }
+        ]
+    },
+
+    "source_tree": {
+        "tree_name": "Source Files",
+        "default_folder": "Other",
+        "folders": [
+            {
+                "folder": "Game Code",
+                "match": ["D:\\C2\\CODE\\*"]
+            },
+            {
+                "folder": "Miles Sound System",
+                "match": [
+                    "R:\\NET\\LIBS\\AIL\\*",
+                    "aila.asm",
+                    "ailssa.asm"
+                ]
+            },
+            {
+                "folder": "Smacker Video",
+                "match": [
+                    "C:\\DEVEL\\PROJECTS\\SMACK\\*"
+                ]
+            }
+        ]
+    }
+}

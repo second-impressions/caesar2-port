@@ -1,0 +1,1361 @@
+// D:\C2\CODE\loadsave.c
+
+#include "c2_data.h"
+#include "c2_types.h"
+
+struct save_entry model_entries[40] = {
+    { skill_to_imperial_request, 20 },
+    { skill_to_starting_denarii, 20 },
+    { skill_to_denarii_reduction, 20 },
+    { skill_to_trouble_honeymoons, 80 },
+    { skill_to_trouble_frequency, 80 },
+    { skill_to_trouble_debar, 80 },
+    { skill_to_city_attacks, 80 },
+    { city_costs, 400 },
+    { region_costs, 80 },
+    { houses_to_people, 128 },
+    { houses_to_income, 128 },
+    { pop_tax_to_growth_data, 104 },
+    { employment_to_pop_growth_factor, 84 },
+    { ind_tax_to_growth_data, 104 },
+    { tax_to_revolt_data, 104 },
+    { conscription_to_revolt_data, 104 },
+    { house_type_to_unrest, 128 },
+    { unrest_random_data, 256 },
+    { house_lv_effect, 256 },
+    { forum_lv_effect, 96 },
+    { temple_lv_effect, 96 },
+    { tribe_to_troop_numbers, 480 },
+    { buildings_lv_effect, 224 },
+    { init_salary, 8 },
+    { promotion_levels, 400 },
+    { promotion_av_levels, 400 },
+    { init_slave_data, 80 },
+    { main_paras, 40 },
+    { tax_triggers, 12 },
+    { tax_rates, 240 },
+    { tribute_adjust, 28 },
+    { 0, 0 },
+    { 0, 0 },
+    { 0, 0 },
+    { 0, 0 },
+    { 0, 0 },
+    { 0, 0 },
+    { 0, 0 },
+    { 0, 0 },
+    { 0, 0 }
+};
+
+struct save_entry savegame_entries[500] = {
+    { &map_mode, 1 },
+    { &ov_map_mode, 1 },
+    { &zoom_level, 1 },
+    { &zoom_level, 1 },
+    { &map_direction, 4 },
+    { &pm_x, 4 },
+    { &pm_y, 4 },
+    { army_list, 4550 },
+    { citizen_list, 11658 },
+    { unit_list, 3978 },
+    { figure_list, 17688 },
+    { arrow_list, 9045 },
+    { army_routes, 3460 },
+    { &city_map, 128000 },
+    { &region_map, 28800 },
+    { fire_zones, 100 },
+    { (char *)&c2inf + 52, 1 },
+    { &randseed, 4 },
+    { &top_lv_spot, 4 },
+    { &top_lv, 4 },
+    { &top_lv_x, 4 },
+    { &top_lv_y, 4 },
+    { &evolve_tick4, 4 },
+    { &evolve_row, 4 },
+    { &evolve_clock, 4 },
+    { &year, 4 },
+    { &month, 4 },
+    { &week, 4 },
+    { &denarii, 4 },
+    { &pop_tax_rate, 4 },
+    { &ind_tax_rate, 4 },
+    { &employment_rate, 4 },
+    { &population, 4 },
+    { &account_total, 4 },
+    { &account_pop_tax, 4 },
+    { &account_ind_tax, 4 },
+    { &account_construction_cost, 4 },
+    { &account_operating_cost, 4 },
+    { &estimate_total, 4 },
+    { &estimate_pop_tax, 4 },
+    { &estimate_ind_tax, 4 },
+    { &estimate_construction_cost, 4 },
+    { &estimate_operating_cost, 4 },
+    { &no_of_census_passes, 4 },
+    { &population_running_count, 4 },
+    { &employment_running_count, 4 },
+    { &structure_running_count, 4 },
+    { &road_running_count, 4 },
+    { &fire_running_count, 4 },
+    { &plague_running_count, 4 },
+    { &water_running_count, 4 },
+    { &region_running_count, 4 },
+    { &slaves, 4 },
+    { &slave_population_change, 4 },
+    { &slave_welfare_bill, 4 },
+    { &slave_population_estimate, 4 },
+    { slave_requirements, 64 },
+    { &slave_random, 4 },
+    { &population_pass_count, 4 },
+    { &employment_pass_count, 4 },
+    { &structure_pass_count, 4 },
+    { &road_pass_count, 4 },
+    { &fire_pass_count, 4 },
+    { &plague_pass_count, 4 },
+    { &region_pass_count, 4 },
+    { &fountains_pass_count, 4 },
+    { &fountains_count, 4 },
+    { &supplied_fountains_pass_count, 4 },
+    { &supplied_fountains_count, 4 },
+    { &baths_pass_count, 4 },
+    { &baths_count, 4 },
+    { &supplied_baths_pass_count, 4 },
+    { &supplied_baths_count, 4 },
+    { &large_forums_pass_count, 4 },
+    { &large_forums_count, 4 },
+    { &medium_forums_pass_count, 4 },
+    { &medium_forums_count, 4 },
+    { &small_forums_pass_count, 4 },
+    { &small_forums_count, 4 },
+    { &forts_pass_count, 4 },
+    { &forts_count, 4 },
+    { &prefectures_pass_count, 4 },
+    { &prefectures_count, 4 },
+    { &barracks_pass_count, 4 },
+    { &barracks_count, 4 },
+    { &large_temples_pass_count, 4 },
+    { &large_temples_count, 4 },
+    { &med_temples_pass_count, 4 },
+    { &med_temples_count, 4 },
+    { &small_temples_pass_count, 4 },
+    { &small_temples_count, 4 },
+    { &hospitals_pass_count, 4 },
+    { &hospitals_count, 4 },
+    { &accessed_hospitals_pass_count, 4 },
+    { &accessed_hospitals_count, 4 },
+    { &libraries_pass_count, 4 },
+    { &libraries_count, 4 },
+    { &accessed_libraries_pass_count, 4 },
+    { &accessed_libraries_count, 4 },
+    { &grammaticus_pass_count, 4 },
+    { &grammaticus_count, 4 },
+    { &rhetor_pass_count, 4 },
+    { &rhetor_count, 4 },
+    { &theatre_pass_count, 4 },
+    { &theatre_count, 4 },
+    { &odium_pass_count, 4 },
+    { &odium_count, 4 },
+    { &arena_pass_count, 4 },
+    { &arena_count, 4 },
+    { &colosseum_pass_count, 4 },
+    { &colosseum_count, 4 },
+    { &circus_pass_count, 4 },
+    { &circus_count, 4 },
+    { &circus_maximus_pass_count, 4 },
+    { &circus_maximus_count, 4 },
+    { &business_pass_count, 4 },
+    { &business_count, 4 },
+    { &market_pass_count, 4 },
+    { &market_count, 4 },
+    { &water_trouble_rate, 4 },
+    { &road_rate, 4 },
+    { &road_accident, 4 },
+    { &fire_rate, 4 },
+    { &fire_accident, 4 },
+    { &wall_rate, 4 },
+    { &wall_accident, 4 },
+    { &region_rate, 4 },
+    { &region_accident, 4 },
+    { &fire_spread_direction, 4 },
+    { &fire_spread_count, 4 },
+    { &fire_spread_target, 4 },
+    { &plague_spread_direction, 4 },
+    { &plague_spread_count, 4 },
+    { &plague_spread_target, 4 },
+    { &hospital_cover, 4 },
+    { &library_cover, 4 },
+    { &plague_accident, 4 },
+    { &revolt_accident, 4 },
+    { &shell_push_direction, 4 },
+    { &pop_growth_factor, 4 },
+    { &ind_growth_factor, 4 },
+    { &insurrection_factor, 4 },
+    { &pop_growth_future, 4 },
+    { &ind_growth_future, 4 },
+    { &insurrection_future, 4 },
+    { &conscription_rate, 4 },
+    { &employees, 4 },
+    { &pop_income_pass_count, 4 },
+    { &pop_tax_running_total, 4 },
+    { &pop_tax_last_count, 4 },
+    { &pop_tax_counts, 4 },
+    { &ind_income_pass_count, 4 },
+    { &ind_tax_running_total, 4 },
+    { &ind_tax_last_count, 4 },
+    { &ind_tax_counts, 4 },
+    { &current_construction_cost, 4 },
+    { &current_operating_cost, 4 },
+    { &account_tribute, 4 },
+    { &estimate_tribute, 4 },
+    { &income_multiple, 4 },
+    { &average_pop_tax_denariis, 4 },
+    { &average_pop_tax_asses, 4 },
+    { &average_ind_tax_denariis, 4 },
+    { &average_ind_tax_asses, 4 },
+    { &tribute, 4 },
+    { &last_tribute, 4 },
+    { &unrest_random_count, 4 },
+    { &no_of_rioters, 4 },
+    { &no_of_barbarians, 4 },
+    { &free_message_ptr, 4 },
+    { &show_message_ptr, 4 },
+    { message_list, 64 },
+    { &warned_of_fire, 1 },
+    { &warned_of_cutbacks, 1 },
+    { &warned_of_robbery, 1 },
+    { &warned_of_emperor, 1 },
+    { &warned_of_emperor_reply_month, 1 },
+    { &warned_of_emperor_reply_level, 1 },
+    { &warned_of_free4, 1 },
+    { &warned_of_free5, 1 },
+    { &large_robbery_pass_count, 4 },
+    { &large_robbery_count, 4 },
+    { &med_robbery_pass_count, 4 },
+    { &med_robbery_count, 4 },
+    { &small_robbery_pass_count, 4 },
+    { &small_robbery_count, 4 },
+    { &temples_count, 4 },
+    { &robbery_count, 4 },
+    { &stolen_denarii, 4 },
+    { &reg_city_x, 4 },
+    { &reg_city_y, 4 },
+    { &our_battle_army, 4 },
+    { &their_battle_army, 4 },
+    { &forum_viewed_army, 4 },
+    { &army_wage_level, 4 },
+    { &conscription_rate, 4 },
+    { &total_no_of_cohorts, 4 },
+    { &total_no_of_centuries, 4 },
+    { &total_no_of_soldiers, 4 },
+    { &total_no_of_regulars, 4 },
+    { &total_no_of_irregulars, 4 },
+    { &total_no_of_auxillaries, 4 },
+    { &current_no_of_centuries, 4 },
+    { &current_no_of_soldiers, 4 },
+    { &current_no_of_regulars, 4 },
+    { &current_no_of_irregulars, 4 },
+    { &current_no_of_auxillaries, 4 },
+    { &needed_no_of_centuries, 4 },
+    { &needed_no_of_soldiers, 4 },
+    { &needed_no_of_regulars, 4 },
+    { &needed_no_of_irregulars, 4 },
+    { &needed_no_of_auxillaries, 4 },
+    { &average_cohort_morale, 4 },
+    { &average_cohort_readiness, 4 },
+    { &last_adjusted_cohort, 4 },
+    { &west_border_x, 4 },
+    { &west_border_y, 4 },
+    { &east_border_x, 4 },
+    { &east_border_y, 4 },
+    { &north_border_x, 4 },
+    { &north_border_y, 4 },
+    { &south_border_x, 4 },
+    { &south_border_y, 4 },
+    { &province_is, 4 },
+    { &north_trader_count0, 4 },
+    { &east_trader_count0, 4 },
+    { &south_trader_count0, 4 },
+    { &west_trader_count0, 4 },
+    { &north_trader_brings, 4 },
+    { &east_trader_brings, 4 },
+    { &south_trader_brings, 4 },
+    { &west_trader_brings, 4 },
+    { &north_trader_is, 4 },
+    { &east_trader_is, 4 },
+    { &south_trader_is, 4 },
+    { &west_trader_is, 4 },
+    { &north_trader_count1, 4 },
+    { &east_trader_count1, 4 },
+    { &south_trader_count1, 4 },
+    { &west_trader_count1, 4 },
+    { &no_of_workcamps, 4 },
+    { &no_of_warehouses, 4 },
+    { &no_of_shipyards, 4 },
+    { &no_of_ports, 4 },
+    { &no_of_trading_posts, 4 },
+    { &no_of_farms, 4 },
+    { &no_of_mines, 4 },
+    { &no_of_quarrys, 4 },
+    { &no_of_villages, 4 },
+    { &no_of_towns, 4 },
+    { &no_of_border_towns, 4 },
+    { &months_to_game_over, 4 },
+    { &old_map_mode, 1 },
+    { &old_zoom_level, 1 },
+    { &battle_state, 4 },
+    { &battle_map, 10816 },
+    { &city_pm_x, 4 },
+    { &city_pm_y, 4 },
+    { &region_pm_x, 4 },
+    { &region_pm_y, 4 },
+    { &battle_pm_x, 4 },
+    { &battle_pm_y, 4 },
+    { &city_direction, 4 },
+    { &region_direction, 4 },
+    { &battle_direction, 4 },
+    { &battle_scale, 4 },
+    { &our_battle_men, 4 },
+    { &our_battle_start_men, 4 },
+    { &their_battle_men, 4 },
+    { &their_battle_start_men, 4 },
+    { &our_battle_routs, 4 },
+    { &their_battle_routs, 4 },
+    { &our_battle_stance, 4 },
+    { &their_battle_stance, 4 },
+    { &battle_npc_retreat_count, 4 },
+    { &retreat_flag, 4 },
+    { &no_of_empire_connections, 4 },
+    { empire_connections, 4 },
+    { &battle_over_count, 4 },
+    { &our_battle_morale, 4 },
+    { &their_battle_morale, 4 },
+    { &our_battle_units, 4 },
+    { &their_battle_units, 4 },
+    { empire, 50 },
+    { &completed_provinces, 4 },
+    { &auto_conquered, 4 },
+    { &empire_rating, 4 },
+    { &peace_rating, 4 },
+    { &prosperity_rating, 4 },
+    { &culture_rating, 4 },
+    { &pax_romanum, 4 },
+    { &player_rank, 4 },
+    { &large_temples_culture_pass_count, 4 },
+    { &large_temples_culture_count, 4 },
+    { &med_temples_culture_pass_count, 4 },
+    { &med_temples_culture_count, 4 },
+    { &small_temples_culture_pass_count, 4 },
+    { &small_temples_culture_count, 4 },
+    { &theatre_culture_pass_count, 4 },
+    { &theatre_culture_count, 4 },
+    { &odium_culture_pass_count, 4 },
+    { &odium_culture_count, 4 },
+    { &arena_culture_pass_count, 4 },
+    { &arena_culture_count, 4 },
+    { &colosseum_culture_pass_count, 4 },
+    { &colosseum_culture_count, 4 },
+    { &circus_culture_pass_count, 4 },
+    { &circus_culture_count, 4 },
+    { &circus_maximus_culture_pass_count, 4 },
+    { &circus_maximus_culture_count, 4 },
+    { &grammaticus_culture_pass_count, 4 },
+    { &grammaticus_culture_count, 4 },
+    { &plaza_culture_count, 4 },
+    { &plaza_culture_pass_count, 4 },
+    { &gardens_culture_count, 4 },
+    { &gardens_culture_pass_count, 4 },
+    { &rhetor_culture_pass_count, 4 },
+    { &rhetor_culture_count, 4 },
+    { &refused_promotion, 4 },
+    { &entertainment_level, 4 },
+    { &religion_level, 4 },
+    { &utility_level, 4 },
+    { &rolling_profit, 4 },
+    { &current_gdp, 4 },
+    { &no_of_connected_towns, 4 },
+    { &start_year, 4 },
+    { &years_elapsed, 4 },
+    { &months_since_last_war, 4 },
+    { &months_since_last_horde, 4 },
+    { &months_since_last_raider, 4 },
+    { &months_since_last_revolt, 4 },
+    { &years_elapsed_in_region, 4 },
+    { hut_list, 12 },
+    { &roman_name_count, 4 },
+    { &barbarian_name_count, 4 },
+    { province_industries, 256 },
+    { &history_end_ptr, 4 },
+    { &history_start_ptr, 4 },
+    { &history_entries, 4 },
+    { industry, 768 },
+    { &imperial_favour, 4 },
+    { &imperial_request, 4 },
+    { &imperial_review, 4 },
+    { &imperial_req_goods, 4 },
+    { &imperial_req_amount, 4 },
+    { &av_imperial_gift_level, 4 },
+    { &our_battle_specials, 4 },
+    { &our_battle_horse, 4 },
+    { &our_battle_regs, 4 },
+    { &our_battle_irregs, 4 },
+    { &our_battle_auxs, 4 },
+    { &their_battle_specials, 4 },
+    { &their_battle_horse, 4 },
+    { &their_battle_regs, 4 },
+    { &their_battle_irregs, 4 },
+    { &their_battle_auxs, 4 },
+    { &mercs_in_army, 4 },
+    { &max_mercs_allowed, 4 },
+    { &mercs_type, 4 },
+    { &mercs_from, 4 },
+    { &mercs_cost_per_50, 4 },
+    { &current_no_of_specials, 4 },
+    { &needed_no_of_specials, 4 },
+    { &total_no_of_specials, 4 },
+    { &mercs_catagory, 4 },
+    { &mercs_tribe, 4 },
+    { &mercs_speed, 4 },
+    { &mercs_missile, 4 },
+    { &battle_type, 4 },
+    { &battle2_ptr, 4 },
+    { &game_state, 4 },
+    { &return_zoom_level, 4 },
+    { &return_map_mode, 4 },
+    { &shell_wall_flag, 4 },
+    { &shell_last_value, 4 },
+    { message_list, 128 },
+    { &average_rating, 4 },
+    { &empire_rating_pop_limit, 4 },
+    { &peace_rating_pop_limit, 4 },
+    { &prosperity_rating_pop_limit, 4 },
+    { &culture_rating_pop_limit, 4 },
+    { &no_of_city_flags, 4 },
+    { &no_of_prov_flags, 4 },
+    { &no_of_danger_flags, 4 },
+    { &last_city_flag, 4 },
+    { &last_prov_flag, 4 },
+    { &last_danger_flag, 4 },
+    { city_flag_list, 80 },
+    { prov_flag_list, 80 },
+    { danger_flag_list, 80 },
+    { &danger_flag_map_mode, 4 },
+    { &flag_mode_decay_count, 4 },
+    { &last_years_population, 4 },
+    { &this_years_population, 4 },
+    { &last_years_denarii, 4 },
+    { &this_years_denarii, 4 },
+    { &last_years_pop_tax, 4 },
+    { &this_years_pop_tax, 4 },
+    { &last_years_ind_tax, 4 },
+    { &this_years_ind_tax, 4 },
+    { &pop_growth_extra, 4 },
+    { &pop_growth_extra_count, 4 },
+    { &players_denarii, 4 },
+    { &players_salary, 4 },
+    { &donation_level, 4 },
+    { &evolve_tick3, 4 },
+    { (char *)&c2inf + 53, 1 },
+    { &months_since_last_city_attack, 4 },
+    { &auto_conquered_months, 4 },
+    { &max_population, 4 },
+    { &warned_city_size, 4 },
+    { &warned_new_struct, 4 },
+    { &last_city_mood, 4 },
+    { &last_battle_mood, 4 },
+    { empire_won, 200 },
+    { &final_bribe, 4 },
+    { &province_difficulty, 4 },
+    { &total_amount_of_bribes, 4 },
+    { &total_no_of_bribes, 4 },
+    { &bat_tribe, 4 },
+    { &battle_ai_count, 4 },
+    { &moving_tribute, 4 },
+    { &imperial_tax, 4 },
+    { &last_imperial_tax_amount, 4 },
+    { &total_imperial_taxes, 4 },
+    { &last_imperial_tax_percent, 4 },
+    { &city_rotation, 4 },
+    { &city_zoom_level, 4 },
+    { &prov_rotation, 4 },
+    { &prov_zoom_level, 4 },
+    { &arena_top_count, 4 },
+    { &colosseum_top_count, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 },
+    { &dummy_sav, 4 }
+};
+
+/* ── TU-owned file-scope variables (PS.EXE _BSS, original declaration
+   order).  Recovered so the functional rebuild (`c2 rebuild`) links
+   self-sustained -- no auto-stubbed storage.  Extern decls: c2_data.h. */
+int dummy_sav;
+
+
+extern void font_list(int idx, int word_count, int x, int y, unsigned char *font, int color);
+
+extern int read(int fd, void *buf, unsigned int size);
+// FUNCTION: C2 0x70461
+// WIN: 0x00482ac0
+// Lines 582–622
+//
+// Load-game dialog loop.  `select_filename` drives out1; when a valid
+// .SAV is picked, loadgame() performs the actual block restore.
+
+void load_a_game(void)
+{
+    int done;
+    int i;
+
+    file_loaded_status = 0;
+    done = 0;
+    get_directory("*.sav");
+    show_loadsave_box(0x28);
+    in_format_buffer(filename, 0xc, 0xa0, 1);
+
+    while (done == 0) {
+        if (select_filename(0x28) != 0) {
+            done = check_file_exists(filename);
+            if (done != 0) {
+                get_filename_extension(filename);
+                if (strcmp("SAV", extension) != 0) done = 0;
+            }
+
+            show_a_system_blank(0x3c, 0x168, 0x15, 1);
+            show_a_system_blank(0x3c, 0x16c, 0x15, 1);
+            if (done == 0) {
+                font_list(0x2a, 0, 0x40, 0x16c, font1, 0x10);
+            } else {
+                font_list(0x2a, 1, 0x40, 0x16c, font1, 0x10);
+                setup_whole_screen_refresh();
+                refresh_svga_screen();
+                loadgame(filename);
+                for (i = 0; i < 200; i++) just_idle_game_loop();
+                pre_loaded_status = 2;
+                restart_flag = 1;
+            }
+        } else {
+            done = 1;
+        }
+        setup_whole_screen_refresh();
+    }
+
+    get_landfill(1);
+    update_landfill = 1;
+    hold_mouse_replace = 1;
+}
+
+// FUNCTION: C2 0x705BA
+// WIN: 0x00482c33
+// Lines 624–658
+//
+// Save-game dialog loop.  Existing filenames require confirmation;
+// savegame() writes the registered blocks and history payload.
+void save_a_game(void)
+{
+    int done;
+    int i;
+
+    file_loaded_status = 0;
+    done = 0;
+    decision = 0;
+    get_directory("*.sav");
+    show_loadsave_box(0x29);
+    in_format_buffer(filename, 0xc, 0xa0, 1);
+
+    while (done == 0) {
+        if (select_filename(0x29) != 0) {
+            done = check_file_exists(filename);
+            if (done != 0) {
+                confirm(2, 0xa0, 0xa0);
+                if (decision == 0) done = 0;
+            } else {
+                done = 1;
+            }
+
+            show_loadsave_box(0x29);
+            if (done == 0) {
+                font_list(0x2a, 2, 0x40, 0x16c, font1, 0x10);
+            } else {
+                font_list(0x2a, 3, 0x40, 0x16c, font1, 0x10);
+                setup_whole_screen_refresh();
+                refresh_svga_screen();
+                savegame(filename);
+                for (i = 0; i < 1000; i++) just_idle_game_loop();
+                decision = 1;
+            }
+        } else {
+            done = 1;
+        }
+        setup_whole_screen_refresh();
+        hold_mouse_replace = 1;
+    }
+}
+
+// FUNCTION: C2 0x706D9
+// WIN: 0x00482d77
+// Lines 663–719
+//
+// Modal filename picker/editor shared by load and save.  Returns the
+// decision flag after restoring the previous pointer mode.
+int select_filename(int mode)
+{
+    int old_pointer_mode;
+
+    old_pointer_mode = pointer_mode;
+    pointer_mode = 0;
+    out1 = 0;
+    insert_cursor = 0;
+    this_letter = 0;
+    clear_keys();
+    adjust_var = &first_entry;
+    adjust_step = 2;
+    adjust_max = no_of_entries - 2;
+    adjust_min = 0;
+
+    while (out1 != 1) {
+        cover_mouse_droppings();
+        hold_hot_keys = 1;
+        get_mouse();
+        if (key_ascii == 0x20) key_ready = 0;
+        show_buttons(0x20, 0x50, loadsave_buttons, 4);
+        get_mouse_droppings();
+
+        if (edit_format_buffer() != 0) {
+            decision = 1;
+            out1 = 1;
+        }
+        get_fb_length();
+        out_format_buffer(filename);
+        show_directory(file_no);
+
+        show_mouse(0);
+        set_mouse_refresh();
+        if (mouse_movement != 0) {
+            setup_refresh_area(0x3e, 0xb0, 0x15, 0xe, 2);
+        }
+        setup_refresh_area(0x30, 0x90, 0xc, 2, 2);
+        refresh_svga_screen();
+        control_buttons(0x20, 0x50, loadsave_buttons, 4);
+        setup_refresh_area(0x3e, 0xb0, 0x15, 0xe, 2);
+
+        file_no = 0x3e7;
+        if (mouse_x >= 0x40 && mouse_x < 0x180) {
+            if (mouse_y >= 0xbc && mouse_y < 0x15c) {
+                if (mouse_x < 0xe0) {
+                    file_no = first_entry;
+                } else {
+                    file_no = first_entry + 10;
+                }
+                file_no += (mouse_y - 0xbc) / 16;
+            }
+        }
+
+        if (mouse_left_preclick != 0) {
+            if (file_no < 0x3e7) {
+                my_strcpy(directory[file_no], filename, 0xd);
+                in_format_buffer(filename, 0xc, 0xa0, 1);
+            }
+        }
+
+        if (out1 >= 1) {
+            pointer_mode = old_pointer_mode;
+            if (decision == 1) return 1;
+            return 0;
+        }
+        button_time_flag = running_delay1();
+    }
+
+    cover_mouse_droppings();
+    hold_mouse_replace = 1;
+    pointer_mode = old_pointer_mode;
+    return 0;
+}
+
+// FUNCTION: C2 0x7093B
+// WIN: 0x0048302f
+// Lines 721–721
+//
+// Scroll the directory listing down by one entry, capped at
+// (no_of_entries - 14).  14 is the visible row count.
+void act_down_directory(void)
+{
+    if (no_of_entries - 0xe > first_entry) first_entry++;
+}
+
+// FUNCTION: C2 0x7095B
+// WIN: 0x00483054
+// Lines 722–722
+//
+// Scroll the directory listing up by one entry, floored
+// at 0.
+void act_up_directory(void)
+{
+    if (first_entry != 0) first_entry--;
+}
+
+// FUNCTION: C2 0x70973
+// WIN: 0x00483072
+// Lines 723–723
+void act_do_file_op(void)     { out1 = 2; }
+
+// FUNCTION: C2 0x7097E
+// WIN: 0x00483087
+// Lines 724–724
+void act_cancel_file_op(void) { out1 = 1; }
+
+// FUNCTION: C2 0x70989
+// WIN: 0x0048309c
+// Lines 726–749
+//
+// Save all registered savegame data blocks, then append the current
+// history.dat payload.  Returns non-zero on success.
+int savegame(char *fname)
+{
+    int fd;
+    int hist_fd;
+    int i;
+
+    fd = open(fname, 0x261, 0x180);
+    if (fd == -1) return 0;
+
+    hist_fd = open("history.dat", 0x200);
+    if (hist_fd == -1) {
+        close(fd);
+        return 0;
+    }
+
+    for (i = 0; i < 500; i++) {
+        if (savegame_entries[i].size == 0) break;
+        write(fd, savegame_entries[i].buf, savegame_entries[i].size);
+    }
+
+    read(hist_fd, ((void *)scratch_buffer), 0xfa0);
+    write(fd, ((void *)scratch_buffer), 0xfa0);
+    close(fd);
+    close(hist_fd);
+
+    map_gfx_loaded = 0;
+    setup_map_screen_refresh();
+    unflag_all_cm(3, 0xfd);
+    update_landfill = 1;
+    return 1;
+}
+
+// FUNCTION: C2 0x70A5C
+// WIN: 0x004832e3
+// Lines 751–779
+//
+// Load registered savegame blocks and the appended history.dat payload.
+// The success return shares savegame()'s `return 1` epilogue in PS.
+int loadgame(char *fname)
+{
+    int fd;
+    int hist_fd;
+    int i;
+
+    file_loaded_status = 0;
+    clear_messages();
+
+    fd = open(fname, 0x200);
+    if (fd == -1) return 0;
+
+    hist_fd = open("history.dat", 0x261, 0x180);
+    if (hist_fd == -1) {
+        close(fd);
+        return 0;
+    }
+
+    for (i = 0; i < 500; i++) {
+        if (savegame_entries[i].size == 0) break;
+        read(fd, savegame_entries[i].buf, savegame_entries[i].size);
+    }
+
+    read(fd, ((void *)scratch_buffer), 0xfa0);
+    write(hist_fd, ((void *)scratch_buffer), 0xfa0);
+    close(fd);
+    close(hist_fd);
+
+    file_loaded_status = 1;
+    map_gfx_loaded = 0;
+    get_pseudo_map(map_direction);
+    refresh_zoom_mode(zoom_level);
+    load_map_graphics(map_mode, zoom_level);
+    setup_map_screen_refresh();
+    unflag_all_cm(3, 0xfd);
+    pm_build_shape = 0;
+    placing_type = 0;
+    placing_flags = 0;
+    if (city_rotation >= 8 || city_rotation < 0) city_rotation = 0;
+    if (prov_rotation >= 8 || prov_rotation < 0) prov_rotation = 0;
+    get_old_mood();
+    if (no_of_warehouses != 0) c2inf.peace_mode = 0;
+    return 1;
+}
+
+// FUNCTION: C2 0x70BBA
+// WIN: 0x00483554
+// Lines 786–793
+//
+// Persist the 64-byte c2inf preferences block to caesar2.inf.
+// Open with O_WRONLY|O_CREAT|O_TRUNC|O_BINARY (0x261), mode
+// 0600 (0x180); write c2inf; close.
+void save_inf(void)
+{
+    int fd;
+
+    fd = open("caesar2.inf", 0x261, 0x180);
+    if (fd != -1) {
+        write(fd, &c2inf, 0x40);
+        close(fd);
+    }
+}
+
+// FUNCTION: C2 0x70BF5
+// WIN: 0x004835b1
+// Lines 795–820
+//
+// Load caesar2.inf, preserving the two leading runtime bytes that the
+// executable seeds before reading the on-disk options block.
+void load_inf(void)
+{
+    int old0;
+    int old1;
+    int fd;
+
+    old0 = c2inf.cd_letter;
+    old1 = c2inf.drive_init;
+
+    get_directory("*.sav");
+    if (no_of_entries != 0) {
+        my_strcpy(directory, filename, 0xd);
+    } else {
+        my_strcpy("caesar2.sav", filename, 0xd);
+    }
+    first_entry = 0;
+    file_no = 0;
+
+    basic_inf_settings();
+    set_language(c2inf.config37);
+
+    fd = open("caesar2.inf", 0x8404);
+    if (fd != -1) {
+        read(fd, &c2inf, 0x40);
+        close(fd);
+        test_inf_settings();
+        set_language(c2inf.config37);
+        c2inf._unused_writeonly38 = 0;
+        c2inf.cd_letter = old0;
+        c2inf.drive_init = old1;
+        set_samples_volume();
+        set_sequences_volume();
+    }
+}
+
+// FUNCTION: C2 0x70CD1
+// WIN: 0x004836fb
+// Lines 822–832
+//
+// Select language and help/media table filenames.  English is the
+// default; language ids 2/3/4 replace it with German/French/Spanish.
+void set_language(int language)
+{
+    my_strcpy("c2.eng", lang_file, 0xc);
+    if (language == 2) {
+        my_strcpy("c2.ger", lang_file, 0xc);
+    } else if (language == 3) {
+        my_strcpy("c2.fre", lang_file, 0xc);
+    } else if (language == 4) {
+        my_strcpy("c2.spa", lang_file, 0xc);
+    }
+
+    my_strcpy("help.eng", media_file, 0xc);
+    if (language == 2) {
+        my_strcpy("help.ger", media_file, 0xc);
+    } else if (language == 3) {
+        my_strcpy("help.fre", media_file, 0xc);
+    } else if (language == 4) {
+        my_strcpy("help.spa", media_file, 0xc);
+    }
+}
+
+// FUNCTION: C2 0x70D94
+// WIN: 0x0048372e
+// Lines 834–842
+//
+// Validate the loaded game's settings: if the year header
+// isn't the magic 0x7D5 marker, fall back to defaults.
+// Then clear skill_level (signed) and arm peace_mode.
+void test_inf_settings(void)
+{
+    if ((unsigned short)c2inf.starting_year != 0x7d5)
+        basic_inf_settings();
+    c2inf.skill_level = 0;
+    c2inf.peace_mode = 1;
+}
+
+// FUNCTION: C2 0x70DB8
+// WIN: 0x0048375f
+// Lines 844–865
+//
+// Defaults for the persistent INF/options block: initial year,
+// player name, scroll/game speed, sound toggles/levels, tutorial
+// flags, and max sample count.  The assignments are intentionally
+// kept in PS order to preserve Watcom's byte-store register reuse.
+void basic_inf_settings(void)
+{
+    c2inf.starting_year = 0x7d5;
+    my_strcpy("Octavian                ", c2inf.player_name, 0x19);
+    c2inf.game_speed = 0x64;
+    c2inf.scroll_speed = 0x64;
+    c2inf.anims_on = 1;
+    c2inf.yearend_on = 1;
+    c2inf.ambients_on = 1;
+    c2inf.speech_on = 1;
+    c2inf.tunes_on = 1;
+    c2inf.samples_on = 1;
+    c2inf.autosave_on = 1;
+    c2inf.samples_level = 0x64;
+    c2inf.max_samples = 4;
+    c2inf.tunes_level = 0x64;
+    c2inf.paused = 0;
+    c2inf._unused_writeonly36 = 1;
+    c2inf.skill_level = 0;
+    c2inf.peace_mode = 1;
+    c2inf.config37 = 1;
+}
+
+// FUNCTION: C2 0x70E57
+// WIN: 0x00483834
+// Lines 868–882
+//
+// Load registered model blocks until the first zero-size entry.
+int loadmodel(char *fname)
+{
+    int fd;
+    int i;
+
+    fd = open(fname, 0x200);
+    if (fd == -1) return 0;
+
+    for (i = 0; i < 100; i++) {
+        if (model_entries[i].size == 0) break;
+        read(fd, model_entries[i].buf, model_entries[i].size);
+    }
+    close(fd);
+    return 1;
+}
+
+// FUNCTION: C2 0x70EAE
+// WIN: 0x004838d3
+// Lines 884–893
+//
+// Sanitise the player name in `buf`: replace control chars
+// (< 0x20) with spaces, then null-terminate at the first
+// existing 0 byte (or at offset 24 if longer).
+void fix_plyr_name(char *buf)
+{
+    int i;
+    for (i = 0; i < 0x18; i++) {
+        if ((unsigned char)buf[i] < 0x20)
+            buf[i] = 0x20;
+        if (buf[i] == 0) break;
+    }
+    buf[i] = 0;
+}
+
+// FUNCTION: C2 0x70ED8
+// WIN: 0x0048393f
+// Lines 896–939
+//
+// Decode one 60x60 province region-map record from regions.dat into
+// region_map, recording the city/hut/border metadata encountered while
+// expanding tile codes into region-map area records.
+void load_region_map(int province)
+{
+    int off;
+    int y;
+    int x;
+    unsigned char c;
+    int dir;
+
+    map_direction = 0;
+
+    off = province;
+    off <<= 3;
+    off -= province;
+    off <<= 5;
+    off += province;
+    off <<= 4;
+    readfile("regions.dat", ((void *)scratch_buffer), 0xe10, off);
+    clear_huts();
+    cm_dptr = 0;
+
+    for (y = 0; y < 60; y++) {
+        for (x = 0; x < 60; x++, cm_dptr++) {
+            c = *(((char *)scratch_buffer) + cm_dptr);
+
+            if (c >= 0x7d && c < 0x85) {
+                put_rm_area(x, y, 1, c, 4, c - 0x7d, 0x10);
+            } else if (c >= 0x85 && c < 0x8d) {
+                put_rm_area(x, y, 2, c, 4, c * 4 - 0x20c, 0x10);
+            } else if (c >= 0x8d && c < 0x91) {
+                put_rm_area(x, y, 3, c, 4,
+                            (c - 0x8d) * 9 + 0x28, 0x10);
+            } else if (c == 0x91) {
+                put_rm_area(x, y, 4, c, 4, 0x4c, 0x10);
+            } else if (c >= 0x20 && c < 0x7c) {
+                put_rm_area(x, y, 1, c, 0, c, 0x18);
+            } else if (c == 0x92) {
+                put_rm_area(x, y, 2, c, 8, 0, 1);
+                reg_city_x = x;
+                reg_city_y = y;
+                reg_city_ptr = (y * REGION_W + x) * REGION_CELL_BYTES;
+                region_pm_y = -1;
+                region_pm_x = -1;
+            } else if (c == 0x93) {
+                put_rm_area(x, y, 1, c, 0, 0x2e, 1);
+                put_a_hut(x, y, 2);
+            } else if (c == 0x94) {
+                put_rm_area(x, y, 1, c, 0, 0x2f, 1);
+                put_a_hut(x, y, 3);
+            } else if (c == 0x95) {
+                put_rm_area(x, y, 1, c, 0, 0x30, 1);
+                put_a_hut(x, y, 4);
+            } else if (c == 0x96) {
+                put_rm_area(x, y, 1, c, 0, 0x31, 1);
+                put_a_hut(x, y, 5);
+            } else if (c == 0x97) {
+                put_rm_area(x, y, 1, c, 0, 0x32, 1);
+                put_a_hut(x, y, 1);
+            } else if (c == 0x98) {
+                dir = get_border_position(x, y, 0);
+                c += (char)dir;
+                put_rm_area(x, y, 1, (unsigned char)c, 0, 0x50, 1);
+            } else if (c == 0x9c) {
+                dir = get_border_position(x, y, 1);
+                c += (char)dir;
+                put_rm_area(x, y, 1, (unsigned char)c, 0,
+                            (unsigned char)c - 0x72, 0x18);
+            } else if (c >= 0x18 && c <= 0x1b) {
+                put_rm_area(x, y, 1, c, 0, c, 0x40);
+            } else if (c >= 0x1c && c <= 0x1f) {
+                put_rm_area(x, y, 1, c, 0, c, 0x80);
+            } else {
+                put_rm_area(x, y, 1, (unsigned char)c, 0, (unsigned char)c, 0);
+            }
+        }
+    }
+    return;
+}
+
+// FUNCTION: C2 0x711A6
+// WIN: 0x00483e56
+// Lines 942–946
+//
+// Clear the 4-entry hut list (3 bytes per entry).
+void clear_huts(void)
+{
+    int i;
+    for (i = 0; i < 4; i++) {
+        hut_list[i].x    = 0;
+        hut_list[i].y    = 0;
+        hut_list[i].kind = 0;
+    }
+}
+
+// FUNCTION: C2 0x711CE
+// WIN: 0x00483ea3
+// Lines 948–954
+//
+// Place a hut record into the first empty slot of the
+// 4-entry hut_list (3 bytes per entry: x, y, hut kind).
+void put_a_hut(int x, int y, int kind)
+{
+    int i;
+    for (i = 0; i < 4; i++) {
+        if (hut_list[i].x == 0) {
+            hut_list[i].x    = x;
+            hut_list[i].y    = y;
+            hut_list[i].kind = kind;
+            return;
+        }
+    }
+}
+
+// FUNCTION: C2 0x71216
+// WIN: 0x00483f0f
+// Lines 956–959 (W/E branches; N/S/test_beeps tail spills past the
+// 49-byte symbol boundary into the `allowed_keys` stub region —
+// PS source is a single function, but the symbol table splits it
+// in two and `allowed_keys` has no direct callers).
+//
+// Caller passes (x in eax, y in edx, trader_is in ebx).  Returns
+// a direction code: 3=west, 1=east, 0=north (or fallback), 2=south.
+int get_border_position(int x, int y, int trader_is)
+{
+    if (x == 0) {
+        west_border_x = x;
+        west_border_y = y;
+        west_trader_is = trader_is;
+        return 3;
+    }
+    if (x >= 59) {
+        east_border_x = x;
+        east_border_y = y;
+        east_trader_is = trader_is;
+        return 1;
+    }
+    if (y == 0) {
+        north_border_x = x;
+        north_border_y = y;
+        north_trader_is = trader_is;
+        return 0;
+    }
+    if (y >= 59) {
+        south_border_x = x;
+        south_border_y = y;
+        south_trader_is = trader_is;
+        return 2;
+    }
+    test_beeps();
+    return 0;
+}
+
+// FUNCTION: C2 0x71247
+// WIN: 0x0048423b
+// Lines 960–962
+//
+// Stripped stub (`return 1`).  In CAESAR2.EXE the loadsave demo/recorder
+// stubs are byte-identical empty functions emitted AFTER the history
+// block (not in declared order); mapped to the matching return-shape
+// stub slot.  This is the only `mov eax,1; ret` stub → 0x0048423b.
+int allowed_keys(void)
+{
+    return 1;
+}
+
+// FUNCTION: C2 0x71286
+// WIN: 0x004841eb
+// Lines 963–964
+//
+// Demo-recorder hook stripped from release builds — body is just
+// `xor eax, eax; ret`.  PS folds `mouse_recorder` and `out_of_sync`
+// to the same address (linker alias); we emit them as two separate
+// 3-byte functions, accepting a 3-byte cascade vs PS.
+// CAESAR2.EXE: byte-identical `xor eax,eax; ret` stub slot.
+int mouse_recorder(void)
+{
+    return 0;
+}
+
+// FUNCTION: C2 0x71286 (alias)
+// WIN: 0x00484213
+//
+// Linker-aliased to `mouse_recorder` in PS.EXE — both names point
+// to the same `xor eax, eax; ret` body.  We emit a separate copy.
+int out_of_sync(void)
+{
+    return 0;
+}
+
+// FUNCTION: C2 0x71289
+// WIN: 0x00483fd3
+// Lines 966–977
+//
+// Initialize the on-disk history.dat file (111 b,
+// L966–977).  history_entry is a 200-row × 5-int table
+// (200 * 20 = 4000 b) that records prior reigns'
+// scores; this routine creates the file fresh.
+//
+//   1. zero history_entry's first 5 ints (template row).
+//   2. Open history.dat for write+create+trunc, mode 0600.
+//      Skip the rest if open fails (no history file).
+//   3. Write 200 copies of the zero template (each 20 b).
+//   4. Close fd.
+//   5. Reset the in-memory pointers / counter to 0.
+//
+// The 5-int zero-fill loop compiles to `call __STOSD` (count in
+// ecx = 5 dwords) via Watcom's fill-loop recognition — same
+// recognition as the __STOSB byte fills in controls.c / lib32.c /
+// mmedia.c.  (memset would instead be a real call, count in ebx.)
+//
+// 2 callers — loadsave.c donor.
+void setup_history_data(void)
+{
+    int fd;
+    int i;
+
+    for (i = 0; i < 5; i++)
+        history_entry[i] = 0;
+    fd = open("history.dat", 0x261, 0x180);
+    if (fd != -1) {
+        for (i = 0; i < 200; ++i) {
+            write(fd, history_entry, 0x14);
+        }
+        close(fd);
+        history_start_ptr = 0;
+        history_end_ptr = 0;
+        history_entries = 0;
+    }
+}
+
+// FUNCTION: C2 0x712F8
+// WIN: 0x00484094
+// Lines 979–992
+//
+// Append/overwrite the current 5-int history_entry in the 200-slot
+// ring file history.dat at history_end_ptr.  The file offset is
+// history_end_ptr * 20.  history_entries saturates at 200 and
+// history_end_ptr wraps to 0 after slot 199.
+void save_history(void)
+{
+    int fd;
+    int off;
+
+    off = history_end_ptr * 20;
+    fd = open("history.dat", 0x221, 0x180);
+    if (fd != -1) {
+        _lseek(fd, off, 0);
+        write(fd, history_entry, 0x14);
+        close(fd);
+        history_entries++;
+        if (history_entries > 0xc8)
+            history_entries = 0xc8;
+        history_end_ptr++;
+        if (history_end_ptr >= 0xc8)
+            history_end_ptr = 0;
+    }
+}
+
+
+// FUNCTION: C2 0x7138B
+// WIN: 0x0048414d
+// Lines 994–1000
+//
+// Slurp the entire 4 000-byte / 200x5-int history.dat file into the
+// caller-supplied buffer.  Open with O_RDONLY|O_BINARY (0x200);
+// silently no-op when the file is absent.
+void get_history_in_buffer(int *buf)
+{
+    int fd;
+
+    fd = open("history.dat", 0x200);
+    if (fd != -1) {
+        read(fd, buf, 0xfa0);
+        close(fd);
+    }
+}
+
+// FUNCTION: C2 0x713BE
+// WIN: 0x004841a0
+// Lines 1002–1009
+int get_history_from_buffer(int *buf, int row, int col)
+{
+    return buf[row * 5 + col];
+}
+
+// FUNCTION: C2 0x713CE
+// WIN: 0x00484230
+//
+// Demo-recorder hook stripped from release — body is `c3 ret`.
+// CAESAR2.EXE emits the five folded void names as five byte-identical
+// empty stub slots after the history block; assigned in declaration
+// order to the void-return stub slots 0x004841ce..0x00484230.
+// PS folds five names (`stop_mouse_recorder`, `start_demo`,
+// `start_mouse_recorder`, `go_demo_play_mode`, `go_demo_build_mode`)
+// to the same 1-byte function at 0x713CE.  This is a COMPILER
+// (intra-TU) fold, not a linker alias: wcc386 10.0a emits identical
+// empty functions at the same segment offset (5 PUBDEFs → one `c3`).
+// Our build reproduces this exactly — all five resolve to a single
+// address, byte-identical to PS (verified, no cascade).
+void stop_mouse_recorder(void)
+{
+}
+
+// FUNCTION: C2 0x713CE (alias)
+// WIN: 0x00484208
+void start_demo(void)
+{
+}
+
+// FUNCTION: C2 0x713CE (alias)
+// WIN: 0x00484225
+void start_mouse_recorder(void)
+{
+}
+
+// FUNCTION: C2 0x713CE (alias)
+// WIN: 0x004841fd
+void go_demo_play_mode(void)
+{
+}
+
+// FUNCTION: C2 0x713CE (alias)
+// WIN: 0x004841ce
+void go_demo_build_mode(void)
+{
+}

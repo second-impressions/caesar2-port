@@ -1,0 +1,57 @@
+[project]
+name = "c2"
+version = "0.1.0"
+description = "Caesar II reverse engineering toolkit — parse DOS/4GW PS.EXE and extract Watcom debug info"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "reccmp",
+    "capstone>=5.0.7",
+    "construct>=2.10.0",
+    "pillow>=12.1.1",
+    "pydantic>=2.12.5",
+    "tomli-w>=1.2.0",
+    "typer>=0.24.1",
+    "pycparser>=3.0",
+    "pyghidra>=2.2.0",
+    "pyyaml>=6.0.3",
+    "numpy>=2.5.0",
+    "pydantic-ai-slim[openai,anthropic]>=1.0",
+    "logfire>=2.0",
+    "python-dotenv>=1.2.2",
+    "tree-sitter>=0.26.0",
+    "tree-sitter-c>=0.24.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.8.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+reccmp = { git = "https://github.com/Luminger/reccmp.git" }
+
+[dependency-groups]
+dev = [
+    "capstone>=5.0.7",
+    "pytest>=8.0",
+    "semgrep>=1.121.0",
+    "setuptools<81",
+]
+
+[project.scripts]
+c2 = "c2.app:app"
+c2-ext = "c2_ext.cli:main"
+
+[tool.pytest.ini_options]
+# Register custom marks so `@pytest.mark.slow` doesn't emit
+# PytestUnknownMarkWarning.  Slow tests are skipped by default (they
+# rebuild the whole corpus / shell out to wcc386 in a container etc.);
+# opt in with `pytest -m slow` to run them.
+markers = [
+    "slow: marks tests that are slow (deselect with '-m \"not slow\"')",
+]

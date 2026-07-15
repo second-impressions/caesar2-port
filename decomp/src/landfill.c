@@ -1,0 +1,668 @@
+// D:\C2\CODE\landfill.c
+
+#include "c2_data.h"
+
+/* Asm-side blitters in library.asm.  First arg (EAX) is a raw
+ * pointer into the landfill pixel pool, second arg (EDX) is the
+ * destination byte offset into _internal_screen.  Declaring the
+ * first parameter as `unsigned char *` lets `addr` stay typed as
+ * a pointer instead of being squeezed through integer arithmetic. */
+extern void place_2x2_block(unsigned char *src, int screen_off);
+extern void place_4x4_block(unsigned char *src, int screen_off);
+extern void place_6x6_block(unsigned char *src, int screen_off);
+extern void place_8x8_block(unsigned char *src, int screen_off);
+
+// FUNCTION: C2 0x3E9C0
+// WIN: 0x0049d310
+// Lines 44–49
+//
+// Zero the 6400-byte landfill_pool, walking the city-map grid via
+// the cm_x/cm_y/cm_dptr global cursor (one byte per cell).
+void clear_landfill(void)
+{
+    cm_y = 0;
+    cm_dptr = 0;
+    for ( ; cm_y < 80; cm_y++) {
+        cm_x = 0;
+        do {
+            landfill_pool[cm_dptr] = 0;
+            cm_x++;
+            cm_dptr++;
+        } while (cm_x < 80);
+    }
+}
+
+// FUNCTION: C2 0x3EA13
+// WIN: 0x0049d385
+// Lines 51–60
+//
+// Rebuild landfill_pool for the current overlay.  Only runs in
+// city-map mode (map_mode == 0); when `evolve` is set, also runs
+// evolve_to_current_fabric first to refresh derived cell state.
+// Walks the 80x80 city_map and calls ov_routines[ov_map_mode] per
+// cell, which writes one byte into landfill_pool[cm_dptr].
+void get_landfill(int evolve)
+{
+    if (map_mode != 0) return;
+    if (evolve != 0) evolve_to_current_fabric();
+
+    cm_y = 0;
+    cm_sptr = 0;
+    cm_dptr = 0;
+    for ( ; cm_y < 80; cm_y++) {
+        cm_x = 0;
+        do {
+            ov_routines[ov_map_mode]();
+            cm_x++;
+            cm_sptr += 20;
+            cm_dptr++;
+        } while (cm_x < 80);
+    }
+}
+
+// FUNCTION: C2 0x3EA86
+// WIN: 0x0049d430
+// Lines 62–65
+//
+// Overlay routine for the "no overlay" mode: clears the current
+// cell's landfill byte.
+void get_no_ov_image(void)
+{
+    landfill_pool[cm_dptr] = 0;
+}
+
+// FUNCTION: C2 0x3EA96
+// WIN: 0x0049d447
+// Lines 68–76
+//
+// Overlay routine for the land-value view: maps the cell's signed
+// land_value (clamped to 0..0x40) to a sprite index in the 0x7E +
+// 3*(val/8) ramp; zero land-value clears the byte.
+void get_landval_ov_image(void)
+{
+    signed char val;
+    int n;
+
+    val = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).land_value;
+    if (val < 0) val = 0;
+    else if (val >= 0x40) val = 0x40;
+
+    if (val > 0) {
+        n = val;
+        landfill_pool[cm_dptr] = (unsigned char)((n / 8) * 3 + 0x7e);
+    } else {
+        landfill_pool[cm_dptr] = 0;
+    }
+}
+
+// FUNCTION: C2 0x3EAEA
+// WIN: 0x0049d4c5
+// Lines 78–96
+//
+// Overlay routine for the water-supply view: 0x96 for water-
+// blocking terrain (terrain bits 0xC0 set, or aqueduct kinds
+// 0xD7..0xDE); 0x87 for tiles with both running water and a
+// fountain; 0x84 for water-only; 0x8D for fountain-only.  Source
+// bits come from cell.education (bit 2 = fountain, bits 0..1 =
+// water).
+void get_water_ov_image(void)
+{
+    unsigned char terrain;
+    unsigned char flags;
+    unsigned char water;
+    unsigned char fountain;
+    unsigned char kind;
+
+    terrain = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain;
+    kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+    flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).education;
+    fountain = flags & 4;
+    water = flags & 3;
+
+    if ((terrain & 0xc0) != 0) { landfill_pool[cm_dptr] = 0x96; return; }
+    if (kind >= 0xd7 && kind <= 0xde) { landfill_pool[cm_dptr] = 0x96; return; }
+    if (water != 0 && fountain != 0) { landfill_pool[cm_dptr] = 0x87; return; }
+    if (water != 0) { landfill_pool[cm_dptr] = 0x84; return; }
+    if (fountain != 0) { landfill_pool[cm_dptr] = 0x8d; return; }
+    landfill_pool[cm_dptr] = 0;
+}
+
+// FUNCTION: C2 0x3EB87
+// WIN: 0x0049d5d3
+// Lines 98–115
+//
+// Overlay routine for the administration view: 0x96 for forum-
+// class building footprints (kind 0xAE..0xB9); otherwise reads the
+// 2-bit admin coverage from cell.range_flag bits 2..3 -- level 1
+// (0x4) = 0x93, level 2 (0x8) = 0x90, level 3 = 0x8D.
+void get_admin_ov_image(void)
+{
+    unsigned char kind;
+    unsigned char admin;
+
+    kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+    admin = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0xc;
+    if (kind >= 0xae && kind <= 0xb9) {
+        landfill_pool[cm_dptr] = 0x96;
+    } else if (admin != 0) {
+        if (admin == 4) landfill_pool[cm_dptr] = 0x93;
+        else if (admin == 8) landfill_pool[cm_dptr] = 0x90;
+        else landfill_pool[cm_dptr] = 0x8d;
+    } else {
+        landfill_pool[cm_dptr] = 0;
+    }
+}
+
+// FUNCTION: C2 0x3EC0B
+// WIN: 0x0049d6a9
+// Lines 117–142
+//
+// Overlay routine for the security view: 0x96 for crime/prefecture
+// building footprints (terrain bits 1..2, kind 0x1E..0x51, 0xE3,
+// 0xE4); otherwise combines the cell's crime level (security >=
+// 0x10) with its prefect coverage (range_flag bits 4..5) into a
+// 0..2 severity that selects 0x8D / 0x93 / 0x90.
+void get_security_ov_image(void)
+{
+    unsigned char terrain;
+    unsigned char security;
+    signed char crime;
+    unsigned char kind;
+    unsigned char level;
+
+    terrain = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain;
+    kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+    crime = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).security;
+    security = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x30;
+
+    if (crime < 0x10) level = 0;
+    else if (crime >= 0x10) level = 1;
+    if (security != 0) level++;
+
+    if ((terrain & 6) != 0) { landfill_pool[cm_dptr] = 0x96; return; }
+    if (kind >= 0x1e && kind <= 0x51) { landfill_pool[cm_dptr] = 0x96; return; }
+    if (kind == 0xe3) { landfill_pool[cm_dptr] = 0x96; return; }
+    if (kind == 0xe4) { landfill_pool[cm_dptr] = 0x96; return; }
+    if (level != 0) {
+        if (level == 2) { landfill_pool[cm_dptr] = 0x8d; return; }
+        if (security != 0) { landfill_pool[cm_dptr] = 0x93; return; }
+        if (level == 1) { landfill_pool[cm_dptr] = 0x90; return; }
+    } else {
+        landfill_pool[cm_dptr] = level;
+    }
+}
+
+// FUNCTION: C2 0x3ECD2
+// WIN: 0x0049d833
+// Lines 144–157
+//
+// Overlay routine for the health view: reads the 2-bit health
+// coverage from cell.fpu_flag bits 4..5, mapping 0x10 -> 0x79
+// (mild), 0x20 -> 0x78 (moderate), 0x30 -> 0x77 (heavy).
+void get_health_ov_image(void)
+{
+    unsigned char health;
+
+    health = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).fpu_flag & 0x30;
+    if (health != 0) {
+        if (health == 0x10) landfill_pool[cm_dptr] = 0x79;
+        else if (health == 0x20) landfill_pool[cm_dptr] = 0x78;
+        else landfill_pool[cm_dptr] = 0x77;
+    } else {
+        landfill_pool[cm_dptr] = 0;
+    }
+}
+
+// FUNCTION: C2 0x3ED2A
+// WIN: 0x0049d8bc
+// Lines 159–176
+//
+// Overlay routine for the education view: 0x96 for school /
+// academy / library building footprints (kind 0xF3..0xF5);
+// otherwise reads cell.education bits 4 (school) and 5 (academy)
+// -- both = 0x87, school-only = 0x8D, academy-only = 0x84.
+void get_education_ov_image(void)
+{
+    unsigned char flags;
+    unsigned char school;
+    unsigned char academy;
+    unsigned char kind;
+
+    kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+    flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).education;
+    school = flags & 0x10;
+    academy = flags & 0x20;
+    if (kind >= 0xf3 && kind <= 0xf5) { landfill_pool[cm_dptr] = 0x96; return; }
+    if (school != 0 && academy != 0) { landfill_pool[cm_dptr] = 0x87; return; }
+    if (school != 0) { landfill_pool[cm_dptr] = 0x8d; return; }
+    if (academy != 0) { landfill_pool[cm_dptr] = 0x84; return; }
+    landfill_pool[cm_dptr] = 0;
+}
+
+// FUNCTION: C2 0x3EDB3
+// WIN: 0x0049d9ac
+// Lines 178–195
+//
+// Overlay routine for the entertainment view: 0x96 for theatre /
+// arena / colosseum building footprints (kind 0xE5..0xF0);
+// otherwise sums the three 2-bit coverage levels packed into
+// cell.entertainment (theatre bits 0..1, arena bits 2..3,
+// colosseum bits 4..5) and maps the total to the 0x7E ramp at
+// 3 sprites per coverage step.
+void get_entertainment_ov_image(void)
+{
+    unsigned char theatre;
+    unsigned char arena;
+    unsigned char colosseum;
+    unsigned char total;
+    unsigned char kind;
+    unsigned char flags;
+
+    kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+    flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).entertainment;
+    theatre = flags & 3;
+    arena = (flags & 0xc) >> 2;
+    colosseum = (flags & 0x30) >> 4;
+    total = theatre + arena + colosseum;
+    if (kind >= 0xe5 && kind <= 0xf0) { landfill_pool[cm_dptr] = 0x96; return; }
+    if (total == 0) landfill_pool[cm_dptr] = 0;
+    else landfill_pool[cm_dptr] = (total - 1) * 3 + 0x7e;
+}
+
+// FUNCTION: C2 0x3EE33
+// WIN: 0x0049da87
+// Lines 198–217
+//
+// Overlay routine for the industry/market view: 0x96 for market
+// and large-industry footprints (kind 0xFC..0xFF or 0xFA);
+// otherwise reads the 2-bit industry coverage from cell.range_flag
+// bits 6..7 -- 0x40 -> 0x93, 0x80 -> 0x90, 0xC0 -> 0x8D.
+void get_industry_ov_image(void)
+{
+    unsigned char industry;
+    unsigned char kind;
+    kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+    industry = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0xc0;
+    if (kind >= 0xfc && kind <= 0xff) landfill_pool[cm_dptr] = 0x96;
+    else if (kind == 0xfa) landfill_pool[cm_dptr] = 0x96;
+    else if (industry != 0) {
+        if (industry == 0x40) landfill_pool[cm_dptr] = 0x93;
+        else if (industry == 0x80) landfill_pool[cm_dptr] = 0x90;
+        else landfill_pool[cm_dptr] = 0x8d;
+    } else landfill_pool[cm_dptr] = 0;
+}
+
+// FUNCTION: C2 0x3EEBE
+// WIN: 0x0049db80
+// Lines 219–230
+//
+// Overlay routine for the unrest view: reads cell.fpu_flag bits
+// 0..3, bucketing 1..4 -> 0x79 (mild), 5..0xA -> 0x78 (moderate),
+// >= 0xB -> 0x77 (severe).  Zero is the cleared default.
+void get_unrest_ov_image(void)
+{
+    unsigned char unrest;
+
+    unrest = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).fpu_flag & 0xf;
+    if (unrest == 0) {
+        landfill_pool[cm_dptr] = 0;
+    } else if (unrest >= 0xb) {
+        landfill_pool[cm_dptr] = 0x77;
+    } else if (unrest >= 5) {
+        landfill_pool[cm_dptr] = 0x78;
+    } else {
+        landfill_pool[cm_dptr] = 0x79;
+    }
+}
+
+// FUNCTION: C2 0x3EF16
+// WIN: 0x0049dc0e
+// Lines 233–263
+//
+// Compute sprite_image_no from the current region_map cell's
+// base_kind, walking a long range/equality cascade against the
+// terrain alphabet (geography overlay variant for the region view).
+// Also clears the `cleared` bit (region_cell.gfx & 2) on read.
+// Returns 0 by convention; sprite_image_no is the actual product.
+int get_reg_geog_ov_image(void)
+{
+    unsigned char kind;
+    unsigned char flags;
+
+    kind = ((unsigned char *)region_map)[cm_sptr];
+    flags = ((unsigned char *)region_map)[cm_sptr + 3] & 2;
+    ((unsigned char *)region_map)[cm_sptr + 3] &= 0xfd;
+    if (flags != 0) sprite_image_no = 0x93;
+    else if (kind < 4) sprite_image_no = 0xb4;
+    else if (kind < 8) sprite_image_no = 0xb5;
+    else if (kind < 0xc) sprite_image_no = 0xb6;
+    else if (kind < 0x10) sprite_image_no = 0xb7;
+    else if (kind < 0x20) sprite_image_no = (kind & 7) + 0x10;
+    else if (kind < 0x7c) sprite_image_no = (kind & 7) + 0xb8;
+    else if (kind >= 0x7d && kind < 0x85) sprite_image_no = (kind & 7) + 0xc0;
+    else if (kind >= 0x85 && kind < 0x8d) sprite_image_no = (kind & 3) + 0xc8;
+    else if (kind >= 0x8d && kind < 0x91) sprite_image_no = (kind & 3) + 0xd1;
+    else if (kind == 0x91) sprite_image_no = 0xd5;
+    else if (kind == 0x92) sprite_image_no = 0xcc;
+    else if (kind >= 0x93 && kind <= 0x96) sprite_image_no = 0x48;
+    else if (kind >= 0x97 && kind <= 0x9b) sprite_image_no = 0x4a;
+    else if (kind >= 0x9c && kind <= 0x9f) sprite_image_no = 0xb8;
+    else if (kind >= 0xa0 && kind <= 0xaa) sprite_image_no = lf_tiles[kind - 0x4e];
+    else if (kind >= 0xb7 && kind <= 0xc0) sprite_image_no = lf_tiles[kind + 0xa];
+    else if (kind == 0xd5) sprite_image_no = 0xce;
+    else if (kind >= 0xdc && kind <= 0xe7) sprite_image_no = 0xcf;
+    else if (kind >= 0xe8 && kind <= 0xeb) sprite_image_no = 0xd0;
+    else if (kind >= 0xec && kind <= 0xef) sprite_image_no = 0xcd;
+    else sprite_image_no = 0x96;
+    return 0;
+}
+
+// FUNCTION: C2 0x3F187
+// Lines 268–272
+//
+// Two-way dispatcher: route to the city-map or region-map landfill
+// renderer based on `map_mode`.  Mode 0 = city, mode 1 = region;
+// any other mode is a no-op.  (p1, p2) are the screen-position pass-
+// through args forwarded straight to the chosen renderer.
+void show_landfill(int p1, int p2)
+{
+    if (map_mode == 0) {
+        show_city_landfill(p1, p2);
+        return;
+    }
+    if (map_mode == 1) {
+        show_region_landfill(p1, p2);
+    }
+}
+
+// FUNCTION: C2 0x3F1AC
+// WIN: 0x0049e068
+// Lines 274–325
+//
+// City-map landfill renderer.  Walks the 80x80 city grid; for each
+// cell, classifies the kind/edge/overlay/in-range mix into one of
+// four block sizes (2x2, 4x4, 6x6, 8x8) and blits the matching
+// landfill sprite to the screen.  `overlay` (cell.edge_bits & 2,
+// auto-cleared on read) forces the highlight sprite 0x93; otherwise
+// the precomputed landfill_pool byte (or the kind's lf_tiles entry,
+// with circus-bodge fix-up) selects the sprite.  Finishes with a
+// write_image(misc, 4, ...) to refresh the on-screen area.
+void show_city_landfill(int x_start, int y_start)
+{
+    unsigned char kind;
+    int block;
+    unsigned char edge;
+    unsigned char overlay;
+    unsigned char terrain;
+    int pool_idx;
+    unsigned char in_range;
+
+    sprite_y = y_start * screen_width;
+    cm_y = 0;
+    pool_idx = 0;
+    cm_sptr = 0;
+    for ( ; cm_y < 80; cm_y++, sprite_y += 0x500) {
+    sprite_x = x_start;
+    cm_x = 0;
+    do {
+        kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+        edge = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).activity_a & 0xf;
+        terrain = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain & 1;
+        if (kind >= 0x82 && kind <= 0xa1) in_range = 1;
+        else in_range = 0;
+        overlay = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).edge_bits & 2;
+        (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).edge_bits &= 0xfd;
+        block = 0;
+        if (overlay != 0) {
+            sprite_image_no = 0x93;
+        } else if (landfill_pool[pool_idx] != 0) {
+            sprite_image_no = (unsigned char)landfill_pool[pool_idx];
+            if (in_range) {
+                if (sprite_image_no >= 0x7e) sprite_image_no += 2;
+            } else if (terrain != 0) {
+                sprite_image_no++;
+            }
+        } else {
+                if (edge != 0 && terrain != 0) goto next_cell;
+                sprite_image_no = lf_tiles[kind];
+                if (kind >= 0xe9 && kind <= 0xf0) get_circus_bodge(kind);
+                if (sprite_image_no < 0x5a) block = 0;
+                else if (sprite_image_no < 0x63) block = 1;
+                else if (sprite_image_no < 0x71) block = 2;
+                else block = 3;
+            }
+            sprite_start = landfill[sprite_image_no * 16 + 0xc]
+                       + (landfill[sprite_image_no * 16 + 0xd] << 8);
+            if (block == 0) place_2x2_block(landfill + sprite_start, sprite_x + sprite_y);
+            else if (block == 1) place_4x4_block(landfill + sprite_start, sprite_x + sprite_y);
+            else if (block == 2) place_6x6_block(landfill + sprite_start, sprite_x + sprite_y);
+            else if (block == 3) place_8x8_block(landfill + sprite_start, sprite_x + sprite_y);
+next_cell:
+            cm_x++;
+            pool_idx++;
+            cm_sptr += 20;
+        sprite_x += 2;
+    } while (cm_x < 80);
+    }
+    write_image(misc, 4, x_start + 2, y_start + 2);
+}
+
+// FUNCTION: C2 0x3F3CB
+// WIN: 0x0049e741
+// Lines 328–342
+//
+// Special-case fix-up for the 4x4 / 6x6 circus footprint, called
+// from show_city_landfill while painting kinds 0xE9..0xF0.  When
+// the cell's activity_b bit 5 is clear, the kind selects a per-
+// tile sprite from the 0x6D..0x75 ramp (skipping 0x71, which is
+// the circus centre).  When the bit is set, the cell is left
+// alone.
+void get_circus_bodge(unsigned char kind)
+{
+    unsigned char m = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).activity_b & 0x20;
+    if (m != 0) return;
+    if (kind == 0xe9) sprite_image_no = 0x6d;
+    if (kind == 0xea) sprite_image_no = 0x6e;
+    if (kind == 0xeb) sprite_image_no = 0x6f;
+    if (kind == 0xec) sprite_image_no = 0x70;
+    if (kind == 0xed) sprite_image_no = 0x72;
+    if (kind == 0xee) sprite_image_no = 0x73;
+    if (kind == 0xef) sprite_image_no = 0x74;
+    if (kind == 0xf0) sprite_image_no = 0x75;
+}
+
+// FUNCTION: C2 0x3F493
+// WIN: 0x0049e844
+// Lines 344–387
+//
+// Region-map landfill renderer.  Walks the 60x60 region grid; for
+// each cell, dispatches to get_reg_geog_ov_image to compute the
+// sprite_image_no from base_kind, then picks one of four block
+// sizes (2x2 / 4x4 / 6x6 / 8x8) and blits the landfill sprite.
+// Several kind/flag combinations skip the cell entirely (port-of-
+// call land tiles whose `gfx` byte doesn't match the expected
+// alignment), and any block-sized sprite on a coast tile (cell
+// occupant & 3) is also skipped.  Finishes with a write_image
+// refresh.
+void show_region_landfill(int x_start, int y_start)
+{
+    unsigned char coast;
+    unsigned char kind;
+    unsigned char flags;
+    int block;
+
+    sprite_y = y_start * screen_width;
+    cm_y = 0; cm_sptr = 0;
+    for ( ; cm_y < 60; cm_y++, sprite_y += 0x500) {
+    sprite_x = x_start;
+    cm_x = 0;
+    do {
+        coast = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).occupant & 3;
+        kind = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).base_kind;
+        flags = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).gfx;
+        if (kind == 0x92 && (flags & 3) != 0) goto reg_next;
+        if (kind >= 0x85 && kind < 0x8d && (flags & 3) != 0) goto reg_next;
+        if (kind == 0x8d && flags != 0x28) goto reg_next;
+        if (kind == 0x8e && flags != 0x31) goto reg_next;
+        if (kind == 0x8f && flags != 0x3a) goto reg_next;
+        if (kind == 0x90 && flags != 0x43) goto reg_next;
+        if (kind == 0x91 && flags != 0x4c) goto reg_next;
+        get_reg_geog_ov_image();
+        if (sprite_image_no < 0xc8) block = 0;
+        else if (sprite_image_no < 0xd1) block = 1;
+        else if (sprite_image_no < 0xd5) block = 2;
+        else block = 3;
+        if (block > 0 && coast != 0) goto reg_next;
+        sprite_start = landfill[sprite_image_no * 16 + 0xc]
+                     + (landfill[sprite_image_no * 16 + 0xd] << 8);
+        if (block == 0) place_2x2_block(landfill + sprite_start, sprite_x + sprite_y);
+        else if (block == 1) place_4x4_block(landfill + sprite_start, sprite_x + sprite_y);
+        else if (block == 2) place_6x6_block(landfill + sprite_start, sprite_x + sprite_y);
+        else if (block == 3) place_8x8_block(landfill + sprite_start, sprite_x + sprite_y);
+reg_next:
+        cm_x++;
+        cm_sptr += 8;
+        sprite_x += 2;
+    } while (cm_x < 60);
+    }
+    write_image(misc, 4, x_start + 2, y_start + 2);
+}
+
+// FUNCTION: C2 0x3F6B6
+// WIN: 0x0049ef17
+// Lines 389–419
+//
+// Battle-map landfill renderer.  Walks a `row_count`-row strip of
+// the battle grid starting at `start_row`, blitting a 2x2 landfill
+// sprite for every cell.  Empty cells use the (terrain & 7) +
+// 0x10 sprite; occupied cells use 0x93 (own troops) or 0x8A
+// (enemy) -- dead figures (state 2) are skipped entirely.  Calls
+// setup_refresh_area to dirty the strip for the next blit.
+void show_battle_landfill(int start_row, int row_count, int screen_x, int screen_y)
+{
+    int col;
+    int bptr;
+    int row;
+    unsigned char b;
+
+    bptr = start_row * BATTLE_ROW;
+    sprite_y = (screen_y + start_row * 2) * screen_width;
+    row = start_row;
+    for ( ; row < (start_row + row_count); row++, sprite_y += 0x500) {
+    sprite_x = screen_x;
+    col = 0;
+    do {
+        b = ((unsigned char *)battle_map)[bptr];
+        temp_figure = ((unsigned char *)battle_map)[bptr + 1];
+        sprite_image_no = (b & 7) + 0x10;
+        if (temp_figure != 0) {
+            if (figure_list[temp_figure].state_idx == 2) goto battle_next;
+            if (figure_list[temp_figure].owner != 0) sprite_image_no = 0x8a;
+            else sprite_image_no = 0x93;
+        }
+        sprite_start = landfill[sprite_image_no * 16 + 0xc]
+                     + (landfill[sprite_image_no * 16 + 0xd] << 8);
+        place_2x2_block(landfill + sprite_start, sprite_x + sprite_y);
+battle_next:
+        col++;
+        bptr += BATTLE_CELL_BYTES;
+        sprite_x += 2;
+    } while (col < BATTLE_W);
+    }
+
+    setup_refresh_area(screen_x, screen_y + (start_row * 2), 8, ((start_row * 2) / 16) + 2, 1);
+}
+
+
+// FUNCTION: C2 0x3F7F5
+// WIN: 0x0049f217
+// Lines 421–428
+//
+// 11-frame animation tick for the “battle landfill”
+// (debris/dust effect that plays after a unit lands).
+// Each call advances the frame counter `cmu_count[3]`,
+// wraps after 10, and renders:
+//
+//   * frames 0–9:  show_battle_landfill(frame*5, 5, ...)
+//                  — sliding x position, animation phase 5
+//   * frame 10  :  show_battle_landfill(50, 2, ...)
+//                  - stopped at x=50, settled phase 2
+void update_battle_landfill(void)
+{
+    ++cmu_count[3];
+    if (cmu_count[3] > 10) {
+        cmu_count[3] = 0;
+    }
+    if (cmu_count[3] < 10) {
+        show_battle_landfill(cmu_count[3] * 5, 5, 0xb1, 0x170);
+    } else {
+        show_battle_landfill(50, 2, 0xb1, 0x170);
+    }
+}
+
+// FUNCTION: C2 0x3F854
+// WIN: 0x0049f284
+// Lines 431–454
+//
+// Mini-map debug overlay used while a cohort army is on the region
+// view: paints a 60x60 false-colour rendering of base_kind into the
+// rectangle at (x_start, y_start), then draws a 5x5 cross-hair
+// around army_idx's tile (four 3x1 / 1x3 arms in colour 0x3F and a
+// 3x3 fill in colour 3).  Kind classes: 0x20..0x7B = 1 (land),
+// 0x7D..0x84 = 0x30, 0x85..0x8C = 0x2A, 0x8D..0x90 = 0x24,
+// 0x91 = 0x20, all else = 2 (sea).
+void show_cohort_landfill(int army_idx, int x_start, int y_start)
+{
+    int colour;
+    unsigned char kind;
+
+    cm_y = 0;
+    cm_sptr = 0;
+    for ( ; cm_y < 60; cm_y++) {
+    cm_x = 0;
+    do {
+        kind = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).base_kind;
+            if (kind < 0x20) colour = 2;
+            else if (kind < 0x7c) colour = 1;
+            else if (kind >= 0x7d && kind < 0x85) colour = 0x30;
+            else if (kind >= 0x85 && kind < 0x8d) colour = 0x2a;
+            else if (kind >= 0x8d && kind < 0x91) colour = 0x24;
+            else if (kind == 0x91) colour = 0x20;
+            else colour = 2;
+            draw_a_point(x_start + cm_x, y_start + cm_y, colour);
+            cm_x++;
+        cm_sptr += 8;
+    } while (cm_x < 60);
+    }
+    draw_a_rect(x_start + army_list[army_idx].x - 1, y_start + army_list[army_idx].y - 2, 3, 1, 0x3f);
+    draw_a_rect(x_start + army_list[army_idx].x - 1, y_start + army_list[army_idx].y + 2, 3, 1, 0x3f);
+    draw_a_rect(x_start + army_list[army_idx].x - 2, y_start + army_list[army_idx].y - 1, 1, 3, 0x3f);
+    draw_a_rect(x_start + army_list[army_idx].x + 2, y_start + army_list[army_idx].y - 1, 1, 3, 0x3f);
+    draw_a_rect(x_start + army_list[army_idx].x - 1, y_start + army_list[army_idx].y - 1, 3, 3, 3);
+}
+
+/* Initializer-only callback declarations.  Kept after every function so
+   they cannot alter the K&R call visibility of landfill.c's code bodies. */
+extern void get_no_ov_image(void);
+extern void get_landval_ov_image(void);
+extern void get_water_ov_image(void);
+extern void get_security_ov_image(void);
+extern void get_unrest_ov_image(void);
+extern void get_admin_ov_image(void);
+extern void get_entertainment_ov_image(void);
+extern void get_education_ov_image(void);
+extern void get_health_ov_image(void);
+extern void get_industry_ov_image(void);
+
+void (*ov_routines[10])(void) = {
+    get_no_ov_image,
+    get_landval_ov_image,
+    get_water_ov_image,
+    get_security_ov_image,
+    get_unrest_ov_image,
+    get_admin_ov_image,
+    get_entertainment_ov_image,
+    get_education_ov_image,
+    get_health_ov_image,
+    get_industry_ov_image
+};
