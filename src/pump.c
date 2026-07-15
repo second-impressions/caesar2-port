@@ -682,7 +682,7 @@ void free_pumping_memory(void)
 // is exercised.  Function is here for code completeness.
 //
 // Faithful reconstruction of Okumura LZHUF.C `Encode` (de-structured;
-// see decomp/reference/lzhuf/LZHUF-amiga.c): short i/c/len/r/s/
+// see Okumura/Yoshizaki LZHUF.C, 1988/89 public sources): short i/c/len/r/s/
 // last_match_length, `for (len = 0; len < F && (c = getc()) != EOF; len++)`
 // read loops (PS does check-AFTER-read, so the getc is the comma
 // `(c = pmp_inbuff[pmp_iptr++], pmp_iptr < pmp_length)`), `do { } while
@@ -837,7 +837,7 @@ int pump(unsigned char *src, unsigned char *dst, int length)
 // window for future matches.
 //
 // Faithful reconstruction of Okumura LZHUF.C `Decode` (see
-// decomp/reference/lzhuf/LZHUF-amiga.c): short c/r/i/j/k, the
+// Okumura/Yoshizaki LZHUF.C, 1988/89 public sources): short c/r/i/j/k, the
 // `text_buf[r++] = c; r &= (N-1)` idiom, `count < textsize`.
 // NOTE: ~114 b regalloc residue (down from 216) -- PS homes src/dst
 // in callee-saved esi/edi across the header my_strcpy; the rest is
