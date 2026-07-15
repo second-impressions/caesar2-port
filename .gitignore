@@ -15,19 +15,14 @@ devenv.local.nix
 .venv/
 __pycache__/
 *.pyc
+.pytest_cache/
+.ruff_cache/
 
-# CD extraction artifacts (unzip CDs/<name>.zip)
-# Keep only .zip files and .hashes files in git
-CDs/extracted/
-
-# Demo extraction artifacts (regenerable via: unzip Demos/<name>.zip)
-# Keep only .zip files and .hashes files in git
-Demos/extracted/
-
-# Install directory (game assets copied from an extracted CD)
+# Install directory (game assets copied from an extracted CD; used by the
+# DOSBox-X / podman smoke tests — see README "Running the game")
 install/
 
-# Ghidra project files (regenerable)
+# Local Ghidra projects (ad-hoc RE; nothing in the repo depends on them)
 project/
 *.gpr
 *.rep/
@@ -35,44 +30,29 @@ project/
 *.lock~
 !uv.lock
 
-# reccmp machine-local inputs and generated build discovery
+# The original executable (supply via 'c2 fetch-original'; hash pinned in
+# reccmp-project.yml) + machine-local reccmp configs
 data/PS.EXE
 reccmp-user.yml
 reccmp-build.yml
 
-# Generated output files (regenerable via: c2 export data/PS.EXE)
+# Generated build metadata (regenerable via: c2 export data/PS.EXE)
 data/out/
-
-# Watcom compiler toolchains (extracted from ISOs, not tracked)
-data/watcom/
-CDs/*.iso
-CDs/*.ISO
 
 # Scratch / temp files
 tmp/
 *.err
 
-
 # c2 build caches
 .c2-cache/
-.c2-runs/
 
 # Local credentials
 .env
 .env.*
 
-# Local cross-compiler study (copyrighted Watcom binaries + result JSON)
-.c2-compiler-study/
-
 # Nix build result symlink and stray object files
 /result
 *.o
-
-# Mac disc/demo extraction artifacts (regenerable)
-MAC/extracted/
-MacProject/
-
-C2WinProject/
 
 # Delinked third-party OMF objects + reconstructed vendor archives
 # (reproducible via 'c2 delink'; RAD/Miles code)
