@@ -35,6 +35,10 @@ project/
 *.lock~
 !uv.lock
 
+# reccmp machine-local inputs and generated build discovery
+reccmp-user.yml
+reccmp-build.yml
+
 # Generated output files (regenerable via: c2 export data/PS.EXE)
 data/out/*
 # ...except the cross-build function map: expensive to regenerate (needs the

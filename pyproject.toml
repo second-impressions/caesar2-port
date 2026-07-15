@@ -33,7 +33,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.uv.sources]
-reccmp = { git = "https://github.com/Luminger/reccmp.git" }
+reccmp = { git = "https://github.com/second-impressions/reccmp.git", rev = "0eb53166b0a639a219864bd7f43d021b829232f1" }
 
 [dependency-groups]
 dev = [

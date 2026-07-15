@@ -1,0 +1,5 @@
+# Copying this file by hand is optional. `c2 reccmp prepare` validates the
+# binary hash and writes the machine-local reccmp-user.yml automatically.
+targets:
+  C2:
+    path: data/PS.EXE
