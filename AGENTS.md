@@ -156,8 +156,10 @@ function registry (many cross-TU calls had no prototype at all).
 - The **watcom10.0a sibling repo** — the compiler RE: the instrumented
   wcc386 trace image, `docs/wcc386-re/` (regalloc model, symbol maps),
   the vendor manuals (`docs/references/manuals/`).
-- `vendor/open-watcom/` (gitignored) — OW 2002 source as an algorithm
-  *hint*, never 10.0a ground truth; see `vendor/README.md`.
+- Doc citations of the form `bld/cg/c/…` refer to the earliest public
+  Open Watcom source (open-watcom-v2 commit `6b9cb44389`, 2002) — an
+  algorithm *hint* only, ~7 years newer than the 10.0a that built PS.EXE;
+  never treat its constants or codegen as 10.0a ground truth.
 
 ## Semantic code search (semble)
 

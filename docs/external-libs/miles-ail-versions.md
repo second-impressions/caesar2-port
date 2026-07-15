@@ -1,8 +1,6 @@
 # Miles AIL / MSS reference headers — version index & PS.EXE pin
 
-The gitignored `vendor/miles-ail-sdk/` tree (regeneration: per-file
-provenance below + `vendor/README.md`) collects every real, reachable
-Miles **AIL.H / MSS / AIL32**
+This index catalogues every real, reachable Miles **AIL.H / MSS / AIL32**
 header across the product's history, plus the official RAD Game Tools
 development-history changelog.  These are **reference evidence only** —
 the Caesar II decompilation does **not** build against any of them; the
@@ -45,7 +43,7 @@ once and never bumped the AIL library across the builds.
 **header-revision** date (when the `.H` was edited), not the binary ship
 date; the binary product version string is what PS prints.
 
-## Collected headers (`vendor/miles-ail-sdk/versions/`)
+## Collected headers (re-acquirable from the provenance column)
 
 | file                          | product version | source repo / provenance                          | eras relevant to PS |
 |-------------------------------|-----------------|---------------------------------------------------|---------------------|
@@ -78,7 +76,7 @@ header notes confirm the 3.02→3.03 delta was purely additive:
 *"Version 1.00 of 15-Feb-95: Initial, derived from AIL.H V3.02 /
 1.01 of 19-Jun-95: Added various functions for V3.03 release."*
 
-## Dev history (`vendor/miles-ail-sdk/dev-history/`)
+## Dev history
 
 - `dev-history/msshist.htm` — raw HTML of `https://www.radgametools.com/msshist.htm`,
   the full RAD Miles development history (oldest → newest), preserved

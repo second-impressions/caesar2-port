@@ -1,17 +1,16 @@
 # Miles AIL SDK reference header
 
 This doc covers the **real, upstream Miles AIL (Audio Interface Library)
-header** — `AIL.H`, on disk at gitignored `vendor/miles-ail-sdk/AIL.H`
-(regeneration: see the provenance below + `vendor/README.md`) — vendored
-as *reference evidence* for how a 1995-era
+header** — `AIL.H` (not kept in this repo; re-acquire it from the
+provenance below) — studied as *reference evidence* for how a 1995-era
 Watcom C game was meant to talk to the Miles sound system.  It is NOT part of
 the Caesar II decompilation source tree; it is a read-only reference used to
 justify codegen claims (see `watcom10.0a repo docs/wcc386-re/farptr-return-edx-mustsave.md`).
 
 See [`miles-ail-versions.md`](miles-ail-versions.md) for the full version index and the
 **PS.EXE pin (AIL 3.03 base, 1995-06-18)**, plus the collected multi-version
-headers under `vendor/miles-ail-sdk/versions/` and the RAD changelog under
-`vendor/miles-ail-sdk/dev-history/`.
+headers and the RAD changelog (all re-acquirable from the sources listed
+there).
 
 ## Provenance
 

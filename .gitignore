@@ -78,12 +78,6 @@ tmp/
 MAC/extracted/
 MacProject/
 
-# Third-party reference payloads (Open Watcom source oracle, Miles AIL /
-# Smacker SDK headers). Regenerable from public sources — provenance +
-# regeneration recipes in vendor/README.md and docs/external-libs/.
-# Tracked: only vendor/README.md.
-vendor/*
-!vendor/README.md
 C2WinProject/
 decomp/_objs/
 

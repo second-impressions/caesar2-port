@@ -38,12 +38,11 @@ docs/external-libs/
 └── miles-ail-versions.md    Multi-version AIL header index + the PS.EXE 3.03 pin
 ```
 
-The third-party header **payloads** themselves live in the gitignored
-`vendor/` tree (`vendor/external-libs-headers/{ail,smacker}/` — THE V3.03
-`mss-v1.01.h`, `ail32-v1.05.h` + its PD license, `mssw-win32.h`,
-`smack-v3.2f.h`; and `vendor/miles-ail-sdk/` — the multi-version AIL
-collection + RAD changelog).  Per-file provenance/URLs are in the three
-analysis docs above; regeneration recipes in `vendor/README.md`.
+The third-party header **payloads** themselves (THE V3.03 `mss-v1.01.h`,
+`ail32-v1.05.h` + its PD license, `mssw-win32.h`, `smack-v3.2f.h`, and the
+multi-version AIL collection + RAD changelog) are not kept in this repo.
+Per-file provenance/URLs for re-acquiring every one of them are in the
+three analysis docs above.
 
 ## Provenance, very briefly
 
