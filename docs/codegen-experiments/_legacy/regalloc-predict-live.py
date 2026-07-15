@@ -33,7 +33,7 @@ the value-flow extractor, NOT this selection rule) is the CountRegMoves
 tie-break, which only moves a pick when a free candidate would eliminate a
 register-to-register move — capturing those inputs needs the IR move/op
 structure dumped from the hook (next instrumentation step; see
-docs/wcc386-re/regalloc-predictor-plan.md).
+watcom10.0a repo docs/wcc386-re/regalloc-predictor-plan.md).
 
 Run::
     # 1. capture a trace:  uv run c2 regtrace <fn> --file <f>.c
@@ -53,7 +53,7 @@ REG_ENC = {
 GP = ["EAX", "EDX", "EBX", "ECX", "ESI", "EDI", "EBP"]  # ESP always reserved
 
 _TRACE = (Path(__file__).resolve().parents[2]
-          / "docs/wcc386-re/qemu-harness/work/regtrace.json")
+          / "watcom10.0a repo docs/wcc386-re/qemu-harness/work/regtrace.json")
 
 
 def chosen_reg(cand: list[str], withregs: int) -> str:

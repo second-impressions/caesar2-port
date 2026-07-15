@@ -3286,7 +3286,7 @@ savings (no secondary key), so the tie-break must come from either
 a hidden secondary key in 10.0a's `ConfBefore` (the project's
 `REVCG_CONFFLIP` hook models this as the name-pointer order) or
 from ShellSort instability + the conflict-list's pre-sort order
-(see `docs/wcc386-re/regalloc-model.md` §3 for the full
+(see `watcom10.0a repo docs/wcc386-re/regalloc-model.md` §3 for the full
 discussion).  Both hypotheses predict the same levers below.
 
 **Lever 1 — reorder a use (commute / move a statement).**  This is
@@ -3324,7 +3324,7 @@ structure perturb the name-pointer order), so the procedure is
 *Savings/use-count outranks both levers* (a value used more
 times jumps ahead — Rule 1).  Full model:
 `docs/codegen-experiments/regalloc-tiebreak.py`,
-`docs/wcc386-re/regalloc-model.md` §3.
+`watcom10.0a repo docs/wcc386-re/regalloc-model.md` §3.
 
 **Genuine residue:** when the competing values are CSE-hoisted
 globals in a fixed algorithmic sequence (e.g. `update_time`,
@@ -8017,7 +8017,7 @@ Pure register-allocation tie-break in `GiveBestReg`
    and **equal savings break by first-use order** (the value first used
    in the instruction stream gets the higher-priority reg).  This is
    the actionable Rule 28a lever — see Rule 28a and
-   `docs/wcc386-re/regalloc-model.md`.
+   `watcom10.0a repo docs/wcc386-re/regalloc-model.md`.
 
 Conflicts are processed in descending-savings order; **equal-savings
 conflicts are ordered by FIRST-USE position** — the value whose first
@@ -11101,7 +11101,7 @@ not OW1, for the unsigned-zext fallback.**
 > `docs/watcom-regalloc-research.md`.  Proofs:
 > `docs/codegen-experiments/regalloc-eax-boundary.py` /
 > `regalloc-order.py` (both self-verifying, `ALL PROOFS PASS`), and the
-> binary RE in `docs/wcc386-re/`.
+> binary RE in `watcom10.0a repo docs/wcc386-re/`.
 
 ### The proven model (Watcom 10.0a, reverse-engineered from `wcc386-10.0a.exe`)
 
@@ -11122,7 +11122,7 @@ caller/callee-save "economics" knob, and no keyword lever**:
    *equal-savings* ordering among tied conflicts is **deterministic in 10.0a**
    with two source-level levers (micro-mechanism between hidden-secondary-key
    and ShellSort-instability is under investigation — see
-   `docs/wcc386-re/regalloc-model.md` §3; both predict the same levers):
+   `watcom10.0a repo docs/wcc386-re/regalloc-model.md` §3; both predict the same levers):
    (a) reorder which value is used first (Rule 28a; commute the deciding
    expression — `change_citizen_targs`), and (b) when the use is pinned,
    swap the two tied locals' declaration order (Rule 115 — `show_help_page`,
@@ -11132,7 +11132,7 @@ caller/callee-save "economics" knob, and no keyword lever**:
    or 115), not residue —
    except where the competing values are CSE-hoisted globals in a
    fixed algorithmic order (then the first use can't be moved).  Full
-   model: `docs/wcc386-re/regalloc-model.md`.
+   model: `watcom10.0a repo docs/wcc386-re/regalloc-model.md`.
 
 ### The EAX↔callee-saved boundary (the proven, actionable lever)
 
@@ -11203,7 +11203,7 @@ first.  Only then is the crossing-reshape lever applicable.
 
 * Allocation order `EAX,EDX,EBX,ECX,ESI,EDI,EBP`: static (binary table
   `va 0x821A8`) + behavioural (`regalloc-order.py` consumption ladder).
-  RE method: `docs/wcc386-re/`.
+  RE method: `watcom10.0a repo docs/wcc386-re/`.
 * EAX-boundary necessity/sufficiency + the failed economics/keyword
   levers: `regalloc-eax-boundary.py` (clinching pair +
   negative controls, `ALL PROOFS PASS`).
@@ -11215,7 +11215,7 @@ first.  Only then is the crossing-reshape lever applicable.
 * The exact `CalcSavings` weights are known: loop multiplier **W=10** per
   nesting level (×10 depth 1, ×100 depth 2), `use_save=1`, `def_save=1`,
   `load/store_cost=2`, callee-save prolog cost 2 — confirmed against the
-  10.0a binary in `regalloc-cost.py` (`docs/wcc386-re/regalloc-model.md §2`).
+  10.0a binary in `regalloc-cost.py` (`watcom10.0a repo docs/wcc386-re/regalloc-model.md §2`).
 
 ## Rule 90 — `enum` vs `char` vs `int`: four distinct codegens; signed/unsigned promotion is the discriminator
 
@@ -13287,7 +13287,7 @@ which-register regalloc divergence, not a store-form lever.
 Discovery: oracle bisection of const-store forms (`cachecon.c::ConstToTemp`
 + the gen-level zero-store rule + the addressing-mode split).  Supersedes the
 "Const-store idiom (layer 4) — open" entry in
-`docs/wcc386-re/regalloc-model.md` §"hard
+`watcom10.0a repo docs/wcc386-re/regalloc-model.md` §"hard
 sub-cases": the form is deterministic, the register is ordinary regalloc.
 
 ## Rule 111 — Register-pressure spill / rematerialization: PS re-reads a CSE-able global (or re-materializes a constant) where the recompile holds it in a register
@@ -13403,7 +13403,7 @@ PS does not.
 Discovery: live-allocator + OW-source investigation of `bribe_emperor` /
 `message` (`docs/codegen-experiments/bribe_grind.py`). The model side is
 written up as hard sub-case 6 ("spill via rematerialization") in
-`docs/wcc386-re/regalloc-model.md`; this rule is the byte-pattern detector for
+`watcom10.0a repo docs/wcc386-re/regalloc-model.md`; this rule is the byte-pattern detector for
 the global-re-read flavour.
 
 ## Rule 112 — Reuse a dead variable as a scratch pointer, and assign it INSIDE the narrowest block: pins a freed callee-save register AND keeps an equal-savings tie unflipped
@@ -13603,7 +13603,7 @@ either (H1) a hidden name-pointer secondary key in 10.0a, or (H2)
 ShellSort instability + `AddConflictNode`'s pre-sort order (the project's
 `owp4v1copy` carries a `REVCG_CONFFLIP` research hook that models H1).  Both
 hypotheses predict the same source levers; see
-`docs/wcc386-re/regalloc-model.md` §3 for the full discussion.
+`watcom10.0a repo docs/wcc386-re/regalloc-model.md` §3 for the full discussion.
 
 ### When this lever applies (vs Rule 28a)
 
@@ -14006,7 +14006,7 @@ loads + shifts onto a fresh ``t`` local flipped the allocation.
 when this pattern fires.  Wired into ``decomp-verify``'s `-v` output as
 `Rule 119`.  Cross-reference: the worked-example experiment lives at
 ``docs/codegen-experiments/get_buffer_ofset.py``; the regalloc model
-is in ``docs/wcc386-re/regalloc-model.md`` §4.
+is in ``watcom10.0a repo docs/wcc386-re/regalloc-model.md`` §4.
 
 ## Rule 121 — Duplicated-tail rover advance: shared arm-tails written inside each arm shift the RISCify scratch picks (ComTail erases the bytes, LdStAlloc keeps the advance)
 
@@ -14086,7 +14086,7 @@ carrying its own line mark; a shared tail leaves the jmp unmarked.
 ### Relation to other rover levers
 
 Same cursor mechanism as the call-arg rover (+k coalesced-load /
-LOOP-INVARIANT-CONST / Parm-reload levers in `docs/wcc386-re/rover-model`
+LOOP-INVARIANT-CONST / Parm-reload levers in `watcom10.0a repo docs/wcc386-re/rover-model`
 notes), but the trigger op is a **compare scratch** and the +1 comes from
 **block-list reordering via tail duplication** rather than an extra load.
 

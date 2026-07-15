@@ -5,7 +5,7 @@ saved, no prologue change -- the regalloc_explain.py classification), the
 underlying mechanism is an equal-savings tie-break in the layer-3 conflict
 ordering.  Two source-level levers act on it: Rule 28a (commute the deciding
 use) and Rule 115 (swap the two tied locals' declaration order).  See
-``docs/wcc386-re/regalloc-model.md`` §3.
+``watcom10.0a repo docs/wcc386-re/regalloc-model.md`` §3.
 
 This module surfaces Rule-115 candidates: layer-3 Reg-swap functions that
 declare two-or-more named ``int`` locals at top scope (so swapping decl pairs

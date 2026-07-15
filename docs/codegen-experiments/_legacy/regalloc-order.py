@@ -7,7 +7,7 @@ The 10.0a 32-bit integer allocation order is
 
     DoubleRegs @ va 0x821A8 = EAX, EDX, EBX, ECX, ESI, EDI, EBP   (EBX before ECX)
 
-(reverse-engineered from wcc386-10.0a.exe, ``docs/wcc386-re/``).  This
+(reverse-engineered from wcc386-10.0a.exe, ``watcom10.0a repo docs/wcc386-re/``).  This
 experiment confirms that order behaviourally and connects it to the
 Rule-28 family.
 

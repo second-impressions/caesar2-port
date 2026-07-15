@@ -2,7 +2,7 @@
 
 > The canonical, proven register-allocation model is **Rule 89** in
 > `docs/watcom-codegen-patterns.md`, reverse-engineered from the actual
-> `wcc386-10.0a.exe` (`docs/wcc386-re/`) and proven by
+> `wcc386-10.0a.exe` (`watcom10.0a repo docs/wcc386-re/`) and proven by
 > `docs/codegen-experiments/regalloc-order.py` +
 > `regalloc-eax-boundary.py`.  Read it first; this document is the
 > supporting theory.
@@ -544,7 +544,7 @@ This is the `RL_DOUBLE` list (`rl.h`); `GiveBestReg()` iterates it via
 (`EAX,EDX,EBX,ECX`).  Behavioural proof: piling up N simultaneous cross-call
 int values consumes registers in the order `EDX, EBX, ECX, ESI, EDI, EBP`
 (EAX is the return/clobbered reg) — EBX strictly before ECX.  See Rule 89
-and `docs/wcc386-re/`.
+and `watcom10.0a repo docs/wcc386-re/`.
 
 ### 15.2 No caller/callee-save bonus
 
@@ -562,7 +562,7 @@ equal-savings tie-break is **first-use order** (`regalloc-tiebreak.py`,
 corpus-validated).  The exact `CalcSavings` weights are known too — loop
 multiplier **W=10** per nesting level, `use_save=1`, `load/store_cost=2`,
 callee-save prolog cost 2 — confirmed against the binary in
-`regalloc-cost.py` (see `docs/wcc386-re/regalloc-model.md §2`).
+`regalloc-cost.py` (see `watcom10.0a repo docs/wcc386-re/regalloc-model.md §2`).
 
 ### 15.3 `CallZap` — How EAX Gets Excluded
 

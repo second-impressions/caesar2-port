@@ -10,7 +10,7 @@ an inert byte tie, nor (b) gives up on a widenable / de-nameable value.
 
 Four cases.  Each is proven against the disassembled wcc386 10.0a binary
 (VAs below; pinned in the watcom10.0a repo's ``knowledge/wcc386_regalloc.py``
-and mirrored in ``docs/wcc386-re/regalloc-model.md`` §"Byte-register
+and mirrored in ``watcom10.0a repo docs/wcc386-re/regalloc-model.md`` §"Byte-register
 seating").  OW v1 ``bld/cg/`` is only the algorithm guide.
 
   A  COLLATERAL -- the byte register is the low/high byte of a 32-bit (or

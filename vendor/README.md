@@ -50,7 +50,7 @@ in OW v2; `bool` cleanup; `OC_NORET`). So:
 * **Do NOT treat its exact constants, thresholds, line numbers, or codegen as
   10.0a behaviour.** Where the two could diverge, 10.0a wins.
 * **Ground truth for 10.0a is established only by reverse-engineering the
-  actual 10.0a binary** — see `docs/wcc386-re/` (the findings) and the sibling
+  actual 10.0a binary** — see the sibling repo's `docs/wcc386-re/` (the findings) and its
   repo `~/git/ReverseEngineering/watcom10.0a` (the instrumentation: the
   `-trace` image, QEMU harness, reference model) — and by `c2 cgex`
   experiments against the `watcom-10.0a-dosemu2` container.

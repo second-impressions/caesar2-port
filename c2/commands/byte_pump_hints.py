@@ -8,7 +8,7 @@ allocations.  This module surfaces the source-level lever.
 The mechanism
 -------------
 
-OW v1 ``regalloc.c::CountRegMoves`` (see also docs/wcc386-re/regalloc-model.md
+OW v1 ``regalloc.c::CountRegMoves`` (see also watcom10.0a repo docs/wcc386-re/regalloc-model.md
 §4) scores each (conflict, candidate register) pair by walking the IR and
 counting:
 

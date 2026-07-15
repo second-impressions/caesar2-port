@@ -1068,7 +1068,7 @@ reference the rule number in the commit message.
 ### The 7-layer register-allocation model (read this for ANY register diff)
 
 The 10.0a allocator is fully reverse-engineered and proven —
-**`docs/wcc386-re/regalloc-model.md`** is canonical.  The layers:
+**`watcom10.0a repo docs/wcc386-re/regalloc-model.md`** is canonical.  The layers:
 
 0. **TYPE** → register class (`int`/ptr = `DoubleRegs
    EAX,EDX,EBX,ECX,ESI,EDI,EBP`; `short` = WordRegs; `char` = byte regs).
@@ -1245,8 +1245,8 @@ source at `vendor/open-watcom/` (gitignored; `bld/...` citations
 resolve there; searchable via semble).  **It is a HINT, not ground
 truth** — the 2002 snapshot is ~7 years newer than 10.0a and the
 codegen changed.  Ground truth for 10.0a is established only by
-reverse-engineering the binary (`docs/wcc386-re/` + the watcom10.0a
-repo) and by experiments.  Where they diverge, 10.0a wins.
+reverse-engineering the binary (the watcom10.0a repo — its
+`docs/wcc386-re/` findings + the instrumentation) and by experiments.  Where they diverge, 10.0a wins.
 
 Key OW regalloc files (names/shape only): `bld/cg/c/regalloc.c`
 (`RegAlloc`, `GiveBestReg`, `SortConflicts`, `ConfBefore`,

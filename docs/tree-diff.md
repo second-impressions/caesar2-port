@@ -10,7 +10,7 @@ decomp.c   --wcc386 -trace-->   IRForest        --shape_from_ir_forest-->  TreeS
 
 The **forward** tree is what wcc386 actually built for *our* decomp source
 (captured by the instrumented compiler via the `~WV1` `tn/tl/tb/nb/ni`
-records — see [`regalloc-trace-image.md`](regalloc-trace-image.md)).
+records — see `regalloc-trace-image.md` (watcom10.0a repo docs/wcc386-re/)).
 
 The **reverse** tree is what we can *recover* from PS.EXE's compiled asm
 by matching known x86 idioms back to their cg_op tree shapes (see
@@ -172,11 +172,11 @@ Once registered, the new rule is automatically picked up by:
 
 ## Cross-references
 
-- [`regalloc-trace-image.md`](regalloc-trace-image.md) — the
+- `regalloc-trace-image.md` (watcom10.0a repo docs/wcc386-re/) — the
   instrumented compiler image that produces the `~WV1` trace
-- [`regalloc-model.md`](regalloc-model.md) — model of layers 0–6 of
+- `regalloc-model.md` (watcom10.0a repo docs/wcc386-re/) — model of layers 0–6 of
   divergence (per-line view, regalloc decisions, rule hints)
-- [`wcc386-10.0a-regalloc-symbols.md`](wcc386-10.0a-regalloc-symbols.md) —
+- `wcc386-10.0a-regalloc-symbols.md` (watcom10.0a repo docs/wcc386-re/) —
   the RE'd 10.0a-binary VAs and their OW v1 source cites
 - `knowledge/wcc386_regalloc.py` (in the watcom10.0a repo) — the
   authoritative VA + struct-offset table that drives Ghidra annotation

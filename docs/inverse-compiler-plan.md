@@ -9,7 +9,7 @@ back to C that recompiles to the same bytes.  "Inverting the compiler" and
 `PS.EXE = f(S*)` where `f` is **Watcom 10.0a** and `S*` is the original C
 source.  We *have* `f`: it is the **10.0a `wcc386.exe` binary itself**, which we
 **run** (the container build / the `tools/patch_trace.py` instrumentation that
-emits `~WV1`) and **decompile** (ghidra of `wcc386`, `docs/wcc386-re/`, the
+emits `~WV1`) and **decompile** (ghidra of `wcc386`, `watcom10.0a repo docs/wcc386-re/`, the
 `~/git/ReverseEngineering/watcom10.0a` repo) **whenever we need its exact
 behaviour**.  From that RE we have a **forward-exact** model of its register
 allocator (`c2/regalloc/replay.py`: 1228/1228 sort, 19116/19116 selection on the

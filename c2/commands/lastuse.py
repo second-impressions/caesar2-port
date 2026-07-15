@@ -5,7 +5,7 @@ For a diffing function whose Regalloc diff is a *layer-3 register-identity
 swap* (``Reg swap`` hint), this tool computes the concrete source-level
 reorder that Rule 28a (commute / move a use) prescribes for the swap.
 
-The mechanism (validated 7-layer model, ``docs/wcc386-re/regalloc-model.md`` §3):
+The mechanism (validated 7-layer model, ``watcom10.0a repo docs/wcc386-re/regalloc-model.md`` §3):
 equal-savings ties are resolved by ``regalloc.c::ConfBefore`` on the
 **name-node pointer** (`a->name < b->name`), and the 1st-allocated takes the
 higher-priority register (DoubleRegs = EAX > EDX > EBX > ECX > ESI > EDI > EBP).

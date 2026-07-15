@@ -6,7 +6,7 @@ header** — `AIL.H`, on disk at gitignored `vendor/miles-ail-sdk/AIL.H`
 as *reference evidence* for how a 1995-era
 Watcom C game was meant to talk to the Miles sound system.  It is NOT part of
 the Caesar II decompilation source tree; it is a read-only reference used to
-justify codegen claims (see `docs/wcc386-re/farptr-return-edx-mustsave.md`).
+justify codegen claims (see `watcom10.0a repo docs/wcc386-re/farptr-return-edx-mustsave.md`).
 
 See [`miles-ail-versions.md`](miles-ail-versions.md) for the full version index and the
 **PS.EXE pin (AIL 3.03 base, 1995-06-18)**, plus the collected multi-version
@@ -29,7 +29,7 @@ headers under `vendor/miles-ail-sdk/versions/` and the RAD changelog under
 
 The Caesar II `pcsound.c` far-ptr cluster (`start_sequences`,
 `start_samples`, `pos_sound`, …) carries `#pragma aux <fn> modify exact
-[eax gs]`.  Binary RE of Watcom 10.0a (`docs/wcc386-re/`) proves this pragma
+[eax gs]`.  Binary RE of Watcom 10.0a (`watcom10.0a repo docs/wcc386-re/`) proves this pragma
 is the *only* C-level lever that makes a far-ptr-returning function push EDX
 (`MustSaveRegs`@0x4b67b + `FullReg`@0x3e113: only `ROUTINE_MODIFY_EXACT`,
 set solely by `modify exact` per `i86reg.c:~119`, spares EDX).  This header

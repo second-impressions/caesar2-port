@@ -339,7 +339,7 @@ def _classify(
                 f"Rule 28a pure register swap.  The {a}/{b} assignment follows "
                 f"FIRST-USE order: reorder which competing value is used first "
                 f"(commute an operand, move a statement) — worked example "
-                f"change_citizen_targs.  See `docs/wcc386-re/regalloc-model.md` "
+                f"change_citizen_targs.  See `watcom10.0a repo docs/wcc386-re/regalloc-model.md` "
                 f"and Rule 28a.  Not reorderable when the values are CSE-hoisted "
                 f"globals in fixed algorithmic order."
             )

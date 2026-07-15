@@ -7,7 +7,7 @@ single-use values where first-use == last-use and therefore could not
 distinguish the two.
 
 NOTE on the framing: the *fundamental* mechanism is the name-node POINTER
-order used by `regalloc.c::ConfBefore` (see `docs/wcc386-re/regalloc-model.md`
+order used by `regalloc.c::ConfBefore` (see `watcom10.0a repo docs/wcc386-re/regalloc-model.md`
 §3).  Last-use order is a proxy for that key -- it agrees because UpdateLive
 creates conflict nodes as it walks backwards (last-encountered = name-node
 allocated earliest = head of equal-savings run).  When the use itself is

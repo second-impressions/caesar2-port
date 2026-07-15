@@ -3311,7 +3311,7 @@ def detect_rule_35a(
 # tie (reorderable), Rule 126 AL-squat masking (int-widen), Rule 127
 # rover-seated CSE (de-name), or Rule 133 inert byte tie (IRREDUCIBLE: the
 # byte tie-break is dead, so reordering provably cannot move it).  See
-# byte_seat_hints.py and docs/wcc386-re/regalloc-model.md byte seating.
+# byte_seat_hints.py and watcom10.0a repo docs/wcc386-re/regalloc-model.md byte seating.
 
 _BYTE_REGS = frozenset({"al", "ah", "bl", "bh", "cl", "ch", "dl", "dh"})
 
@@ -3385,7 +3385,7 @@ def detect_byte_reg_swap(
             "B AL-squat masking (Rule 126 int-widen); C rover-seated CSE "
             "(Rule 127 de-name); or D inert byte tie (Rule 133 -- the byte "
             "tie-break is DEAD, regalloc.c:855-858, so it is IRREDUCIBLE: do "
-            "NOT reorder/decl-swap/permute).  docs/wcc386-re/regalloc-model.md "
+            "NOT reorder/decl-swap/permute).  watcom10.0a repo docs/wcc386-re/regalloc-model.md "
             "byte-register seating."
         ),
     )
@@ -3497,7 +3497,7 @@ def detect_reg_identity_swap(
             "`A op B` the LATER operand takes the higher reg); (b) Rule 115 "
             "-- swap the two tied locals' DECLARATION order (when the use "
             "is pinned by semantics; worked: show_help_page).  See "
-            "docs/wcc386-re/regalloc-model.md §3.  Screen offline first: "
+            "watcom10.0a repo docs/wcc386-re/regalloc-model.md §3.  Screen offline first: "
             "`c2 savings <fn> --flip VAR=REG --depth 2` (grounded savings/"
             "credit edits through the full sort+pick replay).  NB confirm "
             "this is a named-local swap, not a whole-function single-value "

@@ -17,7 +17,7 @@ secondary key in 10.0a's `ConfBefore` or (H2) ShellSort instability +
 script asserts (for the single-use values it tests), so every assertion
 below still holds.  Full model + the second source-level lever (Rule 115,
 which this script does NOT cover -- decl-order, when the use is pinned) is
-in `docs/wcc386-re/regalloc-model.md` §3.  In project usage, the Rule-28
+in `watcom10.0a repo docs/wcc386-re/regalloc-model.md` §3.  In project usage, the Rule-28
 family is flipped by EITHER reordering the deciding use (Rule 28a, item 2
 below) OR swapping the two tied locals' declaration order (Rule 115).
 

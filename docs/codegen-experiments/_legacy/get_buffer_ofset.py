@@ -37,7 +37,7 @@ Background:
   - watcom-codegen-patterns.md "Rule 49 clear-first zext idiom" -- this
     function is explicitly mentioned as "lever not yet found, NOT
     impossible".
-  - docs/wcc386-re/regalloc-model.md §3 -- the CRM + DoubleRegs
+  - watcom10.0a repo docs/wcc386-re/regalloc-model.md §3 -- the CRM + DoubleRegs
     tie-break that decides GiveBestReg.
 """
 from __future__ import annotations

@@ -3,7 +3,7 @@ stable; equal-rank temps can end up reordered in the post-sort list.
 
 THE FINDING (verified in the 10.0a binary + trace-validated offline
 simulators, see docs/slot-swap-survey-2026-06-25.md and
-docs/wcc386-re/regalloc-model.md canon 'The slot-assignment pipeline'):
+watcom10.0a repo docs/wcc386-re/regalloc-model.md canon 'The slot-assignment pipeline'):
 
 The alloc sorts are ShellSort, via DoSortList @0x665c4.  DoSortList's
 alloc-SUCCESS arm runs ShellSort @0x66689 (the decompile is explicit:

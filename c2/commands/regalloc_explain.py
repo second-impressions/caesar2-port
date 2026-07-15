@@ -3,7 +3,7 @@
 Given the PS and recomp instruction lists for a diffing function, classify the
 register-allocation divergence into one of the proven model layers and emit the
 exact source lever.  The model + constants are documented in
-``docs/wcc386-re/regalloc-model.md`` and proven by the self-asserting
+``watcom10.0a repo docs/wcc386-re/regalloc-model.md`` and proven by the self-asserting
 experiments in ``docs/codegen-experiments/regalloc-*.py``.
 
 The 7 layers (see the model doc):

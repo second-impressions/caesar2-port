@@ -15,7 +15,7 @@ register use of the same function, run `c2 disasm <name>` separately.
 The QEMU/FreeDOS harness this used to run under was retired: the container trace
 is a strict superset (it already carries the chosen register and the FindRegister
 rover trace) and runs in dosemu2 without booting a guest.
-See `docs/wcc386-re/wcc386-10.0a-regalloc-symbols.md`.
+See `watcom10.0a repo docs/wcc386-re/wcc386-10.0a-regalloc-symbols.md`.
 
 Usage:
     uv run c2 regtrace move_army
@@ -335,7 +335,7 @@ def spill_chain_hint(cand: list[str], sav_self: int,
 
 # CountRegMoves opcodes (10.0a encoding; see regalloc-symbols.md).
 # CG opcodes for the 1994 wcc386 binary, behaviorally decoded via isolated
-# one-operation probe functions (see docs/wcc386-re § "CG opcode enum").  The
+# one-operation probe functions (see watcom10.0a repo docs/wcc386-re § "CG opcode enum").  The
 # low integer ops match the OW source enum exactly; MOV/compares are shifted
 # down (the 1994 build has fewer float/intrinsic ops than the OW source).
 _OP_MOV = 0x26
@@ -473,7 +473,7 @@ def _gb_pick_scores(row: dict) -> tuple[str, str, dict[str, int]]:
 
 
 # CG opcode -> name for the 1994 wcc386 binary, behaviorally decoded via
-# isolated one-operation probe functions (docs/wcc386-re § "CG opcode enum").
+# isolated one-operation probe functions (watcom10.0a repo docs/wcc386-re § "CG opcode enum").
 # Low integer ops 0x01-0x0d match the OW source enum exactly; NEG/COMPLEMENT,
 # CONVERT, MOV and the compare block (0x30-0x35) are confirmed by probes.
 # 0x4b is a pure block-boundary marker (no operands); 0x2c is a result-only def

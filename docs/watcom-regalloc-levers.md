@@ -68,7 +68,7 @@ of fix applies.  This guide maps each category to the concrete lever.
 | Rule 17 — flag-mask split-RMW | split or fuse the RMW per PS |
 | Rule 19 — `char` vs `int` parameter spill | match the param width PS uses |
 | Rule 22 — stub signature mismatch | fix the callee's declared signature |
-| Rule 28a — callee-save swap (esi↔edi, edx↔ebx, …) | **reorder which value is used first** (equal-savings tie-break = first-use order). Reorderable expr → fixable (e.g. `change_citizen_targs`); CSE-hoisted globals in fixed order → residue. See Rule 28a + `docs/wcc386-re/regalloc-model.md` |
+| Rule 28a — callee-save swap (esi↔edi, edx↔ebx, …) | **reorder which value is used first** (equal-savings tie-break = first-use order). Reorderable expr → fixable (e.g. `change_citizen_targs`); CSE-hoisted globals in fixed order → residue. See Rule 28a + `watcom10.0a repo docs/wcc386-re/regalloc-model.md` |
 | Rule 28b — asymmetric callee-save count | § 3.2 / § 3.3 |
 | Rule 42 — tail-merge donor | decompile the donor first; § 4.4 |
 | Rule 44 — spurious `and ecx, 0xff` | int-promotion of byte AND; match the type |
@@ -356,7 +356,7 @@ higher-priority register.
 **Lever:** reorder which of the two competing values is used first
 (commute an operand, move a statement) — worked example
 `change_citizen_targs`.  See `docs/watcom-codegen-patterns.md`
-Rule 28a and `docs/wcc386-re/regalloc-model.md`.  Not reorderable
+Rule 28a and `watcom10.0a repo docs/wcc386-re/regalloc-model.md`.  Not reorderable
 when the values are CSE-hoisted globals in fixed algorithmic order.
 
 ### 4.2 Rule 28b — Asymmetric callee-save count

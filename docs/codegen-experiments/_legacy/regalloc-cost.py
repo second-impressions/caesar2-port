@@ -16,7 +16,7 @@ A conflict (live range) gets `savings = save - cost` (clamped to
 
 Conflicts are then assigned registers in descending-savings order
 (equal savings -> layer-3 tie-break, see regalloc-tiebreak.py and
-docs/wcc386-re/regalloc-model.md §3).  A callee-saved register additionally
+watcom10.0a repo docs/wcc386-re/regalloc-model.md §3).  A callee-saved register additionally
 costs `push_cost + pop_cost` in `WorthProlog`.
 
 Exact constants for PS (`-4r` = 486, default opt OptSize=50)

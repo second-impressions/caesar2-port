@@ -181,7 +181,7 @@ in milliseconds whether that `nb1` → the target order, before any commit.
 * Instrumentation: `~/git/ReverseEngineering/watcom10.0a/tools/patch_trace.py`.
 * Parser: `c2/regalloc/trace.py` (`nb1`/`nb2`/`nt_pre`/`nt_post`/`an` per
   routine, cache v41).
-* Canon: `docs/wcc386-re/regalloc-model.md` § "The slot-assignment pipeline"
+* Canon: `watcom10.0a repo docs/wcc386-re/regalloc-model.md` § "The slot-assignment pipeline"
   + Rule 107 in `docs/watcom-codegen-patterns.md`.
 * 10.0a binary sites: `AssignTemps@0x55463`, `SortCmp_flag2_2b@0x55503`,
   `AllocBefore@0x5905b`, `DoSortList@0x665c4`, `ShellSort@0x66689`,

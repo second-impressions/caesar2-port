@@ -78,7 +78,7 @@ _CS.detail = False
 # compiler (read-only printf hooks), but emits a `~WV1 ...` register-allocation
 # trace on stdout that the regalloc hint layer consumes (c2.regalloc). Using it
 # by default never perturbs a verify -- the `~WV1` lines are filtered where the
-# build output is parsed. See docs/wcc386-re/regalloc-trace-image.md.
+# build output is parsed. See watcom10.0a repo docs/wcc386-re/regalloc-trace-image.md.
 # The instrumented `-trace` image is the default: byte-identical .obj plus a
 # ~WV1 regalloc trace that the hint layer parses (the active build trace). A
 # full 37-file build is ~13 s. (Earlier this looked like ~6 min, but that was a
@@ -3412,7 +3412,7 @@ def _render_headers(
     # C (rover-seated CSE / Rule 127), or D (inert byte tie / Rule 133,
     # irreducible).  Subsumes the old AL-squat hint (cases B/C compose it)
     # and replaces the generic "no source lever" framing with the OW-v1 path
-    # + lever.  docs/wcc386-re/regalloc-model.md "Byte-register seating".
+    # + lever.  watcom10.0a repo docs/wcc386-re/regalloc-model.md "Byte-register seating".
     if name and any(r["kind"] != "equal" for r in rows):
         try:
             from c2.commands import byte_seat_hints
@@ -3816,7 +3816,7 @@ def _render_headers(
 
     # Rule 115 declaration-order lever: when the regalloc layer is 3 (caller-
     # saved register-identity swap) AND the function has ≥2 named int locals,
-    # name the candidate pair to reorder.  See docs/wcc386-re/regalloc-model.md
+    # name the candidate pair to reorder.  See watcom10.0a repo docs/wcc386-re/regalloc-model.md
     # §3.  This is the lever for the half of layer-3 ties where Rule 28a's
     # use-order lever is dead (use pinned by semantics).
     if name and rae_layer == 3 and _rov is None:
@@ -5668,7 +5668,7 @@ def _byte_seat_for_json(name: str, json_hints, orig_bytes: bytes) -> Optional[di
     Lets corpus tools (residue-cluster, negative-corpus, ``c2 sibling
     --survey``) route the byte-reg-swap family by verdict instead of treating
     every byte swap as opaque noise.  See ``c2/commands/byte_seat_hints.py``
-    and docs/wcc386-re/regalloc-model.md §"Byte-register seating"."""
+    and watcom10.0a repo docs/wcc386-re/regalloc-model.md §"Byte-register seating"."""
     try:
         from c2.commands import byte_seat_hints
         v = byte_seat_hints.detect(
@@ -5693,7 +5693,7 @@ def _decl_order_hint_for_json(
 ) -> Optional[dict]:
     """Rule 115 declaration-order regalloc-lever candidate.  See
     ``c2/commands/decl_order_hints.py`` and the layer-3 description in
-    ``docs/wcc386-re/regalloc-model.md`` §3.  Advisory only.
+    ``watcom10.0a repo docs/wcc386-re/regalloc-model.md`` §3.  Advisory only.
 
     Fires only when the regalloc-explain layer is 3 (caller-saved
     register-identity swap, no prologue change) AND the function source

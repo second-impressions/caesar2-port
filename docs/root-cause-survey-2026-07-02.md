@@ -6,9 +6,9 @@ non-workable."  This survey re-derives the root causes from the ground truth
 (PS `-d1` line records, the wcc386-10.0a trace, and the Mac/Win witness
 binaries), names the mechanism per class, and defines the **three-witness
 protocol** that turned two "parked" functions into worked lists in one
-session.  Companion docs: `docs/wcc386-re/regalloc-model.md` (the allocator
+session.  Companion docs: `watcom10.0a repo docs/wcc386-re/regalloc-model.md` (the allocator
 model), `docs/mechanism-survey-2026-06-25.md` (§5b names the source→presort
-gap this survey works around), `docs/wcc386-re/instrumentation-gap-per-class.md`
+gap this survey works around), `watcom10.0a repo docs/wcc386-re/instrumentation-gap-per-class.md`
 (the probe specs).
 
 ---

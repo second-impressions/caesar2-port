@@ -1,6 +1,6 @@
 # Mechanism survey 2026-06-25 — what we're bad at, and where the corpus disagrees with our model
 
-Companion to `docs/wcc386-re/regalloc-model.md` (the seven-layer regalloc
+Companion to `watcom10.0a repo docs/wcc386-re/regalloc-model.md` (the seven-layer regalloc
 model) and `docs/hard-bucket-solvability-2026-06-24.md` (the per-function
 solvability state).  This file does what those don't: **takes the 1102
 byte-exact functions with a usable `-trace` record, runs every published
@@ -35,7 +35,7 @@ bucket diagnoses (`evolve_water_table`, `place_sprite`,
 ## 1.  What we're bad at — the mechanism list
 
 Taken from `c2 worklist` (live), `docs/hard-bucket-survey-2026-06-24.md`,
-and `docs/wcc386-re/regalloc-model.md`'s "Remaining hard problems".
+and `watcom10.0a repo docs/wcc386-re/regalloc-model.md`'s "Remaining hard problems".
 Ordered by **how transparent the mechanism is to us today**, with
 the empirical sting in the second column.
 
@@ -43,11 +43,11 @@ the empirical sting in the second column.
 |---|---|---|---|
 | **A** | **Multi-round `AssignConflicts`** (`RegAlloc()`'s `for(;;)` loop, v1 `regalloc.c:1314`).  After each round, `ExpandOps` may trigger `NEEDS_INDEX_SPLIT`/`NEEDS_SEGMENT_SPLIT`, `AssignMoreBits` allocates new bits, and `CONFLICT_ON_HOLD` conflicts are re-presented with `CalcSavings` re-run. | Documented in v1 source but **never modelled by our offline simulator**.  Our `c2.regalloc.shellsort_sim` and `c2.regalloc.reproduce_order` look at a single `presort`. | **Affects ~21 % of byte-exact functions** (230 / 1102).  Trace stream shows the same `conf_ptr` re-appearing in `presort` with different savings between rounds.  Specifically 97 % of model misses, including small functions like `count_city_flags` and big ones like `show_people_query_panel` (135 vs 123 alloc entries). |
 | **B** | **Equal-savings `ConfBefore` tie-break** (the H1 vs H2 question).  v1 `ConfBefore` is *strict* on savings; ties fall through to `SortList`'s ShellSort (unstable).  10.0a's behaviour is *deterministic* — the documented hypotheses are `H1 = name-pointer order (decl order)` and `H2 = reverse-last-use UpdateLive walk`. | Two source levers documented (`Rule 28a` commute use, `Rule 115` swap decls) with worked precedents `change_citizen_targs`, `show_help_page`. | **H1 (decl-line ASC) predicts 84 %** of all-named-local equal-savings runs; H2 (last-use asc/desc) only ~55 %.  H1 is the dominant predictor for the source-touchable subset — Rule 115 is the right first lever.  **But the named subset is only 9.6 % of all equal-savings runs**; the other 90 % involve anonymous compiler temps with no source handle. |
-| **C** | **Loop hoist / reload (Score)** — `Score`'s redundant-load coalesce in `PostOptimize` (v1 `bld/cg/c/sc*.c`).  Coalesces two loads of the same memory iff nothing kills the scoreboard entry between them.  RE'd in `docs/wcc386-re/instrumentation-gap-per-class.md` (`Score@0x54df1`, dispatch sites `0x69ff1` CALL / `0x6a06d` MOV / `0x69df5` aliasing-store handler). | The mechanism is *named* (it's `Score`, not LICM, which is dead at PS flags); the killer events are `OP_CALL` and any pointer/global store that aliases.  Per-instruction probe not yet wired (`patch_trace.py`). | 4 fns in HARD bucket (1219 b) bucketed `KNOWN_LAYER5`.  Without the probe, agents see "PS reloads here, RC hoists" but can't point to which instruction killed the scoreboard.  **The aliasing rule is conservative**: any `__watcall` call to an extern wipes globals (`docs/codegen-experiments/regalloc-loops.py` + `global_reload_boundary.py`). |
+| **C** | **Loop hoist / reload (Score)** — `Score`'s redundant-load coalesce in `PostOptimize` (v1 `bld/cg/c/sc*.c`).  Coalesces two loads of the same memory iff nothing kills the scoreboard entry between them.  RE'd in `watcom10.0a repo docs/wcc386-re/instrumentation-gap-per-class.md` (`Score@0x54df1`, dispatch sites `0x69ff1` CALL / `0x6a06d` MOV / `0x69df5` aliasing-store handler). | The mechanism is *named* (it's `Score`, not LICM, which is dead at PS flags); the killer events are `OP_CALL` and any pointer/global store that aliases.  Per-instruction probe not yet wired (`patch_trace.py`). | 4 fns in HARD bucket (1219 b) bucketed `KNOWN_LAYER5`.  Without the probe, agents see "PS reloads here, RC hoists" but can't point to which instruction killed the scoreboard.  **The aliasing rule is conservative**: any `__watcall` call to an extern wipes globals (`docs/codegen-experiments/regalloc-loops.py` + `global_reload_boundary.py`). |
 | **D** | **`CountRegMoves` move-elim coalesce** — the SECOND pass through `GiveBestReg`'s candidate list (after the `withregs` mask) scores each survivor by *move savings* (how many shuffle `mov`s would vanish if this value lands in this reg).  Highest score wins. | The mechanism is in our model and the trace (`cand_scores`).  Worked: `start_smacking` predictor replays 17/18.  Validated against the binary at `0x57728`. | Reproduces correctly *within* a single round; failures track Mechanism A (multi-round) and Mechanism B (within-round ties). |
-| **E** | **`MergeIndex` / Rule 109 (index-fusion)** — `PostOptimize`'s `MergeIndex` (`0x000626b3`) fuses two N_INDEXED memory operands.  Predicate: same scale, no `FirstReg` conflict, etc.  Plus the **upstream TreeGen IL-shape choice** that decides whether `arr[i].field` lowers as one IL value or two. | The PostOptimize predicate is fully RE'd (`docs/wcc386-re/instrumentation-gap-per-class.md`).  The TreeGen IL-shape choice is **not** RE'd. | Affects `find_enemy` (4 b) + collateral.  Source lever: **none yet known** — neither rewriting `arr[i].field` as `(p=&arr[i],p->field)` nor caching the row in a local consistently produces the desired IL form. |
+| **E** | **`MergeIndex` / Rule 109 (index-fusion)** — `PostOptimize`'s `MergeIndex` (`0x000626b3`) fuses two N_INDEXED memory operands.  Predicate: same scale, no `FirstReg` conflict, etc.  Plus the **upstream TreeGen IL-shape choice** that decides whether `arr[i].field` lowers as one IL value or two. | The PostOptimize predicate is fully RE'd (`watcom10.0a repo docs/wcc386-re/instrumentation-gap-per-class.md`).  The TreeGen IL-shape choice is **not** RE'd. | Affects `find_enemy` (4 b) + collateral.  Source lever: **none yet known** — neither rewriting `arr[i].field` as `(p=&arr[i],p->field)` nor caching the row in a local consistently produces the desired IL form. |
 | **F** | **`slot-swap` non-stable ShellSort** — same-size stack-slot swaps at `AssignTemps` time.  10.0a's `DoSortList` (alloc-success arm) runs `ShellSort` @0x66689, which is NOT stable; for distinct-`+0x24` same-size temps `SortCmp_flag2_2b` @0x55503 is sort-equal, so the gap-passes reorder them.  A separate class ("savings-keyed") is causally upstream: `AllocBefore` @0x5905b (BuildNameConflicts) keys on `conflict->savings`. | Full slot-pipeline simulator (`c2/regalloc/shellsort_sim_slots.py`: `predict_nb2` + `predict_nt_post`) validated 232/232 nt_post + 441/456 nb2 + 130/130 PS slot-order prediction on the byte-exact corpus.  `+0x24` = reverse-decl-rank (mechanism behind decl-insufficiency). | `evolve_water_table` (363 b): 24/24 decl perms miss PS (proven insufficient); lever is Mac-faithful local-reuse, pre-validated offline per candidate `nb1`.  `show_menu_items` (207 b): savings-keyed -- `sort_sav` on `nb` records shows the upstream sort-time savings differ. |
-| **G** | **`ComTail` tail-merge canonical selection** — which function in a TU becomes the canonical tail-merge donor (Rule 42).  Depends on intra-TU emit order, not the dependent's body. | Mechanism + probe both RE'd (`docs/wcc386-re/instrumentation-gap-per-class.md` ComTail section, `OptPush@0x4c798`). | Donor-first burn-down already routed through `c2 stubs --donors` + `c2 dossier` donor-blocked warning.  Mechanism is well understood; what we lack is a small-source-edit lever for the *donor* when its body is itself stuck. |
+| **G** | **`ComTail` tail-merge canonical selection** — which function in a TU becomes the canonical tail-merge donor (Rule 42).  Depends on intra-TU emit order, not the dependent's body. | Mechanism + probe both RE'd (`watcom10.0a repo docs/wcc386-re/instrumentation-gap-per-class.md` ComTail section, `OptPush@0x4c798`). | Donor-first burn-down already routed through `c2 stubs --donors` + `c2 dossier` donor-blocked warning.  Mechanism is well understood; what we lack is a small-source-edit lever for the *donor* when its body is itself stuck. |
 
 This file's empirical work is concentrated on **A** and **B**; **C** is
 the next-most-actionable RE follow-on once the `~WV1 sc` probe is wired
@@ -123,7 +123,7 @@ This is documented but our offline model never accounted for it.
 For Mechanism B, `SortList`'s ShellSort is in `vendor/open-watcom/bld/
 cg/c/sortlist.c`; `ConfBefore` is *strict* on savings.  The 10.0a binary
 adds a deterministic tie-break that v1's source does not — this is the
-H1 vs H2 question.  `docs/wcc386-re/regalloc-model.md §3` states the
+H1 vs H2 question.  `watcom10.0a repo docs/wcc386-re/regalloc-model.md §3` states the
 two hypotheses and the two source levers; this survey **measures** which
 of the candidate orders best predicts the trace's actual alloc.
 
@@ -463,7 +463,7 @@ exactly the source→presort gap firing.
    order — `decl-line ASC` is the empirical winner"*, with H2 / use-
    commute as fallbacks for the 16 % residue.  Some `c2 worklist` /
    `c2 dossier` hint strings already say this; the rest should align.
-4. **(Mech C) Wire the `Score` probe.**  `docs/wcc386-re/
+4. **(Mech C) Wire the `Score` probe.**  `watcom10.0a repo docs/wcc386-re/
    instrumentation-gap-per-class.md` lists the exact hook addresses
    (`0x5a0aa` coalesce, `0x649c8` / `0x6e4dd` invalidate).  Once
    `~WV1 sc` records flow, every loop-hoist diff has a single-line
@@ -519,7 +519,7 @@ once the round-partitioned trace is in).
   `regalloc-tiebreak.py` / `regalloc-last-use.py` for the cgex-side
   proof; this file for the corpus-side measurement.
 * **Mechanism C** — `regalloc-model.md §5` (loop hoist/reload),
-  `docs/wcc386-re/instrumentation-gap-per-class.md` `L4:loop-hoist`
+  `watcom10.0a repo docs/wcc386-re/instrumentation-gap-per-class.md` `L4:loop-hoist`
   section, `vendor/open-watcom/bld/cg/c/sc{main,block,ins,info}.c`.
 * **Mechanism D** — `regalloc-model.md §4` (move-elim) +
   `wcc386-re/regalloc-predictor-plan.md` (`CountRegMoves` validation).
