@@ -1061,6 +1061,9 @@ def delink(
     if not selectors and not group:
         raise typer.BadParameter("give a module selector or --group")
 
+    from c2.original import ensure_original
+    ensure_original(exe_path)
+
     ctx = _load_context(symbols_json, exe_path)
     d = ctx[0]
     module_indices = _resolve_modules(d, selectors, group)

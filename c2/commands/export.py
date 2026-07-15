@@ -400,9 +400,9 @@ def export(
     ] = False,
 ) -> None:
     """Parse PS.EXE: extract LE objects, parse Watcom debug info, write symbols.json."""
-    if not input.exists():
-        typer.echo(f"Error: {input} not found", err=True)
-        raise typer.Exit(1)
+    from c2.original import ensure_original
+
+    ensure_original(input)
 
     # Default output: data/out/symbols.json next to the input file
     output_dir = input.parent

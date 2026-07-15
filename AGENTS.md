@@ -42,9 +42,23 @@ sibling repo's `docs/`.
 
 ## The toolkit
 
+### The original (ground truth)
+
+The copyrighted original lives untracked at **`data/PS.EXE`**; its SHA-256
+is pinned in `reccmp-project.yml`.  Every consumer (`export`, `delink`,
+`rebuild`, `reccmp prepare`) guards it via `c2.original.ensure_original` —
+missing → instructions, hash mismatch → hard error
+(`C2_ALLOW_ORIGINAL_MISMATCH=1` downgrades to a warning, e.g. for the
+1995 release builds).  **`c2 fetch-original`** supplies it automatically:
+downloads a pinned CD zip from the archive.org collection, md5-verifies
+it, converts the BIN/CUE image on the fly, extracts `HD/PS.EXE` via
+pycdlib, sha256-verifies, installs.  See README "Getting the original
+PS.EXE".
+
 ### Build & link
 
 ```bash
+uv run c2 fetch-original     # supply data/PS.EXE from archive.org (once)
 uv run c2 export data/PS.EXE # parse LE + Watcom debug info → data/out/symbols.json
 uv run c2 rebuild            # authentic 1995 link → build/PS.EXE (runnable)
 uv run c2 delink --list      # recover third-party OMF objects from PS.EXE

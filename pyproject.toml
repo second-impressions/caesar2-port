@@ -11,6 +11,8 @@ dependencies = [
     "pydantic>=2.12.5",
     "typer>=0.24.1",
     "pyyaml>=6.0.3",
+    "requests>=2.32",
+    "pycdlib>=1.14",
 ]
 
 [project.optional-dependencies]

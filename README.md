@@ -23,8 +23,10 @@ devenv shell
 # Install the pinned Python toolchain, including the Watcom-aware reccmp fork
 uv sync
 
-# Supply the exact original locally, then validate it and configure reccmp
-cp /path/to/debug-build/PS.EXE data/PS.EXE
+# Supply the original PS.EXE (downloads a CD image from archive.org and
+# extracts it — see "Getting the original PS.EXE" below for manual options),
+# then validate it and configure reccmp
+uv run c2 fetch-original
 uv run c2 reccmp prepare
 
 # Build the runnable game and publish the separate pre-bind analysis image
@@ -60,6 +62,54 @@ c2 reccmp data                     # Initialized-data and relocation report
 trace machinery, game-asset and CD/runtime helpers — was retired once the
 reconstruction reached byte-exact; it lives in git history, 2026-07-15.)
 
+## Getting the original PS.EXE
+
+The reconstruction's ground truth is the **debug-symbol build** of `PS.EXE`
+(SHA-256
+`4a41f68d0c322785d9a174d4728c3095ab5c6e0d24624af2d3ce67540d8eca5c`,
+1,304,734 bytes).  It is copyrighted and therefore **not tracked**: every
+command that needs it expects it at the git-excluded path **`data/PS.EXE`**,
+complains with instructions when it is absent, and refuses to run when the
+file does not match the pinned hash (escape hatch:
+`C2_ALLOW_ORIGINAL_MISMATCH=1`).  The authoritative hash lives in
+`reccmp-project.yml`.
+
+### Automatic (recommended)
+
+```bash
+uv run c2 fetch-original                # ~132 MiB download
+```
+
+This downloads a CD image from the [Impressions Games PC CD Image
+Collection](https://archive.org/details/20231129_20231129_0828) on
+archive.org (default: the smallest carrier, the Germany 1996-12-18
+rerelease), verifies the zip against its archive.org MD5, converts the
+BIN/CUE image on the fly, extracts `HD/PS.EXE` from the ISO9660
+filesystem, verifies its SHA-256, and installs it at `data/PS.EXE`.
+Nothing but the final 1.3 MB file is kept.  `--cd` picks another release,
+`--from-zip` reuses an already-downloaded CD zip.
+
+### Manual
+
+Download any of these CD images from the
+[collection](https://archive.org/details/20231129_20231129_0828), extract
+`HD/PS.EXE` from the CD filesystem yourself, and place it at
+`data/PS.EXE`:
+
+| CD zip in the archive.org item | size | zip MD5 |
+|---|---|---|
+| [Caesar II (Germany) (Rerelease) (1996-12-18).zip](https://archive.org/download/20231129_20231129_0828/Caesar%20II%20%28Germany%29%20%28Rerelease%29%20%281996-12-18%29.zip) | 132,189,993 | `b9f55ea4d2f6e5aec2e49be96ed6be25` |
+| Caesar II (Germany) (Rerelease) (1996-12-18) (Alt).zip | 132,190,010 | `7b758c0f9757039e0751cfeb6062ef8b` |
+| Caesar II (USA) (Rerelease) (1997-11-12).zip | 359,348,782 | `9f9ea78b83f67546352915489c4a9e93` |
+| Caesar II (USA) (Rerelease) (1996-08-29).zip | 424,795,362 | `5dd30aec3f2cb67f94441ab09180ad0d` |
+| Caesar II (USA) (Rerelease) (1997-03-10).zip | 427,346,354 | `b0a5c283dc181460897c8ad31c82f13c` |
+| Caesar II (Europe) (Rerelease) (1997-09-12).zip | 427,487,808 | `dfdfc4158f57ae48c5f0a54fee4bd856` |
+| Caesar II (Italy) (Covermount).zip | 435,086,930 | `ee4d7d6fd3a980bf92ac6dab1500649e` |
+
+(The other Caesar II releases in the collection — Europe/France/Germany
+originals, OEMs, the 1995-10-06 USA rerelease — ship earlier, non-debug
+builds of PS.EXE and will be rejected by the hash check.)
+
 ## Running the game
 
 `c2 rebuild` produces a self-contained `build/PS.EXE`. Install the game
@@ -75,19 +125,3 @@ podman run --rm -v "$PWD/install/caesar2:/src" \
 
 DOSBox-X has a built-in GDB remote stub (`gdbserver` machine option) for
 attaching a debugger to the live DOS process.
-
-### Which CD to use
-
-The `data/PS.EXE` this project reconstructs is the **debug-symbol build**
-(SHA-256: `4a41f68d0c322785d9a174d4728c3095ab5c6e0d24624af2d3ce67540d8eca5c`).
-It ships on the following CD releases:
-
-| Release | CD zip |
-|---------|--------|
-| Caesar II (Europe) (Rerelease) (1997-09-12) | `CDs/Caesar II (Europe) (Rerelease) (1997-09-12).zip` |
-| Caesar II (Germany) (Rerelease) (1996-12-18) | `CDs/Caesar II (Germany) (Rerelease) (1996-12-18).zip` |
-| Caesar II (Germany) (Rerelease) (1996-12-18) (Alt) | `CDs/Caesar II (Germany) (Rerelease) (1996-12-18) (Alt).zip` |
-| Caesar II (Italy) (Covermount) | `CDs/Caesar II (Italy) (Covermount).zip` |
-| Caesar II (USA) (Rerelease) (1996-08-29) | `CDs/Caesar II (USA) (Rerelease) (1996-08-29).zip` |
-| Caesar II (USA) (Rerelease) (1997-03-10) | `CDs/Caesar II (USA) (Rerelease) (1997-03-10).zip` |
-| Caesar II (USA) (Rerelease) (1997-11-12) | `CDs/Caesar II (USA) (Rerelease) (1997-11-12).zip` |

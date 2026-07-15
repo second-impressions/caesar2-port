@@ -861,6 +861,8 @@ def rebuild(
     t_start = time.perf_counter()
     if output.resolve() == Path("data/PS.EXE").resolve():
         raise typer.BadParameter("refusing to overwrite the original data/PS.EXE")
+    from c2.original import ensure_original
+    ensure_original(exe_path)
     work = _REBUILD_DIR
     work.mkdir(parents=True, exist_ok=True)
     compile_cflags = cflags + " -zq"
