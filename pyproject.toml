@@ -45,7 +45,6 @@ dev = [
 
 [project.scripts]
 c2 = "c2.app:app"
-c2-ext = "c2_ext.cli:main"
 
 [tool.pytest.ini_options]
 # Register custom marks so `@pytest.mark.slow` doesn't emit
