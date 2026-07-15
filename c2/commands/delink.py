@@ -949,7 +949,7 @@ def _pack_libs(out_dir: Path, parts: list["_Part"], d: dict,
     faithful *artifact* form and serve consumers where layout doesn't
     matter (e.g. the smk-player).
     """
-    from c2.commands.decomp_verify import _run_in_container, _STOCK_IMAGE
+    from c2.buildenv import _run_in_container, _STOCK_IMAGE
 
     mods = d["modules"]
     # part name -> lib via any of its module names

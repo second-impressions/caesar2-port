@@ -41,10 +41,7 @@ reccmp-user.yml
 reccmp-build.yml
 
 # Generated output files (regenerable via: c2 export data/PS.EXE)
-data/out/*
-# ...except the cross-build function map: expensive to regenerate (needs the
-# CD images) and useful as a durable reference.  Rebuild: c2 crossbuild-map --rebuild
-!data/out/crossbuild-map.json
+data/out/
 
 # Decomp original binaries (regenerable via: c2 decomp --exe data/PS.EXE)
 decomp/original/
@@ -66,10 +63,9 @@ tmp/
 .c2-cache/
 .c2-runs/
 
-# Local credentials for `c2 decompile` (DEEPSEEK_API_KEY etc.)
+# Local credentials
 .env
 .env.*
-!.env.example
 
 # Local cross-compiler study (copyrighted Watcom binaries + result JSON)
 .c2-compiler-study/
@@ -81,13 +77,6 @@ tmp/
 # Mac disc/demo extraction artifacts (regenerable)
 MAC/extracted/
 MacProject/
-.c2-cache/triage.json
-
-# Per-function byte-diff baseline snapshots — regenerable via `c2 baseline save`.
-# Keep only pre-phase1.json (the documented canonical reference in baseline.py).
-baselines/*
-!baselines/pre-phase1.json
-data/flag-survey/*.gz
 
 # Third-party reference payloads (Open Watcom source oracle, Miles AIL /
 # Smacker SDK headers). Regenerable from public sources — provenance +

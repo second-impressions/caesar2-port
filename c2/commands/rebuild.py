@@ -44,7 +44,7 @@ from typing import Annotated
 
 import typer
 
-from c2.commands.decomp_verify import (
+from c2.buildenv import (
     PS_CFLAGS,
     _STOCK_IMAGE,
     _run_in_container,
@@ -272,7 +272,7 @@ def _compare_vs_original(work: Path, symbols_json: Path, exe_path: Path,
     Returns the summary dict (also printed).
     """
     import bisect
-    from c2.commands.decomp_verify import (
+    from c2.buildenv import (
         _compare_bytes,
     )
     from c2.commands.delink import _load_context

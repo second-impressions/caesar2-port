@@ -331,94 +331,6 @@ def format_disasm_line(
     return line
 
 
-# ── Hint integration ────────────────────────────────────────────────────────
-#
-# Surface the single-sided hints that decomp-verify uses in its per-
-# function header block.  Two-sided hints (rule histogram, pragma /
-# prologue divergence) need a recompile and are skipped.  The three
-# that work on PS bytes alone are:
-#
-#   * Rule 42 tail-merge donor (the function ends in a near jmp into
-#     another PS function; decompiling that donor flips this one
-#     byte-exact for free).
-#   * Inferred-signature mismatch vs declared C signature (auto-detects
-#     stub-signature bugs that cascade into caller regalloc diffs).
-#   * Closest byte-exact sibling (fuzzy-asm shingle match against the
-#     verified corpus -- gives a known-good C source template).
-#
-# Hints are printed as a small header block after the `=== name @ ... ===`
-# banner and before the instruction listing.
-
-
-def _collect_hint_lines(name: str, addr: int, size: int) -> list[str]:
-    """Return zero or more single-line hint strings for `name`."""
-    out: list[str] = []
-
-    # Tail-merge donor (Rule 42).
-    try:
-        from c2.commands.tail_merge import (
-            scan_tail_merge_donor, render_tail_merge_hint,
-        )
-
-        # Pull this function's raw PS bytes out of the cached ctx so
-        # the scanner can disassemble the trailing jmp.
-        ctx = _build_ctx(
-            Path("data/out/symbols.json"), Path("data/PS.EXE"),
-        )
-        off = addr - ctx.code_base
-        fn_bytes = ctx.code[off : off + size]
-        tm = scan_tail_merge_donor(fn_bytes, addr, is_vaddr=True)
-        if tm is not None:
-            out.append(f"  Tail-merge: {render_tail_merge_hint(tm)}")
-    except Exception:
-        pass
-
-    # Inferred signature (always shown) + declared-vs-inferred mismatch.
-    # The inferred signature is derived purely from PS asm (callee-side
-    # live-in + return-EAX dead-write analysis, extended with caller-
-    # side consensus when available) so it works without a recompile.
-    try:
-        from c2.commands.inferred_sig import infer_sig, compare_sig
-
-        sig = infer_sig(name)
-        saves = (" [saves: " + " ".join(sig.callee_saves) + "]"
-                 if sig.callee_saves else "")
-        out.append(f"  Sig: {sig.render()}{saves}")
-
-        try:
-            sig_diff = compare_sig(name)
-        except Exception:
-            sig_diff = None
-        if sig_diff is not None and sig_diff.has_diff:
-            # Show the declared signature verbatim from the C source.
-            d = sig_diff.declared
-            decl_ret = "void" if d.returns_void else "int"
-            decl_args = ", ".join(d.arg_types) if d.arg_types else "void"
-            tags = []
-            if sig_diff.arg_count_mismatch:
-                tags.append("arg count")
-            if sig_diff.return_mismatch:
-                tags.append("return")
-            tag = " (" + ", ".join(tags) + " mismatch)" if tags else ""
-            out.append(
-                f"  Declared: {decl_ret} {name}({decl_args}){tag}"
-            )
-    except Exception:
-        pass
-
-    # Closest byte-exact sibling (shingle match against the verified corpus).
-    try:
-        from c2.commands.sibling import render_sibling_hint
-
-        sib = render_sibling_hint(name, top_n=3, min_score=0.30)
-        if sib is not None:
-            out.append(f"  Sibling: {sib}")
-    except Exception:
-        pass
-
-    return out
-
-
 # ── CLI ───────────────────────────────────────────────────────────────────
 
 def _trailing_next_module_table(
@@ -529,7 +441,6 @@ def disasm(
         hdr += (f"   [+{table_bytes}b trailing {table_next or 'next-module'} "
                 f"switch/scan table -- symbol-extent over-reach, elided]")
     out_lines = [hdr]
-    out_lines.extend(_collect_hint_lines(name, addr, code_sz))
     out_lines.extend(
         format_disasm_line(ln, show_bytes=show_bytes, show_lines=show_lines)
         for ln in lines

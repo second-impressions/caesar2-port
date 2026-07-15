@@ -1,7 +1,7 @@
 [project]
 name = "c2"
 version = "0.1.0"
-description = "Caesar II reverse engineering toolkit — parse DOS/4GW PS.EXE and extract Watcom debug info"
+description = "Caesar II reconstruction toolkit — build, link, and verify the recovered PS.EXE"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -13,14 +13,7 @@ dependencies = [
     "tomli-w>=1.2.0",
     "typer>=0.24.1",
     "pycparser>=3.0",
-    "pyghidra>=2.2.0",
     "pyyaml>=6.0.3",
-    "numpy>=2.5.0",
-    "pydantic-ai-slim[openai,anthropic]>=1.0",
-    "logfire>=2.0",
-    "python-dotenv>=1.2.2",
-    "tree-sitter>=0.26.0",
-    "tree-sitter-c>=0.24.2",
 ]
 
 [project.optional-dependencies]
@@ -39,8 +32,6 @@ reccmp = { git = "https://github.com/second-impressions/reccmp.git", rev = "cfa7
 dev = [
     "capstone>=5.0.7",
     "pytest>=8.0",
-    "semgrep>=1.121.0",
-    "setuptools<81",
 ]
 
 [project.scripts]
