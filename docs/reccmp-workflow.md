@@ -78,11 +78,11 @@ sites, and relocation targets. Embedded Watcom debug extents take precedence
 over public-map gap estimates because a linker map can omit private symbols.
 
 reccmp is the broad, navigable reporting layer; it is not a replacement for
-the reconstruction's strict oracle. `c2 decomp-verify` without `--no-strict`
-still performs the authentic final link and rejects non-debug code, data,
-layout, or loader-relocation differences. The debug trailer is intentionally
-outside source-byte matching and is grafted only after the pre-debug image is
-exact.
+the reconstruction's strict oracle. `c2 rebuild` performs the authentic
+final link and its comparison (including the `strict` whole-code-object
+line) rejects non-debug code, data, layout, or loader-relocation
+differences. The debug trailer is intentionally outside source-byte
+matching and is grafted only after the pre-debug image is exact.
 
 ## Expected local noise and diagnosis
 

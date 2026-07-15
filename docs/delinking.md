@@ -222,5 +222,4 @@ auto-compared per code symbol against `data/PS.EXE` on every build
   PUBDEFs** (non-static data symbols + the `_sndinit` allowlist the
   dia_*.asm renderers reach into).
 * There is **no auto-stubbing** in the rebuild: an unresolved extern is
-  a hard wlink error (the verifier's `stubs.c` machinery remains for
-  `decomp-verify` only).
+  a hard wlink error.
