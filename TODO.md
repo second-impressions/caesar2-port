@@ -18,19 +18,14 @@ document over the current tools.
 - Final-link comparison (`c2 rebuild`, every line exact):
   - game C 1435/1435 · c2-asm 87/87 · av-delink 517/517 · crt 195/195;
   - initialized data 341/341; LE sizes all exact;
-  - **placement**: code starts 2233/2234 exact + 1 `~alias`
-    (`sound_error_` — label-only, byte at PS position correct); data
-    placement 1538/1538 named exact, 58 statics via delink/anchor
+  - **placement**: code starts 2234/2234 exact; data placement 1538/1538
+    named exact, 58 statics via delink/anchor
     (module-aware dup-name pairing; the old false AIL `_dig` report is
     fixed);
   - **strict whole-code-object: 0 differing bytes / 508368** with only
     loader fixups masked and every relative branch displacement visible.
-- Pre-bind reccmp reference report: **2231/2234 functions aligned at 100%
-  accuracy; 1578 initialized-data symbols, 0 issues**. The three unaligned
-  identities are not byte defects: `sound_error_` is the known public/debug
-  alias-location exception, while the two private `_XMI_write_log` copies are
-  ambiguous because their reconstructed archive modules are `ailxmidi` and
-  `ailxdig` rather than the original debug names `ailxmidi.c` and `ailxdig.c`.
+- Pre-bind reccmp reference report: **2234/2234 functions implemented and
+  address-aligned at 100% accuracy; 1593 initialized-data symbols, 0 issues**.
 
 ## Closed 2026-07-14 (this pass — see git for postmortems)
 
@@ -89,10 +84,6 @@ Unchanged: corroborate original header filenames / include graph and the 35
 non-data lib32 slots only if an external source artifact appears.  Do not
 sacrifice exact BSS placement for an unsupported filename guess.
 
-Also recover the original module spellings for the two private
-`_XMI_write_log` symbols if an authoritative Miles debug/source artifact
-appears. Do not resolve the ambiguity by guessing a suffix in reccmp.
-
 ## 3. Optional inverse-compiler research
 
 - make CalcSavings/TooGreedy lookup round-aware; close the two remaining
@@ -108,6 +99,3 @@ appears. Do not resolve the ambiguity by guessing a suffix in reccmp.
 
 - byte-exact Watcom debug section;
 - original source file/path strings and file naming;
-- the `sound_error_` public/debug alias location while debug metadata
-  remains excluded (now reported distinctly as `~alias` by the placement
-  metric).

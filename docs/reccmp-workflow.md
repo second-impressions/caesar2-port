@@ -90,12 +90,12 @@ Some recovered files contain repeated historical annotations for the same
 address. reccmp reports these as dropped duplicate annotations; the compiler
 debug and map identities remain the authoritative alignment inputs.
 
-The current pre-bind reference result is 2231 of 2234 functions aligned at
-100% accuracy and 1578 data symbols with no issues. The three identity misses
-are tracked in `TODO.md`: the known `sound_error_` alias placement and two
-same-named private Miles functions whose reconstructed module names lack the
-original `.c` suffix. They are deliberately left ambiguous instead of being
-paired by an unsupported guess.
+The current pre-bind reference result is 2234 of 2234 functions implemented
+and address-aligned at 100% accuracy, with 1593 data symbols and no issues.
+This includes the two private Miles `_XMI_write_log` functions, resolved by
+normalizing debug-source and linker-member module spellings, and
+`sound_error_`, whose alternate public entry is restored in `pcsound.obj`
+before WLINK without changing segment bytes or relocations.
 
 If a report appears to inspect the grafted runnable file, delete
 `reccmp-build.yml` and rerun `uv run c2 rebuild`. The reconstructed target in
