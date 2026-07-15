@@ -7,8 +7,7 @@ only after the rebuilt non-debug image has passed the strict comparison.
 
 ## Prerequisites
 
-- [devenv](https://devenv.sh/) (provides Python, uv, Java, Open Watcom, Wine, DOSBox-X, etc.)
-- [Ghidra](https://ghidra-sre.org/) with the ghidra-lx-loader extension installed
+- [devenv](https://devenv.sh/) (provides Python, uv, Open Watcom, Wine, DOSBox-X, etc.)
 
 ## ISO Sources
 
@@ -34,16 +33,7 @@ uv run c2 rebuild
 # Whole-image function and initialized-data reports
 uv run c2 reccmp code --html build/reccmp.html --json build/reccmp.json
 uv run c2 reccmp data
-
-# Build (or rebuild) the Ghidra project headlessly, reproducibly:
-scripts/rebuild-ghidra.sh          # imports PS.EXE + runs ImportCaesar2.java
-# ...or in the Ghidra GUI: import with the LE loader, run
-# ghidra_scripts/ImportCaesar2.java
 ```
-
-The Ghidra DB is a disposable, fully-reconstructable artifact (gitignored).
-`scripts/rebuild-ghidra.sh` is the single source of truth for how it is
-built; re-run it any time the DB is missing or stale.
 
 The original executable, generated binaries, and machine-local reccmp configs
 are intentionally untracked. See [docs/reccmp-workflow.md](docs/reccmp-workflow.md)
@@ -67,24 +57,6 @@ c2 reccmp data                     # Initialized-data and relocation report
 trace machinery, game-asset and CD/runtime helpers — was retired once the
 reconstruction reached byte-exact; it lives in git history, 2026-07-15.)
 
-## Static Analysis Workflow
-
-1. **Extract symbols**: `c2 export data/PS.EXE`
-   - Parses the DOS/4GW LE executable structure
-   - Extracts Watcom Debug Info 3.0 (symbols, line numbers, modules)
-   - Writes `data/out/symbols.json` for Ghidra import
-
-2. **Import into Ghidra** (headless, reproducible):
-   - `scripts/rebuild-ghidra.sh` — imports `data/PS.EXE` with the LE-Style
-     DOS loader + `x86:LE:32:watcom` language and runs
-     `ghidra_scripts/ImportCaesar2.java` as the post-script
-   - The script reads `data/out/symbols.json` and `config/program_tree.jsonc`
-   - GUI equivalent: import with the LX Loader, then run the script manually
-
-3. **Customize Program Tree**:
-   - Edit `config/program_tree.jsonc` to adjust subsystem groupings
-   - Re-run `ImportCaesar2.java` to apply changes
-
 ## Running the game
 
 `c2 rebuild` produces a self-contained `build/PS.EXE`. Install the game
@@ -99,7 +71,7 @@ podman run --rm -v "$PWD/install/caesar2:/src" \
 ```
 
 DOSBox-X has a built-in GDB remote stub (`gdbserver` machine option) for
-attaching Ghidra's debugger to the live DOS process.
+attaching a debugger to the live DOS process.
 
 ### Which CD to use
 

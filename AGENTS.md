@@ -30,17 +30,6 @@ statement order, declaration order, and idiom choice.
 `docs/watcom-codegen-patterns.md` catalogues the 155+ codegen rules that
 constrain what the C may look like.
 
-## ⚠️ THE GHIDRA DB IS REBUILT BY A SCRIPT, NOT HAND-CURATED
-
-The Ghidra project (`./C2`, program `PS.EXE`) is a disposable artifact,
-rebuilt from scratch by [`scripts/rebuild-ghidra.sh`](scripts/rebuild-ghidra.sh)
-(LE-Style DOS loader + `x86:LE:32:watcom`, post-script
-`ghidra_scripts/ImportCaesar2.java`).  It applies debug-symbol imports
-(~2,234 functions), authoritative function boundaries, line-number
-comments, program-tree organization, and calling conventions.  **Never run
-bare `ghidra-cli analyze`** — it shreds the debug-symbol boundaries into
-thousands of spurious `FUN_` fragments.  To fix the DB, rebuild it.
-
 ## Git discipline
 
 * You may not be alone in this tree; other agents/sessions work in
