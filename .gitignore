@@ -89,10 +89,12 @@ baselines/*
 !baselines/pre-phase1.json
 data/flag-survey/*.gz
 
-# Open Watcom source reference (algorithm oracle for the docs' bld/cg, bld/cc,
-# bld/clib, bld/wl citations). Large + regenerable from the open-watcom-v2
-# checkout — see vendor/README.md. Tracked: only vendor/README.md.
-vendor/open-watcom/
+# Third-party reference payloads (Open Watcom source oracle, Miles AIL /
+# Smacker SDK headers). Regenerable from public sources — provenance +
+# regeneration recipes in vendor/README.md and docs/external-libs/.
+# Tracked: only vendor/README.md.
+vendor/*
+!vendor/README.md
 C2WinProject/
 decomp/_objs/
 

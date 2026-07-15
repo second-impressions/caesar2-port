@@ -33,15 +33,17 @@ docs/external-libs/
 │   ├── miles-ail-3.03.md      45 KB — full URL inventory + leads
 │   ├── smacker-sdk-2.0.md     45 KB — full URL inventory + leads
 │   └── lib-name-hypotheses.md  hypothesised .LIB/.OBJ filenames + verification recipe
-└── headers/                 Canonical API surface (small, kept for compile-time reference)
-    ├── ail/
-    │   ├── mss-v1.01.h           THE V3.03 header (banner: "1.01 of 19-Jun-95")
-    │   ├── mssw-win32.h          Miles for Win32 cross-reference
-    │   ├── ail32-v1.05.h         Public-domain ancestor (1993)
-    │   └── AIL32-v1.05-LICENSE.txt  John Miles' May-2000 PD release
-    └── smacker/
-        └── smack-v3.2f.h         JA2/MiG leak (md5-identical from both sources)
+├── headers.md               Analysis of the canonical AIL 3.03 / Smacker 2.x API headers
+├── miles-ail-sdk.md         The AIL.H evidence doc (modify-exact pragma proof)
+└── miles-ail-versions.md    Multi-version AIL header index + the PS.EXE 3.03 pin
 ```
+
+The third-party header **payloads** themselves live in the gitignored
+`vendor/` tree (`vendor/external-libs-headers/{ail,smacker}/` — THE V3.03
+`mss-v1.01.h`, `ail32-v1.05.h` + its PD license, `mssw-win32.h`,
+`smack-v3.2f.h`; and `vendor/miles-ail-sdk/` — the multi-version AIL
+collection + RAD changelog).  Per-file provenance/URLs are in the three
+analysis docs above; regeneration recipes in `vendor/README.md`.
 
 ## Provenance, very briefly
 

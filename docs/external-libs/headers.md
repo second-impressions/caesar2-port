@@ -1,7 +1,9 @@
 # Reference headers
 
 These are the canonical API surfaces for AIL 3.03 and Smacker 2.x as
-they shipped to Watcom-DOS licensees. They are kept here purely as
+they shipped to Watcom-DOS licensees. They live on disk at gitignored
+`vendor/external-libs-headers/{ail,smacker}/` (regeneration: per-file
+provenance below + `vendor/README.md`) purely as
 **compile-time references** for any future decomp pass that needs to:
 
 - Look up the exact prototype of an AIL or Smacker function

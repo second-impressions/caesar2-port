@@ -1,6 +1,8 @@
 # Miles AIL / MSS reference headers — version index & PS.EXE pin
 
-This directory collects every real, reachable Miles **AIL.H / MSS / AIL32**
+The gitignored `vendor/miles-ail-sdk/` tree (regeneration: per-file
+provenance below + `vendor/README.md`) collects every real, reachable
+Miles **AIL.H / MSS / AIL32**
 header across the product's history, plus the official RAD Game Tools
 development-history changelog.  These are **reference evidence only** —
 the Caesar II decompilation does **not** build against any of them; the
@@ -43,7 +45,7 @@ once and never bumped the AIL library across the builds.
 **header-revision** date (when the `.H` was edited), not the binary ship
 date; the binary product version string is what PS prints.
 
-## Collected headers (`versions/`)
+## Collected headers (`vendor/miles-ail-sdk/versions/`)
 
 | file                          | product version | source repo / provenance                          | eras relevant to PS |
 |-------------------------------|-----------------|---------------------------------------------------|---------------------|
@@ -53,7 +55,7 @@ date; the binary product version string is what PS prints.
 | `versions/AIL2_v2.14_TAIL.H`  | API 2.00+      | (same)                                            | companion (diagnostics) |
 | `versions/AIL32_v1.05_ail32.h`| AIL/32 **1.05** (1993) | `Wohlstand/ail32-sandbox`                 | 32-bit DOS pmode AIL (predecessor to v3 flat model) |
 | `versions/AIL32_v1.05_ail32.inc` | AIL/32 1.00 (29-Jul-92) | (same)                                      | asm include |
-| `AIL.H` *(parent dir)*        | AIL **3.6B** (1997-03-08) | `gondur/mig_src` (MiG Alley SDK)        | **closest-in-time real header to 3.03**; 3.03 API ⊂ 3.6B |
+| `AIL.H` *(tree root)*         | AIL **3.6B** (1997-03-08) | `gondur/mig_src` (MiG Alley SDK)        | **closest-in-time real header to 3.03**; 3.03 API ⊂ 3.6B |
 | `versions/VBdec_mss_6.1a.h`   | MSS **6.1a** (2001) | `CookiePLMonster/VBdec`                  | documents 3.02→3.03 boundary in its header notes |
 | `versions/Nommy_mss32_AIL.h`  | mss32 (modern rev-eng) | `Nommy228/Might-and-Magic-Trilogy`     | reverse-engineered `mss32.dll` exports (stdcall); NOT era-correct |
 
@@ -76,7 +78,7 @@ header notes confirm the 3.02→3.03 delta was purely additive:
 *"Version 1.00 of 15-Feb-95: Initial, derived from AIL.H V3.02 /
 1.01 of 19-Jun-95: Added various functions for V3.03 release."*
 
-## Dev history (`dev-history/`)
+## Dev history (`vendor/miles-ail-sdk/dev-history/`)
 
 - `dev-history/msshist.htm` — raw HTML of `https://www.radgametools.com/msshist.htm`,
   the full RAD Miles development history (oldest → newest), preserved

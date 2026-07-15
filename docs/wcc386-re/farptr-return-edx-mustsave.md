@@ -216,7 +216,7 @@ pushes any unlisted register, so an unlisted `gs` emits a spurious
 `push gs` (`[eax]`-alone regresses to 134 b).  `gs` is legitimately
 clobbered because the function operates in the AIL driver's segment
 context (separate selector; ail32.asm uses `push gs`/`pop gs` at ISR
-time).  Upstream evidence: `decomp/refs/miles-ail-sdk/AIL.H`.
+time).  Upstream evidence: `vendor/miles-ail-sdk/AIL.H`.
 
 ---
 
@@ -278,7 +278,7 @@ question:
    So §6's toolchain-gap hypothesis is FALSE; PS's EDX push is a SOURCE
    pragma, not a compiler behaviour.
 4. **The pragma is the documented Miles-AIL / Watcom idiom** (web/SDK
-   evidence `decomp/refs/miles-ail-sdk/AIL.H`, from `gondur/mig_src`
+   evidence `vendor/miles-ail-sdk/AIL.H`, from `gondur/mig_src`
    commit `7adf5e68c56f1bfbc79430064df39e36a4e665b6`): every `AIL_*`
    helper declares its exact clobber set via `#pragma aux _AIL_* "*" ...
    modify [eax ebx ecx edx]`; callbacks are `AILCALLBACK __pascal`;
