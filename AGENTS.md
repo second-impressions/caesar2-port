@@ -104,9 +104,10 @@ machine-local `reccmp-user.yml`/`reccmp-build.yml` (both gitignored).
 `HD/` tree + media dirs and run it in DOSBox-X (see README).  Headless
 smoke test:
 `podman run --rm -v "$PWD/install/caesar2:/src" localhost/watcom-10.0a-dosemu2 PSREBLD.EXE`
-(expect the CD-check prompt).  AV runtime test: `tools/smk-player/`
-(links the reconstructed ail.lib/smack.lib and decodes real `.SMK`
-cinematics — run it after delinker changes).
+(expect the CD-check prompt).  AV runtime test: `smk-player` in the
+sibling **caesar2-tools** repo (links the reconstructed
+ail.lib/smack.lib and decodes real `.SMK` cinematics — run it after
+delinker changes; its `build.sh` finds this checkout via `C2_REPO`).
 
 ---
 
@@ -164,8 +165,9 @@ history has all of it).  What remains lives in two places:
   `docs/codegen-experiments/` (the experiment record), `docs/wcc386-re/`
   (regalloc model, symbol maps), the instrumented trace image, and the
   vendor manuals (`docs/references/manuals/`).
-- `tools/imhex/` — ImHex patterns for the reverse-engineered game file
-  formats (their prose specs are in git history).
+- The **caesar2-tools sibling repo** — ImHex patterns for the
+  reverse-engineered game file formats (prose specs in this repo's git
+  history) + the smk-player AV test.
 - Doc citations of the form `bld/cg/c/…` refer to the earliest public
   Open Watcom source (open-watcom-v2 commit `6b9cb44389`, 2002) — an
   algorithm *hint* only, ~7 years newer than the 10.0a that built PS.EXE;
