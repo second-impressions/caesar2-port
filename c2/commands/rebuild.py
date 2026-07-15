@@ -24,8 +24,8 @@ wlink "undefined symbol" error, surfaced verbatim.  The rebuild is
 self-sustained or it does not build — recover the missing definition
 (or fix the reference) instead of papering over it.
 
-Work dir: ``.c2-cache/rebuild`` (independent of the verifier's shared
-``.c2-cache/build`` so parallel verify sessions never collide with it).
+Work dir: ``.c2-cache/rebuild`` (gitignored, incremental; delete it to
+force a cold rebuild — ~minutes instead of ~1 s warm).
 
 Usage:
     c2 rebuild                      # -> build/PS.EXE
