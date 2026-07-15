@@ -33,7 +33,7 @@ Two output modes:
 The result links with WLINK 10.0a exactly like freshly-compiled objects.
 
 Usage:
-    c2 delink --group smacker -o lib/smacker.obj --verify
+    c2 delink --group smacker -o /tmp/smacker.obj --verify
     c2 delink --group av --split -o .c2-cache/rebuild --verify
     c2 delink unsmack.ASM -o /tmp/unsmack.obj
     c2 delink --list                    # predefined groups
@@ -95,17 +95,24 @@ _CRT_SYMS_CACHE: set[str] | None = None
 
 
 def _load_crt_symbols() -> set[str]:
-    """Load the clib3r CRT symbol set (for extern-vs-inline data decisions)."""
+    """Load the clib3r CRT symbol set (for extern-vs-inline data decisions).
+
+    Shipped as package data (``c2/data/clib3r-symbols.txt``, one public
+    symbol per line — originally probed from ``wlib clib3r.lib`` in the
+    toolchain image).  Load failure is a hard error: without this set the
+    delinker would silently absorb CRT data into the delinked objects.
+    """
     global _CRT_SYMS_CACHE
     if _CRT_SYMS_CACHE is not None:
         return _CRT_SYMS_CACHE
+    p = Path(__file__).resolve().parent.parent / "data" / "clib3r-symbols.txt"
     syms: set[str] = set()
-    p = Path("lib/clib3r-symbols.txt")
-    if p.exists():
-        for ln in p.read_text(errors="ignore").splitlines():
-            tok = ln.strip().split()
-            if tok:
-                syms.add(_norm_sym(tok[0]))
+    for ln in p.read_text(errors="ignore").splitlines():
+        tok = ln.strip().split()
+        if tok:
+            syms.add(_norm_sym(tok[0]))
+    if not syms:
+        raise RuntimeError(f"empty CRT symbol set: {p}")
     _CRT_SYMS_CACHE = syms
     return syms
 

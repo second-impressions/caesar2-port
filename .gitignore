@@ -54,10 +54,5 @@ tmp/
 /result
 *.o
 
-# Delinked third-party OMF objects + reconstructed vendor archives
-# (reproducible via 'c2 delink'; RAD/Miles code)
-lib/*.obj
-lib/av/
-
 # The functional rebuild (reproducible via 'c2 rebuild'; embeds delinked RAD/Miles code)
 build/
