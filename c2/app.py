@@ -88,6 +88,7 @@ from c2.commands.shape_census import shape_census
 from c2.commands.reg_delta import reg_delta
 from c2.commands.delink import delink
 from c2.commands.rebuild import rebuild
+from c2.commands.reccmp import app as reccmp_app
 
 app = typer.Typer(
     name="c2",
@@ -113,6 +114,7 @@ app.command("shape-census")(shape_census)
 app.command("reg-delta")(reg_delta)
 app.command("delink")(delink)
 app.command("rebuild")(rebuild)
+app.add_typer(reccmp_app, name="reccmp")
 app.command("gen-header")(gen_header)
 app.command("progress")(progress)
 app.command("disasm")(disasm)

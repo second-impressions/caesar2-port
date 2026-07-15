@@ -75,9 +75,7 @@ def write_user_config(
             }
         }
     }
-    config_path.write_text(
-        yaml.safe_dump(payload, sort_keys=False), encoding="utf-8"
-    )
+    config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
     return config_path
 
 
@@ -114,7 +112,5 @@ def publish_build_artifacts(
             }
         },
     }
-    config_path.write_text(
-        yaml.safe_dump(payload, sort_keys=False), encoding="utf-8"
-    )
+    config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
     return published_map, config_path

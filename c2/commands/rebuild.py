@@ -40,7 +40,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 
@@ -272,9 +272,8 @@ def _compare_vs_original(work: Path, symbols_json: Path, exe_path: Path,
     Returns the summary dict (also printed).
     """
     import bisect
-    import json
     from c2.commands.decomp_verify import (
-        _load_le_code_and_fixups, _compare_bytes,
+        _compare_bytes,
     )
     from c2.commands.delink import _load_context
     from c2.parsers.exe import parse_exe
@@ -850,6 +849,14 @@ def rebuild(
     compare_verbose: Annotated[bool, typer.Option(
         "--compare-verbose", "-cv",
         help="List the diffing / missing symbols in the comparison.")] = False,
+    publish_reccmp: Annotated[bool, typer.Option(
+        "--reccmp/--no-reccmp",
+        help="Publish PS.map and reccmp-build.yml for whole-image reports.")
+    ] = True,
+    reccmp_config: Annotated[Path, typer.Option(
+        "--reccmp-config",
+        help="Generated reccmp build-discovery file.")
+    ] = Path("reccmp-build.yml"),
     cflags: Annotated[str, typer.Option(
         "--cflags",
         help="Compiler flags for recovered C sources.")] = PS_CFLAGS,
@@ -1205,6 +1212,15 @@ def rebuild(
     if output.resolve() != final.resolve():
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_bytes(final.read_bytes())
+    if publish_reccmp:
+        from c2.reccmp_project import publish_build_artifacts
+
+        published_map, config_path = publish_build_artifacts(
+            output,
+            work / "ps.map",
+            config_path=reccmp_config,
+        )
+        typer.echo(f"  reccmp: {output} + {published_map} ({config_path})")
     typer.echo(f"built {output}  ({output.stat().st_size} bytes, "
                f"{'DOS/4GW-bound, self-contained' if bind else 'LE, needs dos4gw.exe'}"
                f", {time.perf_counter() - t_start:.1f}s)")
