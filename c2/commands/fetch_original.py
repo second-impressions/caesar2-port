@@ -13,7 +13,7 @@ zips (default: the smallest, the Germany 1996-12-18 rerelease at
 the BIN/CUE CD image into a temporary plain ISO (stripping the raw
 2352-byte sector framing on the fly), opens the ISO9660 filesystem with
 pycdlib, extracts ``HD/PS.EXE``, verifies its SHA-256 against the
-pinned expectation, and installs it at the git-excluded ``data/PS.EXE``.
+pinned expectation, and installs it at the git-excluded ``original/PS.EXE``.
 All intermediates are temp files and are deleted afterwards.
 """
 
@@ -32,6 +32,9 @@ import requests
 import typer
 from rich.progress import (BarColumn, DownloadColumn, Progress, TextColumn,
                            TransferSpeedColumn)
+
+from c2.original import ensure_original, sha256_of
+from c2.reccmp_project import expected_original_hash
 
 ARCHIVE_ITEM = "20231129_20231129_0828"
 ARCHIVE_URL = f"https://archive.org/download/{ARCHIVE_ITEM}"
@@ -170,7 +173,7 @@ def fetch_original(
     cd: Annotated[str, typer.Option(
         "--cd", help=f"CD release to fetch ({', '.join(CDS)}).")] = DEFAULT_CD,
     dest: Annotated[Path, typer.Option(
-        "--dest", help="Where to install the original.")] = Path("data/PS.EXE"),
+        "--dest", help="Where to install the original.")] = Path("original/PS.EXE"),
     zip_path: Annotated[Optional[Path], typer.Option(
         "--from-zip", help="Use an already-downloaded CD zip instead of "
                            "downloading (still hash-verified).")] = None,
@@ -179,9 +182,6 @@ def fetch_original(
 ) -> None:
     """Download a Caesar II CD image from archive.org and extract the
     original debug-symbol PS.EXE to its expected location."""
-    from c2.original import ensure_original, sha256_of
-    from c2.reccmp_project import expected_original_hash
-
     if cd not in CDS:
         raise typer.BadParameter(f"unknown --cd (choose from: {', '.join(CDS)})")
     name, zsize, zmd5, _zsha1 = CDS[cd]

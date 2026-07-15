@@ -1,7 +1,7 @@
 """``c2 rebuild`` — link the recovered source + delinked objects into a runnable PS.EXE.
 
 ``rebuild`` produces a self-contained
-DOS/4GW-bound ``build/PS.EXE`` (the original stays at ``data/PS.EXE``;
+DOS/4GW-bound ``build/PS.EXE`` (the original stays at ``original/PS.EXE``;
 nothing ever writes there) from:
 
   * every recovered game TU in ``src/`` (compiled with the proven
@@ -35,18 +35,38 @@ Usage:
 
 from __future__ import annotations
 
+import bisect
+import json
+import re
+import shutil
 import time
 from pathlib import Path
 from typing import Annotated
 
 import typer
+from reccmp.formats.watcom_debug import parse_watcom_debug_file
 
+from c2 import le as le_mod
 from c2.buildenv import (
     PS_CFLAGS,
     _STOCK_IMAGE,
+    _compare_bytes,
     _run_in_container,
     _write_if_changed,
 )
+from c2.commands.delink import (
+    _delink,
+    _load_context,
+    _mod_base,
+    _resolve_modules,
+    _verify_verbatim,
+)
+from c2.commands.export import ensure_symbols_json
+from c2.commands.fixups import canonicalize_le_fixup_record_order
+from c2.original import ensure_original
+from c2.parsers.omf import rewrite_pubdef_offsets
+from c2.reccmp_project import publish_build_artifacts
+from c2.watcom_dbg import rebuild_watcom_global_symbol_table
 
 _REBUILD_DIR = Path(".c2-cache/rebuild")
 
@@ -93,10 +113,6 @@ def _delink_objs(work: Path, symbols_json: Path, exe_path: Path,
 
     Returns ({module_index: obj_name}, summary lines).
     """
-    from c2.commands.delink import (
-        _load_context, _resolve_modules, _delink, _verify_verbatim,
-        _mod_base,
-    )
 
     ctx = _load_context(symbols_json, exe_path)
     d = ctx[0]
@@ -144,7 +160,6 @@ def _map_symbols_multi(map_path: Path) -> tuple[dict[str, list[int]],
     `_dig` in ailss.c); a flat dict silently collapses them and any
     name-only mapper then reports the vendor one against the game
     public's address (TODO §4)."""
-    import re
     code: dict[str, list[int]] = {}
     data: dict[str, list[int]] = {}
     rx = re.compile(r"^000([12]):([0-9A-Fa-f]{8})[* +]?\s+(\S+)")
@@ -184,7 +199,6 @@ def _strict_code_sites(o_code: bytes, r_code: bytes,
 
     Returns (diff_byte_count, [site dicts]).
     """
-    import bisect
 
     n = min(len(o_code), len(r_code))
     diffs = [i for i in range(n)
@@ -268,12 +282,6 @@ def _compare_vs_original(work: Path, symbols_json: Path, exe_path: Path,
 
     Returns the summary dict (also printed).
     """
-    import bisect
-    from c2.buildenv import (
-        _compare_bytes,
-    )
-    from c2.commands.delink import _load_context
-    from c2 import le as le_mod
 
     # Original: symbols.json-driven (its memory_map sizes ARE the exe's).
     d, o_code, o_data, o_cvsize, o_dvsize, o_dfsize, o_cfm, o_dfm = _load_context(
@@ -812,7 +820,7 @@ def _compare_vs_original(work: Path, symbols_json: Path, exe_path: Path,
 def rebuild(
     output: Annotated[Path, typer.Option(
         "--output", "-o",
-        help="Bound output path (never data/PS.EXE).")] = Path("build/PS.EXE"),
+        help="Bound output path (never the original).")] = Path("build/PS.EXE"),
     image: Annotated[str, typer.Option(
         "--image", help="Watcom 10.0a compile image.")] = _STOCK_IMAGE,
     bind: Annotated[bool, typer.Option(
@@ -827,9 +835,9 @@ def rebuild(
         "at runtime, so 4k reproduces PS's committed DGROUP vsize).")
     ] = "4k",
     symbols_json: Annotated[Path, typer.Option(
-        "--symbols", help="symbols.json path.")] = Path("data/out/symbols.json"),
+        "--symbols", help="symbols.json path (auto-regenerated when stale).")] = Path(".c2-cache/symbols.json"),
     exe_path: Annotated[Path, typer.Option(
-        "--exe", help="PS.EXE path.")] = Path("data/PS.EXE"),
+        "--exe", help="PS.EXE path.")] = Path("original/PS.EXE"),
     src_dir: Annotated[Path, typer.Option(
         "--src", help="Recovered source dir.")] = Path("src"),
     include_dir: Annotated[Path, typer.Option(
@@ -855,10 +863,10 @@ def rebuild(
 ) -> dict | None:
     """Build a runnable PS.EXE from recovered source + delinked objects."""
     t_start = time.perf_counter()
-    if output.resolve() == Path("data/PS.EXE").resolve():
-        raise typer.BadParameter("refusing to overwrite the original data/PS.EXE")
-    from c2.original import ensure_original
+    if output.resolve() == exe_path.resolve():
+        raise typer.BadParameter("refusing to overwrite the original")
     ensure_original(exe_path)
+    ensure_symbols_json(exe_path, symbols_json)
     work = _REBUILD_DIR
     work.mkdir(parents=True, exist_ok=True)
     compile_cflags = cflags + " -zq"
@@ -887,8 +895,7 @@ def rebuild(
             stale.unlink()
             (work / (stale.stem + ".obj")).unlink(missing_ok=True)
     (work / "av.obj").unlink(missing_ok=True)   # pre-split merged object
-    import shutil as _sh
-    _sh.rmtree(work / "crt", ignore_errors=True)  # pre-1995-link CRT objs
+    shutil.rmtree(work / "crt", ignore_errors=True)  # pre-1995-link CRT objs
 
     # ── 2. delink the third-party objects (per-module, --split) ────────
     mod_to_obj, dl_lines = _delink_objs(work, symbols_json, exe_path,
@@ -905,8 +912,7 @@ def rebuild(
     # interleaving) by itself, given the same inputs.  Measured
     # 2026-07-10: 0 cross-module order breaks.  No CRT extraction, no
     # synthetic ordering — this is the 1995 makefile's shape.
-    import json as _json
-    symbols_data = _json.loads(symbols_json.read_text())
+    symbols_data = json.loads(symbols_json.read_text())
     mods = symbols_data["modules"]
     staged_c = {cf.stem.lower(): cf.stem + ".obj" for cf in c_files}
     staged_asm = {af.stem.lower(): af.stem + ".obj" for af in asm_files}
@@ -1039,7 +1045,6 @@ def rebuild(
     # unreferenced-stub slot at +0x17d1. Repair the PUBDEF before WLINK; this
     # changes no segment byte, relocation, or debug record, and the strict
     # code/data oracle remains independent of the label repair.
-    from c2.parsers.omf import rewrite_pubdef_offsets
     pcsound_obj = work / "pcsound.obj"
     repaired_pcsound = rewrite_pubdef_offsets(
         pcsound_obj.read_bytes(), {"sound_error_": 0x1A2E}
@@ -1056,8 +1061,7 @@ def rebuild(
                                     timeout=300)
         if not ok or "Error!" in out or not exe_le.exists():
             exe_le.unlink(missing_ok=True)
-            import re as _re
-            undef = sorted(set(_re.findall(r"undefined symbol (\S+)", out)))
+            undef = sorted(set(re.findall(r"undefined symbol (\S+)", out)))
             typer.echo(f"LINK FAILED:\n{out}")
             if undef:
                 typer.echo(f"\n{len(undef)} undefined symbol(s) — the corpus "
@@ -1072,8 +1076,6 @@ def rebuild(
     # cannot recreate private Watcom debug records such as AIL's `_locked`
     # globals and internal helpers.  Rebuild that one table from PS, remapped
     # to the generated module order; retain our own module names and line data.
-    from reccmp.formats.watcom_debug import parse_watcom_debug_file
-    from c2.watcom_dbg import rebuild_watcom_global_symbol_table
     _write_if_changed(
         exe_le,
         rebuild_watcom_global_symbol_table(exe_path, exe_le),
@@ -1128,8 +1130,7 @@ def rebuild(
     # prefix is exact, PS's authoritative debug trailer is grafted below.
     final = exe_le
     if bind:
-        from c2 import le as le_mod
-
+    
         oimg = le_mod.load_le(exe_path)
         rimg2 = le_mod.load_le(exe_le)
         orig = oimg.data
@@ -1160,7 +1161,6 @@ def rebuild(
         # the per-page record multisets agree, consume the rebuilt records in
         # PS's order.  A real relocation defect refuses canonicalization and
         # remains visible to the normal rebuild/strict audits.
-        from c2.commands.fixups import canonicalize_le_fixup_record_order
         try:
             bound_bytes = canonicalize_le_fixup_record_order(
                 orig, bound_bytes, oh_le_offset,
@@ -1223,7 +1223,6 @@ def rebuild(
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_bytes(final.read_bytes())
     if publish_reccmp:
-        from c2.reccmp_project import publish_build_artifacts
 
         analysis_output = output.with_name(f"{output.stem}.reccmp{output.suffix}")
         published_executable, published_map, config_path = publish_build_artifacts(

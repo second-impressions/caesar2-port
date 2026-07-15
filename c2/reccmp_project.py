@@ -54,7 +54,7 @@ def _portable_path(path: Path, relative_to: Path) -> str:
 
 
 def write_user_config(
-    original: Path = Path("data/PS.EXE"),
+    original: Path = Path("original/PS.EXE"),
     config_path: Path = USER_FILE,
     project_file: Path = PROJECT_FILE,
 ) -> Path:

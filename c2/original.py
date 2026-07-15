@@ -3,7 +3,7 @@
 The reconstruction's ground truth is the **debug-symbol build** of
 Caesar II's ``PS.EXE`` (``dbg-1996-04``).  It is copyrighted and
 therefore NOT tracked; the user must place it at the git-excluded
-location ``data/PS.EXE`` (see README "Getting the original PS.EXE", or
+location ``original/PS.EXE`` (see README "Getting the original PS.EXE", or
 run ``c2 fetch-original`` to download + extract it from archive.org
 automatically).
 
@@ -31,7 +31,7 @@ import typer
 
 from c2.reccmp_project import expected_original_hash
 
-ORIGINAL_PATH = Path("data/PS.EXE")
+ORIGINAL_PATH = Path("original/PS.EXE")
 
 _MISSING_MSG = """\
 Error: the original PS.EXE was not found at {path}

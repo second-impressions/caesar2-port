@@ -24,8 +24,8 @@ devenv shell
 uv sync
 
 # Supply the original PS.EXE (downloads a CD image from archive.org and
-# extracts it — see "Getting the original PS.EXE" below for manual options),
-# then validate it and configure reccmp
+# extracts it to original/PS.EXE — see "Getting the original PS.EXE" below
+# for manual options), then validate it and configure reccmp
 uv run c2 fetch-original
 uv run c2 reccmp prepare
 
@@ -49,14 +49,16 @@ the original's grafted debug trailer.
 The toolkit is deliberately small — build the binary and verify it:
 
 ```
-c2 export data/PS.EXE              # Parse EXE, write data/out/symbols.json
-c2 export data/PS.EXE --symbols    # Also print full symbol listing
-c2 delink --list                   # Recover third-party OMF objects from PS.EXE
+c2 fetch-original                  # Supply original/PS.EXE from archive.org
 c2 rebuild                         # Link and bind the runnable reconstruction
 c2 reccmp prepare                  # Validate the local original and configure reports
 c2 reccmp code                     # Function alignment/accuracy report
 c2 reccmp data                     # Initialized-data and relocation report
+c2 delink --list                   # Recover third-party OMF objects from PS.EXE
 ```
+
+(Build metadata — `.c2-cache/symbols.json` — is derived from the original
+automatically whenever `rebuild`/`delink` find it missing or stale.)
 
 (The burn-down era's diagnostic tooling — per-function byte oracle, regalloc
 trace machinery, game-asset and CD/runtime helpers — was retired once the
@@ -68,7 +70,7 @@ The reconstruction's ground truth is the **debug-symbol build** of `PS.EXE`
 (SHA-256
 `4a41f68d0c322785d9a174d4728c3095ab5c6e0d24624af2d3ce67540d8eca5c`,
 1,304,734 bytes).  It is copyrighted and therefore **not tracked**: every
-command that needs it expects it at the git-excluded path **`data/PS.EXE`**,
+command that needs it expects it at the git-excluded path **`original/PS.EXE`**,
 complains with instructions when it is absent, and refuses to run when the
 file does not match the pinned hash (escape hatch:
 `C2_ALLOW_ORIGINAL_MISMATCH=1`).  The authoritative hash lives in
@@ -85,7 +87,7 @@ Collection](https://archive.org/details/20231129_20231129_0828) on
 archive.org (default: the smallest carrier, the Germany 1996-12-18
 rerelease), verifies the zip against its archive.org MD5, converts the
 BIN/CUE image on the fly, extracts `HD/PS.EXE` from the ISO9660
-filesystem, verifies its SHA-256, and installs it at `data/PS.EXE`.
+filesystem, verifies its SHA-256, and installs it at `original/PS.EXE`.
 Nothing but the final 1.3 MB file is kept.  `--cd` picks another release,
 `--from-zip` reuses an already-downloaded CD zip.
 
@@ -94,7 +96,7 @@ Nothing but the final 1.3 MB file is kept.  `--cd` picks another release,
 Download any of these CD images from the
 [collection](https://archive.org/details/20231129_20231129_0828), extract
 `HD/PS.EXE` from the CD filesystem yourself, and place it at
-`data/PS.EXE`:
+`original/PS.EXE`:
 
 | CD zip in the archive.org item | size | zip MD5 |
 |---|---|---|
@@ -112,7 +114,7 @@ builds of PS.EXE and will be rejected by the hash check.)
 
 ## Editing the source: the byte-exactness invariant
 
-`data/PS.EXE` is the spec.  **Any edit under `src/` or `include/` must keep
+`original/PS.EXE` is the spec.  **Any edit under `src/` or `include/` must keep
 the reconstruction byte-exact**: run `c2 rebuild` (every comparison line
 must stay exact, `strict 0 differing code byte(s)`, and the final
 `whole file: 0 differing byte(s)`) and `c2 reccmp code` (100% accuracy)

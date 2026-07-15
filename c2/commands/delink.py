@@ -41,12 +41,22 @@ Usage:
 
 from __future__ import annotations
 
+import bisect
 import json
 import re
+import shutil
+import tempfile
 from pathlib import Path
 from typing import Annotated, Optional
 
+import capstone
 import typer
+
+from c2 import le as le_mod
+from c2.buildenv import _STOCK_IMAGE, _run_in_container
+from c2.commands.export import ensure_symbols_json
+from c2.omf import Fixup, OmfObject
+from c2.original import ensure_original
 
 # Predefined library groups (path substrings that identify the modules).
 _GROUPS: dict[str, list[str]] = {
@@ -126,9 +136,6 @@ def _probe_crt_symbols() -> set[str]:
     """Run ``wlib clib3r.lib`` in the toolchain container and return the
     library's public-symbol set (names exactly as the linker sees them,
     i.e. with Watcom's trailing-underscore ``__watcall`` mangling)."""
-    import shutil
-    import tempfile
-    from c2.buildenv import _run_in_container, _STOCK_IMAGE
 
     work = Path(tempfile.mkdtemp(prefix="c2_clib3r_"))
     try:
@@ -147,7 +154,6 @@ def _probe_crt_symbols() -> set[str]:
 
 
 def _load_context(symbols_json: Path, exe_path: Path):
-    from c2 import le as le_mod
 
     d = json.loads(symbols_json.read_text())
     img = le_mod.load_le(exe_path)
@@ -220,7 +226,6 @@ class _Part:
     """One output object (a module in --split mode; the whole set merged)."""
 
     def __init__(self, name: str):
-        from c2.omf import OmfObject
         self.name = name
         self.o = OmfObject(name)
         own = _SEGMENT_NAME_OVERRIDES.get(name)
@@ -284,8 +289,6 @@ def _delink(d, code_bytes, data_bytes, code_vsize, data_vsize, data_fsize,
     data are copied verbatim per contiguous region; only cross-region and
     external references become relocations.
     """
-    import bisect
-    from c2.omf import Fixup
 
     mods = d["modules"]
     allc = sorted([s for s in d["symbols"] if s.get("is_code")],
@@ -878,7 +881,6 @@ def _delink(d, code_bytes, data_bytes, code_vsize, data_vsize, data_fsize,
         _emit_abs(parts[pn], parts[pn].text, stext, tobj, toff)
 
     # relative control-flow edges leaving a cluster
-    import capstone
     md = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_32)
     md.detail = True
     for c in clusters:
@@ -981,7 +983,6 @@ def _pack_libs(out_dir: Path, parts: list["_Part"], d: dict,
     faithful *artifact* form and serve consumers where layout doesn't
     matter (e.g. the smk-player).
     """
-    from c2.buildenv import _run_in_container, _STOCK_IMAGE
 
     mods = d["modules"]
     # part name -> lib via any of its module names
@@ -1009,7 +1010,6 @@ def _pack_libs(out_dir: Path, parts: list["_Part"], d: dict,
 
 
 def cown_data_owner(alld, dstarts, off):
-    import bisect
     i = bisect.bisect_right(dstarts, off) - 1
     return alld[i] if 0 <= i < len(alld) else None
 
@@ -1020,14 +1020,13 @@ def _verify_verbatim(parts: list[_Part], total: _Report) -> tuple[int, int]:
     Checks BOTH emitted segments of every part against the source image,
     masking only that segment's own 4-byte fixup fields.
     """
-    import bisect as _b
     code_bytes = total["_code_bytes"]
     data_bytes = total["_data_bytes"]
     data_fsize = total["_data_fsize"]
     checked = bad = 0
 
     def masked(offsets_sorted, off):
-        i = _b.bisect_right(offsets_sorted, off) - 1
+        i = bisect.bisect_right(offsets_sorted, off) - 1
         return i >= 0 and offsets_sorted[i] <= off < offsets_sorted[i] + 4
 
     for p in parts:
@@ -1075,9 +1074,9 @@ def delink(
     module_name: Annotated[Optional[str], typer.Option(
         "--name", help="THEADR module name (merged mode; default from output/group).")] = None,
     symbols_json: Annotated[Path, typer.Option(
-        "--symbols", help="symbols.json path.")] = Path("data/out/symbols.json"),
+        "--symbols", help="symbols.json path (auto-regenerated when stale).")] = Path(".c2-cache/symbols.json"),
     exe_path: Annotated[Path, typer.Option(
-        "--exe", help="PS.EXE path.")] = Path("data/PS.EXE"),
+        "--exe", help="PS.EXE path.")] = Path("original/PS.EXE"),
     verify: Annotated[bool, typer.Option(
         "--verify", help="Assert non-relocated bytes are verbatim from PS.EXE.")] = False,
     list_groups: Annotated[bool, typer.Option(
@@ -1111,8 +1110,8 @@ def delink(
     if not selectors and not group:
         raise typer.BadParameter("give a module selector or --group")
 
-    from c2.original import ensure_original
     ensure_original(exe_path)
+    ensure_symbols_json(exe_path, symbols_json)
 
     ctx = _load_context(symbols_json, exe_path)
     d = ctx[0]

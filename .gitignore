@@ -32,12 +32,9 @@ project/
 
 # The original executable (supply via 'c2 fetch-original'; hash pinned in
 # reccmp-project.yml) + machine-local reccmp configs
-data/PS.EXE
+original/
 reccmp-user.yml
 reccmp-build.yml
-
-# Generated build metadata (regenerable via: c2 export data/PS.EXE)
-data/out/
 
 # Scratch / temp files
 tmp/

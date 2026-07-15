@@ -42,7 +42,7 @@ def prepare(
     original: Annotated[
         Path,
         typer.Option("--original", help="Original debug-build PS.EXE."),
-    ] = Path("data/PS.EXE"),
+    ] = Path("original/PS.EXE"),
 ) -> None:
     """Validate PS.EXE and write the ignored reccmp-user.yml."""
     try:

@@ -12,7 +12,6 @@ if _os.environ.get("C2_COLOR", "").lower() not in ("1", "true", "yes"):
 
 import typer
 
-from c2.commands.export import export
 from c2.commands.delink import delink
 from c2.commands.rebuild import rebuild
 from c2.commands.reccmp import app as reccmp_app
@@ -25,7 +24,6 @@ app = typer.Typer(
 )
 
 app.command("fetch-original")(fetch_original)
-app.command("export")(export)
 app.command("delink")(delink)
 app.command("rebuild")(rebuild)
 app.add_typer(reccmp_app, name="reccmp")

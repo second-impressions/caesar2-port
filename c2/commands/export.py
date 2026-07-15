@@ -1,14 +1,17 @@
-"""Export command: parse PS.EXE and write symbols.json (build metadata).
+"""symbols.json generation (build metadata derived from the original).
 
 Binary parsing is delegated to the reccmp fork (``reccmp.formats.lx`` /
 ``.watcom_debug``); this module owns the symbols.json contract consumed
 by ``c2 rebuild`` and ``c2 delink``, and the c2 naming conventions.
+
+Not a CLI command: :func:`ensure_symbols_json` runs automatically inside
+``rebuild``/``delink``, regenerating ``.c2-cache/symbols.json`` whenever
+it is missing or older than the original executable.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Optional
 
 import typer
 from reccmp.formats.lx import LXImage
@@ -18,6 +21,7 @@ from reccmp.formats.watcom_debug import (
 )
 
 from c2 import le
+from c2.original import ensure_original
 from c2.models.export import (
     MemObjectExport,
     MemoryMapExport,
@@ -94,37 +98,26 @@ def build_export(info: WatcomDebugInfo, img: LXImage) -> SymbolsJsonExport:
     )
 
 
-def export(
-    input: Annotated[Path, typer.Argument(help="Path to PS.EXE")],
-    output: Annotated[
-        Optional[Path],
-        typer.Option("--output", "-o", help="Output JSON file (default: data/out/symbols.json)"),
-    ] = None,
-) -> None:
-    """Parse PS.EXE: extract the LE map + Watcom debug info, write symbols.json."""
-    from c2.original import ensure_original
+def ensure_symbols_json(
+    exe_path: Path,
+    output_path: Path = Path(".c2-cache/symbols.json"),
+) -> Path:
+    """Regenerate symbols.json from *exe_path* when missing or stale.
 
-    ensure_original(input)
+    Staleness is mtime-based (the original never changes in practice —
+    its hash is pinned — so this only ever fires on a fresh checkout or
+    a deleted cache)."""
+    if (output_path.exists()
+            and output_path.stat().st_mtime >= exe_path.stat().st_mtime):
+        return output_path
 
-    output_path = output or (input.parent / "out" / "symbols.json")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    typer.echo(f"Input: {input} ({input.stat().st_size:,} bytes)")
-    img = le.load_le(input)
-    for i, section in enumerate(img.sections):
-        flags = le.object_raw_flags(img, i)
-        typer.echo(
-            f"  object {i + 1} ({_obj_type_str(flags)}): "
-            f"base 0x{section.virtual_address:X}, "
-            f"vsize {section.virtual_size:,}, "
-            f"file {le.object_file_size(img, i):,} @ "
-            f"0x{le.object_file_offset(img, i):X}"
-        )
-
-    info = parse_watcom_debug_file(input)
+    ensure_original(exe_path)
+    img = le.load_le(exe_path)
+    info = parse_watcom_debug_file(exe_path)
     result = build_export(info, img)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(result.model_dump_json(indent=2))
-
-    typer.echo(f"Wrote {output_path}")
-    typer.echo(f"  {len(info.symbols)} symbols, {len(info.modules)} modules, "
-               f"{len(info.line_numbers)} line entries in the debug info")
+    typer.echo(
+        f"  symbols.json regenerated from {exe_path} "
+        f"({len(info.symbols)} symbols, {len(info.modules)} modules)")
+    return output_path
