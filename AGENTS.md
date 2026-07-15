@@ -591,6 +591,18 @@ output interpretation, and regression signatures: “The functional
 rebuild toolchain” under Operational detail; mechanism docs in
 `docs/delinking.md`.
 
+### `c2 reccmp` — whole-image reconstruction reports
+
+`c2 reccmp prepare` validates the locally supplied original and writes the
+ignored user config. A normal `c2 rebuild` publishes `build/PS.reccmp.EXE`,
+`build/PS.reccmp.map`, and the ignored build config. Use `c2 reccmp code` for
+function alignment/accuracy and `c2 reccmp data` for initialized-data and
+relocation checks; extra arguments pass through to stock reccmp. Never point
+reccmp at runnable `build/PS.EXE`: after a successful non-debug comparison it
+contains PS's grafted original debug trailer, whereas the pre-bind analysis
+image retains the reconstruction's generated symbols. Full workflow and
+artifact boundaries: `docs/reccmp-workflow.md`.
+
 ### `c2 shape-recon <fn>` — the SHAPE lens (statement-level witnesses)
 
 Fuses the PS `-d1` statement spine, binir IR per statement, and the

@@ -1,7 +1,9 @@
-# Caesar II Reverse Engineering Toolkit
+# Caesar II Reconstruction
 
-Tools for reverse engineering Caesar II (1995, Sierra On-Line), a DOS/4GW
-32-bit game built with Watcom C/C++.
+Clean-room source reconstruction and supporting tools for Caesar II (1995), a
+32-bit DOS/4GW game built with Watcom C. The current rebuild is byte-exact
+outside generated debug information; the original debug trailer is attached
+only after the rebuilt non-debug image has passed the strict comparison.
 
 ## Prerequisites
 
@@ -19,8 +21,19 @@ https://archive.org/details/20231129_20231129_0828
 # Enter the devenv shell
 devenv shell
 
-# Parse PS.EXE and generate symbols.json for Ghidra
-c2 export data/PS.EXE
+# Install the pinned Python toolchain, including the Watcom-aware reccmp fork
+uv sync
+
+# Supply the exact original locally, then validate it and configure reccmp
+cp /path/to/debug-build/PS.EXE data/PS.EXE
+uv run c2 reccmp prepare
+
+# Build the runnable game and publish the separate pre-bind analysis image
+uv run c2 rebuild
+
+# Whole-image function and initialized-data reports
+uv run c2 reccmp code --html build/reccmp.html --json build/reccmp.json
+uv run c2 reccmp data
 
 # Build (or rebuild) the Ghidra project headlessly, reproducibly:
 scripts/rebuild-ghidra.sh          # imports PS.EXE + runs ImportCaesar2.java
@@ -32,10 +45,18 @@ The Ghidra DB is a disposable, fully-reconstructable artifact (gitignored).
 `scripts/rebuild-ghidra.sh` is the single source of truth for how it is
 built; re-run it any time the DB is missing or stale.
 
+The original executable, generated binaries, and machine-local reccmp configs
+are intentionally untracked. See [docs/reccmp-workflow.md](docs/reccmp-workflow.md)
+for artifact boundaries, report semantics, and troubleshooting.
+
 ## CLI Commands
 
 ```
 c2 export data/PS.EXE              # Parse EXE, write data/out/symbols.json
+c2 rebuild                         # Link and bind the runnable reconstruction
+c2 reccmp prepare                  # Validate the local original and configure reports
+c2 reccmp code                     # Function alignment/accuracy report
+c2 reccmp data                     # Initialized-data and relocation report
 c2 export data/PS.EXE --symbols    # Also print full symbol listing
 c2 run                             # Launch game in DOSBox-X with GDB stub (port 1234)
 c2 run --no-gdb                    # Launch without GDB stub

@@ -128,7 +128,7 @@ requires-dist = [
     { name = "pyghidra", specifier = ">=2.2.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "reccmp", git = "https://github.com/second-impressions/reccmp.git?rev=f640beb84ae0c3af3ddcf2bcb9ab3ec53fdc4091" },
+    { name = "reccmp", git = "https://github.com/second-impressions/reccmp.git?rev=05b7bfbbc46674eec707ad2280a53ee75755c346" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8.0" },
     { name = "tomli-w", specifier = ">=1.2.0" },
     { name = "tree-sitter", specifier = ">=0.26.0" },
@@ -1462,7 +1462,7 @@ wheels = [
 [[package]]
 name = "reccmp"
 version = "0.1.6"
-source = { git = "https://github.com/second-impressions/reccmp.git?rev=f640beb84ae0c3af3ddcf2bcb9ab3ec53fdc4091#f640beb84ae0c3af3ddcf2bcb9ab3ec53fdc4091" }
+source = { git = "https://github.com/second-impressions/reccmp.git?rev=05b7bfbbc46674eec707ad2280a53ee75755c346#05b7bfbbc46674eec707ad2280a53ee75755c346" }
 dependencies = [
     { name = "capstone" },
     { name = "colorama" },
