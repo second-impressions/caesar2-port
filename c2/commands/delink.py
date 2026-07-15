@@ -111,23 +111,19 @@ def _load_crt_symbols() -> set[str]:
 
 
 def _load_context(symbols_json: Path, exe_path: Path):
-    from c2.parsers.exe import parse_exe
-    from c2.commands.fixups import parse_le_fixups
+    from c2 import le as le_mod
 
     d = json.loads(symbols_json.read_text())
-    _mz, _bw, le = parse_exe(exe_path)
-    exe = exe_path.read_bytes()
-    code_off = le.object_file_offset(le.objects[0])
+    img = le_mod.load_le(exe_path)
+    exe = img.data
+    code_off = le_mod.object_file_offset(img, 0)
     code_vsize = d["memory_map"]["objects"][0]["virtual_size"]
     data_vsize = d["memory_map"]["objects"][1]["virtual_size"]
     data_fsize = d["memory_map"]["objects"][1]["file_size"]
     data_file_off = int(d["memory_map"]["objects"][1]["file_offset_int"])
     code_bytes = exe[code_off:code_off + code_vsize]
     data_bytes = exe[data_file_off:data_file_off + data_fsize]
-    code_fm, data_fm = parse_le_fixups(
-        exe_path, le.le_offset, le.page_size, le.num_pages,
-        le.objects[0].num_pages, le.objects[1].num_pages,
-    )
+    code_fm, data_fm = le_mod.segment_fixup_maps(img)
     return d, code_bytes, data_bytes, code_vsize, data_vsize, data_fsize, code_fm, data_fm
 
 

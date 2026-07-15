@@ -273,8 +273,7 @@ def _compare_vs_original(work: Path, symbols_json: Path, exe_path: Path,
         _compare_bytes,
     )
     from c2.commands.delink import _load_context
-    from c2.parsers.exe import parse_exe
-    from c2.commands.fixups import parse_le_fixups
+    from c2 import le as le_mod
 
     # Original: symbols.json-driven (its memory_map sizes ARE the exe's).
     d, o_code, o_data, o_cvsize, o_dvsize, o_dfsize, o_cfm, o_dfm = _load_context(
@@ -282,18 +281,15 @@ def _compare_vs_original(work: Path, symbols_json: Path, exe_path: Path,
 
     # Rebuild: everything from its own LE header.
     rexe = work / "c2_x.exe"
-    _mz, _bw, rle = parse_exe(rexe)
-    rraw = rexe.read_bytes()
-    r_code = rraw[rle.object_file_offset(rle.objects[0]):
-                  rle.object_file_offset(rle.objects[0])
-                  + rle.object_file_size(rle.objects[0])]
-    r_dfsize = rle.object_file_size(rle.objects[1])
-    r_data2 = rraw[rle.object_file_offset(rle.objects[1]):
-                   rle.object_file_offset(rle.objects[1]) + r_dfsize]
-    r_cfm, r_dfm = parse_le_fixups(
-        rexe, rle.le_offset, rle.page_size, rle.num_pages,
-        rle.objects[0].num_pages, rle.objects[1].num_pages,
-    )
+    rimg = le_mod.load_le(rexe)
+    rraw = rimg.data
+    r_code = rraw[le_mod.object_file_offset(rimg, 0):
+                  le_mod.object_file_offset(rimg, 0)
+                  + le_mod.object_file_size(rimg, 0)]
+    r_dfsize = le_mod.object_file_size(rimg, 1)
+    r_data2 = rraw[le_mod.object_file_offset(rimg, 1):
+                   le_mod.object_file_offset(rimg, 1) + r_dfsize]
+    r_cfm, r_dfm = le_mod.segment_fixup_maps(rimg)
     o_cfix = {off + k for off in o_cfm for k in range(4)}
     r_cfix = {off + k for off in r_cfm for k in range(4)}
     o_dfix = {off + k for off in o_dfm for k in range(4)}
@@ -640,8 +636,8 @@ def _compare_vs_original(work: Path, symbols_json: Path, exe_path: Path,
     if verbose and dmissing:
         typer.echo("      data unmatched: " + ", ".join(dmissing[:20])
                    + (" ..." if len(dmissing) > 20 else ""))
-    r_cvsize = rle.objects[0].virtual_size
-    r_dvsize = rle.objects[1].virtual_size
+    r_cvsize = rimg.sections[0].virtual_size
+    r_dvsize = rimg.sections[1].virtual_size
     typer.echo(f"    LE sizes   code(vsize) {r_cvsize}b vs {o_cvsize}b"
                f" · data(file) {r_dfsize}b vs {o_dfsize}b"
                f" · data(vsize) {r_dvsize}b vs {o_dvsize}b")
@@ -1076,21 +1072,17 @@ def rebuild(
     # cannot recreate private Watcom debug records such as AIL's `_locked`
     # globals and internal helpers.  Rebuild that one table from PS, remapped
     # to the generated module order; retain our own module names and line data.
-    from c2.parsers.debug import (
-        parse_watcom_debug,
-        rebuild_watcom_global_symbol_table,
-    )
+    from reccmp.formats.watcom_debug import parse_watcom_debug_file
+    from c2.watcom_dbg import rebuild_watcom_global_symbol_table
     _write_if_changed(
         exe_le,
         rebuild_watcom_global_symbol_table(exe_path, exe_le),
     )
-    original_debug = parse_watcom_debug(exe_path)
-    generated_debug = parse_watcom_debug(exe_le)
+    original_debug = parse_watcom_debug_file(exe_path)
+    generated_debug = parse_watcom_debug_file(exe_le)
     debug_census = (
         len(generated_debug.modules), len(generated_debug.symbols),
-        sum(len(segment.entries)
-            for segments in generated_debug.line_numbers.values()
-            for segment in segments),
+        len(generated_debug.line_numbers),
     )
     expected_debug_census = (
         len(original_debug.modules), len(original_debug.symbols),
@@ -1136,14 +1128,18 @@ def rebuild(
     # prefix is exact, PS's authoritative debug trailer is grafted below.
     final = exe_le
     if bind:
-        from c2.parsers.exe import parse_exe
+        from c2 import le as le_mod
 
-        orig = exe_path.read_bytes()
-        our_le = exe_le.read_bytes()
-        _omz, _obw, oh = parse_exe(exe_path)
-        _rmz, _rbw, rh = parse_exe(exe_le)
-        target_meta_size = oh.data_pages_abs - oh.le_offset
-        rebuilt_meta = our_le[rh.le_offset:rh.data_pages_abs]
+        oimg = le_mod.load_le(exe_path)
+        rimg2 = le_mod.load_le(exe_le)
+        orig = oimg.data
+        our_le = rimg2.data
+        oh_le_offset = oimg.le_offset
+        oh_data_pages_abs = le_mod.data_pages_abs(oimg)
+        rh_le_offset = rimg2.le_offset
+        rh_data_pages_abs = le_mod.data_pages_abs(rimg2)
+        target_meta_size = oh_data_pages_abs - oh_le_offset
+        rebuilt_meta = our_le[rh_le_offset:rh_data_pages_abs]
         if target_meta_size > len(rebuilt_meta):
             raise RuntimeError(
                 "rebuilt LE metadata does not fit PS's page-data offset: "
@@ -1153,10 +1149,10 @@ def rebuild(
             raise RuntimeError(
                 "binding would discard non-padding LE metadata: "
                 f"{len(discarded)} byte(s)")
-        stub = orig[:oh.le_offset]
+        stub = orig[:oh_le_offset]
         bound_bytes = (
             stub + rebuilt_meta[:target_meta_size]
-            + our_le[rh.data_pages_abs:]
+            + our_le[rh_data_pages_abs:]
         )
         # Reconstructed OMF records carry every original loader relocation,
         # but their synthetic LEDATA/FIXUPP chunk boundaries can make WLINK
@@ -1167,7 +1163,8 @@ def rebuild(
         from c2.commands.fixups import canonicalize_le_fixup_record_order
         try:
             bound_bytes = canonicalize_le_fixup_record_order(
-                orig, bound_bytes, oh.le_offset, oh.num_pages,
+                orig, bound_bytes, oh_le_offset,
+                oimg.header.module_number_of_pages,
             )
         except ValueError as exc:
             typer.echo(f"  fixup order not canonicalized: {exc}")
@@ -1175,8 +1172,8 @@ def rebuild(
             typer.echo("  fixup order: byte-exact per-page record stream")
 
         image_end = max(
-            oh.object_file_offset(obj) + oh.object_file_size(obj)
-            for obj in oh.objects
+            le_mod.object_file_offset(oimg, i) + le_mod.object_file_size(oimg, i)
+            for i in range(len(oimg.sections))
         )
         if len(orig) - original_debug.debug_size != image_end:
             raise RuntimeError("PS Watcom debug trailer does not follow LE data")

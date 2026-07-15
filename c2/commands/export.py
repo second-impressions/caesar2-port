@@ -1,4 +1,9 @@
-"""Export command: parse PS.EXE and write symbols.json for Ghidra import."""
+"""Export command: parse PS.EXE and write symbols.json for Ghidra import.
+
+Binary parsing is delegated to the reccmp fork (``reccmp.formats.lx`` /
+``.watcom_debug``); this module owns only the symbols.json shape and the
+c2 naming conventions.
+"""
 
 from __future__ import annotations
 
@@ -6,9 +11,14 @@ from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
+from reccmp.formats.lx import LXImage
+from reccmp.formats.watcom_debug import (
+    WatcomDebugInfo,
+    WatcomSymbol,
+    parse_watcom_debug_file,
+)
 
-from c2.parsers.debug import WatcomDebugInfo, build_addr_info_base_map, parse_watcom_debug
-from c2.parsers.exe import LEHeader, extract_le_objects, parse_exe
+from c2 import le
 from c2.models.export import (
     AddrInfoExport,
     DebugInfoExport,
@@ -24,49 +34,98 @@ from c2.models.export import (
     SymbolsJsonExport,
 )
 
+# GBL_KIND_* flags (wdbginfo.h)
+_KIND_STATIC = 0x01
+_KIND_DATA = 0x02
+_KIND_CODE = 0x04
+
+
+# ── c2 naming conventions ────────────────────────────────────────────────────
+#
+# Deliberately NOT reccmp's demangler: reccmp additionally strips a single
+# leading underscore from code symbols as ``__cdecl`` (a display heuristic).
+# symbols.json is the toolchain's name authority — AIL cdecl exports like
+# ``_DLL_read`` must keep their raw spelling, matching the .c sources and
+# the delink allowlists.
+
+
+def _demangle(raw: str, is_code: bool, is_data: bool) -> tuple[str, str | None]:
+    """Reverse the Watcom __watcall decoration (TS_CODE_MANGLE ``*_`` /
+    TS_DATA_MANGLE ``_*``).  Returns (demangled_name, calling_convention)."""
+    if is_code and raw.endswith("_") and len(raw) > 1:
+        return raw[:-1], "__watcall"
+    if is_data and raw.startswith("_") and len(raw) > 1:
+        return raw[1:], None
+    return raw, None
+
+
+def _kind_str(kind: int) -> str:
+    parts = []
+    if kind & _KIND_STATIC:
+        parts.append("static")
+    if kind & _KIND_CODE:
+        parts.append("code")
+    if kind & _KIND_DATA:
+        parts.append("data")
+    return " ".join(parts) if parts else "unknown"
+
+
+def _display_name(sym: WatcomSymbol) -> tuple[str, str | None]:
+    return _demangle(sym.raw_name, sym.is_code, sym.is_data)
+
+
+# ── LE object views ──────────────────────────────────────────────────────────
+
+
+def _obj_type_str(flags: int) -> str:
+    if flags & 0x0004:
+        return "code"
+    if flags & 0x0002:
+        return "data"
+    return "rodata"
+
+
+def _obj_flags_str(flags: int) -> str:
+    r = "R" if flags & 0x0001 else "-"
+    w = "W" if flags & 0x0002 else "-"
+    x = "X" if flags & 0x0004 else "-"
+    bits = "32bit" if flags & 0x2000 else "16bit"
+    return f"{r}{w}{x} {bits}"
+
 
 # ── Human-readable output ────────────────────────────────────────────────────
 
 
-def _print_exe_info(le: LEHeader) -> None:
+def _print_exe_info(img: LXImage) -> None:
     """Print LE executable structure summary."""
     print(f"\n{'=' * 70}")
     print("LE Executable (Caesar II game code)")
     print(f"{'=' * 70}")
-    print(f"  MZ stub offset:   0x{le.mz_offset:08X}")
-    print(f"  LE header offset: 0x{le.le_offset:08X}")
-    cpu = "80386" if le.cpu_type == 2 else f"type {le.cpu_type}"
+    print(f"  MZ stub offset:   0x{le.mz_offset(img):08X}")
+    print(f"  LE header offset: 0x{img.le_offset:08X}")
+    cpu = "80386" if img.header.cpu_type == 2 else f"type {img.header.cpu_type}"
     print(f"  CPU type:         {cpu}")
-    print(f"  Pages:            {le.num_pages} x {le.page_size} bytes")
-    print(f"  Data pages at:    0x{le.data_pages_abs:08X} (file offset)")
+    print(f"  Pages:            {img.header.module_number_of_pages} x "
+          f"{img.header.page_size} bytes")
+    print(f"  Data pages at:    0x{le.data_pages_abs(img):08X} (file offset)")
+    print(f"  Entry point:      Object {img.header.eip_object_nb} + "
+          f"0x{img.header.eip:X} = 0x{img.entry:X}")
+    esp_obj = img.sections[img.header.esp_object_nb - 1]
+    print(f"  Stack:            Object {img.header.esp_object_nb} + "
+          f"0x{img.header.esp:X} = 0x{esp_obj.virtual_address + img.header.esp:X}")
 
-    if le.entry_address is not None:
-        print(
-            f"  Entry point:      Object {le.eip_object} + "
-            f"0x{le.eip:X} = 0x{le.entry_address:X}"
-        )
-    if le.stack_address is not None:
-        print(
-            f"  Stack:            Object {le.esp_object} + "
-            f"0x{le.esp:X} = 0x{le.stack_address:X}"
-        )
-
-    print(f"\n  Objects ({le.num_objects}):")
+    print(f"\n  Objects ({len(img.sections)}):")
     print(
         f"  {'#':>3s}  {'Type':>6s}  {'Flags':>12s}  {'Base':>10s}  "
         f"{'VirtSize':>10s}  {'Pages':>5s}  {'FileOff':>10s}  {'FileSize':>10s}"
     )
-    print(
-        f"  {'---':>3s}  {'------':>6s}  {'------------':>12s}  {'----------':>10s}  "
-        f"{'----------':>10s}  {'-----':>5s}  {'----------':>10s}  {'----------':>10s}"
-    )
-    for obj in le.objects:
-        file_off = le.object_file_offset(obj)
-        file_sz = le.object_file_size(obj)
+    for i, section in enumerate(img.sections):
+        flags = le.object_raw_flags(img, i)
         print(
-            f"  {obj.index:3d}  {obj.type_str:>6s}  {obj.flags_str:>12s}  "
-            f"0x{obj.reloc_base_addr:08X}  {obj.virtual_size:>10,}  "
-            f"{obj.num_pages:>5d}  0x{file_off:08X}  {file_sz:>10,}"
+            f"  {i + 1:3d}  {_obj_type_str(flags):>6s}  {_obj_flags_str(flags):>12s}  "
+            f"0x{section.virtual_address:08X}  {section.virtual_size:>10,}  "
+            f"{le.object_num_pages(img, i):>5d}  "
+            f"0x{le.object_file_offset(img, i):08X}  {le.object_file_size(img, i):>10,}"
         )
 
 
@@ -75,18 +134,11 @@ def _print_debug_info(info: WatcomDebugInfo) -> None:
     print(f"\n{'=' * 70}")
     print("Watcom Debug Info 3.0")
     print(f"{'=' * 70}")
-    print(
-        f"  Version:     {info.exe_major_ver}.{info.exe_minor_ver} "
-        f"(obj {info.obj_major_ver}.{info.obj_minor_ver})"
-    )
+    exe_ver, obj_ver = info.executable_version, info.object_version
+    print(f"  Version:     {exe_ver[0]}.{exe_ver[1]} (obj {obj_ver[0]}.{obj_ver[1]})")
     print(f"  Debug size:  {info.debug_size:,} bytes (0x{info.debug_size:X})")
-    print(f"  Languages:   {info.languages}")
-    print(f"  Segments:    {info.segment_table}")
-
-    line_counts: dict[int, int] = {}
-    for mod_idx, segments in info.line_numbers.items():
-        line_counts[mod_idx] = sum(len(seg.entries) for seg in segments)
-    modules_with_lines = [m for m in info.modules if line_counts.get(m.index, 0) > 0]
+    print(f"  Languages:   {list(info.languages)}")
+    print(f"  Segments:    {list(info.segment_selectors)}")
 
     print(f"\n  Modules ({len(info.modules)}):")
     for mod in info.modules:
@@ -95,7 +147,7 @@ def _print_debug_info(info: WatcomDebugInfo) -> None:
             extras.append(f"locals={mod.locals_entries}")
         if mod.types_entries:
             extras.append(f"types={mod.types_entries}")
-        lc = line_counts.get(mod.index, 0)
+        lc = sum(1 for e in info.line_numbers if e.module_index == mod.index)
         if lc:
             extras.append(f"lines={lc}")
         extra_str = f"  [{', '.join(extras)}]" if extras else ""
@@ -109,43 +161,32 @@ def _print_debug_info(info: WatcomDebugInfo) -> None:
     print(f"    Code: {code_count}, Data: {data_count}")
     print(f"    Static code: {static_code}, Static data: {static_data}")
 
-    total_lines = sum(
-        sum(len(seg.entries) for seg in segs)
-        for segs in info.line_numbers.values()
-    )
-    print(f"\n  Line numbers: {total_lines} entries across {len(modules_with_lines)} files")
+    mods_with_lines = len({e.module_index for e in info.line_numbers})
+    print(f"\n  Line numbers: {len(info.line_numbers)} entries "
+          f"across {mods_with_lines} files")
 
-    print(f"\n  Address info: {len(info.addr_info)} blocks")
-    for ai in info.addr_info:
-        total_bytes = sum(e.size for e in ai.entries)
+    print(f"\n  Address info: {len(info.addr_info or [])} blocks")
+    for ai in info.addr_info or []:
         print(
             f"    seg {ai.base_segment}: base=0x{ai.base_offset:X}, "
-            f"{len(ai.entries)} modules, "
-            f"total=0x{total_bytes:X} bytes"
+            f"{len(ai.entry_sizes)} modules, "
+            f"total=0x{sum(ai.entry_sizes):X} bytes"
         )
 
 
-def _print_symbols(info: WatcomDebugInfo, le: LEHeader) -> None:
+def _print_symbols(info: WatcomDebugInfo, img: LXImage) -> None:
     """Print all symbols with resolved addresses."""
     print(f"\n{'=' * 70}")
     print("Global Symbols")
     print(f"{'=' * 70}")
 
-    seg_base = {obj.index: obj.reloc_base_addr for obj in le.objects}
-
     for sym in info.symbols:
-        base = seg_base.get(sym.segment, 0)
-        addr = base + sym.offset
-        kind_parts = []
-        if sym.is_static:
-            kind_parts.append("static")
-        if sym.is_code:
-            kind_parts.append("code")
-        if sym.is_data:
-            kind_parts.append("data")
-        kind_str = " ".join(kind_parts)
-        conv = f"  [{sym.calling_convention}]" if sym.calling_convention else ""
-        print(f"  0x{addr:08X}  {kind_str:>12s}  {sym.demangled_name}{conv}")
+        base = (img.sections[sym.segment - 1].virtual_address
+                if sym.segment <= len(img.sections) else 0)
+        name, conv = _display_name(sym)
+        conv_str = f"  [{conv}]" if conv else ""
+        print(f"  0x{base + sym.offset:08X}  {_kind_str(sym.kind):>12s}  "
+              f"{name}{conv_str}")
 
 
 # ── Builder ───────────────────────────────────────────────────────────────
@@ -168,62 +209,61 @@ class _FileRange:
         self.max_address = max(self.max_address, address)
 
 
-def build_export(info: WatcomDebugInfo, le: LEHeader) -> SymbolsJsonExport:
+def build_export(info: WatcomDebugInfo, img: LXImage) -> SymbolsJsonExport:
     """Build the unified JSON export."""
     # ── Memory map ───────────────────────────────────────────────────────
     objects_out: list[MemObjectExport] = []
-    for obj in le.objects:
-        file_offset = le.object_file_offset(obj)
-        file_size = le.object_file_size(obj)
+    for i, section in enumerate(img.sections):
+        flags = le.object_raw_flags(img, i)
+        file_offset = le.object_file_offset(img, i)
         objects_out.append(MemObjectExport(
-            index=obj.index,
-            type=obj.type_str,
-            base_address=f"0x{obj.reloc_base_addr:X}",
-            base_address_int=obj.reloc_base_addr,
-            virtual_size=obj.virtual_size,
-            virtual_size_hex=f"0x{obj.virtual_size:X}",
-            file_size=file_size,
+            index=i + 1,
+            type=_obj_type_str(flags),
+            base_address=f"0x{section.virtual_address:X}",
+            base_address_int=section.virtual_address,
+            virtual_size=section.virtual_size,
+            virtual_size_hex=f"0x{section.virtual_size:X}",
+            file_size=le.object_file_size(img, i),
             file_offset=f"0x{file_offset:X}",
             file_offset_int=file_offset,
-            num_pages=obj.num_pages,
-            flags=f"0x{obj.flags:X}",
-            flags_str=obj.flags_str,
+            num_pages=le.object_num_pages(img, i),
+            flags=f"0x{flags:X}",
+            flags_str=_obj_flags_str(flags),
         ))
 
     memory_map = MemoryMapExport(
         format="le_flat_binary",
         architecture="x86:LE:32:default",
-        le_mz_offset=f"0x{le.mz_offset:X}",
-        le_header_offset=f"0x{le.le_offset:X}",
+        le_mz_offset=f"0x{le.mz_offset(img):X}",
+        le_header_offset=f"0x{img.le_offset:X}",
         objects=objects_out,
     )
 
-    if le.eip_object <= len(le.objects):
-        eip_obj = le.objects[le.eip_object - 1]
-        entry_addr = eip_obj.reloc_base_addr + le.eip
+    hdr = img.header
+    if hdr.eip_object_nb <= len(img.sections):
+        entry_addr = img.sections[hdr.eip_object_nb - 1].virtual_address + hdr.eip
         memory_map.entry_point = EntryPointExport(
-            object=le.eip_object,
-            offset=f"0x{le.eip:X}",
-            offset_int=le.eip,
+            object=hdr.eip_object_nb,
+            offset=f"0x{hdr.eip:X}",
+            offset_int=hdr.eip,
             address=f"0x{entry_addr:X}",
             address_int=entry_addr,
         )
 
-    if le.esp_object <= len(le.objects):
-        esp_obj = le.objects[le.esp_object - 1]
-        stack_addr = esp_obj.reloc_base_addr + le.esp
+    if hdr.esp_object_nb <= len(img.sections):
+        stack_addr = img.sections[hdr.esp_object_nb - 1].virtual_address + hdr.esp
         memory_map.stack = StackExport(
-            object=le.esp_object,
-            offset=f"0x{le.esp:X}",
+            object=hdr.esp_object_nb,
+            offset=f"0x{hdr.esp:X}",
             address=f"0x{stack_addr:X}",
         )
 
     # ── Segment maps ─────────────────────────────────────────────────────
     seg_base: dict[int, int] = {}
     seg_vsize: dict[int, int] = {}
-    for obj in le.objects:
-        seg_base[obj.index] = obj.reloc_base_addr
-        seg_vsize[obj.index] = obj.virtual_size
+    for i, section in enumerate(img.sections):
+        seg_base[i + 1] = section.virtual_address
+        seg_vsize[i + 1] = section.virtual_size
 
     # ── Symbols ──────────────────────────────────────────────────────────
     symbols_out: list[SymbolExport] = []
@@ -231,18 +271,19 @@ def build_export(info: WatcomDebugInfo, le: LEHeader) -> SymbolsJsonExport:
     beyond_count = 0
 
     for sym in info.symbols:
+        name, conv = _display_name(sym)
         entry = SymbolExport(
-            name=sym.demangled_name,
-            raw_name=sym.name,
+            name=name,
+            raw_name=sym.raw_name,
             segment=sym.segment,
             offset=sym.offset,
             offset_hex=f"0x{sym.offset:08X}",
             module_index=sym.module_index,
-            kind=sym.kind_str,
+            kind=_kind_str(sym.kind),
             is_code=sym.is_code,
             is_data=sym.is_data,
             is_static=sym.is_static,
-            calling_convention=sym.calling_convention,
+            calling_convention=conv,
         )
 
         if sym.segment in seg_base:
@@ -259,29 +300,22 @@ def build_export(info: WatcomDebugInfo, le: LEHeader) -> SymbolsJsonExport:
         symbols_out.append(entry)
 
     # ── Line numbers ─────────────────────────────────────────────────────
-    addr_info_base_map = build_addr_info_base_map(info.addr_info)
     code_base = seg_base.get(1, 0)
+    mod_short_names = {
+        m.index: (m.name.rsplit("\\", 1)[1] if "\\" in m.name else m.name)
+        for m in info.modules
+    }
 
     lines_out: list[LineEntryExport] = []
-    for mod_idx, segments in info.line_numbers.items():
-        mod = info.modules[mod_idx]
-        mod_name = mod.name
-        if "\\" in mod_name:
-            mod_name = mod_name.rsplit("\\", 1)[1]
-
-        for seg in segments:
-            module_base = addr_info_base_map.get(seg.addr_info_offset, 0)
-            for lentry in seg.entries:
-                flat_offset = module_base + lentry.code_offset
-                ghidra_addr = code_base + flat_offset
-                lines_out.append(LineEntryExport(
-                    line=lentry.line,
-                    file=mod_name,
-                    module_index=mod_idx,
-                    offset=flat_offset,
-                    address=ghidra_addr,
-                    address_hex=f"0x{ghidra_addr:08X}",
-                ))
+    for lentry in info.line_numbers:
+        lines_out.append(LineEntryExport(
+            line=lentry.line,
+            file=mod_short_names[lentry.module_index],
+            module_index=lentry.module_index,
+            offset=lentry.code_offset,
+            address=code_base + lentry.code_offset,
+            address_hex=f"0x{code_base + lentry.code_offset:08X}",
+        ))
 
     lines_out.sort(key=lambda e: e.address)
 
@@ -344,23 +378,23 @@ def build_export(info: WatcomDebugInfo, le: LEHeader) -> SymbolsJsonExport:
 
     # ── Address info ─────────────────────────────────────────────────────
     addr_info_out: list[AddrInfoExport] = []
-    for ai in info.addr_info:
+    for ai in info.addr_info or []:
         addr_info_out.append(AddrInfoExport(
             base_segment=ai.base_segment,
             base_offset=ai.base_offset,
             base_offset_hex=f"0x{ai.base_offset:08X}",
-            module_count=len(ai.entries),
-            total_declared_bytes=sum(e.size for e in ai.entries),
+            module_count=len(ai.entry_sizes),
+            total_declared_bytes=sum(ai.entry_sizes),
         ))
 
     return SymbolsJsonExport(
         memory_map=memory_map,
         debug_info=DebugInfoExport(
             format="watcom_debug_v3",
-            version=f"{info.exe_major_ver}.{info.exe_minor_ver}",
+            version=f"{info.executable_version[0]}.{info.executable_version[1]}",
             debug_size=info.debug_size,
-            languages=info.languages,
-            segment_table=info.segment_table,
+            languages=list(info.languages),
+            segment_table=list(info.segment_selectors),
             addr_info=addr_info_out,
         ),
         modules=modules_out,
@@ -379,6 +413,23 @@ def build_export(info: WatcomDebugInfo, le: LEHeader) -> SymbolsJsonExport:
             total_line_entries=len(lines_out),
         ),
     )
+
+
+def _extract_le_objects(img: LXImage, output_dir: Path) -> None:
+    """Extract LE object data as flat binary files (BSS zero-padded)."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for i, section in enumerate(img.sections):
+        flags = le.object_raw_flags(img, i)
+        if _obj_type_str(flags) == "code":
+            bin_name = "le_code.bin"
+        elif i + 1 == 2:
+            bin_name = "le_data.bin"
+        else:
+            bin_name = f"le_obj{i + 1}.bin"
+        data = bytes(section.view)
+        if section.virtual_size > len(data):
+            data += b"\x00" * (section.virtual_size - len(data))
+        (output_dir / bin_name).write_bytes(data)
 
 
 # ── Typer command ─────────────────────────────────────────────────────────
@@ -411,25 +462,26 @@ def export(
 
     # Parse executable structure
     typer.echo(f"Input: {input} ({input.stat().st_size:,} bytes)")
-    _mz, _bw_headers, le = parse_exe(input)
-    _print_exe_info(le)
+    img = le.load_le(input)
+    _print_exe_info(img)
 
     # Extract LE objects
     if not no_extract:
-        extract_le_objects(input, le, output_path.parent)
-        for obj in le.objects:
-            name = "le_code.bin" if obj.type_str == "code" else "le_data.bin"
-            typer.echo(f"\n  Extracted {name}: {obj.virtual_size:,} bytes")
+        _extract_le_objects(img, output_path.parent)
+        for i, section in enumerate(img.sections):
+            flags = le.object_raw_flags(img, i)
+            name = "le_code.bin" if _obj_type_str(flags) == "code" else "le_data.bin"
+            typer.echo(f"\n  Extracted {name}: {section.virtual_size:,} bytes")
 
     # Parse Watcom debug info
-    info = parse_watcom_debug(input)
+    info = parse_watcom_debug_file(input)
     _print_debug_info(info)
 
     if symbols:
-        _print_symbols(info, le)
+        _print_symbols(info, img)
 
     # Export unified JSON
-    result = build_export(info, le)
+    result = build_export(info, img)
     output_path.write_text(result.model_dump_json(indent=2, exclude_none=True))
 
     stats = result.stats

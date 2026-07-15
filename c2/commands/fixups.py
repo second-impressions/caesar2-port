@@ -1,4 +1,10 @@
-"""LE fixup record parser for Caesar II PS.EXE.
+"""LE fixup record canonicalizer for the rebuild bind step.
+
+Read-side fixup parsing lives in the reccmp fork (``reccmp.formats.lx``,
+surfaced via :mod:`c2.le`); this module keeps the WRITE-side raw-record
+machinery: splitting each load page's record stream into opaque record
+byte strings and reordering the rebuilt stream into PS's record order
+(``canonicalize_le_fixup_record_order``).
 
 Based on Open Watcom exeflat.h and bld/exedump/c/wdfix.c reference impl.
 """
@@ -33,83 +39,6 @@ OSF_TFLAG_OFF_32BIT = 0x10
 OSF_TFLAG_ADD_32BIT = 0x20
 OSF_TFLAG_OBJ_MOD_16BIT = 0x40
 OSF_TFLAG_ORDINAL_8BIT = 0x80
-
-
-def parse_le_fixups(
-    exe_path: Path,
-    le_offset: int,
-    page_size: int,
-    num_pages: int,
-    code_pages: int,
-    data_pages: int = 0,
-) -> tuple[dict[int, tuple[int, int]], dict[int, tuple[int, int]]]:
-    """Parse LE fixup records for code and data segments.
-
-    Returns (code_fixups, data_fixups) where each is a dict:
-        byte_offset_within_segment → (target_obj_number, target_offset).
-    Only off32 internal fixups are returned.
-    """
-    data = exe_path.read_bytes()
-
-    fpt_off = struct.unpack_from("<I", data, le_offset + 0x68)[0]
-    frt_off = struct.unpack_from("<I", data, le_offset + 0x6C)[0]
-    fpt_abs = le_offset + fpt_off
-    frt_abs = le_offset + frt_off
-
-    entries = [
-        struct.unpack_from("<I", data, fpt_abs + i * 4)[0]
-        for i in range(num_pages + 1)
-    ]
-
-    code_fixups: dict[int, tuple[int, int]] = {}
-    data_fixups: dict[int, tuple[int, int]] = {}
-
-    total_pages = code_pages + data_pages if data_pages else code_pages
-
-    for page in range(total_pages):
-        pos = frt_abs + entries[page]
-        end = frt_abs + entries[page + 1]
-
-        # Determine which segment and base page for offset calculation
-        if page < code_pages:
-            target_map = code_fixups
-            seg_base_page = 0
-        else:
-            target_map = data_fixups
-            seg_base_page = code_pages
-
-        while pos < end:
-            source = data[pos]
-            flags = data[pos + 1]
-            pos += 2
-
-            src_kind = source & OSF_SOURCE_MASK
-            is_list = bool(source & OSF_SFLAG_LIST)
-
-            if is_list:
-                cnt = data[pos]
-                pos += 1
-            else:
-                src_off = struct.unpack_from("<H", data, pos)[0]
-                cnt = 0
-                pos += 2
-
-            tgt_type = flags & OSF_TARGET_MASK
-
-            if tgt_type == OSF_TARGET_INTERNAL:
-                pos = _parse_internal(
-                    data, pos, flags, source, src_kind, is_list, cnt,
-                    src_off if not is_list else 0,
-                    page - seg_base_page, page_size, target_map,
-                )
-            elif tgt_type == OSF_TARGET_EXT_ORD:
-                pos = _skip_imp_ord(data, pos, flags, is_list, cnt)
-            elif tgt_type == OSF_TARGET_EXT_NAME:
-                pos = _skip_imp_name(data, pos, flags, is_list, cnt)
-            elif tgt_type == OSF_TARGET_INT_VIA_ENTRY:
-                pos = _skip_int_entry(data, pos, flags, is_list, cnt)
-
-    return code_fixups, data_fixups
 
 
 def _raw_fixup_record_pages(

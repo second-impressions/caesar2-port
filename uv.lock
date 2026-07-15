@@ -26,7 +26,6 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "capstone" },
-    { name = "construct" },
     { name = "pycdlib" },
     { name = "pydantic" },
     { name = "pyyaml" },
@@ -49,11 +48,10 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "capstone", specifier = ">=5.0.7" },
-    { name = "construct", specifier = ">=2.10.0" },
     { name = "pycdlib", specifier = ">=1.14" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "reccmp", git = "https://github.com/second-impressions/reccmp.git?rev=cfa7fe80495d99730fef8f61cfabcd3a4b3f5623" },
+    { name = "reccmp", editable = "../reccmp" },
     { name = "requests", specifier = ">=2.32" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8.0" },
     { name = "typer", specifier = ">=0.24.1" },
@@ -161,15 +159,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d8/53/6f443c9a4a8358a93a6792e2acffb9d9d5cb0a5cfd8802644b7b1c9a02e4/colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44", size = 27697, upload-time = "2022-10-25T02:36:22.414Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6", size = 25335, upload-time = "2022-10-25T02:36:20.889Z" },
-]
-
-[[package]]
-name = "construct"
-version = "2.10.70"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/02/77/8c84b98eca70d245a2a956452f21d57930d22ab88cbeed9290ca630cf03f/construct-2.10.70.tar.gz", hash = "sha256:4d2472f9684731e58cc9c56c463be63baa1447d674e0d66aeb5627b22f512c29", size = 86337, upload-time = "2023-11-29T08:44:49.545Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b2/fb/08b3f4bf05da99aba8ffea52a558758def16e8516bc75ca94ff73587e7d3/construct-2.10.70-py3-none-any.whl", hash = "sha256:c80be81ef595a1a821ec69dc16099550ed22197615f4320b57cc9ce2a672cb30", size = 63020, upload-time = "2023-11-29T08:44:46.876Z" },
 ]
 
 [[package]]
@@ -503,8 +492,7 @@ wheels = [
 
 [[package]]
 name = "reccmp"
-version = "0.1.6"
-source = { git = "https://github.com/second-impressions/reccmp.git?rev=cfa7fe80495d99730fef8f61cfabcd3a4b3f5623#cfa7fe80495d99730fef8f61cfabcd3a4b3f5623" }
+source = { editable = "../reccmp" }
 dependencies = [
     { name = "capstone" },
     { name = "colorama" },
@@ -514,6 +502,18 @@ dependencies = [
     { name = "pyghidra" },
     { name = "pystache" },
     { name = "ruamel-yaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "capstone", specifier = "==5.0.9" },
+    { name = "colorama", specifier = ">=0.4.6" },
+    { name = "cydifflib", specifier = "==1.2.0" },
+    { name = "pydantic", specifier = "==2.13.4" },
+    { name = "pydemumble", specifier = "==0.0.1" },
+    { name = "pyghidra", specifier = "==3.1.0" },
+    { name = "pystache", specifier = "==0.6.8" },
+    { name = "ruamel-yaml", specifier = "==0.19.1" },
 ]
 
 [[package]]
