@@ -7,7 +7,11 @@ only after the rebuilt non-debug image has passed the strict comparison.
 
 ## Prerequisites
 
-- [devenv](https://devenv.sh/) (provides Python, uv, Open Watcom, Wine, DOSBox-X, etc.)
+- [Nix](https://nixos.org/) with flakes (the dev shell provides Python, uv,
+  and DOSBox-X; enter it with `nix develop`, or `direnv allow` once for
+  automatic activation)
+- [podman](https://podman.io/) with the `watcom-10.0a-wibo` toolchain image
+  (the Watcom compiler/linker run inside it, not in the shell)
 
 ## ISO Sources
 
@@ -17,8 +21,8 @@ https://archive.org/details/20231129_20231129_0828
 ## Quick Start
 
 ```bash
-# Enter the devenv shell
-devenv shell
+# Enter the dev shell (or let direnv do it: direnv allow)
+nix develop
 
 # Install the pinned Python toolchain, including the Watcom-aware reccmp fork
 uv sync

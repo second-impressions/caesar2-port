@@ -29,6 +29,7 @@ project/
 *.lock
 *.lock~
 !uv.lock
+!flake.lock
 
 # The original executable (supply via 'c2 fetch-original'; hash pinned in
 # reccmp-project.yml) + machine-local reccmp configs
