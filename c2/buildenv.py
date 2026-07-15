@@ -30,7 +30,8 @@ _CS.detail = False
 _STOCK_IMAGE = "localhost/watcom-10.0a-wibo"
 
 # The canonical PS.EXE compile flags (Watcom 10.0a; default OptSize=50,
-# unsigned char).  Proven settled — see AGENTS.md "Compiler flags".
+# unsigned char).  Proven settled — per-flag byte-level proofs in the
+# watcom10.0a sibling repo (docs/watcom-10.0a-flags.md).
 PS_CFLAGS = "-bt=dos -mf -4r -s -d1"
 
 def _run_in_container(

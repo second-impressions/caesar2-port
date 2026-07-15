@@ -110,6 +110,25 @@ Download any of these CD images from the
 originals, OEMs, the 1995-10-06 USA rerelease — ship earlier, non-debug
 builds of PS.EXE and will be rejected by the hash check.)
 
+## Editing the source: the byte-exactness invariant
+
+`data/PS.EXE` is the spec.  **Any edit under `src/` or `include/` must keep
+the reconstruction byte-exact**: run `c2 rebuild` (every comparison line
+must stay exact, `strict 0 differing code byte(s)`, and the final
+`whole file: 0 differing byte(s)`) and `c2 reccmp code` (100% accuracy)
+before committing.  Even style edits are constrained — the optimiser's
+output depends on statement order, declaration order, and idiom choice.
+The inferred source-style guide (`observed-source-style.md`) and the
+155-rule Watcom codegen catalogue live in the
+[watcom10.0a](../../ReverseEngineering/watcom10.0a) sibling repo's `docs/`;
+the game's data structures are documented in `include/entities.h`.
+
+Two tracked file groups are **frozen generated artifacts** (generators
+retired 2026-07-15, recoverable from git history): `include/c2_data.h` /
+`c2_funcs.h` (do not patch by hand; `c2_funcs.h` must not be included
+broadly — prototype visibility changes Watcom call-site codegen) and the
+8 `.asm` modules in `src/`.
+
 ## Running the game
 
 `c2 rebuild` produces a self-contained `build/PS.EXE`. Install the game
