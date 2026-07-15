@@ -25,7 +25,7 @@ build-backend = "hatchling.build"
 
 [tool.uv.sources]
 reccmp = { path = "../reccmp", editable = true }  # TEMP during formats migration; final pin below
-# reccmp = { git = "https://github.com/second-impressions/reccmp.git", rev = "d0a743c58abf6e3b9cf075743239340dd32f01f9" }
+# reccmp = { git = "https://github.com/second-impressions/reccmp.git", rev = "e9bb551f4ce243f0d25f4d1639025b9ac1c9ea68" }
 
 [dependency-groups]
 dev = [
