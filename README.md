@@ -35,9 +35,12 @@ uv run c2 reccmp code --html build/reccmp.html --json build/reccmp.json
 uv run c2 reccmp data
 ```
 
-The original executable, generated binaries, and machine-local reccmp configs
-are intentionally untracked. See [docs/reccmp-workflow.md](docs/reccmp-workflow.md)
-for artifact boundaries, report semantics, and troubleshooting.
+The original executable, generated binaries, and machine-local reccmp
+configs are intentionally untracked.  The target hash is pinned in
+`reccmp-project.yml`; `c2 reccmp prepare` validates the local original
+against it.  Compare functions/data against the pre-bind
+`build/PS.reccmp.EXE` — never the runnable `build/PS.EXE`, which carries
+the original's grafted debug trailer.
 
 ## CLI Commands
 

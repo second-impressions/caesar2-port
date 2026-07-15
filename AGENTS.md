@@ -25,10 +25,10 @@ reconstruction byte-exact**: run `c2 rebuild` (its comparison lines must all
 stay exact / strict 0) and `c2 reccmp code` (100% accuracy) before
 committing.  When editing source *style* (comments, formatting), remember
 the code shape itself is load-bearing — the optimiser's output depends on
-statement order, declaration order, and idiom choice.
-`docs/observed-source-style.md` is the inferred PS source-style guide;
-`docs/watcom-codegen-patterns.md` catalogues the 155+ codegen rules that
-constrain what the C may look like.
+statement order, declaration order, and idiom choice.  The inferred PS
+source-style guide (`observed-source-style.md`) and the 155-rule codegen
+pattern catalogue (`watcom-codegen-patterns.md`) live in the watcom10.0a
+sibling repo's `docs/`.
 
 ## Git discipline
 
@@ -68,14 +68,21 @@ strict     0 differing code byte(s) / 508368
 ```
 
 Options: `-cv` (list diffing symbols), `--no-bind`, `--no-compare`.
-Work dir `.c2-cache/rebuild/` (incremental, ~1 s warm).  Mechanism docs:
-`docs/delinking.md`.
+Work dir `.c2-cache/rebuild/` (incremental, ~1 s warm).
+
+Delinker facts worth not regressing: alias dedupe (two `-d1` names on one
+body must not duplicate bytes); data PUBDEFs + the `_sndinit` allowlist;
+per-module `_TEXT` alignment inferred from PS's pad bytes; the RAD asm
+modules' code segments declared in canonical order.  `c2 delink --verify`
+(verbatim byte check vs PS.EXE) should accompany any delinker change, and
+rebuild's av-delink/layout buckets are the end-to-end gate.
 
 **Toolchain**: the Watcom 10.0a container image (`localhost/watcom-10.0a-wibo`)
 with the proven-settled flags `PS_CFLAGS = -bt=dos -mf -4r -s -d1`
-(default OptSize=50, unsigned char — the per-flag byte-level proofs are in
-`decomp/docs/watcom-10.0a-flags.md` and `docs/char-signedness-proof.md`;
-do not chase flags).  The canonical constant lives in `c2/buildenv.py`.
+(default OptSize=50, unsigned char — the per-flag byte-level proofs live in
+the watcom10.0a repo's `docs/watcom-10.0a-flags.md` and
+`docs/char-signedness-proof.md`; do not chase flags).  The canonical
+constant lives in `c2/buildenv.py`.
 
 ### Verification (reccmp)
 
@@ -87,8 +94,9 @@ uv run c2 reccmp data        # initialized-data + relocation checks
 ```
 
 Never point reccmp at the runnable `build/PS.EXE` (it contains PS's grafted
-debug trailer); the pre-bind `PS.reccmp.EXE` is the analysis image.  Full
-workflow: `docs/reccmp-workflow.md`.
+debug trailer); the pre-bind `PS.reccmp.EXE` is the analysis image.  The
+target hash is pinned in `reccmp-project.yml`; `prepare` writes the
+machine-local `reccmp-user.yml`/`reccmp-build.yml` (both gitignored).
 
 ### Run the game
 
@@ -129,9 +137,9 @@ function registry (many cross-TU calls had no prototype at all).
   int params; rest on stack right-to-left.
 - **Format**: Linear Executable (LE-Style DOS); code base `0x10000`, data
   base `0x90000`; ~2,234 named functions from Watcom `-d1` debug info.
-- **Third-party**: Miles AIL 3.03 + RAD Smacker 2.0 (delinked from PS.EXE,
-  never decompiled — headers in `decomp/include/ail.h` / `smacker.h`);
-  Watcom CRT from `clib3r.lib`.  Research: `docs/external-libs/`.
+- **Third-party**: Miles AIL 3.03 (base, 1995-06-18) + RAD Smacker 2.0
+  (delinked from PS.EXE, never decompiled — headers in
+  `decomp/include/ail.h` / `smacker.h`); Watcom CRT from `clib3r.lib`.
 - **Data layout**: `city_map` (80×80 grid of 20-byte `struct city_cell`,
   `cm_ptr = y * 80 + x`), `region_map`, `pseudo_map`, `battle_map`,
   `figure_list` / `army_list` / … — all documented in
@@ -144,18 +152,20 @@ function registry (many cross-TU calls had no prototype at all).
 
 ## Knowledge base
 
-- `docs/observed-source-style.md` — the inferred PS source-style guide.
-- `docs/watcom-codegen-patterns.md` — 155+ numbered Watcom 10.0a codegen
-  rules learned during the byte-exact burn-down.
-- `docs/codegen-experiments/` — the authored experiment scripts (historic;
-  they drove the retired diagnostic tooling and are kept as the record).
-- `docs/delinking.md`, `docs/reccmp-workflow.md` — mechanism docs for the
-  build/verify pipeline.
-- `docs/*-format.md` — game file-format specs (PL8, GD8, INF, LBM, …);
-  `tools/imhex/` has the matching ImHex patterns.
-- The **watcom10.0a sibling repo** — the compiler RE: the instrumented
-  wcc386 trace image, `docs/wcc386-re/` (regalloc model, symbol maps),
-  the vendor manuals (`docs/references/manuals/`).
+The burn-down documentation was retired 2026-07-15 (this repo's git
+history has all of it).  What remains lives in two places:
+
+- The **watcom10.0a sibling repo**
+  (`~/git/ReverseEngineering/watcom10.0a`) — all wcc386-10.0a compiler
+  knowledge: `docs/observed-source-style.md` (the inferred PS source-style
+  guide), `docs/watcom-codegen-patterns.md` (the 155-rule codegen
+  catalogue), `docs/watcom-10.0a-flags.md` + `docs/char-signedness-proof.md`
+  (the flag proofs), `docs/watcom-debug-format-spec.md`,
+  `docs/codegen-experiments/` (the experiment record), `docs/wcc386-re/`
+  (regalloc model, symbol maps), the instrumented trace image, and the
+  vendor manuals (`docs/references/manuals/`).
+- `tools/imhex/` — ImHex patterns for the reverse-engineered game file
+  formats (their prose specs are in git history).
 - Doc citations of the form `bld/cg/c/…` refer to the earliest public
   Open Watcom source (open-watcom-v2 commit `6b9cb44389`, 2002) — an
   algorithm *hint* only, ~7 years newer than the 10.0a that built PS.EXE;
@@ -164,6 +174,5 @@ function registry (many cross-TU calls had no prototype at all).
 ## Semantic code search (semble)
 
 Prefer `semble_search` over grep/glob+read for any "where is… / how does…"
-question across the C decompilation, the c2 toolkit, and the docs; narrow
-with `path`, fall back to exact grep only for every-literal-occurrence
-needs.
+question across the C decompilation and the c2 toolkit; narrow with
+`path`, fall back to exact grep only for every-literal-occurrence needs.

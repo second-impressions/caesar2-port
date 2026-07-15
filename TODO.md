@@ -1,8 +1,8 @@
 # TODO — live remaining work
 
 Updated 2026-07-15 (toolkit-retirement pass).  This file is intentionally a
-short list of unfinished work.  Completed campaigns and stale corpus
-snapshots belong in git history and the dated documents under `docs/`.
+short list of unfinished work.  Completed campaigns, the retired tooling,
+and the burn-down documentation all live in git history (≤ 2026-07-15).
 
 ## Current verified state
 

@@ -20,14 +20,15 @@ RAD Smacker `.smk`, raw audio `.raw`) are out of scope.
 | `caesar2_model.hexpat`    | `C2MODEL.DAT` game-balance tuning tables | 4,360 bytes |
 | `includes/caesar2_common.hexpat` | shared types (`VgaColor`, `TileCode`) | (include) |
 
-Each pattern cites the matching format doc in `docs/` (e.g. `pl8-format.md`,
+The prose format specs the patterns were derived from (`pl8-format.md`,
 `textfile-format.md`, `helpfile-format.md`, `regions-dat-format.md`,
-`inf-format.md`, `cell-bitfields.md`).
+`inf-format.md`, `cell-bitfields.md`, …) were retired with the rest of the
+burn-down docs; find them in git history (≤ 2026-07-15) under `docs/`.
 
 > **`C2MODEL.DAT`** *does* ship on the CD (4,360 bytes = the `model_entries` tuning
 > tables) and is patterned above — but the game never loads it (`loadmodel` has zero
 > callers; `"c2model.dat"` is absent from the binary), and 11 of its blocks differ from
-> the baked-in EXE defaults.  See `docs/model-dat-format.md`.
+> the baked-in EXE defaults.  (Spec: `docs/model-dat-format.md` in git history.)
 
 ## Not patterned (considered, but no real format)
 
@@ -68,7 +69,7 @@ way (official patterns likewise use a plain `reserved` field for such bytes).
 The "dead" status is *proven*: a whole-binary disassembly scan for
 `arrow_rec`/`province_industry`/`mercs_class`, and the two-build Mac
 cross-check for `figure`/`citizen`/`unit`/`army_rec` (see
-`../../docs/mac-deadfield-crosscheck.md`).
+`docs/mac-deadfield-crosscheck.md` in git history).
 
 One faithful quirk is modelled explicitly: the `province_industries` symbol is
 only 8 records (128 B), but its save entry is `{ province_industries, 256 }`,

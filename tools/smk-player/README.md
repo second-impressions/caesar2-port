@@ -4,12 +4,9 @@ This is the "ultimate test" for `c2 delink`: it links the **delinked RAD
 Smacker library** (recovered from PS.EXE, never rebuilt from source) into a
 small DOS/4GW program that **decodes real `.SMK` videos**.  If the delinked
 object were wrong in any relocation, the decoder — 13 KB of hand-written
-self-modifying `unsmack.ASM` — would produce garbage.  It produces frames:
-
-![decoded frame](../../docs/smk-delink-frame.png)
-
-(A frame from a RAD Smacker cinematic, decoded start-to-finish by the
-delinked `_SmackDoFrameToBuffer` running under DOS/4GW.)
+self-modifying `unsmack.ASM` — would produce garbage.  It produces clean
+frames (decoded start-to-finish by the delinked `_SmackDoFrameToBuffer`
+running under DOS/4GW).
 
 ## What it exercises
 
@@ -52,7 +49,8 @@ tweaks).  Run with sound:
 > mis-attributed to the trailing CRT `remove` symbol and dropped by the
 > delinker, so the DMA-service `call cs:[eax*4 + TABLE]` read a garbage slot.
 > `c2 delink` now recovers these data-in-code tables (see
-> `docs/delinking.md` → "Data-in-code jump tables…"); the driver now installs
+> `docs/delinking.md` → "Data-in-code jump tables…" in git history); the
+> driver now installs
 > and services DMA cleanly (`AIL_install_DIG_INI ok … exit clean`).
 
 ```
