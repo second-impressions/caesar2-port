@@ -42,6 +42,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -94,26 +95,54 @@ def _norm_sym(name: str) -> str:
 _CRT_SYMS_CACHE: set[str] | None = None
 
 
+_CRT_SYMS_PATH = (
+    Path(__file__).resolve().parent.parent / "data" / "clib3r-symbols.json"
+)
+
+
 def _load_crt_symbols() -> set[str]:
     """Load the clib3r CRT symbol set (for extern-vs-inline data decisions).
 
-    Shipped as package data (``c2/data/clib3r-symbols.txt``, one public
-    symbol per line — originally probed from ``wlib clib3r.lib`` in the
-    toolchain image).  Load failure is a hard error: without this set the
-    delinker would silently absorb CRT data into the delinked objects.
+    Shipped as package data (``c2/data/clib3r-symbols.json``, the sorted
+    public-symbol list of the toolchain image's ``clib3r.lib``;
+    regenerate with ``c2 delink --refresh-crt-symbols``).  Load failure
+    is a hard error: without this set the delinker would silently absorb
+    CRT data into the delinked objects.
     """
     global _CRT_SYMS_CACHE
     if _CRT_SYMS_CACHE is not None:
         return _CRT_SYMS_CACHE
-    p = Path(__file__).resolve().parent.parent / "data" / "clib3r-symbols.txt"
-    syms: set[str] = set()
-    for ln in p.read_text(errors="ignore").splitlines():
-        tok = ln.strip().split()
-        if tok:
-            syms.add(_norm_sym(tok[0]))
+    syms = {_norm_sym(s) for s in json.loads(_CRT_SYMS_PATH.read_text())}
     if not syms:
-        raise RuntimeError(f"empty CRT symbol set: {p}")
+        raise RuntimeError(f"empty CRT symbol set: {_CRT_SYMS_PATH}")
     _CRT_SYMS_CACHE = syms
+    return syms
+
+
+_CLIB3R_LINE_RE = re.compile(r"\b([A-Za-z_]\w{0,31})\.{2,}([A-Za-z_]\w{0,31})\b")
+
+
+def _probe_crt_symbols() -> set[str]:
+    """Run ``wlib clib3r.lib`` in the toolchain container and return the
+    library's public-symbol set (names exactly as the linker sees them,
+    i.e. with Watcom's trailing-underscore ``__watcall`` mangling)."""
+    import shutil
+    import tempfile
+    from c2.buildenv import _run_in_container, _STOCK_IMAGE
+
+    work = Path(tempfile.mkdtemp(prefix="c2_clib3r_"))
+    try:
+        # Single-quote the DOS path: _run_in_container shlex-splits the
+        # command, and unquoted backslashes would be eaten as escapes.
+        ok, txt = _run_in_container(
+            work, _STOCK_IMAGE,
+            r"wlib 'Z:\opt\watcom\lib386\dos\clib3r.lib'", timeout=60)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    syms = {sym for sym, _mod in _CLIB3R_LINE_RE.findall(txt)}
+    if not ok or not syms:
+        raise RuntimeError(
+            "wlib probe failed in the toolchain container (no symbols)")
     return syms
 
 
@@ -1053,12 +1082,30 @@ def delink(
         "--verify", help="Assert non-relocated bytes are verbatim from PS.EXE.")] = False,
     list_groups: Annotated[bool, typer.Option(
         "--list", help="List predefined groups and exit.")] = False,
+    refresh_crt_symbols: Annotated[bool, typer.Option(
+        "--refresh-crt-symbols",
+        help="Re-probe clib3r.lib in the toolchain container, rewrite the "
+             "packaged CRT symbol set (c2/data/clib3r-symbols.json), exit.")] = False,
     as_json: Annotated[bool, typer.Option("--json", help="JSON report.")] = False,
 ) -> None:
     """Delink a module set from PS.EXE into linkable OMF .obj file(s)."""
     if list_groups:
         for g, subs in _GROUPS.items():
             typer.echo(f"  {g:12} {subs}")
+        return
+    if refresh_crt_symbols:
+        old = set(json.loads(_CRT_SYMS_PATH.read_text()))
+        new = _probe_crt_symbols()
+        _CRT_SYMS_PATH.write_text(
+            json.dumps(sorted(new), indent=1) + "\n")
+        added, gone = sorted(new - old), sorted(old - new)
+        typer.echo(f"probed {len(new)} clib3r public symbols → {_CRT_SYMS_PATH}")
+        if added:
+            typer.echo(f"  added:   {' '.join(added)}")
+        if gone:
+            typer.echo(f"  removed: {' '.join(gone)}")
+        if not added and not gone:
+            typer.echo("  unchanged")
         return
     selectors = selectors or []
     if not selectors and not group:
