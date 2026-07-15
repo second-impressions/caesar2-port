@@ -36,6 +36,7 @@ project/
 !uv.lock
 
 # reccmp machine-local inputs and generated build discovery
+data/PS.EXE
 reccmp-user.yml
 reccmp-build.yml
 
