@@ -1038,6 +1038,21 @@ def rebuild(
                 raise typer.Exit(1)
             built_any = True
 
+    # PS's unreferenced ``sound_error_`` is an alternate public entry on the
+    # existing RET at pcsound.obj:_TEXT+0x1a2e (the end of
+    # init_city_ambients), not a separately emitted empty-function body. WCC
+    # 10.0a always hoists our equivalent empty C definition to the earlier
+    # unreferenced-stub slot at +0x17d1. Repair the PUBDEF before WLINK; this
+    # changes no segment byte, relocation, or debug record, and the strict
+    # code/data oracle remains independent of the label repair.
+    from c2.parsers.omf import rewrite_pubdef_offsets
+    pcsound_obj = work / "pcsound.obj"
+    repaired_pcsound = rewrite_pubdef_offsets(
+        pcsound_obj.read_bytes(), {"sound_error_": 0x1A2E}
+    )
+    if _write_if_changed(pcsound_obj, repaired_pcsound):
+        built_any = True
+
     exe_le = work / "c2_x.exe"
     link_deps = [work / o.replace("\\", "/") for o in obj_files] \
         + [work / lib for lib in _LIB_MEMBERS] + [work / "ps.lnk"]

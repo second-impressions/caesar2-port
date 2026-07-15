@@ -30,6 +30,80 @@ _LOC_SIZE = {
 }
 
 
+def _read_index(data: bytes | bytearray, offset: int) -> tuple[int, int]:
+    """Read one variable-width OMF index and return ``(value, next)``."""
+    first = data[offset]
+    offset += 1
+    if first & 0x80:
+        return ((first & 0x7F) << 8) | data[offset], offset + 1
+    return first, offset
+
+
+def rewrite_pubdef_offsets(data: bytes, replacements: dict[str, int]) -> bytes:
+    """Return *data* with selected PUBDEF/PUBDEF32 offsets replaced.
+
+    This changes symbol placement only. Segment contents, relocations, and all
+    record lengths remain untouched. Every requested name must occur exactly
+    once so a malformed or unexpectedly changed object fails loudly.
+    """
+    if not replacements:
+        return data
+
+    out = bytearray(data)
+    found = {name: 0 for name in replacements}
+    pos = 0
+    while pos < len(out):
+        if pos + 3 > len(out):
+            raise ValueError("truncated OMF record header")
+        record_type = out[pos]
+        record_length = struct.unpack_from("<H", out, pos + 1)[0]
+        record_end = pos + 3 + record_length
+        if record_end > len(out) or record_length == 0:
+            raise ValueError("invalid OMF record length")
+
+        if record_type in (0x90, 0x91):
+            width = 4 if record_type == 0x91 else 2
+            cursor = pos + 3
+            _group, cursor = _read_index(out, cursor)
+            segment, cursor = _read_index(out, cursor)
+            if segment == 0:
+                cursor += 2
+            checksum_pos = record_end - 1
+            while cursor < checksum_pos:
+                name_length = out[cursor]
+                cursor += 1
+                name = bytes(out[cursor : cursor + name_length]).decode(
+                    "ascii", errors="replace"
+                )
+                cursor += name_length
+                if cursor + width > checksum_pos:
+                    raise ValueError("truncated OMF PUBDEF entry")
+                if name in replacements:
+                    value = replacements[name]
+                    if value < 0 or value >= 1 << (width * 8):
+                        raise ValueError(
+                            f"PUBDEF offset for {name} does not fit {width * 8} bits"
+                        )
+                    struct.pack_into("<I" if width == 4 else "<H", out, cursor, value)
+                    found[name] += 1
+                cursor += width
+                _type_index, cursor = _read_index(out, cursor)
+
+            # WCC emits real checksums. Re-establish the record invariant after
+            # changing an offset (a zero checksum would also be legal but loses
+            # the corruption check carried by the compiler's object).
+            out[checksum_pos] = 0
+            out[checksum_pos] = (-sum(out[pos:checksum_pos])) & 0xFF
+
+        pos = record_end
+
+    invalid = {name: count for name, count in found.items() if count != 1}
+    if invalid:
+        details = ", ".join(f"{name}={count}" for name, count in invalid.items())
+        raise ValueError(f"OMF PUBDEF replacement count differs: {details}")
+    return bytes(out)
+
+
 # ── Library extraction ───────────────────────────────────────────────────────
 
 def extract_omf_lib(lib_path: str | Path, out_dir: str | Path) -> list[str]:
@@ -62,7 +136,6 @@ def extract_omf_lib(lib_path: str | Path, out_dir: str | Path) -> list[str]:
             continue
 
         # Module name from THEADR
-        rlen = struct.unpack_from("<H", data, pos + 1)[0]
         name_len = data[pos + 3]
         mod_name = data[pos + 4 : pos + 4 + name_len].decode(
             "ascii", errors="replace"
