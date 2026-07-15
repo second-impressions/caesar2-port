@@ -8,6 +8,11 @@ flags per TU* (Watcom links per-`.obj`)?
 `-bt=dos -mf -4r -s -d1` (unsigned char, OptSize=50), one toolchain, no
 per-TU variation. The residue is irreducibly source-shape.
 
+> The one-off `tools/flag_survey*.py` harnesses referenced below were
+> removed after the question was settled (2026-07); recover them from git
+> history at this doc's vintage if the survey ever needs re-running.
+> The banked results live in `data/flag-survey/`.
+
 ## Method & a masking bug we had to fix first
 
 `tools/flag_survey.py` (vs-baseline) and `tools/flag_survey_vsps.py`

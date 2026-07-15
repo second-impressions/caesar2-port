@@ -2,7 +2,8 @@
 
 `tools/flag_survey_full.py` (1603 pruned configs x 33 C TUs = 52,899
 isolated wcc386 10.0a compiles), analyzed by `tools/flag_survey_analyze.py`
-+ the atomic per-flag pass. Metric: byte-exact-vs-PS count with
++ the atomic per-flag pass.  (The survey scripts were removed 2026-07 —
+the flag question is settled; recover them from git history if needed.) Metric: byte-exact-vs-PS count with
 **tail-merge-aware** masked diff (`_dm`: compare min(len), mask fixups
 [fixed FIXUPP parser] + rel32 call/jmp disp, NO length-mismatch term).
 
