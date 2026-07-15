@@ -43,12 +43,6 @@ reccmp-build.yml
 # Generated output files (regenerable via: c2 export data/PS.EXE)
 data/out/
 
-# Decomp original binaries (legacy c2 decomp output)
-decomp/original/
-
-# Disassembly output (legacy c2 disasm output)
-decomp/src/disasm/
-
 # Watcom compiler toolchains (extracted from ISOs, not tracked)
 data/watcom/
 CDs/*.iso
@@ -59,7 +53,7 @@ tmp/
 *.err
 
 
-# decomp-verify build cache (wmake-driven incremental, content-addressed)
+# c2 build caches
 .c2-cache/
 .c2-runs/
 
@@ -79,12 +73,11 @@ MAC/extracted/
 MacProject/
 
 C2WinProject/
-decomp/_objs/
 
 # Delinked third-party OMF objects + reconstructed vendor archives
 # (reproducible via 'c2 delink'; RAD/Miles code)
-decomp/lib/*.obj
-decomp/lib/av/
+lib/*.obj
+lib/av/
 
 # The functional rebuild (reproducible via 'c2 rebuild'; embeds delinked RAD/Miles code)
 build/

@@ -20,7 +20,7 @@ Per-command details: `uv run c2 <cmd> --help`.
 
 ## ⚠️ THE PRIME INVARIANT: byte-exactness
 
-`data/PS.EXE` is the spec.  **Any edit under `decomp/` must keep the
+`data/PS.EXE` is the spec.  **Any edit under `src/` or `include/` must keep the
 reconstruction byte-exact**: run `c2 rebuild` (its comparison lines must all
 stay exact / strict 0) and `c2 reccmp code` (100% accuracy) before
 committing.  When editing source *style* (comments, formatting), remember
@@ -116,15 +116,15 @@ The corpus being closed, several tracked files are now FROZEN generated
 artifacts — their generators were retired with the diagnostic toolkit
 (git history ≤ 2026-07-15 has them):
 
-* **`decomp/include/c2_data.h` / `c2_funcs.h`** — were produced by
+* **`include/c2_data.h` / `c2_funcs.h`** — were produced by
   `c2 gen-header` from symbols.json + `_TYPE_OVERRIDES`.  Do not patch by
   hand; if types must change, resurrect the generator from history.
   `c2_funcs.h` **must not be included broadly** (prototype visibility
   changes Watcom call-site codegen; PS source had no global registry).
-* **The 8 hand-written `.asm` modules** in `decomp/src/` — were produced by
+* **The 8 hand-written `.asm` modules** in `src/` — were produced by
   `c2 decomp` from PS.EXE bytes.
 
-Hand-written: **`decomp/include/c2_types.h`** (wrapper around `entities.h`).
+Hand-written: **`include/c2_types.h`** (wrapper around `entities.h`).
 Per-file `extern` decls in `.c` files are authentic 1990s practice, not a
 smell — PS source had `globals.h`-style shared types but no central
 function registry (many cross-TU calls had no prototype at all).
@@ -139,12 +139,12 @@ function registry (many cross-TU calls had no prototype at all).
   base `0x90000`; ~2,234 named functions from Watcom `-d1` debug info.
 - **Third-party**: Miles AIL 3.03 (base, 1995-06-18) + RAD Smacker 2.0
   (delinked from PS.EXE, never decompiled — headers in
-  `decomp/include/ail.h` / `smacker.h`); Watcom CRT from `clib3r.lib`.
+  `include/ail.h` / `smacker.h`); Watcom CRT from `clib3r.lib`.
 - **Data layout**: `city_map` (80×80 grid of 20-byte `struct city_cell`,
   `cm_ptr = y * 80 + x`), `region_map`, `pseudo_map`, `battle_map`,
   `figure_list` / `army_list` / … — all documented in
-  `decomp/include/entities.h`.
-- **Shared globals**: `decomp/src/c2_vars.c` (773 BSS definitions in PS
+  `include/entities.h`.
+- **Shared globals**: `src/c2_vars.c` (773 BSS definitions in PS
   layout order); `datainit.c` carries recovered initializers.
 - **Cross-build family**: three byte-distinct DOS builds from the same
   toolchain — `dbg-1996-04` (= `data/PS.EXE`, ships `-d1` debug info,

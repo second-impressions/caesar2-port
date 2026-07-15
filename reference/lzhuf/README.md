@@ -1,4 +1,4 @@
-# LZHUF reference sources (`decomp/src/pump.c`)
+# LZHUF reference sources (`src/pump.c`)
 
 Caesar II's `pump.c` is **Okumura / Yoshizaki LZHUF** — the LZSS + adaptive-Huffman
 codec that is also LHA's "lh1" scheme (Haruyasu Yoshizaki, 1988; LZSS from

@@ -3,6 +3,6 @@ targets:
     filename: PS.EXE
     compiler: watcom
     source-root:
-      - decomp/src
+      - src
     hash:
       sha256: 4a41f68d0c322785d9a174d4728c3095ab5c6e0d24624af2d3ce67540d8eca5c

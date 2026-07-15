@@ -1,21 +1,18 @@
 """``c2 rebuild`` — link the recovered source + delinked objects into a runnable PS.EXE.
 
-This is the *functional rebuild* target (vs ``c2 decomp-verify``'s byte
-oracle, which links a non-runnable ``FORMAT os2 le`` image with every
-third-party symbol auto-stubbed).  ``rebuild`` produces a self-contained
+``rebuild`` produces a self-contained
 DOS/4GW-bound ``build/PS.EXE`` (the original stays at ``data/PS.EXE``;
 nothing ever writes there) from:
 
-  * every recovered game TU in ``decomp/src`` (compiled with the proven
+  * every recovered game TU in ``src/`` (compiled with the proven
     ``PS_CFLAGS``), EXCEPT the data-only scaffolds of modules we delink
     (``smackinp.c`` / ``sndail.c`` / ``sndnull.c`` — their real bodies AND
     their real data come from the delinked object);
   * the eight hand-written C2 asm modules (wasm; includes ``palet.asm``,
-    the VGA DAC loader recovered as source via ``c2 decomp``);
+    the VGA DAC loader);
   * the **delinked** third-party blob recovered byte-for-byte from
     PS.EXE by ``c2 delink``: ``av.obj`` — RAD Smacker + Miles AIL +
-    RAD file I/O (one object; they share scratch data — see
-    docs/delinking.md);
+    RAD file I/O (one object; they share scratch data);
   * the Watcom 10.0a CRT (``clib3r.lib``), pulled in by ``SYSTEM dos4g``
     so ``_cstart_`` is the entry and calls the recovered ``main`` (c2.c);
   * PS.EXE's own DOS/4GW Professional 1.97 stub, lifted verbatim and
@@ -263,8 +260,8 @@ def _compare_vs_original(work: Path, symbols_json: Path, exe_path: Path,
 
     Code: every named function (game / c2-asm / av-delink / crt), compared
     over min(orig span, rebuild span) with LE fixup fields and rel32
-    call/jmp displacements masked on both sides — the same masking the
-    decomp-verify byte oracle uses, applied to the FINAL link.
+    call/jmp displacements masked on both sides (see
+    ``c2.buildenv._compare_bytes``), applied to the FINAL link.
 
     Data: every named file-backed data symbol, masked by data fixup
     fields (pointers relocate differently by construction).
@@ -454,8 +451,7 @@ def _compare_vs_original(work: Path, symbols_json: Path, exe_path: Path,
             # can swallow trailing unnamed bytes (alignment filler, switch
             # tables, the next module's SYM_TEMP pool).  If every diff
             # lies AFTER the function's last ret, it's positional noise,
-            # not a code diff — the byte-exact oracle for the function
-            # itself is decomp-verify.
+            # not a code diff.
             first_diff = min(diffs)
             last_ret = max((k for k in range(len(oslice))
                             if oslice[k] in (0xC3, 0xC2)), default=-1)
@@ -839,9 +835,9 @@ def rebuild(
     exe_path: Annotated[Path, typer.Option(
         "--exe", help="PS.EXE path.")] = Path("data/PS.EXE"),
     src_dir: Annotated[Path, typer.Option(
-        "--src", help="Recovered source dir.")] = Path("decomp/src"),
+        "--src", help="Recovered source dir.")] = Path("src"),
     include_dir: Annotated[Path, typer.Option(
-        "--include", help="Header dir.")] = Path("decomp/include"),
+        "--include", help="Header dir.")] = Path("include"),
     compare: Annotated[bool, typer.Option(
         "--compare/--no-compare",
         help="After linking, byte-compare the rebuild against the original "

@@ -33,7 +33,7 @@ Two output modes:
 The result links with WLINK 10.0a exactly like freshly-compiled objects.
 
 Usage:
-    c2 delink --group smacker -o decomp/lib/smacker.obj --verify
+    c2 delink --group smacker -o lib/smacker.obj --verify
     c2 delink --group av --split -o .c2-cache/rebuild --verify
     c2 delink unsmack.ASM -o /tmp/unsmack.obj
     c2 delink --list                    # predefined groups
@@ -56,7 +56,7 @@ _GROUPS: dict[str, list[str]] = {
     # RAD file I/O used by Smacker.
     "radio": ["rfile.ASM", "qread"],
     # Full audio/video stack: Smacker + AIL + RAD file I/O.  These modules
-    # interoperate and share scratch data (see docs/delinking.md -- the
+    # interoperate and share scratch data (see docs/delinking.md in git history -- the
     # simspeed overlay), so they must be delinked in ONE analysis set;
     # --split still emits one object per module with shared regions
     # single-copied and anchored.
@@ -100,7 +100,7 @@ def _load_crt_symbols() -> set[str]:
     if _CRT_SYMS_CACHE is not None:
         return _CRT_SYMS_CACHE
     syms: set[str] = set()
-    p = Path("decomp/lib/clib3r-symbols.txt")
+    p = Path("lib/clib3r-symbols.txt")
     if p.exists():
         for ln in p.read_text(errors="ignore").splitlines():
             tok = ln.strip().split()

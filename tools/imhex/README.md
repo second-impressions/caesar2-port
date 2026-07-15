@@ -53,7 +53,7 @@ entry is an in-memory global written `size` bytes wide, in table order — for
 (200 rows × 5 ints: population, denarii, pop-tax, ind-tax, year). `loadgame()`
 is the exact inverse. There is no header, magic, version or checksum.
 
-Every record struct is **fully expanded** from `decomp/include/entities.h`
+Every record struct is **fully expanded** from `include/entities.h`
 with each field named — there is no `rest[]` catch-all.
 
 The structs are **byte-packed** (Watcom `pack(1)`): multi-byte fields sit at
@@ -98,4 +98,4 @@ a `CHEATER.SAV`):
   file agree to the byte.
 
 The published hex cheats line up too: offset `0x329EC` = `denarii`,
-`0x35FCC` = `this_years_denarii` (see `decomp/src/loadsave.c`).
+`0x35FCC` = `this_years_denarii` (see `src/loadsave.c`).

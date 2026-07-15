@@ -25,7 +25,7 @@ def _write_project(path: Path, original: bytes) -> None:
                     TARGET_ID: {
                         "filename": "PS.EXE",
                         "compiler": "watcom",
-                        "source-root": ["decomp/src"],
+                        "source-root": ["src"],
                         "hash": {"sha256": digest},
                     }
                 }
@@ -42,7 +42,7 @@ def test_tracked_project_selects_watcom_pipeline():
 
     assert target.compiler == Compiler.WATCOM
     assert target.filename == "PS.EXE"
-    assert target.source_root == (Path("decomp/src"),)
+    assert target.source_root == (Path("src"),)
 
 
 def test_write_user_config_validates_and_relativizes_original(tmp_path: Path):
