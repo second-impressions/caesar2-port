@@ -82,14 +82,16 @@ def write_user_config(
 def publish_build_artifacts(
     executable: Path,
     linker_map: Path,
+    published_executable: Path | None = None,
     config_path: Path = BUILD_FILE,
     project_file: Path = PROJECT_FILE,
-) -> tuple[Path, Path]:
-    """Publish the map beside *executable* and write reccmp-build.yml.
+) -> tuple[Path, Path, Path]:
+    """Publish the analysis executable and map, then write build discovery.
 
-    The bound and unbound images have the same LE virtual addresses, so the
-    wlink map produced for ``c2_x.exe`` is also authoritative for the final
-    ``PS.EXE`` container.
+    reccmp must inspect the linker's pre-bind ``c2_x.exe`` rather than the
+    runnable ``PS.EXE``. Once the non-debug image is exact, the latter grafts
+    PS's original debug trailer and therefore no longer describes the symbols
+    emitted by the reconstruction build.
     """
     if not executable.is_file():
         raise FileNotFoundError(f"rebuilt executable not found: {executable}")
@@ -98,7 +100,13 @@ def publish_build_artifacts(
     if not project_file.is_file():
         raise FileNotFoundError(f"reccmp project file not found: {project_file}")
 
-    published_map = executable.with_suffix(".map")
+    if published_executable is None:
+        published_executable = executable
+    published_executable.parent.mkdir(parents=True, exist_ok=True)
+    if published_executable.resolve() != executable.resolve():
+        shutil.copyfile(executable, published_executable)
+
+    published_map = published_executable.with_suffix(".map")
     published_map.parent.mkdir(parents=True, exist_ok=True)
     if published_map.resolve() != linker_map.resolve():
         shutil.copyfile(linker_map, published_map)
@@ -107,10 +115,10 @@ def publish_build_artifacts(
         "project": _portable_path(project_file.parent, config_path.parent),
         "targets": {
             TARGET_ID: {
-                "path": _portable_path(executable, config_path.parent),
+                "path": _portable_path(published_executable, config_path.parent),
                 "map_file": _portable_path(published_map, config_path.parent),
             }
         },
     }
     config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
-    return published_map, config_path
+    return published_executable, published_map, config_path

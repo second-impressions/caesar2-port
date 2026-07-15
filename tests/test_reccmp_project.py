@@ -74,6 +74,7 @@ def test_publish_build_artifacts_copies_map_and_writes_discovery(tmp_path: Path)
     project_file = tmp_path / "reccmp-project.yml"
     config = tmp_path / "reccmp-build.yml"
     executable = tmp_path / "build" / "PS.EXE"
+    published_executable = tmp_path / "reports" / "PS.reccmp.EXE"
     linker_map = tmp_path / "cache" / "ps.map"
     executable.parent.mkdir()
     linker_map.parent.mkdir()
@@ -81,19 +82,25 @@ def test_publish_build_artifacts_copies_map_and_writes_discovery(tmp_path: Path)
     linker_map.write_text("wlink map", encoding="latin1")
     _write_project(project_file, b"unused")
 
-    published_map, written_config = publish_build_artifacts(
-        executable, linker_map, config, project_file
+    published_exe, published_map, written_config = publish_build_artifacts(
+        executable,
+        linker_map,
+        published_executable,
+        config,
+        project_file,
     )
 
-    assert published_map == executable.with_suffix(".map")
+    assert published_exe == published_executable
+    assert published_exe.read_bytes() == b"LE image"
+    assert published_map == published_executable.with_suffix(".map")
     assert published_map.read_text(encoding="latin1") == "wlink map"
     assert written_config == config
     assert yaml.safe_load(config.read_text(encoding="utf-8")) == {
         "project": ".",
         "targets": {
             TARGET_ID: {
-                "path": "build/PS.EXE",
-                "map_file": "build/PS.map",
+                "path": "reports/PS.reccmp.EXE",
+                "map_file": "reports/PS.reccmp.map",
             }
         },
     }

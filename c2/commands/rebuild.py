@@ -851,7 +851,7 @@ def rebuild(
         help="List the diffing / missing symbols in the comparison.")] = False,
     publish_reccmp: Annotated[bool, typer.Option(
         "--reccmp/--no-reccmp",
-        help="Publish PS.map and reccmp-build.yml for whole-image reports.")
+        help="Publish the pre-bind image, map, and reccmp build discovery.")
     ] = True,
     reccmp_config: Annotated[Path, typer.Option(
         "--reccmp-config",
@@ -1215,12 +1215,16 @@ def rebuild(
     if publish_reccmp:
         from c2.reccmp_project import publish_build_artifacts
 
-        published_map, config_path = publish_build_artifacts(
-            output,
+        analysis_output = output.with_name(f"{output.stem}.reccmp{output.suffix}")
+        published_executable, published_map, config_path = publish_build_artifacts(
+            exe_le,
             work / "ps.map",
+            published_executable=analysis_output,
             config_path=reccmp_config,
         )
-        typer.echo(f"  reccmp: {output} + {published_map} ({config_path})")
+        typer.echo(
+            f"  reccmp: {published_executable} + {published_map} ({config_path})"
+        )
     typer.echo(f"built {output}  ({output.stat().st_size} bytes, "
                f"{'DOS/4GW-bound, self-contained' if bind else 'LE, needs dos4gw.exe'}"
                f", {time.perf_counter() - t_start:.1f}s)")
