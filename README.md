@@ -7,9 +7,9 @@ only after the rebuilt non-debug image has passed the strict comparison.
 
 ## Prerequisites
 
-- [Nix](https://nixos.org/) with flakes (the dev shell provides Python, uv,
-  and DOSBox-X; enter it with `nix develop`, or `direnv allow` once for
-  automatic activation)
+- [Nix](https://nixos.org/) with flakes (the dev shell provides Python and
+  uv; enter it with `nix develop`, or `direnv allow` once for automatic
+  activation)
 - [podman](https://podman.io/) with the `watcom-10.0a-wibo` toolchain image
   (the Watcom compiler/linker run inside it, not in the shell)
 
@@ -140,13 +140,12 @@ broadly — prototype visibility changes Watcom call-site codegen) and the
 `c2 rebuild` produces a self-contained `build/PS.EXE`. Install the game
 assets from a CD (copy the CD's `HD/` tree plus the media directories
 `xmi/`, `smk/`, `raw/`, `pl8/` into an install directory), drop the rebuilt
-`PS.EXE` next to them, and run it in DOSBox-X. A display-free smoke test
-that proves DOS/4GW + CRT startup + the recovered `main()`:
+`PS.EXE` next to them, and run it in any DOS emulator (e.g. DOSBox-X,
+which also offers a GDB remote stub for attaching a debugger to the live
+DOS process).  A display-free smoke test that proves DOS/4GW + CRT startup
++ the recovered `main()`:
 
 ```bash
 podman run --rm -v "$PWD/install/caesar2:/src" \
     localhost/watcom-10.0a-dosemu2 PSREBLD.EXE   # expect the CD-check prompt
 ```
-
-DOSBox-X has a built-in GDB remote stub (`gdbserver` machine option) for
-attaching a debugger to the live DOS process.

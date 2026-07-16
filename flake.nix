@@ -1,5 +1,5 @@
 {
-  description = "Caesar II reconstruction — dev shell (python/uv toolchain + DOSBox-X)";
+  description = "Caesar II reconstruction — dev shell (python/uv toolchain)";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -21,7 +21,6 @@
             packages = [
               pkgs.python313
               pkgs.uv
-              pkgs.dosbox-x # run the rebuilt game (README "Running the game")
             ];
 
             # libstdc++/zlib must be resolvable so capstone (used by the
