@@ -15,7 +15,6 @@ devenv.local.nix
 .venv/
 __pycache__/
 *.pyc
-.pytest_cache/
 .ruff_cache/
 
 # Install directory (game assets copied from an extracted CD; used by the

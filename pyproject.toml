@@ -32,10 +32,6 @@ dev = [
 c2 = "c2.app:app"
 
 [tool.pytest.ini_options]
-# Register custom marks so `@pytest.mark.slow` doesn't emit
-# PytestUnknownMarkWarning.  Slow tests are skipped by default (they
-# rebuild the whole corpus / shell out to wcc386 in a container etc.);
-# opt in with `pytest -m slow` to run them.
-markers = [
-    "slow: marks tests that are slow (deselect with '-m \"not slow\"')",
-]
+# No .pytest_cache: the suite is small enough that --lf/--ff state
+# isn't worth a cache directory.
+addopts = "-p no:cacheprovider"
