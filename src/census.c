@@ -249,24 +249,24 @@ void get_census(int quiet)
 // Scan city-map rows, accumulating population, income, service, and accident census data.
 // FUNCTION: C2 0x44a94
 // FUNCTION: C2WIN 0x0043107a
-void take_census(int rows)
+void take_census(int row_count)
 {
-    int row;
-    int col;
-    unsigned char cul;
-    int tier;
-    unsigned char kind;
-    unsigned char rob;
-    unsigned char terrain;
-    unsigned char sick;
-    unsigned char busy;
-    unsigned char edu;
-    unsigned char dem;
-    int saved_sptr;
-    unsigned char flags;
+    int row_idx;
+    int col_idx;
+    unsigned char culture_flags;
+    int building_tier;
+    unsigned char building_kind;
+    unsigned char robbery_flags;
+    unsigned char wall_terrain;
+    unsigned char plague_flags;
+    unsigned char activity_flags;
+    unsigned char education_flags;
+    unsigned char industry_idx;
+    int saved_cm_sptr;
+    unsigned char cell_flags;
 
     if (evolve_row == 0) {
-        for (row = 0; row < 16; row++) temp_demand_count[row] = 0;
+        for (row_idx = 0; row_idx < 16; row_idx++) temp_demand_count[row_idx] = 0;
         population_pass_count                = 0;
         pop_income_pass_count                = 0;
         ind_income_pass_count                = 0;
@@ -321,52 +321,52 @@ void take_census(int rows)
 
     cm_sptr = evolve_row * 1600;  /* 80 cols × 20 bytes per cell */
 
-    for (row = 0; rows > row; row++) {
-        for (col = 0; col < 80; col++, cm_sptr += 20) {
-            flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain & 0x27;
-            kind  = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+    for (row_idx = 0; row_count > row_idx; row_idx++) {
+        for (col_idx = 0; col_idx < 80; col_idx++, cm_sptr += 20) {
+            cell_flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain & 0x27;
+            building_kind  = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
 
             /* Count plaza and garden culture coverage. */
-            if (kind >= 0x7c && kind <= 0x7e) {
-                cul = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x0c;
-                if (cul) plaza_culture_pass_count++;
-            } else if (kind >= 0x78 && kind <= 0x7b) {
-                cul = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x0c;
-                if (cul) gardens_culture_pass_count++;
+            if (building_kind >= 0x7c && building_kind <= 0x7e) {
+                culture_flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x0c;
+                if (culture_flags) plaza_culture_pass_count++;
+            } else if (building_kind >= 0x78 && building_kind <= 0x7b) {
+                culture_flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x0c;
+                if (culture_flags) gardens_culture_pass_count++;
             }
 
-            if (flags == 0) continue;
+            if (cell_flags == 0) continue;
 
             /* Process road, wall, and fort cells. */
-            if (flags & 0x20) {
+            if (cell_flags & 0x20) {
                 /* Trigger a road failure at the selected census position. */
                 if (road_pass_count != road_accident) road_pass_count++;
                 else {
                     destroy_an_atom(cm_sptr, 0); road_accident = 0xf423f;
                 }
             }
-            else if (flags & 0x02) {
+            else if (cell_flags & 0x02) {
                 /* Trigger a wall collapse at the selected census position. */
                 if (structure_pass_count != wall_accident) structure_pass_count++;
                 else {
-                    saved_sptr = cm_sptr;
-                    terrain = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain;
-                    if (terrain & 0xc0) unflag_all_cm(3, 0xdf);
-                    clear_an_area(col, evolve_row + row,
-                                  col, evolve_row + row);
-                    cm_sptr           = saved_sptr;
+                    saved_cm_sptr = cm_sptr;
+                    wall_terrain = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain;
+                    if (wall_terrain & 0xc0) unflag_all_cm(3, 0xdf);
+                    clear_an_area(col_idx, evolve_row + row_idx,
+                                  col_idx, evolve_row + row_idx);
+                    cm_sptr           = saved_cm_sptr;
                     wall_accident     = 0xf423f;
                     particles_cleared = 0;
                 }
             }
-            else if (flags & 0x04) {
-                kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
-                if (kind == 0xbf) forts_pass_count++;
+            else if (cell_flags & 0x04) {
+                building_kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+                if (building_kind == 0xbf) forts_pass_count++;
             }
             else {
 
             /* Process fire risk outside the exempt kind range. */
-            if (kind < 0xbc || kind > 0xe2) {
+            if (building_kind < 0xbc || building_kind > 0xe2) {
                 if (fire_pass_count != fire_accident) fire_pass_count++;
                 else {
                     destroy_an_atom(cm_sptr, 1);
@@ -377,98 +377,98 @@ void take_census(int rows)
             }
 
             /* Process plague risk for housing. */
-            if (kind >= 0x82 && kind <= 0xa1) {
+            if (building_kind >= 0x82 && building_kind <= 0xa1) {
                 if (plague_accident == plague_pass_count) {
                     plague_an_atom(cm_sptr);
                     put_message(0x51, cm_sptr, 22);
                     plague_accident = 0xf423f;
                     continue;
                 }
-                sick = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).fpu_flag & 0x30;
-                if (sick == 0x30) plague_pass_count++;
+                plague_flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).fpu_flag & 0x30;
+                if (plague_flags == 0x30) plague_pass_count++;
             }
 
             /* Busy or unfinished buildings do not provide services. */
-            busy = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).activity_a & 0x0f;
-            if (busy != 0) continue;
+            activity_flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).activity_a & 0x0f;
+            if (activity_flags != 0) continue;
 
             /* Accumulate census totals for the building kind. */
-            if (kind >= 0x82 && kind <= 0xa1) {
-                kind -= 0x82;
-                population_pass_count += houses_to_people[kind];
-                cul = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x0c;
-                if (cul) pop_income_pass_count += houses_to_income[kind];
-            } else if (kind >= 0xae && kind <= 0xb9) {
-                kind -= 0xae;
-                if      (kind < 4) small_forums_pass_count++;
-                else if (kind < 8) medium_forums_pass_count++;
+            if (building_kind >= 0x82 && building_kind <= 0xa1) {
+                building_kind -= 0x82;
+                population_pass_count += houses_to_people[building_kind];
+                culture_flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x0c;
+                if (culture_flags) pop_income_pass_count += houses_to_income[building_kind];
+            } else if (building_kind >= 0xae && building_kind <= 0xb9) {
+                building_kind -= 0xae;
+                if      (building_kind < 4) small_forums_pass_count++;
+                else if (building_kind < 8) medium_forums_pass_count++;
                 else               large_forums_pass_count++;
-            } else if (kind >= 0xa2 && kind <= 0xa5) {
+            } else if (building_kind >= 0xa2 && building_kind <= 0xa5) {
                 small_temples_pass_count++;
-                rob = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x30;
-                cul = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x0c;
-                if (cul) small_temples_culture_pass_count++;
-                if (rob == 0) small_robbery_pass_count++;
-            } else if (kind >= 0xa6 && kind <= 0xa9) {
+                robbery_flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x30;
+                culture_flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x0c;
+                if (culture_flags) small_temples_culture_pass_count++;
+                if (robbery_flags == 0) small_robbery_pass_count++;
+            } else if (building_kind >= 0xa6 && building_kind <= 0xa9) {
                 med_temples_pass_count++;
-                rob = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x30;
+                robbery_flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x30;
                 if (test_for_any_admin(cm_sptr, 2)) med_temples_culture_pass_count++;
-                if (rob == 0) med_robbery_pass_count++;
-            } else if (kind >= 0xaa && kind <= 0xad) {
+                if (robbery_flags == 0) med_robbery_pass_count++;
+            } else if (building_kind >= 0xaa && building_kind <= 0xad) {
                 large_temples_pass_count++;
-                rob = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x30;
+                robbery_flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x30;
                 if (test_for_any_admin(cm_sptr, 3)) large_temples_culture_pass_count++;
-                if (rob == 0) large_robbery_pass_count++;
-            } else if (kind >= 0xdf && kind <= 0xe2) {
+                if (robbery_flags == 0) large_robbery_pass_count++;
+            } else if (building_kind >= 0xdf && building_kind <= 0xe2) {
                 baths_pass_count++;
-                edu = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).education & 4;
-                if (edu) supplied_baths_pass_count++;
-            } else if (kind >= 0xdb && kind <= 0xde) {
+                education_flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).education & 4;
+                if (education_flags) supplied_baths_pass_count++;
+            } else if (building_kind >= 0xdb && building_kind <= 0xde) {
                 fountains_pass_count++;
-                edu = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).education & 4;
-                if (edu) supplied_fountains_pass_count++;
-            } else if (kind == 0xe3) prefectures_pass_count++;
-              else if (kind == 0xe4) barracks_pass_count++;
-              else if (kind == 0xf3) {
+                education_flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).education & 4;
+                if (education_flags) supplied_fountains_pass_count++;
+            } else if (building_kind == 0xe3) prefectures_pass_count++;
+              else if (building_kind == 0xe4) barracks_pass_count++;
+              else if (building_kind == 0xf3) {
                 grammaticus_pass_count++;
                 if (test_for_any_admin(cm_sptr, 2)) grammaticus_culture_pass_count++;
-            } else if (kind == 0xf4) {
+            } else if (building_kind == 0xf4) {
                 rhetor_pass_count++;
                 if (test_for_any_admin(cm_sptr, 3)) rhetor_culture_pass_count++;
-            } else if (kind == 0xe5) {
+            } else if (building_kind == 0xe5) {
                 theatre_pass_count++;
                 if (test_for_any_admin(cm_sptr, 2)) theatre_culture_pass_count++;
-            } else if (kind == 0xe6) {
+            } else if (building_kind == 0xe6) {
                 odium_pass_count++;
                 if (test_for_any_admin(cm_sptr, 2)) odium_culture_pass_count++;
-            } else if (kind == 0xe7) {
+            } else if (building_kind == 0xe7) {
                 arena_pass_count++;
                 if (test_for_any_admin(cm_sptr, 3)) arena_culture_pass_count++;
-            } else if (kind == 0xe8) {
+            } else if (building_kind == 0xe8) {
                 colosseum_pass_count++;
                 if (test_for_any_admin(cm_sptr, 3)) colosseum_culture_pass_count++;
-            } else if (kind == 0xe9 || kind == 0xeb) {
+            } else if (building_kind == 0xe9 || building_kind == 0xeb) {
                 circus_pass_count++;
                 if (test_for_any_admin(cm_sptr, 3)) circus_culture_pass_count++;
-            } else if (kind == 0xed || kind == 0xef) {
+            } else if (building_kind == 0xed || building_kind == 0xef) {
                 circus_maximus_pass_count++;
                 if (test_for_any_admin(cm_sptr, 4)) circus_maximus_culture_pass_count++;
-            } else if (kind >= 0xfc && kind <= 0xff) { market_pass_count++;
-            } else if (kind == 0xfb) {
+            } else if (building_kind >= 0xfc && building_kind <= 0xff) { market_pass_count++;
+            } else if (building_kind == 0xfb) {
                 hospitals_pass_count++;
-                if (test_perimeter_for_road_and_forum(col, evolve_row + row, 3, 0)) accessed_hospitals_pass_count++;
-            } else if (kind == 0xf5) {
+                if (test_perimeter_for_road_and_forum(col_idx, evolve_row + row_idx, 3, 0)) accessed_hospitals_pass_count++;
+            } else if (building_kind == 0xf5) {
                 libraries_pass_count++;
-                if (test_perimeter_for_road_and_forum(col, evolve_row + row, 3, 0)) accessed_libraries_pass_count++;
-            } else if (kind == 0xfa) {
+                if (test_perimeter_for_road_and_forum(col_idx, evolve_row + row_idx, 3, 0)) accessed_libraries_pass_count++;
+            } else if (building_kind == 0xfa) {
                 business_pass_count++;
-                dem = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).business & 0x0f;
-                temp_demand_count[dem]++;
-                cul = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x0c;
-                if (cul) {
-                    tier = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building & 0xf0;
-                    tier >>= 4;
-                    ind_income_pass_count += tier * 0x46;
+                industry_idx = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).business & 0x0f;
+                temp_demand_count[industry_idx]++;
+                culture_flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x0c;
+                if (culture_flags) {
+                    building_tier = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building & 0xf0;
+                    building_tier >>= 4;
+                    ind_income_pass_count += building_tier * 0x46;
                 }
             }
             }
@@ -478,44 +478,44 @@ void take_census(int rows)
 // Test whether a square footprint borders a qualifying road and, if required, forum coverage.
 // FUNCTION: C2 0x452d0
 // FUNCTION: C2WIN 0x00431c26
-int test_perimeter_for_road_and_forum(int x, int y, int size, int road_only)
+int test_perimeter_for_road_and_forum(int cell_x, int cell_y, int footprint_size, int road_only)
 {
     int i;
-    int p;
+    int perimeter_sptr;
 
-    if (y > 0) {
-        p = cm_sptr - 1600;
-        for (i = 0; i < size; i++, p += 20) {
-            if (((*(struct city_cell *)((unsigned char *)city_map + (p))).terrain & 0x20) != 0) {
+    if (cell_y > 0) {
+        perimeter_sptr = cm_sptr - 1600;
+        for (i = 0; i < footprint_size; i++, perimeter_sptr += 20) {
+            if (((*(struct city_cell *)((unsigned char *)city_map + (perimeter_sptr))).terrain & 0x20) != 0) {
                 if (road_only != 0) return 1;
-                if (((*(struct city_cell *)((unsigned char *)city_map + (p))).range_flag & 0x0c) != 0) return 1;
+                if (((*(struct city_cell *)((unsigned char *)city_map + (perimeter_sptr))).range_flag & 0x0c) != 0) return 1;
             }
         }
     }
-    if (80 - size > y) {
-        p = cm_sptr + size * 1600;
-        for (i = 0; i < size; i++, p += 20) {
-            if (((*(struct city_cell *)((unsigned char *)city_map + (p))).terrain & 0x20) != 0) {
+    if (80 - footprint_size > cell_y) {
+        perimeter_sptr = cm_sptr + footprint_size * 1600;
+        for (i = 0; i < footprint_size; i++, perimeter_sptr += 20) {
+            if (((*(struct city_cell *)((unsigned char *)city_map + (perimeter_sptr))).terrain & 0x20) != 0) {
                 if (road_only != 0) return 1;
-                if (((*(struct city_cell *)((unsigned char *)city_map + (p))).range_flag & 0x0c) != 0) return 1;
+                if (((*(struct city_cell *)((unsigned char *)city_map + (perimeter_sptr))).range_flag & 0x0c) != 0) return 1;
             }
         }
     }
-    if (x > 0) {
-        p = cm_sptr - 20;
-        for (i = 0; i < size; i++, p += 1600) {
-            if (((*(struct city_cell *)((unsigned char *)city_map + (p))).terrain & 0x20) != 0) {
+    if (cell_x > 0) {
+        perimeter_sptr = cm_sptr - 20;
+        for (i = 0; i < footprint_size; i++, perimeter_sptr += 1600) {
+            if (((*(struct city_cell *)((unsigned char *)city_map + (perimeter_sptr))).terrain & 0x20) != 0) {
                 if (road_only != 0) return 1;
-                if (((*(struct city_cell *)((unsigned char *)city_map + (p))).range_flag & 0x0c) != 0) return 1;
+                if (((*(struct city_cell *)((unsigned char *)city_map + (perimeter_sptr))).range_flag & 0x0c) != 0) return 1;
             }
         }
     }
-    if (x < 80 - size) {
-        p = cm_sptr + size * 20;
-        for (i = 0; i < size; i++, p += 1600) {
-            if (((*(struct city_cell *)((unsigned char *)city_map + (p))).terrain & 0x20) != 0) {
+    if (cell_x < 80 - footprint_size) {
+        perimeter_sptr = cm_sptr + footprint_size * 20;
+        for (i = 0; i < footprint_size; i++, perimeter_sptr += 1600) {
+            if (((*(struct city_cell *)((unsigned char *)city_map + (perimeter_sptr))).terrain & 0x20) != 0) {
                 if (road_only != 0) return 1;
-                if (((*(struct city_cell *)((unsigned char *)city_map + (p))).range_flag & 0x0c) != 0) return 1;
+                if (((*(struct city_cell *)((unsigned char *)city_map + (perimeter_sptr))).range_flag & 0x0c) != 0) return 1;
             }
         }
     }
@@ -525,16 +525,16 @@ int test_perimeter_for_road_and_forum(int x, int y, int size, int road_only)
 // Test whether any cell in a square has administrative range coverage.
 // FUNCTION: C2 0x45422
 // FUNCTION: C2WIN 0x00431e5e
-int test_for_any_admin(int cm_ptr, int n)
+int test_for_any_admin(int start_sptr, int footprint_size)
 {
-    int i;
-    int j;
-    int eax = cm_ptr;
-    int stride = 1600 - n * 20;
-    for (i = 0; i < n; i++, eax += stride) {
-        for (j = 0; j < n; j++, eax += 20) {
-            char b = (*(struct city_cell *)((unsigned char *)city_map + (eax))).range_flag & 0x0C;
-            if (b) {
+    int row_idx;
+    int col_idx;
+    int cell_sptr = start_sptr;
+    int row_stride = 1600 - footprint_size * 20;
+    for (row_idx = 0; row_idx < footprint_size; row_idx++, cell_sptr += row_stride) {
+        for (col_idx = 0; col_idx < footprint_size; col_idx++, cell_sptr += 20) {
+            char admin_flags = (*(struct city_cell *)((unsigned char *)city_map + (cell_sptr))).range_flag & 0x0C;
+            if (admin_flags) {
                 return 1;
             }
         }
@@ -616,7 +616,7 @@ void wall_trouble(void)
 // FUNCTION: C2WIN 0x0043224b
 void get_fire_cover(void)
 {
-    int pct;
+    int coverage;
 
     if (slave_requirements[1].max == 0) {
         fire_cover = 100;
@@ -626,10 +626,10 @@ void get_fire_cover(void)
         fire_cover = 100;
         return;
     }
-    pct = valueDIVtotal(slave_requirements[1].current,
-                        slave_requirements[1].max);
-    fire_cover = pct;
-    if (pct >= 100) {
+    coverage = valueDIVtotal(slave_requirements[1].current,
+                             slave_requirements[1].max);
+    fire_cover = coverage;
+    if (coverage >= 100) {
         fire_cover = 100;
     } else {
         ++slave_warning;
@@ -642,7 +642,7 @@ void get_fire_cover(void)
 // FUNCTION: C2WIN 0x004322ed
 void get_road_cover(void)
 {
-    int pct;
+    int coverage;
 
     if (slave_requirements[2].max == 0) {
         road_cover = 100;
@@ -652,10 +652,10 @@ void get_road_cover(void)
         road_cover = 100;
         return;
     }
-    pct = valueDIVtotal(slave_requirements[2].current,
-                        slave_requirements[2].max);
-    road_cover = pct;
-    if (pct >= 100) {
+    coverage = valueDIVtotal(slave_requirements[2].current,
+                             slave_requirements[2].max);
+    road_cover = coverage;
+    if (coverage >= 100) {
         road_cover = 100;
     } else {
         ++slave_warning;
@@ -668,7 +668,7 @@ void get_road_cover(void)
 // FUNCTION: C2WIN 0x0043238f
 void get_wall_cover(void)
 {
-    int pct;
+    int coverage;
 
     if (slave_requirements[4].max == 0) {
         wall_cover = 100;
@@ -678,10 +678,10 @@ void get_wall_cover(void)
         wall_cover = 100;
         return;
     }
-    pct = valueDIVtotal(slave_requirements[4].current,
-                        slave_requirements[4].max);
-    wall_cover = pct;
-    if (pct >= 100) {
+    coverage = valueDIVtotal(slave_requirements[4].current,
+                             slave_requirements[4].max);
+    wall_cover = coverage;
+    if (coverage >= 100) {
         wall_cover = 100;
     } else {
         ++slave_warning;
@@ -694,7 +694,7 @@ void get_wall_cover(void)
 // FUNCTION: C2WIN 0x00432431
 void get_water_cover(void)
 {
-    int pct;
+    int coverage;
 
     if (slave_requirements[3].max == 0) {
         water_cover = 100;
@@ -704,10 +704,10 @@ void get_water_cover(void)
         water_cover = 100;
         return;
     }
-    pct = valueDIVtotal(slave_requirements[3].current,
-                        slave_requirements[3].max);
-    water_cover = pct;
-    if (pct >= 100) {
+    coverage = valueDIVtotal(slave_requirements[3].current,
+                             slave_requirements[3].max);
+    water_cover = coverage;
+    if (coverage >= 100) {
         water_cover = 100;
     } else {
         ++slave_warning;
@@ -810,12 +810,12 @@ void running_ind_tax(void)
 void region_census(void)
 {
     int i;
-    int sy;
-    int sx;
-    unsigned char kind;
-    unsigned char flag7;
-    unsigned char flag3;
-    unsigned char slot;
+    int region_y;
+    int region_x;
+    unsigned char building_kind;
+    unsigned char cell_flags;
+    unsigned char connection_flag;
+    unsigned char empire_slot;
 
     no_of_ports               = 0;
     no_of_shipyards           = 0;
@@ -841,55 +841,55 @@ void region_census(void)
         return;
     }
 
-    sy = 0;
+    region_y = 0;
     cm_sptr = 0;
-    for ( ; sy < 0x3c; sy++) {
-    for (sx = 0; sx < 0x3c; sx++, cm_sptr += 8) {
-    flag7 = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).occupant & 3;
+    for ( ; region_y < 0x3c; region_y++) {
+    for (region_x = 0; region_x < 0x3c; region_x++, cm_sptr += 8) {
+    cell_flags = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).occupant & 3;
     /* Warehouses (kind 0xD4) ignore the low-bit ignore mask. */
-    if ((*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).base_kind == 0xd4) flag7 = 0;
-    if (flag7 != 0) continue;
+    if ((*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).base_kind == 0xd4) cell_flags = 0;
+    if (cell_flags != 0) continue;
 
-    kind = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).base_kind;
-    if      (kind == 0xd3) { no_of_workcamps++; }
-    else if (kind == 0xd4) { no_of_warehouses++; }
-    else if (kind == 0xd5) { no_of_shipyards++; }
-    else if (kind >= 0xdc && kind <= 0xdf) { no_of_farms++; }
-    else if (kind >= 0xe0 && kind <= 0xe3) { no_of_mines++; }
-    else if (kind >= 0xe4 && kind <= 0xe7) { no_of_quarrys++; }
-    else if (kind >= 0xe8 && kind <= 0xeb) { no_of_trading_posts++; }
-    else if (kind >= 0xec && kind <= 0xef) {
+    building_kind = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).base_kind;
+    if      (building_kind == 0xd3) { no_of_workcamps++; }
+    else if (building_kind == 0xd4) { no_of_warehouses++; }
+    else if (building_kind == 0xd5) { no_of_shipyards++; }
+    else if (building_kind >= 0xdc && building_kind <= 0xdf) { no_of_farms++; }
+    else if (building_kind >= 0xe0 && building_kind <= 0xe3) { no_of_mines++; }
+    else if (building_kind >= 0xe4 && building_kind <= 0xe7) { no_of_quarrys++; }
+    else if (building_kind >= 0xe8 && building_kind <= 0xeb) { no_of_trading_posts++; }
+    else if (building_kind >= 0xec && building_kind <= 0xef) {
         no_of_ports++;
-        flag3 = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).edge_bits & 0x20;
-        if (flag3) {
-            slot = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).occupant & 0x60;
-            if (slot == 0 && empire_connections[0] == 0) {
+        connection_flag = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).edge_bits & 0x20;
+        if (connection_flag) {
+            empire_slot = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).occupant & 0x60;
+            if (empire_slot == 0 && empire_connections[0] == 0) {
                 empire_connections[0] = 1;
                 no_of_empire_connections++;
-            } else if (slot == 0x20 && empire_connections[1] == 0) {
+            } else if (empire_slot == 0x20 && empire_connections[1] == 0) {
                 empire_connections[1] = 1;
                 no_of_empire_connections++;
-            } else if (slot == 0x40 && empire_connections[2] == 0) {
+            } else if (empire_slot == 0x40 && empire_connections[2] == 0) {
                 empire_connections[2] = 1;
                 no_of_empire_connections++;
-            } else if (slot == 0x60 && empire_connections[3] == 0) {
+            } else if (empire_slot == 0x60 && empire_connections[3] == 0) {
                 empire_connections[3] = 1;
                 no_of_empire_connections++;
             }
         }
     }
-    else if (kind >= 0x93 && kind <= 0x96) { no_of_villages++; }
-    else if (kind >= 0x98 && kind <= 0x9b) {
+    else if (building_kind >= 0x93 && building_kind <= 0x96) { no_of_villages++; }
+    else if (building_kind >= 0x98 && building_kind <= 0x9b) {
         no_of_border_towns++;
-        flag3 = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).edge_bits & 0x20;
-        if (flag3) {
-            empire_connections[kind - 0x98] = 1;
+        connection_flag = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).edge_bits & 0x20;
+        if (connection_flag) {
+            empire_connections[building_kind - 0x98] = 1;
             no_of_empire_connections++;
         }
     }
-    else if (kind == 0x97) {
-        flag7 = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).edge_bits & 0x20;
-        if (flag7) no_of_connected_towns++;
+    else if (building_kind == 0x97) {
+        cell_flags = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).edge_bits & 0x20;
+        if (cell_flags) no_of_connected_towns++;
         no_of_towns++;
     }
     }

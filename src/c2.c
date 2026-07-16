@@ -218,7 +218,7 @@ extern int   _getdrive(void);
 extern int   getch(void);
 extern void  demo_lead_in_slideshow(void);
 extern void  free_tune_buffer(void);
-void *load_a_battle_gfx_file(int n, int idx, int aux);
+void *load_a_battle_gfx_file(int battle_zoom, int troop_gfx_idx, int use_aux);
 extern void get_pseudo_map(int n);
 extern unsigned _dos_setdrive(unsigned drive, unsigned *total);
 extern unsigned _dos_getdrive(unsigned *drive);
@@ -231,10 +231,10 @@ extern int      close(int fd);
 // FUNCTION: C2WIN 0x00443733
 void main(int argc, char *argv[])
 {
-    unsigned int e;
-    int cd_err;
-    int err;
-    int init_err;
+    unsigned int cd_drive_config;
+    int cd_error;
+    int graphics_error;
+    int init_error;
 
     demo_mode = 1;
     demo_mode = 0;
@@ -246,26 +246,26 @@ void main(int argc, char *argv[])
     c2inf.cd_letter  = 0;
     c2inf.drive_init = 1;
 
-    e = (unsigned char)read_config("resource.cfg", misc);
-    c2inf.cd_letter = to_upper(e);
-    if (e == 1) {
+    cd_drive_config = (unsigned char)read_config("resource.cfg", misc);
+    c2inf.cd_letter = to_upper(cd_drive_config);
+    if (cd_drive_config == 1) {
         high_beep();
         c2inf.drive_init = 0;
     } else {
-        cd_err = 1;
-        while (cd_err != 0) {
-            cd_err = test_cd_drive();
-            if (cd_err == 1) {
+        cd_error = 1;
+        while (cd_error != 0) {
+            cd_error = test_cd_drive();
+            if (cd_error == 1) {
                 printf("\nNo CD information found.\n");
-            } else if (cd_err == 2) {
+            } else if (cd_error == 2) {
                 printf("\nThe drive entered is not a valid drive.\n");
-            } else if (cd_err == 3) {
+            } else if (cd_error == 3) {
                 printf("\nThe drive could not be accessed.\n");
-            } else if (cd_err == 4) {
+            } else if (cd_error == 4) {
                 printf("\nNo CD check info found..\n");
-            } else if (cd_err == 5) {
+            } else if (cd_error == 5) {
                 printf("\nCould not reset to current drive.\n");
-            } else if (cd_err == 6) {
+            } else if (cd_error == 6) {
                 printf("\nCould not reset to current path.\n");
             } else {
                 printf("\nCD version installed OK.\n");
@@ -289,9 +289,9 @@ void main(int argc, char *argv[])
     zoom_level = 0;
     init_map_gfx_buffers();
     init_battle_gfx_buffers();
-    err = load_start_graphics();
-    if (err != 0) {
-        printf("File not found - code%d.\n", err);
+    graphics_error = load_start_graphics();
+    if (graphics_error != 0) {
+        printf("File not found - code%d.\n", graphics_error);
         exit(0);
     }
     load_map_graphics(0, 0);
@@ -303,15 +303,15 @@ void main(int argc, char *argv[])
     }
 
     scratch_buffer_size = 0x27100;
-    init_err = 0;
-    if (start_system() == 0) init_err = 1;
-    if (internal_screen == 0) init_err = 2;
-    if (scratch_buffer == 0)  init_err = 3;
-    if (init_sample_buffer(0xa) == 0) init_err = 4;
-    if (init_tune_buffer() == 0)      init_err = 5;
+    init_error = 0;
+    if (start_system() == 0) init_error = 1;
+    if (internal_screen == 0) init_error = 2;
+    if (scratch_buffer == 0)  init_error = 3;
+    if (init_sample_buffer(0xa) == 0) init_error = 4;
+    if (init_tune_buffer() == 0)      init_error = 5;
 
-    if (init_err != 0) {
-        no_high_beeps(init_err);
+    if (init_error != 0) {
+        no_high_beeps(init_error);
         stop_system();
         printf("Not enough free memory to run Caesar2.\n");
         exit(100);
@@ -454,7 +454,7 @@ void start_a_promotion(void)
 void new_province(void)
 {
     int skill;
-    int r;
+    int denarii_reduction;
 
     setup_game();
     restart_flag = 0;
@@ -479,8 +479,8 @@ void new_province(void)
 
     skill = c2inf.skill_level;
     denarii  = skill_to_starting_denarii[skill];
-    r = skill_to_denarii_reduction[skill];
-    denarii -= r * completed_provinces;
+    denarii_reduction = skill_to_denarii_reduction[skill];
+    denarii -= denarii_reduction * completed_provinces;
 
     income_multiple = 0x258;
     pop_tax_rate    = 5;
@@ -566,87 +566,87 @@ void setup_game(void)
 // Reloads the eight map graphics buffers for the selected map mode and zoom level.
 // FUNCTION: C2 0x107db
 // FUNCTION: C2WIN 0x0044421c
-int load_map_graphics(int mode, int level)
+int load_map_graphics(int gfx_mode, int gfx_level)
 {
-    int   base_idx;
+    int   gfx_base_idx;
     int   i;
-    int   size;
-    char *fname;
-    int   ret;
+    int   file_size;
+    char *filename;
+    int   result;
 
     clear_map_gfx_buffers();
     init_map_gfx_buffers();
     clear_battle_gfx_buffers();
     init_battle_gfx_buffers();
 
-    if (mode > 1) mode = 0;
-    base_idx = mode * 24 + level * 8;
+    if (gfx_mode > 1) gfx_mode = 0;
+    gfx_base_idx = gfx_mode * 24 + gfx_level * 8;
 
     for (i = 0; i < 8; i++) {
-        size  = c2_map_gfx[i + base_idx].size;
-        fname = c2_map_gfx[i + base_idx].filename;
+        file_size = c2_map_gfx[i + gfx_base_idx].size;
+        filename = c2_map_gfx[i + gfx_base_idx].filename;
 
-        if (size == 0) continue;
+        if (file_size == 0) continue;
 
         if (i == 0) {
-            people_data = malloc((unsigned)size);
+            people_data = malloc((unsigned)file_size);
             if (people_data == NULL) goto alloc_fail;
-            if (!readfile(fname, people_data, size, 0)) goto file_fail;
+            if (!readfile(filename, people_data, file_size, 0)) goto file_fail;
         }
         else if (i == 1) {
-            fixt_data = malloc((unsigned)size);
+            fixt_data = malloc((unsigned)file_size);
             if (fixt_data == NULL) goto alloc_fail;
-            if (!readfile(fname, fixt_data, size, 0)) goto file_fail;
+            if (!readfile(filename, fixt_data, file_size, 0)) goto file_fail;
         }
         else if (i == 2) {
-            house_data = malloc((unsigned)size);
+            house_data = malloc((unsigned)file_size);
             if (house_data == NULL) goto alloc_fail;
-            if (!readfile(fname, house_data, size, 0)) goto file_fail;
+            if (!readfile(filename, house_data, file_size, 0)) goto file_fail;
         }
         else if (i == 3) {
-            building_data1 = malloc((unsigned)size);
+            building_data1 = malloc((unsigned)file_size);
             if (building_data1 == NULL) goto alloc_fail;
-            if (!readfile(fname, building_data1, size, 0)) goto file_fail;
+            if (!readfile(filename, building_data1, file_size, 0)) goto file_fail;
         }
         else if (i == 4) {
-            building_data2 = malloc((unsigned)size);
+            building_data2 = malloc((unsigned)file_size);
             if (building_data2 == NULL) goto alloc_fail;
-            if (!readfile(fname, building_data2, size, 0)) goto file_fail;
+            if (!readfile(filename, building_data2, file_size, 0)) goto file_fail;
         }
         else if (i == 5) {
-            building_data3 = malloc((unsigned)size);
+            building_data3 = malloc((unsigned)file_size);
             if (building_data3 == NULL) goto alloc_fail;
-            if (!readfile(fname, building_data3, size, 0)) goto file_fail;
+            if (!readfile(filename, building_data3, file_size, 0)) goto file_fail;
         }
         else if (i == 6) {
-            building_data4 = malloc((unsigned)size);
+            building_data4 = malloc((unsigned)file_size);
             if (building_data4 == NULL) goto alloc_fail;
-            if (!readfile(fname, building_data4, size, 0)) goto file_fail;
+            if (!readfile(filename, building_data4, file_size, 0)) goto file_fail;
         }
         else if (i == 7) {
-            tops_data = malloc((unsigned)size);
+            tops_data = malloc((unsigned)file_size);
             if (tops_data == NULL) goto alloc_fail;
-            if (!readfile(fname, tops_data, size, 0)) goto file_fail;
+            if (!readfile(filename, tops_data, file_size, 0)) goto file_fail;
         }
     }
 
-    ret = 1;
+    result = 1;
     goto done;
 
 file_fail:
     stop_system();
     printf("\nError loading graphics data - code %d - file not found.\n",
-           i + base_idx);
+           i + gfx_base_idx);
     exit(100);
 
 alloc_fail:
     stop_system();
     printf("\nError loading graphics data - code %d  - cannot allocate memory.\n",
-           i + base_idx);
+           i + gfx_base_idx);
     exit(100);
 
 done:
-    return ret;
+    return result;
 }
 
 // Reloads circus sprites for a populous city, alternating the graphics by year.
@@ -681,70 +681,70 @@ void swap_circus_gfx(void)
 // Loads the people or overlay graphics for the current zoom level into people_data.
 // FUNCTION: C2 0x10a40
 // FUNCTION: C2WIN 0x004448fb
-int load_overlay_graphics(int param)
+int load_overlay_graphics(int use_overlay)
 {
-    int   size;
-    char *fname;
-    int   slot;
-    int   ok;
+    int   file_size;
+    char *filename;
+    int   gfx_idx;
+    int   result;
 
-    if (param == 0) {
-        slot = zoom_level * 8;
-        size  = c2_map_gfx[slot].size;
-        fname = c2_map_gfx[slot].filename;
+    if (use_overlay == 0) {
+        gfx_idx = zoom_level * 8;
+        file_size = c2_map_gfx[gfx_idx].size;
+        filename = c2_map_gfx[gfx_idx].filename;
     } else {
-        slot = zoom_level;
-        size  = c2_overlay_gfx[slot].size;
-        fname = c2_overlay_gfx[slot].filename;
+        gfx_idx = zoom_level;
+        file_size = c2_overlay_gfx[gfx_idx].size;
+        filename = c2_overlay_gfx[gfx_idx].filename;
     }
 
-    if (readfile(fname, people_data, size, 0)) {
-        ok = 1;
+    if (readfile(filename, people_data, file_size, 0)) {
+        result = 1;
     } else {
         stop_system();
         printf("\nError loading overlay data - file not found.\n");
         exit(100);
     }
-    return ok;
+    return result;
 }
 
 // Reloads terrain, troop, and optional mercenary graphics for the active battle.
 // FUNCTION: C2 0x10ac9
 // FUNCTION: C2WIN 0x004449df
-int load_battle_graphics(int n)
+int load_battle_graphics(int battle_zoom)
 {
-    int idx_base;
-    int merc_offset;
+    int troop_gfx_idx;
+    int mercenary_gfx_idx;
 
     clear_map_gfx_buffers();
     init_map_gfx_buffers();
     clear_battle_gfx_buffers();
     init_battle_gfx_buffers();
 
-    idx_base = tribe_to_troops[
+    troop_gfx_idx = tribe_to_troops[
         army_list[their_battle_army].tribe_id];
 
-    fixt_data    = load_a_battle_gfx_file(n, 0, 0);
-    figure1_data = load_a_battle_gfx_file(n, 1, 0);
-    figure2_data = load_a_battle_gfx_file(n, 2, 0);
-    figure3_data = load_a_battle_gfx_file(n, 3, 0);
-    figure4_data = load_a_battle_gfx_file(n, idx_base, 0);
-    figure5_data = load_a_battle_gfx_file(n, idx_base + 1, 0);
-    figure6_data = load_a_battle_gfx_file(n, idx_base + 2, 0);
+    fixt_data    = load_a_battle_gfx_file(battle_zoom, 0, 0);
+    figure1_data = load_a_battle_gfx_file(battle_zoom, 1, 0);
+    figure2_data = load_a_battle_gfx_file(battle_zoom, 2, 0);
+    figure3_data = load_a_battle_gfx_file(battle_zoom, 3, 0);
+    figure4_data = load_a_battle_gfx_file(battle_zoom, troop_gfx_idx, 0);
+    figure5_data = load_a_battle_gfx_file(battle_zoom, troop_gfx_idx + 1, 0);
+    figure6_data = load_a_battle_gfx_file(battle_zoom, troop_gfx_idx + 2, 0);
 
     if (max_mercs_allowed != 0) {
-        idx_base    = tribe_to_troops[mercs_tribe];
-        merc_offset = idx_base + 1;
+        troop_gfx_idx = tribe_to_troops[mercs_tribe];
+        mercenary_gfx_idx = troop_gfx_idx + 1;
 
         if (mercs_catagory == 0) {
-            figure7_data = load_a_battle_gfx_file(n, idx_base, 1);
-            figure8_data = load_a_battle_gfx_file(n, merc_offset, 1);
+            figure7_data = load_a_battle_gfx_file(battle_zoom, troop_gfx_idx, 1);
+            figure8_data = load_a_battle_gfx_file(battle_zoom, mercenary_gfx_idx, 1);
         } else if (mercs_catagory == 1) {
-            figure7_data = load_a_battle_gfx_file(n, idx_base, 1);
+            figure7_data = load_a_battle_gfx_file(battle_zoom, troop_gfx_idx, 1);
         } else if (mercs_catagory == 2) {
-            figure7_data = load_a_battle_gfx_file(n, merc_offset, 1);
+            figure7_data = load_a_battle_gfx_file(battle_zoom, mercenary_gfx_idx, 1);
         } else if (mercs_catagory == 3) {
-            figure7_data = load_a_battle_gfx_file(n, idx_base + 2, 1);
+            figure7_data = load_a_battle_gfx_file(battle_zoom, troop_gfx_idx + 2, 1);
         }
     }
 
@@ -754,44 +754,44 @@ int load_battle_graphics(int n)
 // Allocates and loads one troop graphics file from the primary or auxiliary battle table.
 // FUNCTION: C2 0x10c03
 // FUNCTION: C2WIN 0x00444cf6
-void *load_a_battle_gfx_file(int n, int idx, int aux)
+void *load_a_battle_gfx_file(int battle_zoom, int troop_gfx_idx, int use_aux)
 {
-    int    slot;
-    int    size;
-    char  *fname;
-    void  *buf;
+    int    gfx_idx;
+    int    file_size;
+    char  *filename;
+    void  *buffer;
 
-    n--;
-    slot = n * 34 + idx;
-    if (aux) {
-        size  = c2_battle_aux_gfx[slot].size;
-        fname = c2_battle_aux_gfx[slot].filename;
+    battle_zoom--;
+    gfx_idx = battle_zoom * 34 + troop_gfx_idx;
+    if (use_aux) {
+        file_size = c2_battle_aux_gfx[gfx_idx].size;
+        filename = c2_battle_aux_gfx[gfx_idx].filename;
     } else {
-        size  = c2_battle_gfx[slot].size;
-        fname = c2_battle_gfx[slot].filename;
+        file_size = c2_battle_gfx[gfx_idx].size;
+        filename = c2_battle_gfx[gfx_idx].filename;
     }
 
-    if (size == 0) return NULL;
+    if (file_size == 0) return NULL;
 
-    buf = malloc((unsigned)size);
-    if (!buf) {
+    buffer = malloc((unsigned)file_size);
+    if (!buffer) {
         stop_system();
         printf("\nError loading battle data - code %d - cannot allocate memory.\n",
-               idx);
+               troop_gfx_idx);
         exit(100);
     }
 
-    if (!readfile(fname, buf, size, 0)) {
+    if (!readfile(filename, buffer, file_size, 0)) {
         stop_system();
-        if (size == 0) {
+        if (file_size == 0) {
             printf("\nError loading battle data - 0 sized file.\n");
         } else {
-            printf("\nError loading battle data - %s not found.\n", fname);
+            printf("\nError loading battle data - %s not found.\n", filename);
         }
         exit(100);
     }
 
-    return buf;
+    return buffer;
 }
 
 // Marks all map graphics buffers as empty.
@@ -914,50 +914,50 @@ void do_neg(void)
 // FUNCTION: C2WIN 0x004457c4
 int test_cd_drive(void)
 {
-    int            ret;
-    int            drv;
-    int            max_drv;
-    int            curr_drv;
-    int            fd;
+    int            error_code;
+    int            drive;
+    int            drive_count;
+    int            current_drive;
+    int            cd_fd;
     char          *cd_root = "c:\\";
 
-    ret = 0;
+    error_code = 0;
 
     if (c2inf.cd_letter < 'A') {
         return 1;
     }
 
-    drv = c2inf.cd_letter - 0x40;
-    _dos_setdrive((unsigned)drv, (unsigned *)&max_drv);
-    _dos_getdrive((unsigned *)&curr_drv);
-    if (drv != curr_drv) {
+    drive = c2inf.cd_letter - 0x40;
+    _dos_setdrive((unsigned)drive, (unsigned *)&drive_count);
+    _dos_getdrive((unsigned *)&current_drive);
+    if (drive != current_drive) {
         return 2;
     }
 
     cd_root[0] = c2inf.cd_letter;
     if (chdir(cd_root) != 0) {
-        ret = 3;
+        error_code = 3;
     }
 
     getcwd(path_name, 0x50);
 
-    fd = open("cd.dat", 0x200);
-    if (fd >= 0) {
-        close(fd);
+    cd_fd = open("cd.dat", 0x200);
+    if (cd_fd >= 0) {
+        close(cd_fd);
     } else {
-        ret = 4;
+        error_code = 4;
     }
 
-    drv = drive_name - 0x40;
-    _dos_setdrive((unsigned)drv, (unsigned *)&max_drv);
-    _dos_getdrive((unsigned *)&curr_drv);
-    if (drv != curr_drv) {
-        ret = 5;
+    drive = drive_name - 0x40;
+    _dos_setdrive((unsigned)drive, (unsigned *)&drive_count);
+    _dos_getdrive((unsigned *)&current_drive);
+    if (drive != current_drive) {
+        error_code = 5;
     }
 
     if (chdir(path_name) != 0) {
-        ret = 6;
+        error_code = 6;
     }
 
-    return ret;
+    return error_code;
 }
