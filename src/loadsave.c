@@ -648,7 +648,7 @@ void save_a_game(void)
 // Run the modal filename picker shared by the load and save dialogs.
 // FUNCTION: C2 0x706d9
 // FUNCTION: C2WIN 0x00482d77
-int select_filename(int mode)
+int select_filename(int dialog_mode)
 {
     int old_pointer_mode;
 
@@ -751,30 +751,30 @@ void act_cancel_file_op(void) { out1 = 1; }
 // Write the registered game-state blocks and history data to a save file.
 // FUNCTION: C2 0x70989
 // FUNCTION: C2WIN 0x0048309c
-int savegame(char *fname)
+int savegame(char *save_filename)
 {
-    int fd;
-    int hist_fd;
+    int save_fd;
+    int history_fd;
     int i;
 
-    fd = open(fname, 0x261, 0x180);
-    if (fd == -1) return 0;
+    save_fd = open(save_filename, 0x261, 0x180);
+    if (save_fd == -1) return 0;
 
-    hist_fd = open("history.dat", 0x200);
-    if (hist_fd == -1) {
-        close(fd);
+    history_fd = open("history.dat", 0x200);
+    if (history_fd == -1) {
+        close(save_fd);
         return 0;
     }
 
     for (i = 0; i < 500; i++) {
         if (savegame_entries[i].size == 0) break;
-        write(fd, savegame_entries[i].buf, savegame_entries[i].size);
+        write(save_fd, savegame_entries[i].buf, savegame_entries[i].size);
     }
 
-    read(hist_fd, ((void *)scratch_buffer), 0xfa0);
-    write(fd, ((void *)scratch_buffer), 0xfa0);
-    close(fd);
-    close(hist_fd);
+    read(history_fd, ((void *)scratch_buffer), 0xfa0);
+    write(save_fd, ((void *)scratch_buffer), 0xfa0);
+    close(save_fd);
+    close(history_fd);
 
     map_gfx_loaded = 0;
     setup_map_screen_refresh();
@@ -786,33 +786,33 @@ int savegame(char *fname)
 // Restore the registered game-state blocks and history data, then rebuild the map display state.
 // FUNCTION: C2 0x70a5c
 // FUNCTION: C2WIN 0x004832e3
-int loadgame(char *fname)
+int loadgame(char *save_filename)
 {
-    int fd;
-    int hist_fd;
+    int save_fd;
+    int history_fd;
     int i;
 
     file_loaded_status = 0;
     clear_messages();
 
-    fd = open(fname, 0x200);
-    if (fd == -1) return 0;
+    save_fd = open(save_filename, 0x200);
+    if (save_fd == -1) return 0;
 
-    hist_fd = open("history.dat", 0x261, 0x180);
-    if (hist_fd == -1) {
-        close(fd);
+    history_fd = open("history.dat", 0x261, 0x180);
+    if (history_fd == -1) {
+        close(save_fd);
         return 0;
     }
 
     for (i = 0; i < 500; i++) {
         if (savegame_entries[i].size == 0) break;
-        read(fd, savegame_entries[i].buf, savegame_entries[i].size);
+        read(save_fd, savegame_entries[i].buf, savegame_entries[i].size);
     }
 
-    read(fd, ((void *)scratch_buffer), 0xfa0);
-    write(hist_fd, ((void *)scratch_buffer), 0xfa0);
-    close(fd);
-    close(hist_fd);
+    read(save_fd, ((void *)scratch_buffer), 0xfa0);
+    write(history_fd, ((void *)scratch_buffer), 0xfa0);
+    close(save_fd);
+    close(history_fd);
 
     file_loaded_status = 1;
     map_gfx_loaded = 0;
@@ -836,12 +836,12 @@ int loadgame(char *fname)
 // FUNCTION: C2WIN 0x00483554
 void save_inf(void)
 {
-    int fd;
+    int inf_fd;
 
-    fd = open("caesar2.inf", 0x261, 0x180);
-    if (fd != -1) {
-        write(fd, &c2inf, 0x40);
-        close(fd);
+    inf_fd = open("caesar2.inf", 0x261, 0x180);
+    if (inf_fd != -1) {
+        write(inf_fd, &c2inf, 0x40);
+        close(inf_fd);
     }
 }
 
@@ -850,12 +850,12 @@ void save_inf(void)
 // FUNCTION: C2WIN 0x004835b1
 void load_inf(void)
 {
-    int old0;
-    int old1;
-    int fd;
+    int old_cd_letter;
+    int old_drive_init;
+    int inf_fd;
 
-    old0 = c2inf.cd_letter;
-    old1 = c2inf.drive_init;
+    old_cd_letter = c2inf.cd_letter;
+    old_drive_init = c2inf.drive_init;
 
     get_directory("*.sav");
     if (no_of_entries != 0) {
@@ -869,15 +869,15 @@ void load_inf(void)
     basic_inf_settings();
     set_language(c2inf.config37);
 
-    fd = open("caesar2.inf", 0x8404);
-    if (fd != -1) {
-        read(fd, &c2inf, 0x40);
-        close(fd);
+    inf_fd = open("caesar2.inf", 0x8404);
+    if (inf_fd != -1) {
+        read(inf_fd, &c2inf, 0x40);
+        close(inf_fd);
         test_inf_settings();
         set_language(c2inf.config37);
         c2inf._unused_writeonly38 = 0;
-        c2inf.cd_letter = old0;
-        c2inf.drive_init = old1;
+        c2inf.cd_letter = old_cd_letter;
+        c2inf.drive_init = old_drive_init;
         set_samples_volume();
         set_sequences_volume();
     }
@@ -948,111 +948,111 @@ void basic_inf_settings(void)
 // Load registered model blocks until the first zero-size entry.
 // FUNCTION: C2 0x70e57
 // FUNCTION: C2WIN 0x00483834
-int loadmodel(char *fname)
+int loadmodel(char *model_filename)
 {
-    int fd;
+    int model_fd;
     int i;
 
-    fd = open(fname, 0x200);
-    if (fd == -1) return 0;
+    model_fd = open(model_filename, 0x200);
+    if (model_fd == -1) return 0;
 
     for (i = 0; i < 100; i++) {
         if (model_entries[i].size == 0) break;
-        read(fd, model_entries[i].buf, model_entries[i].size);
+        read(model_fd, model_entries[i].buf, model_entries[i].size);
     }
-    close(fd);
+    close(model_fd);
     return 1;
 }
 
 // Replace control bytes in the first 24 player-name characters with spaces and append a terminator.
 // FUNCTION: C2 0x70eae
 // FUNCTION: C2WIN 0x004838d3
-void fix_plyr_name(char *buf)
+void fix_plyr_name(char *name_buf)
 {
     int i;
     for (i = 0; i < 0x18; i++) {
-        if ((unsigned char)buf[i] < 0x20)
-            buf[i] = 0x20;
-        if (buf[i] == 0) break;
+        if ((unsigned char)name_buf[i] < 0x20)
+            name_buf[i] = 0x20;
+        if (name_buf[i] == 0) break;
     }
-    buf[i] = 0;
+    name_buf[i] = 0;
 }
 
 // Decode a province's 60x60 region map and record its city, huts, and border routes.
 // FUNCTION: C2 0x70ed8
 // FUNCTION: C2WIN 0x0048393f
-void load_region_map(int province)
+void load_region_map(int province_idx)
 {
-    int off;
-    int y;
-    int x;
-    unsigned char c;
-    int dir;
+    int file_offset;
+    int map_y;
+    int map_x;
+    unsigned char tile_kind;
+    int border_direction;
 
     map_direction = 0;
 
-    off = province;
-    off <<= 3;
-    off -= province;
-    off <<= 5;
-    off += province;
-    off <<= 4;
-    readfile("regions.dat", ((void *)scratch_buffer), 0xe10, off);
+    file_offset = province_idx;
+    file_offset <<= 3;
+    file_offset -= province_idx;
+    file_offset <<= 5;
+    file_offset += province_idx;
+    file_offset <<= 4;
+    readfile("regions.dat", ((void *)scratch_buffer), 0xe10, file_offset);
     clear_huts();
     cm_dptr = 0;
 
-    for (y = 0; y < 60; y++) {
-        for (x = 0; x < 60; x++, cm_dptr++) {
-            c = *(((char *)scratch_buffer) + cm_dptr);
+    for (map_y = 0; map_y < 60; map_y++) {
+        for (map_x = 0; map_x < 60; map_x++, cm_dptr++) {
+            tile_kind = *(((char *)scratch_buffer) + cm_dptr);
 
-            if (c >= 0x7d && c < 0x85) {
-                put_rm_area(x, y, 1, c, 4, c - 0x7d, 0x10);
-            } else if (c >= 0x85 && c < 0x8d) {
-                put_rm_area(x, y, 2, c, 4, c * 4 - 0x20c, 0x10);
-            } else if (c >= 0x8d && c < 0x91) {
-                put_rm_area(x, y, 3, c, 4,
-                            (c - 0x8d) * 9 + 0x28, 0x10);
-            } else if (c == 0x91) {
-                put_rm_area(x, y, 4, c, 4, 0x4c, 0x10);
-            } else if (c >= 0x20 && c < 0x7c) {
-                put_rm_area(x, y, 1, c, 0, c, 0x18);
-            } else if (c == 0x92) {
-                put_rm_area(x, y, 2, c, 8, 0, 1);
-                reg_city_x = x;
-                reg_city_y = y;
-                reg_city_ptr = (y * REGION_W + x) * REGION_CELL_BYTES;
+            if (tile_kind >= 0x7d && tile_kind < 0x85) {
+                put_rm_area(map_x, map_y, 1, tile_kind, 4, tile_kind - 0x7d, 0x10);
+            } else if (tile_kind >= 0x85 && tile_kind < 0x8d) {
+                put_rm_area(map_x, map_y, 2, tile_kind, 4, tile_kind * 4 - 0x20c, 0x10);
+            } else if (tile_kind >= 0x8d && tile_kind < 0x91) {
+                put_rm_area(map_x, map_y, 3, tile_kind, 4,
+                            (tile_kind - 0x8d) * 9 + 0x28, 0x10);
+            } else if (tile_kind == 0x91) {
+                put_rm_area(map_x, map_y, 4, tile_kind, 4, 0x4c, 0x10);
+            } else if (tile_kind >= 0x20 && tile_kind < 0x7c) {
+                put_rm_area(map_x, map_y, 1, tile_kind, 0, tile_kind, 0x18);
+            } else if (tile_kind == 0x92) {
+                put_rm_area(map_x, map_y, 2, tile_kind, 8, 0, 1);
+                reg_city_x = map_x;
+                reg_city_y = map_y;
+                reg_city_ptr = (map_y * REGION_W + map_x) * REGION_CELL_BYTES;
                 region_pm_y = -1;
                 region_pm_x = -1;
-            } else if (c == 0x93) {
-                put_rm_area(x, y, 1, c, 0, 0x2e, 1);
-                put_a_hut(x, y, 2);
-            } else if (c == 0x94) {
-                put_rm_area(x, y, 1, c, 0, 0x2f, 1);
-                put_a_hut(x, y, 3);
-            } else if (c == 0x95) {
-                put_rm_area(x, y, 1, c, 0, 0x30, 1);
-                put_a_hut(x, y, 4);
-            } else if (c == 0x96) {
-                put_rm_area(x, y, 1, c, 0, 0x31, 1);
-                put_a_hut(x, y, 5);
-            } else if (c == 0x97) {
-                put_rm_area(x, y, 1, c, 0, 0x32, 1);
-                put_a_hut(x, y, 1);
-            } else if (c == 0x98) {
-                dir = get_border_position(x, y, 0);
-                c += (char)dir;
-                put_rm_area(x, y, 1, (unsigned char)c, 0, 0x50, 1);
-            } else if (c == 0x9c) {
-                dir = get_border_position(x, y, 1);
-                c += (char)dir;
-                put_rm_area(x, y, 1, (unsigned char)c, 0,
-                            (unsigned char)c - 0x72, 0x18);
-            } else if (c >= 0x18 && c <= 0x1b) {
-                put_rm_area(x, y, 1, c, 0, c, 0x40);
-            } else if (c >= 0x1c && c <= 0x1f) {
-                put_rm_area(x, y, 1, c, 0, c, 0x80);
+            } else if (tile_kind == 0x93) {
+                put_rm_area(map_x, map_y, 1, tile_kind, 0, 0x2e, 1);
+                put_a_hut(map_x, map_y, 2);
+            } else if (tile_kind == 0x94) {
+                put_rm_area(map_x, map_y, 1, tile_kind, 0, 0x2f, 1);
+                put_a_hut(map_x, map_y, 3);
+            } else if (tile_kind == 0x95) {
+                put_rm_area(map_x, map_y, 1, tile_kind, 0, 0x30, 1);
+                put_a_hut(map_x, map_y, 4);
+            } else if (tile_kind == 0x96) {
+                put_rm_area(map_x, map_y, 1, tile_kind, 0, 0x31, 1);
+                put_a_hut(map_x, map_y, 5);
+            } else if (tile_kind == 0x97) {
+                put_rm_area(map_x, map_y, 1, tile_kind, 0, 0x32, 1);
+                put_a_hut(map_x, map_y, 1);
+            } else if (tile_kind == 0x98) {
+                border_direction = get_border_position(map_x, map_y, 0);
+                tile_kind += (char)border_direction;
+                put_rm_area(map_x, map_y, 1, (unsigned char)tile_kind, 0, 0x50, 1);
+            } else if (tile_kind == 0x9c) {
+                border_direction = get_border_position(map_x, map_y, 1);
+                tile_kind += (char)border_direction;
+                put_rm_area(map_x, map_y, 1, (unsigned char)tile_kind, 0,
+                            (unsigned char)tile_kind - 0x72, 0x18);
+            } else if (tile_kind >= 0x18 && tile_kind <= 0x1b) {
+                put_rm_area(map_x, map_y, 1, tile_kind, 0, tile_kind, 0x40);
+            } else if (tile_kind >= 0x1c && tile_kind <= 0x1f) {
+                put_rm_area(map_x, map_y, 1, tile_kind, 0, tile_kind, 0x80);
             } else {
-                put_rm_area(x, y, 1, (unsigned char)c, 0, (unsigned char)c, 0);
+                put_rm_area(map_x, map_y, 1, (unsigned char)tile_kind, 0, (unsigned char)tile_kind, 0);
             }
         }
     }
@@ -1075,14 +1075,14 @@ void clear_huts(void)
 // Store a hut's position and kind in the first empty hut-list entry.
 // FUNCTION: C2 0x711ce
 // FUNCTION: C2WIN 0x00483ea3
-void put_a_hut(int x, int y, int kind)
+void put_a_hut(int hut_x, int hut_y, int hut_kind)
 {
     int i;
     for (i = 0; i < 4; i++) {
         if (hut_list[i].x == 0) {
-            hut_list[i].x    = x;
-            hut_list[i].y    = y;
-            hut_list[i].kind = kind;
+            hut_list[i].x    = hut_x;
+            hut_list[i].y    = hut_y;
+            hut_list[i].kind = hut_kind;
             return;
         }
     }
@@ -1091,30 +1091,30 @@ void put_a_hut(int x, int y, int kind)
 // Record a region-map border position and return its compass direction.
 // FUNCTION: C2 0x71216
 // FUNCTION: C2WIN 0x00483f0f
-int get_border_position(int x, int y, int trader_is)
+int get_border_position(int border_x, int border_y, int trader_flag)
 {
-    if (x == 0) {
-        west_border_x = x;
-        west_border_y = y;
-        west_trader_is = trader_is;
+    if (border_x == 0) {
+        west_border_x = border_x;
+        west_border_y = border_y;
+        west_trader_is = trader_flag;
         return 3;
     }
-    if (x >= 59) {
-        east_border_x = x;
-        east_border_y = y;
-        east_trader_is = trader_is;
+    if (border_x >= 59) {
+        east_border_x = border_x;
+        east_border_y = border_y;
+        east_trader_is = trader_flag;
         return 1;
     }
-    if (y == 0) {
-        north_border_x = x;
-        north_border_y = y;
-        north_trader_is = trader_is;
+    if (border_y == 0) {
+        north_border_x = border_x;
+        north_border_y = border_y;
+        north_trader_is = trader_flag;
         return 0;
     }
-    if (y >= 59) {
-        south_border_x = x;
-        south_border_y = y;
-        south_trader_is = trader_is;
+    if (border_y >= 59) {
+        south_border_x = border_x;
+        south_border_y = border_y;
+        south_trader_is = trader_flag;
         return 2;
     }
     test_beeps();
@@ -1150,17 +1150,17 @@ int out_of_sync(void)
 // FUNCTION: C2WIN 0x00483fd3 REORDERED
 void setup_history_data(void)
 {
-    int fd;
+    int history_fd;
     int i;
 
     for (i = 0; i < 5; i++)
         history_entry[i] = 0;
-    fd = open("history.dat", 0x261, 0x180);
-    if (fd != -1) {
+    history_fd = open("history.dat", 0x261, 0x180);
+    if (history_fd != -1) {
         for (i = 0; i < 200; ++i) {
-            write(fd, history_entry, 0x14);
+            write(history_fd, history_entry, 0x14);
         }
-        close(fd);
+        close(history_fd);
         history_start_ptr = 0;
         history_end_ptr = 0;
         history_entries = 0;
@@ -1172,15 +1172,15 @@ void setup_history_data(void)
 // FUNCTION: C2WIN 0x00484094
 void save_history(void)
 {
-    int fd;
-    int off;
+    int history_fd;
+    int file_offset;
 
-    off = history_end_ptr * 20;
-    fd = open("history.dat", 0x221, 0x180);
-    if (fd != -1) {
-        _lseek(fd, off, 0);
-        write(fd, history_entry, 0x14);
-        close(fd);
+    file_offset = history_end_ptr * 20;
+    history_fd = open("history.dat", 0x221, 0x180);
+    if (history_fd != -1) {
+        _lseek(history_fd, file_offset, 0);
+        write(history_fd, history_entry, 0x14);
+        close(history_fd);
         history_entries++;
         if (history_entries > 0xc8)
             history_entries = 0xc8;
@@ -1194,23 +1194,23 @@ void save_history(void)
 // Read all 200 five-value history entries into the caller's buffer when history.dat exists.
 // FUNCTION: C2 0x7138b
 // FUNCTION: C2WIN 0x0048414d
-void get_history_in_buffer(int *buf)
+void get_history_in_buffer(int *history_buf)
 {
-    int fd;
+    int history_fd;
 
-    fd = open("history.dat", 0x200);
-    if (fd != -1) {
-        read(fd, buf, 0xfa0);
-        close(fd);
+    history_fd = open("history.dat", 0x200);
+    if (history_fd != -1) {
+        read(history_fd, history_buf, 0xfa0);
+        close(history_fd);
     }
 }
 
 // Return one value from a buffered five-column history entry.
 // FUNCTION: C2 0x713be
 // FUNCTION: C2WIN 0x004841a0
-int get_history_from_buffer(int *buf, int row, int col)
+int get_history_from_buffer(int *history_buf, int row_idx, int col_idx)
 {
-    return buf[row * 5 + col];
+    return history_buf[row_idx * 5 + col_idx];
 }
 
 // No-op hook for stopping mouse recording.

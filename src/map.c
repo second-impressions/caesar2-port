@@ -43,11 +43,11 @@ void generate_city_map_geography(void)
 // FUNCTION: C2WIN 0x0049f923
 int generate_cm_river(void)
 {
-    int cur_dir;
-    int prev_dir;
-    int east_count;
+    int current_dir;
+    int previous_dir;
+    int south_count;
     int budget;
-    int cand;
+    int candidate_dir;
 
     budget = 0x3c0;
     random();
@@ -64,29 +64,29 @@ int generate_cm_river(void)
     (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain |= 0x10;
     (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind  = 4;
 
-    east_count = 0;
-    prev_dir   = 0;
-    cur_dir    = 4;
+    south_count = 0;
+    previous_dir   = 0;
+    current_dir    = 4;
 
     for (;;) {
         if (--budget == -1) break;
 
-        if (cur_dir == 0) {
+        if (current_dir == 0) {
             y--;  cm_sptr -= 0x640;
             (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain |= 0x10;
-            (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind  = cur_dir;
-        } else if (cur_dir == 2) {
+            (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind  = current_dir;
+        } else if (current_dir == 2) {
             x++;  cm_sptr += 0x14;
             (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain |= 0x10;
-            (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind  = cur_dir;
-        } else if (cur_dir == 4) {
+            (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind  = current_dir;
+        } else if (current_dir == 4) {
             y++;  cm_sptr += 0x640;
             (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain |= 0x10;
-            (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind  = cur_dir;
-        } else if (cur_dir == 6) {
+            (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind  = current_dir;
+        } else if (current_dir == 6) {
             x--;  cm_sptr -= 0x14;
             (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain |= 0x10;
-            (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind  = cur_dir;
+            (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind  = current_dir;
         }
 
         gmn_x    = x;
@@ -96,37 +96,37 @@ int generate_cm_river(void)
         if (x == 0 || y == 0 || x >= 0x4f || y >= 0x4f) break;
 
         random();
-        cand = (rand128 & 3) * 2;
+        candidate_dir = (rand128 & 3) * 2;
 
-        if (cand == 0 && east_count < 4) {
-            cur_dir = 8;
+        if (candidate_dir == 0 && south_count < 4) {
+            current_dir = 8;
             continue;
         }
-        if (cand == prev_dir) {
-            cur_dir = 8;
+        if (candidate_dir == previous_dir) {
+            current_dir = 8;
             continue;
         }
 
-        if (cand == 0) {
+        if (candidate_dir == 0) {
             gmn_y--; gmn_sptr -= 0x640;
-        } else if (cand == 2) {
+        } else if (candidate_dir == 2) {
             gmn_x++; gmn_sptr += 0x14;
-        } else if (cand == 4) {
+        } else if (candidate_dir == 4) {
             gmn_y++; gmn_sptr += 0x640;
-        } else if (cand == 6) {
+        } else if (candidate_dir == 6) {
             gmn_x--; gmn_sptr -= 0x14;
         }
 
         test_citymap_neighbours_negedge(0x10);
         if (gmn_count > 2) {
-            cur_dir = 8;
+            current_dir = 8;
             continue;
         }
 
-        cur_dir  = cand;
-        prev_dir = (cand + 4) % 8;
-        if (cand == 4) east_count++;
-        if (cand == 0) east_count = 0;
+        current_dir  = candidate_dir;
+        previous_dir = (candidate_dir + 4) % 8;
+        if (candidate_dir == 4) south_count++;
+        if (candidate_dir == 0) south_count = 0;
     }
 
     if (budget != 0) {
@@ -140,16 +140,16 @@ int generate_cm_river(void)
 // FUNCTION: C2WIN 0x0049fc8b
 void generate_cm_scrub(void)
 {
-    int xi;
-    int yi;
+    int cell_x;
+    int cell_y;
 
     cm_sptr = 0;
-    for (yi = 0; yi < 80; yi++) {
-        for (xi = 0; xi < 80; xi++, cm_sptr += 20) {
-            int v;
+    for (cell_y = 0; cell_y < 80; cell_y++) {
+        for (cell_x = 0; cell_x < 80; cell_x++, cm_sptr += 20) {
+            int terrain_variant;
             random();
-            v = rand128 & 0xf;
-            (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind = (v + 8);
+            terrain_variant = rand128 & 0xf;
+            (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind = (terrain_variant + 8);
         }
     }
 }
@@ -196,7 +196,7 @@ void flesh_river_atoms(void)
 // Expand a city construction path by one breadth-first search layer.
 // FUNCTION: C2 0x663ab
 // FUNCTION: C2WIN 0x0049febf
-void test_elastic_range(int r, unsigned char reject_mask)
+void test_elastic_range(int radius, unsigned char reject_mask)
 {
     int x_min;
     int y_min;
@@ -204,12 +204,12 @@ void test_elastic_range(int r, unsigned char reject_mask)
     int x_span;
     int stride;
     int side;
-    unsigned char neigh;
+    unsigned char neighbour_value;
 
     needs_bounds = 0;
-    x_min = act_start_x - r;
-    y_min = act_start_y - r;
-    side = 2 * r + 1;
+    x_min = act_start_x - radius;
+    y_min = act_start_y - radius;
+    side = 2 * radius + 1;
     x_span = side;
     if (x_min <= 0) {
         x_span += x_min;
@@ -250,24 +250,24 @@ void test_elastic_range(int r, unsigned char reject_mask)
                 }
                 if ((*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct != 0)
                     continue;
-                neigh = (*(struct city_cell *)((unsigned char *)city_map + ((gmn_sptr) - CITY_ROW))).road_aqueduct;
-                if (neigh != 0 && neigh < r + 1) {
-                    (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = (unsigned char)(r + 1);
+                neighbour_value = (*(struct city_cell *)((unsigned char *)city_map + ((gmn_sptr) - CITY_ROW))).road_aqueduct;
+                if (neighbour_value != 0 && neighbour_value < radius + 1) {
+                    (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = (unsigned char)(radius + 1);
                     continue;
                 }
-                neigh = (*(struct city_cell *)((unsigned char *)city_map + ((gmn_sptr) + CITY_CELL_BYTES))).road_aqueduct;
-                if (neigh != 0 && neigh < r + 1) {
-                    (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = (unsigned char)(r + 1);
+                neighbour_value = (*(struct city_cell *)((unsigned char *)city_map + ((gmn_sptr) + CITY_CELL_BYTES))).road_aqueduct;
+                if (neighbour_value != 0 && neighbour_value < radius + 1) {
+                    (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = (unsigned char)(radius + 1);
                     continue;
                 }
-                neigh = (*(struct city_cell *)((unsigned char *)city_map + ((gmn_sptr) + CITY_ROW))).road_aqueduct;
-                if (neigh != 0 && neigh < r + 1) {
-                    (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = (unsigned char)(r + 1);
+                neighbour_value = (*(struct city_cell *)((unsigned char *)city_map + ((gmn_sptr) + CITY_ROW))).road_aqueduct;
+                if (neighbour_value != 0 && neighbour_value < radius + 1) {
+                    (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = (unsigned char)(radius + 1);
                     continue;
                 }
-                neigh = (*(struct city_cell *)((unsigned char *)city_map + ((gmn_sptr) - CITY_CELL_BYTES))).road_aqueduct;
-                if (neigh != 0 && neigh < r + 1) {
-                    (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = (unsigned char)(r + 1);
+                neighbour_value = (*(struct city_cell *)((unsigned char *)city_map + ((gmn_sptr) - CITY_CELL_BYTES))).road_aqueduct;
+                if (neighbour_value != 0 && neighbour_value < radius + 1) {
+                    (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = (unsigned char)(radius + 1);
                 }
             }
         }
@@ -283,35 +283,35 @@ void test_elastic_range(int r, unsigned char reject_mask)
                     continue;
                 }
                 if (gmn_y > 0)
-                    neigh = (*(struct city_cell *)((unsigned char *)city_map + ((gmn_sptr) - CITY_ROW))).road_aqueduct;
+                    neighbour_value = (*(struct city_cell *)((unsigned char *)city_map + ((gmn_sptr) - CITY_ROW))).road_aqueduct;
                 else
-                    neigh = 0;
-                if (neigh != 0 && neigh < r + 1) {
-                    (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = (unsigned char)(r + 1);
+                    neighbour_value = 0;
+                if (neighbour_value != 0 && neighbour_value < radius + 1) {
+                    (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = (unsigned char)(radius + 1);
                     continue;
                 }
                 if (gmn_x < 0x4f)
-                    neigh = (*(struct city_cell *)((unsigned char *)city_map + ((gmn_sptr) + CITY_CELL_BYTES))).road_aqueduct;
+                    neighbour_value = (*(struct city_cell *)((unsigned char *)city_map + ((gmn_sptr) + CITY_CELL_BYTES))).road_aqueduct;
                 else
-                    neigh = 0;
-                if (neigh != 0 && neigh < r + 1) {
-                    (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = (unsigned char)(r + 1);
+                    neighbour_value = 0;
+                if (neighbour_value != 0 && neighbour_value < radius + 1) {
+                    (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = (unsigned char)(radius + 1);
                     continue;
                 }
                 if (gmn_y < 0x4f)
-                    neigh = (*(struct city_cell *)((unsigned char *)city_map + ((gmn_sptr) + CITY_ROW))).road_aqueduct;
+                    neighbour_value = (*(struct city_cell *)((unsigned char *)city_map + ((gmn_sptr) + CITY_ROW))).road_aqueduct;
                 else
-                    neigh = 0;
-                if (neigh != 0 && neigh < r + 1) {
-                    (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = (unsigned char)(r + 1);
+                    neighbour_value = 0;
+                if (neighbour_value != 0 && neighbour_value < radius + 1) {
+                    (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = (unsigned char)(radius + 1);
                     continue;
                 }
                 if (gmn_x > 0)
-                    neigh = (*(struct city_cell *)((unsigned char *)city_map + ((gmn_sptr) - CITY_CELL_BYTES))).road_aqueduct;
+                    neighbour_value = (*(struct city_cell *)((unsigned char *)city_map + ((gmn_sptr) - CITY_CELL_BYTES))).road_aqueduct;
                 else
-                    neigh = 0;
-                if (neigh != 0 && neigh < r + 1) {
-                    (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = (unsigned char)(r + 1);
+                    neighbour_value = 0;
+                if (neighbour_value != 0 && neighbour_value < radius + 1) {
+                    (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = (unsigned char)(radius + 1);
                 }
             }
         }
@@ -321,11 +321,11 @@ void test_elastic_range(int r, unsigned char reject_mask)
 // Select the neighbouring city cell with the lowest nonzero path cost.
 // FUNCTION: C2 0x666a4
 // FUNCTION: C2WIN 0x004a03c4
-void get_best_elastic_value(int x, int y, int ptr, int dirc)
+void get_best_elastic_value(int x, int y, int cell_offset, int start_dir)
 {
     int i;
-    int dir = dirc;
-    unsigned char v;
+    int dir = start_dir;
+    unsigned char neighbour_value;
 
     best_elastic_value = 100;
     best_elastic_dirc = 0;
@@ -333,33 +333,33 @@ void get_best_elastic_value(int x, int y, int ptr, int dirc)
     while (i++ < 4) {
         if (dir == 0) {
             if (y > 0) {
-                v = (*(struct city_cell *)((unsigned char *)city_map + ((ptr) - CITY_ROW))).road_aqueduct;
-                if (v != 0 && v < best_elastic_value) {
-                    best_elastic_value = v;
+                neighbour_value = (*(struct city_cell *)((unsigned char *)city_map + ((cell_offset) - CITY_ROW))).road_aqueduct;
+                if (neighbour_value != 0 && neighbour_value < best_elastic_value) {
+                    best_elastic_value = neighbour_value;
                     best_elastic_dirc = 0;
                 }
             }
         } else if (dir == 1) {
             if (x < 79) {
-                v = (*(struct city_cell *)((unsigned char *)city_map + ((ptr) + CITY_CELL_BYTES))).road_aqueduct;
-                if (v != 0 && v < best_elastic_value) {
-                    best_elastic_value = v;
+                neighbour_value = (*(struct city_cell *)((unsigned char *)city_map + ((cell_offset) + CITY_CELL_BYTES))).road_aqueduct;
+                if (neighbour_value != 0 && neighbour_value < best_elastic_value) {
+                    best_elastic_value = neighbour_value;
                     best_elastic_dirc = 1;
                 }
             }
         } else if (dir == 2) {
             if (y < 79) {
-                v = (*(struct city_cell *)((unsigned char *)city_map + ((ptr) + CITY_ROW))).road_aqueduct;
-                if (v != 0 && v < best_elastic_value) {
-                    best_elastic_value = v;
+                neighbour_value = (*(struct city_cell *)((unsigned char *)city_map + ((cell_offset) + CITY_ROW))).road_aqueduct;
+                if (neighbour_value != 0 && neighbour_value < best_elastic_value) {
+                    best_elastic_value = neighbour_value;
                     best_elastic_dirc = 2;
                 }
             }
         } else if (dir == 3) {
             if (x > 0) {
-                v = (*(struct city_cell *)((unsigned char *)city_map + ((ptr) - CITY_CELL_BYTES))).road_aqueduct;
-                if (v != 0 && v < best_elastic_value) {
-                    best_elastic_value = v;
+                neighbour_value = (*(struct city_cell *)((unsigned char *)city_map + ((cell_offset) - CITY_CELL_BYTES))).road_aqueduct;
+                if (neighbour_value != 0 && neighbour_value < best_elastic_value) {
+                    best_elastic_value = neighbour_value;
                     best_elastic_dirc = 3;
                 }
             }
@@ -372,7 +372,7 @@ void get_best_elastic_value(int x, int y, int ptr, int dirc)
 // Expand a regional construction path by one breadth-first search layer.
 // FUNCTION: C2 0x6675a
 // FUNCTION: C2WIN 0x004a0576
-void test_rm_elastic_range(int strict, int r, unsigned char reject_mask)
+void test_rm_elastic_range(int strict, int radius, unsigned char reject_mask)
 {
     int x_min;
     int y_min;
@@ -380,12 +380,12 @@ void test_rm_elastic_range(int strict, int r, unsigned char reject_mask)
     int x_span;
     int stride;
     int side;
-    unsigned char neigh;
+    unsigned char neighbour_value;
 
     needs_bounds = 0;
-    x_min = act_start_x - r;
-    y_min = act_start_y - r;
-    side  = 2 * r + 1;
+    x_min = act_start_x - radius;
+    y_min = act_start_y - radius;
+    side  = 2 * radius + 1;
     x_span = side;
     if (x_min <= 0) {
         x_span += x_min;
@@ -428,24 +428,24 @@ void test_rm_elastic_range(int strict, int r, unsigned char reject_mask)
                 }
                 if ((*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state != 0)
                     continue;
-                neigh = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr - 480))).place_state;
-                if (neigh != 0 && neigh < r + 1) {
-                    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state = (unsigned char)(r + 1);
+                neighbour_value = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr - 480))).place_state;
+                if (neighbour_value != 0 && neighbour_value < radius + 1) {
+                    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state = (unsigned char)(radius + 1);
                     continue;
                 }
-                neigh = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr + 8))).place_state;
-                if (neigh != 0 && neigh < r + 1) {
-                    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state = (unsigned char)(r + 1);
+                neighbour_value = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr + 8))).place_state;
+                if (neighbour_value != 0 && neighbour_value < radius + 1) {
+                    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state = (unsigned char)(radius + 1);
                     continue;
                 }
-                neigh = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr + 480))).place_state;
-                if (neigh != 0 && neigh < r + 1) {
-                    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state = (unsigned char)(r + 1);
+                neighbour_value = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr + 480))).place_state;
+                if (neighbour_value != 0 && neighbour_value < radius + 1) {
+                    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state = (unsigned char)(radius + 1);
                     continue;
                 }
-                neigh = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr - 8))).place_state;
-                if (neigh != 0 && neigh < r + 1) {
-                    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state = (unsigned char)(r + 1);
+                neighbour_value = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr - 8))).place_state;
+                if (neighbour_value != 0 && neighbour_value < radius + 1) {
+                    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state = (unsigned char)(radius + 1);
                 }
             }
         }
@@ -461,35 +461,35 @@ void test_rm_elastic_range(int strict, int r, unsigned char reject_mask)
                 if ((*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state != 0)
                     continue;
                 if (gmn_y > 0)
-                    neigh = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr - 480))).place_state;
+                    neighbour_value = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr - 480))).place_state;
                 else
-                    neigh = 0;
-                if (neigh != 0 && neigh < r + 1) {
-                    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state = (unsigned char)(r + 1);
+                    neighbour_value = 0;
+                if (neighbour_value != 0 && neighbour_value < radius + 1) {
+                    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state = (unsigned char)(radius + 1);
                     continue;
                 }
                 if (gmn_x < 0x3b)
-                    neigh = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr + 8))).place_state;
+                    neighbour_value = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr + 8))).place_state;
                 else
-                    neigh = 0;
-                if (neigh != 0 && neigh < r + 1) {
-                    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state = (unsigned char)(r + 1);
+                    neighbour_value = 0;
+                if (neighbour_value != 0 && neighbour_value < radius + 1) {
+                    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state = (unsigned char)(radius + 1);
                     continue;
                 }
                 if (gmn_y < 0x3b)
-                    neigh = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr + 480))).place_state;
+                    neighbour_value = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr + 480))).place_state;
                 else
-                    neigh = 0;
-                if (neigh != 0 && neigh < r + 1) {
-                    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state = (unsigned char)(r + 1);
+                    neighbour_value = 0;
+                if (neighbour_value != 0 && neighbour_value < radius + 1) {
+                    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state = (unsigned char)(radius + 1);
                     continue;
                 }
                 if (gmn_x > 0)
-                    neigh = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr - 8))).place_state;
+                    neighbour_value = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr - 8))).place_state;
                 else
-                    neigh = 0;
-                if (neigh != 0 && neigh < r + 1) {
-                    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state = (unsigned char)(r + 1);
+                    neighbour_value = 0;
+                if (neighbour_value != 0 && neighbour_value < radius + 1) {
+                    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state = (unsigned char)(radius + 1);
                 }
             }
         }
@@ -499,11 +499,11 @@ void test_rm_elastic_range(int strict, int r, unsigned char reject_mask)
 // Select the neighbouring region cell with the lowest usable path cost.
 // FUNCTION: C2 0x66a53
 // FUNCTION: C2WIN 0x004a0a83
-void get_best_rm_elastic_value(int x, int y, int ptr, int dirc)
+void get_best_rm_elastic_value(int x, int y, int cell_offset, int start_dir)
 {
     int i;
-    int dir = dirc;
-    unsigned char v;
+    int dir = start_dir;
+    unsigned char neighbour_value;
 
     best_elastic_value = 100;
     best_elastic_dirc = 0;
@@ -511,33 +511,33 @@ void get_best_rm_elastic_value(int x, int y, int ptr, int dirc)
     while (i++ < 4) {
         if (dir == 0) {
             if (y > 0) {
-                v = (*(struct region_cell *)((unsigned char *)region_map + (ptr - 480))).place_state;
-                if (v != 0 && v < best_elastic_value) {
-                    best_elastic_value = v;
+                neighbour_value = (*(struct region_cell *)((unsigned char *)region_map + (cell_offset - 480))).place_state;
+                if (neighbour_value != 0 && neighbour_value < best_elastic_value) {
+                    best_elastic_value = neighbour_value;
                     best_elastic_dirc = 0;
                 }
             }
         } else if (dir == 1) {
             if (x < 59) {
-                v = (*(struct region_cell *)((unsigned char *)region_map + (ptr + 8))).place_state;
-                if (v != 0 && v < best_elastic_value) {
-                    best_elastic_value = v;
+                neighbour_value = (*(struct region_cell *)((unsigned char *)region_map + (cell_offset + 8))).place_state;
+                if (neighbour_value != 0 && neighbour_value < best_elastic_value) {
+                    best_elastic_value = neighbour_value;
                     best_elastic_dirc = 1;
                 }
             }
         } else if (dir == 2) {
             if (y < 59) {
-                v = (*(struct region_cell *)((unsigned char *)region_map + (ptr + 480))).place_state;
-                if (v != 0 && v < best_elastic_value) {
-                    best_elastic_value = v;
+                neighbour_value = (*(struct region_cell *)((unsigned char *)region_map + (cell_offset + 480))).place_state;
+                if (neighbour_value != 0 && neighbour_value < best_elastic_value) {
+                    best_elastic_value = neighbour_value;
                     best_elastic_dirc = 2;
                 }
             }
         } else if (dir == 3) {
             if (x > 0) {
-                v = (*(struct region_cell *)((unsigned char *)region_map + (ptr - 8))).place_state;
-                if (v != 0 && v < best_elastic_value) {
-                    best_elastic_value = v;
+                neighbour_value = (*(struct region_cell *)((unsigned char *)region_map + (cell_offset - 8))).place_state;
+                if (neighbour_value != 0 && neighbour_value < best_elastic_value) {
+                    best_elastic_value = neighbour_value;
                     best_elastic_dirc = 3;
                 }
             }
@@ -564,7 +564,7 @@ void get_road_elastic(void)
 // Mark legal road candidates near the current city construction start.
 // FUNCTION: C2 0x66b56
 // FUNCTION: C2WIN 0x004a0c9f
-void transform_road_elastic(int r)
+void transform_road_elastic(int radius)
 {
     int x_min;
     int y_min;
@@ -574,9 +574,9 @@ void transform_road_elastic(int r)
     int x_span;
     int stride;
 
-    x_min = act_start_x - r;
-    y_min = act_start_y - r;
-    side  = 2 * r + 1;
+    x_min = act_start_x - radius;
+    y_min = act_start_y - radius;
+    side  = 2 * radius + 1;
     x_span = side;
     x_max = side + x_min;
     if (x_min <= 0)       { x_span = x_max; x_min = 0; }
@@ -826,7 +826,7 @@ void get_wall_elastic(void)
 // Mark legal wall candidates near the current city construction start.
 // FUNCTION: C2 0x673a8
 // FUNCTION: C2WIN 0x004a1a34
-void transform_wall_elastic(int r)
+void transform_wall_elastic(int radius)
 {
     int x_min;
     int y_min;
@@ -837,9 +837,9 @@ void transform_wall_elastic(int r)
     int needs_bounds;
 
     needs_bounds = 0;
-    x_min = act_start_x - r;
-    y_min = act_start_y - r;
-    side = 2 * r + 1;
+    x_min = act_start_x - radius;
+    y_min = act_start_y - radius;
+    side = 2 * radius + 1;
     x_span = side;
     if (x_min <= 0)                  { x_span += x_min; x_min = 0; needs_bounds = 1; }
     else if (x_min + side > 80)      { x_span -= x_min + side - 80; needs_bounds = 1; }
@@ -1138,7 +1138,7 @@ void get_aquaduct_elastic(void)
 // Mark legal aqueduct candidates near the current city construction start.
 // FUNCTION: C2 0x67c75
 // FUNCTION: C2WIN 0x004a292d
-void transform_aquaduct_elastic(int r)
+void transform_aquaduct_elastic(int radius)
 {
     int x_min;
     int y_min;
@@ -1149,9 +1149,9 @@ void transform_aquaduct_elastic(int r)
     int stride;
     char kind;
 
-    x_min = act_start_x - r;
-    y_min = act_start_y - r;
-    side  = 2 * r + 1;
+    x_min = act_start_x - radius;
+    y_min = act_start_y - radius;
+    side  = 2 * radius + 1;
     x_span = side;
     x_max = x_min + side;
     if (x_min <= 0)       { x_span = x_max; x_min = 0; }
@@ -1433,7 +1433,7 @@ void get_reg_road_elastic(void)
 // Mark legal regional-road candidates near the current construction start.
 // FUNCTION: C2 0x684c8
 // FUNCTION: C2WIN 0x004a3744
-int transform_reg_road_elastic(int r)
+int transform_reg_road_elastic(int radius)
 {
     int x_min;
     int y_min;
@@ -1443,9 +1443,9 @@ int transform_reg_road_elastic(int r)
     int x_span;
     int stride;
 
-    x_min = act_start_x - r;
-    y_min = act_start_y - r;
-    side  = 2 * r + 1;
+    x_min = act_start_x - radius;
+    y_min = act_start_y - radius;
+    side  = 2 * radius + 1;
     x_span = side;
     x_max = side + x_min;
     if (x_min <= 0)       { x_span = x_max; x_min = 0; }
@@ -1661,7 +1661,7 @@ void get_reg_wall_elastic(void)
 // Mark legal regional-wall candidates near the current construction start.
 // FUNCTION: C2 0x68a6a
 // FUNCTION: C2WIN 0x004a4172
-void transform_reg_wall_elastic(int r)
+void transform_reg_wall_elastic(int radius)
 {
     int x_min;
     int y_min;
@@ -1670,13 +1670,13 @@ void transform_reg_wall_elastic(int r)
     int side;
     int x_span;
     int stride;
-    int ps;
-    int bk;
-    int bk2;
+    int place_state;
+    int base_kind;
+    int occupied_base_kind;
 
-    x_min = act_start_x - r;
-    y_min = act_start_y - r;
-    side  = 2 * r + 1;
+    x_min = act_start_x - radius;
+    y_min = act_start_y - radius;
+    side  = 2 * radius + 1;
     x_span = side;
     x_max = x_min + side;
     if (x_min <= 0)        { x_span = x_max; x_min = 0; }
@@ -1692,33 +1692,33 @@ void transform_reg_wall_elastic(int r)
     for ( ; gmn_y < y_min + side; gmn_y++, gmn_sptr += stride) {
         gmn_x = x_min;
         for ( ; gmn_x < x_min + x_span; gmn_x++, gmn_sptr += 8) {
-            ps = ((unsigned char *)region_map)[(gmn_sptr + 2)];
-            if (ps == 0xff) continue;
+            place_state = ((unsigned char *)region_map)[(gmn_sptr + 2)];
+            if (place_state == 0xff) continue;
 
             if (((unsigned char *)region_map)[(gmn_sptr + 1)] & 0x02) {
-                bk = ((unsigned char *)region_map)[(gmn_sptr)];
-                if (bk < 0xbd) {
+                base_kind = ((unsigned char *)region_map)[(gmn_sptr)];
+                if (base_kind < 0xbd) {
                     if (!(((unsigned char *)region_map)[(gmn_sptr + 1)] & 0x20)) {
                         set_4_rm_neighbours_if_not_wallortower(
                             gmn_x, gmn_y, gmn_sptr, 2, 0xff);
                         ((unsigned char *)region_map)[(gmn_sptr + 2)] = 0xff;
                     }
-                } else if (bk <= 0xc0) {
+                } else if (base_kind <= 0xc0) {
                     if (gmn_x == act_start_x && gmn_y == act_start_y)
                         continue;
                     inc_elastic_by2(gmn_x, gmn_y, gmn_sptr);
                     ((unsigned char *)region_map)[(gmn_sptr + 2)] += 2;
                 }
             } else if ((((unsigned char *)region_map)[(gmn_sptr + 1)] & 0x04)
-                       && ps > 1 && ps != 0xff) {
+                       && place_state > 1 && place_state != 0xff) {
                 ((unsigned char *)region_map)[(gmn_sptr + 2)]--;
             }
 
             if (((unsigned char *)region_map)[(gmn_sptr + 1)] & 0x20) {
-                bk2 = ((unsigned char *)region_map)[(gmn_sptr)];
-                if (bk2 == 0xa0) {
+                occupied_base_kind = ((unsigned char *)region_map)[(gmn_sptr)];
+                if (occupied_base_kind == 0xa0) {
                     ((unsigned char *)region_map)[(gmn_sptr + 2)]++;
-                } else if (bk2 == 0xa1) {
+                } else if (occupied_base_kind == 0xa1) {
                     ((unsigned char *)region_map)[(gmn_sptr + 2)]++;
                 } else if (((unsigned char *)region_map)[(gmn_sptr + 1)] & 0x02) {
                     ((unsigned char *)region_map)[(gmn_sptr + 2)]++;
@@ -1905,19 +1905,19 @@ void garden_an_area(int x1, int y1, int x2, int y2)
 {
     int saved_count = stone_random_count;
     int row_stride;
-    int tmp;
+    int swap_value;
     int y;
     int x;
 
     if (x1 > x2) {
-        tmp = x2;
+        swap_value = x2;
         x2 = x1;
-        x1 = tmp;
+        x1 = swap_value;
     }
     if (y1 > y2) {
-        tmp = y2;
+        swap_value = y2;
         y2 = y1;
-        y1 = tmp;
+        y1 = swap_value;
     }
 
     cm_sptr = (x1 + y1 * 80) * 20;
@@ -1958,19 +1958,19 @@ void garden_an_area(int x1, int y1, int x2, int y2)
 void plaza_an_area(int x1, int y1, int x2, int y2)
 {
     int row_skip;
-    int tmp;
+    int swap_value;
     int y;
     int x;
 
     if (x1 > x2) {
-        tmp = x2;
+        swap_value = x2;
         x2 = x1;
-        x1 = tmp;
+        x1 = swap_value;
     }
     if (y1 > y2) {
-        tmp = y2;
+        swap_value = y2;
         y2 = y1;
-        y1 = tmp;
+        y1 = swap_value;
     }
 
     cm_sptr = (x1 + y1 * 80) * 20;
@@ -2080,12 +2080,12 @@ void clear_a_reg_area(int x0, int y0, int x1, int y1, int keep_fortress)
     unsigned char kind;
     int x;
     int y;
-    int t;
+    int swap_value;
 
     saved_random = stone_random_count;
 
-    if (x1 < x0) { t = x1; x1 = x0; x0 = t; }
-    if (y0 > y1) { t = y1; y1 = y0; y0 = t; }
+    if (x1 < x0) { swap_value = x1; x1 = x0; x0 = swap_value; }
+    if (y0 > y1) { swap_value = y1; y1 = y0; y0 = swap_value; }
 
     cm_sptr = (x0 + y0 * 60) * 8;
     row_skip = (60 - (x1 - x0)) * 8 - 8;
@@ -2299,21 +2299,21 @@ void plague_sized(int sptr, int size)
 // FUNCTION: C2WIN 0x004a5c9a
 void clear_sized_to_rubble(int sptr, int size, int rubble_kind)
 {
-    int n;
+    int footprint_idx;
     int yoff;
     int xoff;
     unsigned char old_kind;
-    int start;
+    int start_sptr;
     int x;
     int y;
 
-    n = CM_CELL(sptr).activity_a & 0xf;
+    footprint_idx = CM_CELL(sptr).activity_a & 0xf;
     old_kind = CM_CELL(sptr).base_kind;
-    xoff = n % size; yoff = n / size;
+    xoff = footprint_idx % size; yoff = footprint_idx / size;
 
     sptr -= xoff * 20;
     sptr -= yoff * 1600;
-    start = sptr;
+    start_sptr = sptr;
 
     for (y = 0; y < size; y++, sptr += (80 - size) * 20)
         for (x = 0; x < size; x++, sptr += 20)
@@ -2322,7 +2322,7 @@ void clear_sized_to_rubble(int sptr, int size, int rubble_kind)
     if (old_kind < 0xe9) return;
     if (old_kind > 0xf0) return;
 
-    sptr = start;
+    sptr = start_sptr;
     if (old_kind == 0xe9) { if (CM_CELL(sptr + 0x12c0).base_kind == 0xea) sptr += 0x12c0; else sptr -= 0x12c0; }
     if (old_kind == 0xea) { if (CM_CELL(sptr - 0x12c0).base_kind == 0xe9) sptr -= 0x12c0; else sptr += 0x12c0; }
     if (old_kind == 0xeb) { if (CM_CELL(sptr + 0x3c).base_kind == 0xec) sptr += 0x3c; else sptr -= 0x3c; }
@@ -2349,12 +2349,12 @@ void clear_sized_to_rubble(int sptr, int size, int rubble_kind)
 // FUNCTION: C2WIN 0x004a602f
 void clear_to_rubble(int sptr, int rubble_kind)
 {
-    short r;
+    short random_value;
 
     stone_random_count++;
     if (stone_random_count >= 0x40) stone_random_count = 0;
-    r = stone_random_data[stone_random_count];
-    (*(struct city_cell *)((unsigned char *)city_map + (sptr))).base_kind = (r / 2);
+    random_value = stone_random_data[stone_random_count];
+    (*(struct city_cell *)((unsigned char *)city_map + (sptr))).base_kind = (random_value / 2);
     clear_basic(sptr);
     (*(struct city_cell *)((unsigned char *)city_map + (sptr))).edge_bits |= 0x40;
 
@@ -2362,9 +2362,9 @@ void clear_to_rubble(int sptr, int rubble_kind)
         (*(struct city_cell *)((unsigned char *)city_map + (sptr))).edge_bits |= 0x80;
         stone_random_count += rand8;
         if (stone_random_count >= 0x40) stone_random_count = 0;
-        r = stone_random_data[stone_random_count];
-        (*(struct city_cell *)((unsigned char *)city_map + (sptr))).building = r;
-        (*(struct city_cell *)((unsigned char *)city_map + (sptr))).fire = (r / 4 + 8);
+        random_value = stone_random_data[stone_random_count];
+        (*(struct city_cell *)((unsigned char *)city_map + (sptr))).building = random_value;
+        (*(struct city_cell *)((unsigned char *)city_map + (sptr))).fire = (random_value / 4 + 8);
         set_sound("fire.wav", 1);
     } else if (had_clear_sound == 0 || mouse_left_button == 0) {
         set_sound("smrub.wav", 1);
@@ -2769,35 +2769,35 @@ int put_x4_area(int x, int y, char base_kind, int edge_bits, int color)
 // Replace a city building footprint with a new kind and appearance.
 // FUNCTION: C2 0x6aaab
 // FUNCTION: C2WIN 0x004a7455
-void change_sized(int bk, int color, int size, int sptr)
+void change_sized(int base_kind, int gfx_base_idx, int footprint_size, int cell_offset)
 {
     int xi;
     int yi;
-    int n;
-    int row_step = (80 - size) * 20;
+    int footprint_idx;
+    int row_step = (80 - footprint_size) * 20;
 
-    for (yi = 0, n = 0; yi < size; ) {
-        for (xi = 0; xi < size; ) {
-            (*(struct city_cell *)((unsigned char *)city_map + (sptr))).base_kind = bk;
-            (*(struct city_cell *)((unsigned char *)city_map + (sptr))).edge_bits |= 1;
-            if (size == 1) {
-                (*(struct city_cell *)((unsigned char *)city_map + (sptr))).extra_edge = color;
-            } else if (size == 2) {
-                (*(struct city_cell *)((unsigned char *)city_map + (sptr))).extra_edge =
-                    color + diamond_ofsets_2x[n];
-            } else if (size == 3) {
-                (*(struct city_cell *)((unsigned char *)city_map + (sptr))).extra_edge =
-                    color + diamond_ofsets_3x[n];
-            } else if (size == 4) {
-                (*(struct city_cell *)((unsigned char *)city_map + (sptr))).extra_edge =
-                    color + diamond_ofsets_4x[n];
+    for (yi = 0, footprint_idx = 0; yi < footprint_size; ) {
+        for (xi = 0; xi < footprint_size; ) {
+            (*(struct city_cell *)((unsigned char *)city_map + (cell_offset))).base_kind = base_kind;
+            (*(struct city_cell *)((unsigned char *)city_map + (cell_offset))).edge_bits |= 1;
+            if (footprint_size == 1) {
+                (*(struct city_cell *)((unsigned char *)city_map + (cell_offset))).extra_edge = gfx_base_idx;
+            } else if (footprint_size == 2) {
+                (*(struct city_cell *)((unsigned char *)city_map + (cell_offset))).extra_edge =
+                    gfx_base_idx + diamond_ofsets_2x[footprint_idx];
+            } else if (footprint_size == 3) {
+                (*(struct city_cell *)((unsigned char *)city_map + (cell_offset))).extra_edge =
+                    gfx_base_idx + diamond_ofsets_3x[footprint_idx];
+            } else if (footprint_size == 4) {
+                (*(struct city_cell *)((unsigned char *)city_map + (cell_offset))).extra_edge =
+                    gfx_base_idx + diamond_ofsets_4x[footprint_idx];
             }
             xi++;
-            sptr += 20;
-            n++;
+            cell_offset += 20;
+            footprint_idx++;
         }
         yi++;
-        sptr += row_step;
+        cell_offset += row_step;
     }
 }
 
@@ -2810,7 +2810,7 @@ void set_map_ref(int x, int y, int size)
     int sptr;
     int xi;
     int yi;
-    int sm1;
+    int size_minus_one;
 
     row_skip = (80 - size) * 20;
     if (map_direction == 2)
@@ -2823,9 +2823,9 @@ void set_map_ref(int x, int y, int size)
     }
     if (x < 0) return;
     if (y < 0) return;
-    sm1 = size - 1;
-    if (x + sm1 >= 80) return;
-    if (y + sm1 >= 80) return;
+    size_minus_one = size - 1;
+    if (x + size_minus_one >= 80) return;
+    if (y + size_minus_one >= 80) return;
 
     start_x_pos = x;
     start_y_pos = y;
@@ -4844,7 +4844,7 @@ void set_route_elastic(void)
 // Expand the regional army route search by one range band.
 // FUNCTION: C2 0x6ea84
 // FUNCTION: C2WIN 0x004ad6ec
-void set_route_elastic_range(int r)
+void set_route_elastic_range(int radius)
 {
     int x_span;
     int y_min;
@@ -4867,9 +4867,9 @@ void set_route_elastic_range(int r)
     gmn_sptr = ((over_x) + (over_y) * 60) * 8;
     (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).place_state = 1;
 
-    x_min = over_x - r;
-    y_min = over_y - r;
-    side  = 2 * r + 1;
+    x_min = over_x - radius;
+    y_min = over_y - radius;
+    side  = 2 * radius + 1;
     x_span = side;
     if (x_min <= 0) {
         x_span += x_min;
