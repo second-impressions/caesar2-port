@@ -94,9 +94,9 @@ void region_map_screen(int do_black_out)
 // Set up the in-battle UI screen.
 // FUNCTION: C2 0x5b3cb
 // FUNCTION: C2WIN 0x004226d5
-void battle_screen(int skipblackout)
+void battle_screen(int do_black_out)
 {
-    if (skipblackout == 1) black_out();
+    if (do_black_out == 1) black_out();
 
     hold_mouse_replace = 1;
     setup_whole_screen_refresh();
@@ -143,37 +143,37 @@ void battle_screen(int skipblackout)
 // FUNCTION: C2WIN 0x004227f5
 void battle_stats_panel(void)
 {
-    int a;
-    int b;
-    int c;
+    int bar_count;
+    int bar_idx;
+    int panel_mode;
 
-    c = 0;
+    panel_mode = 0;
 
-    if (redraw_icons != 0) c = 1;
-    if (request_message.bs_nof_units != battle_stats_nof_units) c = 1;
-    if (request_message.bs_men != battle_stats_men) c = 1;
-    if (request_message.bs_morale != battle_stats_morale) c = 1;
-    if (request_message.bs_type != battle_stats_type) c = 1;
+    if (redraw_icons != 0) panel_mode = 1;
+    if (request_message.bs_nof_units != battle_stats_nof_units) panel_mode = 1;
+    if (request_message.bs_men != battle_stats_men) panel_mode = 1;
+    if (request_message.bs_morale != battle_stats_morale) panel_mode = 1;
+    if (request_message.bs_type != battle_stats_type) panel_mode = 1;
 
     if (request_message.prev_mode == 1) {
-        if (pointer_mode == 1) c = 3;
-        else if (pointer_mode == 2) c = 4;
-        else if (last_icon_over != 0) c = 2;
+        if (pointer_mode == 1) panel_mode = 3;
+        else if (pointer_mode == 2) panel_mode = 4;
+        else if (last_icon_over != 0) panel_mode = 2;
     } else if (request_message.prev_mode == 2) {
-        if (pointer_mode == 1) c = 3;
-        else if (pointer_mode == 2) c = 4;
-        else if (last_icon_over == 0) c = 1;
-        if (last_icon_over != 0 && last_icon_over != request_message.icon_over) c = 2;
+        if (pointer_mode == 1) panel_mode = 3;
+        else if (pointer_mode == 2) panel_mode = 4;
+        else if (last_icon_over == 0) panel_mode = 1;
+        if (last_icon_over != 0 && last_icon_over != request_message.icon_over) panel_mode = 2;
     } else if (request_message.prev_mode == 3 && pointer_mode != 1) {
-        if (pointer_mode == 2) c = 4;
-        else if (last_icon_over != 0) c = 2;
-        else c = 1;
+        if (pointer_mode == 2) panel_mode = 4;
+        else if (last_icon_over != 0) panel_mode = 2;
+        else panel_mode = 1;
     } else if (request_message.prev_mode == 4 && pointer_mode != 2) {
-        if (pointer_mode == 1) c = 3;
-        else if (last_icon_over != 0) c = 2;
-        else c = 1;
+        if (pointer_mode == 1) panel_mode = 3;
+        else if (last_icon_over != 0) panel_mode = 2;
+        else panel_mode = 1;
     }
-    if (c == 0) return;
+    if (panel_mode == 0) return;
 
     request_message.bs_nof_units = battle_stats_nof_units;
     request_message.bs_men       = battle_stats_men;
@@ -183,15 +183,15 @@ void battle_stats_panel(void)
     sprite_width = 0xa; sprite_height = 0x68;
     show_fast_rect(0x1db, 0x170, 0x1a);
 
-    if (c == 3) {
+    if (panel_mode == 3) {
         request_message.prev_mode = 3;
         font_format_split(0x76, 0x11,
                           0x1e2, 0x180, 0x90, 0x64, 0, 0, font1, 0x10);
-    } else if (c == 4) {
+    } else if (panel_mode == 4) {
         request_message.prev_mode = 4;
         font_format_split(0x76, 0x12,
                           0x1e2, 0x180, 0x90, 0x64, 0, 0, font1, 0x10);
-    } else if (c == 2) {
+    } else if (panel_mode == 2) {
         request_message.icon_over = last_icon_over;
         request_message.prev_mode = 2;
         font_format_split(0x76, last_icon_over - 4,
@@ -224,25 +224,25 @@ void battle_stats_panel(void)
             font_no(battle_stats_men, 0x20, " ",
                     x_is + 0x1ee, 0x198, font1, 0x10);
 
-            a = valueDIVtotal(battle_stats_men, battle_stats_start_men);
-            if (a % 10 != 0)
-                a = a / 10 + 1;
+            bar_count = valueDIVtotal(battle_stats_men, battle_stats_start_men);
+            if (bar_count % 10 != 0)
+                bar_count = bar_count / 10 + 1;
             else
-                a = a / 10;
-            for (b = 0; b < a; b++)
+                bar_count = bar_count / 10;
+            for (bar_idx = 0; bar_idx < bar_count; bar_idx++)
                 write_image(game_panels, 0x39,
-                            b * 9 + 0x1ee, 0x1a5);
+                            bar_idx * 9 + 0x1ee, 0x1a5);
 
             x_is = 0;
             font_list(0x2f, 9, 0x1ee, 0x1b8, font1, 0x10);
             font_no(battle_stats_morale, 0x20, " ",
                     x_is + 0x1ee, 0x1b8, font1, 0x10);
 
-            a = battle_stats_morale / 10;
-            if (battle_stats_morale % 10 != 0) a++;
-            for (b = 0; b < a; b++)
+            bar_count = battle_stats_morale / 10;
+            if (battle_stats_morale % 10 != 0) bar_count++;
+            for (bar_idx = 0; bar_idx < bar_count; bar_idx++)
                 write_image(game_panels, 0x38,
-                            b * 9 + 0x1ee, 0x1c8);
+                            bar_idx * 9 + 0x1ee, 0x1c8);
         }
     }
 
@@ -511,17 +511,17 @@ void show_cohort_box(void)
 // FUNCTION: C2WIN 0x00423934
 void show_non_cohort_box(void)
 {
-    int type;
+    int army_type;
 
     stone_random_count = 0xf;
     show_a_mosaic_window(0x50, 0xf0, 0x16, 8);
     show_an_exit_button(0x184, 0x144);
 
-    type = army_list[tracking_army].type;
-    if      (type <= 2) font_list(0x2d, 0x19, 0x78, 0x10e, font2, 0x10);
-    else if (type <= 5) font_list(0x2d, 0x1a, 0x78, 0x10e, font2, 0x10);
-    else if (type <= 6) font_list(0x2d, 0x1b, 0x78, 0x10e, font2, 0x10);
-    else if (type <= 7) font_list(0x2d, 0x1c, 0x78, 0x10e, font2, 0x10);
+    army_type = army_list[tracking_army].type;
+    if      (army_type <= 2) font_list(0x2d, 0x19, 0x78, 0x10e, font2, 0x10);
+    else if (army_type <= 5) font_list(0x2d, 0x1a, 0x78, 0x10e, font2, 0x10);
+    else if (army_type <= 6) font_list(0x2d, 0x1b, 0x78, 0x10e, font2, 0x10);
+    else if (army_type <= 7) font_list(0x2d, 0x1c, 0x78, 0x10e, font2, 0x10);
     else                font_list(0x2d, 0x1d, 0x78, 0x10e, font2, 0x10);
 
     if (army_list[tracking_army].type == 6) {
@@ -548,75 +548,75 @@ void show_non_cohort_box(void)
 // Show an army's formation, troop composition, morale, and readiness.
 // FUNCTION: C2 0x5c71b
 // FUNCTION: C2WIN 0x00423bef
-void show_tribunes_report(int army_idx, int x, int y, int mode)
+void show_tribunes_report(int army_idx, int panel_x, int panel_y, int sprite_mode)
 {
-    int esi;
+    int sprite_x;
     int drill_step;
     int i;
 
     stone_random_count = 0xf;
-    show_a_mosaic_blank(x, y, 0x15, 9);
-    font_list(0x2d, 7, x, y, font1, 0x10);
+    show_a_mosaic_blank(panel_x, panel_y, 0x15, 9);
+    font_list(0x2d, 7, panel_x, panel_y, font1, 0x10);
 
-    draw_a_dias(x, y + 0x10, 0x3e, 0x3e);
-    show_cohort_landfill(army_idx, x + 1, y + 0x11);
+    draw_a_dias(panel_x, panel_y + 0x10, 0x3e, 0x3e);
+    show_cohort_landfill(army_idx, panel_x + 1, panel_y + 0x11);
 
-    esi = 0x44;
+    sprite_x = 0x44;
     drill_step = cohort_drill_spacing[army_list[army_idx].num_centuries];
 
     for (i = 0; i < 14; i++) {
         if (army_list[army_idx].centuries[i].type == 1) {
-            if (mode == 0) write_general_sprite(army_list[army_idx].centuries[i].damaged + 0x2b, x + esi, y + 0x14);
-            else write_general_sprite(army_list[army_idx].centuries[i].damaged + 0xa, x + esi, y + 0x14);
-            esi += drill_step;
+            if (sprite_mode == 0) write_general_sprite(army_list[army_idx].centuries[i].damaged + 0x2b, panel_x + sprite_x, panel_y + 0x14);
+            else write_general_sprite(army_list[army_idx].centuries[i].damaged + 0xa, panel_x + sprite_x, panel_y + 0x14);
+            sprite_x += drill_step;
         }
     }
     for (i = 0; i < 14; i++) {
         if (army_list[army_idx].centuries[i].type == 2) {
-            if (mode == 0) write_general_sprite(army_list[army_idx].centuries[i].damaged + 0x30, x + esi, y + 0x14);
-            else write_general_sprite(army_list[army_idx].centuries[i].damaged + 0xf, x + esi, y + 0x14);
-            esi += drill_step;
+            if (sprite_mode == 0) write_general_sprite(army_list[army_idx].centuries[i].damaged + 0x30, panel_x + sprite_x, panel_y + 0x14);
+            else write_general_sprite(army_list[army_idx].centuries[i].damaged + 0xf, panel_x + sprite_x, panel_y + 0x14);
+            sprite_x += drill_step;
         }
     }
     for (i = 0; i < 14; i++) {
         if (army_list[army_idx].centuries[i].type == 3) {
-            if (mode == 0) write_general_sprite(army_list[army_idx].centuries[i].damaged + 0x35, x + esi, y + 0x14);
-            else write_general_sprite(army_list[army_idx].centuries[i].damaged + 0x14, x + esi, y + 0x14);
-            esi += drill_step;
+            if (sprite_mode == 0) write_general_sprite(army_list[army_idx].centuries[i].damaged + 0x35, panel_x + sprite_x, panel_y + 0x14);
+            else write_general_sprite(army_list[army_idx].centuries[i].damaged + 0x14, panel_x + sprite_x, panel_y + 0x14);
+            sprite_x += drill_step;
         }
     }
     for (i = 0; i < 14; i++) {
         if (army_list[army_idx].centuries[i].type == 4) {
-            if (mode == 0) write_general_sprite(army_list[army_idx].centuries[i].damaged + 0x2e, x + esi, y + 0x14);
-            else write_general_sprite(army_list[army_idx].centuries[i].damaged + 0xd, x + esi, y + 0x14);
-            esi += drill_step;
+            if (sprite_mode == 0) write_general_sprite(army_list[army_idx].centuries[i].damaged + 0x2e, panel_x + sprite_x, panel_y + 0x14);
+            else write_general_sprite(army_list[army_idx].centuries[i].damaged + 0xd, panel_x + sprite_x, panel_y + 0x14);
+            sprite_x += drill_step;
         }
     }
 
     x_is = 0;
-    font_list(0x2d, 8, x, y + 0x52, font1, 0x10);
+    font_list(0x2d, 8, panel_x, panel_y + 0x52, font1, 0x10);
     font_no(army_list[army_idx].total_troops, 0x20, " ",
-            x_is + x, y + 0x52, font1, 0x10);
-    font_list(0x2d, 9, x_is + x, y + 0x52, font1, 0x10);
+            x_is + panel_x, panel_y + 0x52, font1, 0x10);
+    font_list(0x2d, 9, x_is + panel_x, panel_y + 0x52, font1, 0x10);
 
     x_is = 0;
-    font_no(army_list[army_idx].num_regulars, 0x20, "", x, y + 0x62, font1, 0x10);
-    font_list(0x2d, 0x15, x_is + x, y + 0x62, font1, 0x10);
+    font_no(army_list[army_idx].num_regulars, 0x20, "", panel_x, panel_y + 0x62, font1, 0x10);
+    font_list(0x2d, 0x15, x_is + panel_x, panel_y + 0x62, font1, 0x10);
     font_no(army_list[army_idx].num_irregulars, 0x20, "",
-            x_is + x, y + 0x62, font1, 0x10);
-    font_list(0x2d, 0x16, x_is + x, y + 0x62, font1, 0x10);
+            x_is + panel_x, panel_y + 0x62, font1, 0x10);
+    font_list(0x2d, 0x16, x_is + panel_x, panel_y + 0x62, font1, 0x10);
     font_no(army_list[army_idx].num_auxillaries, 0x20, "",
-            x_is + x, y + 0x62, font1, 0x10);
-    font_list(0x2d, 0x17, x_is + x, y + 0x62, font1, 0x10);
+            x_is + panel_x, panel_y + 0x62, font1, 0x10);
+    font_list(0x2d, 0x17, x_is + panel_x, panel_y + 0x62, font1, 0x10);
     font_no(army_list[army_idx].num_specials, 0x20, "",
-            x_is + x, y + 0x62, font1, 0x10);
-    font_list(0x2d, 0x18, x_is + x, y + 0x62, font1, 0x10);
+            x_is + panel_x, panel_y + 0x62, font1, 0x10);
+    font_list(0x2d, 0x18, x_is + panel_x, panel_y + 0x62, font1, 0x10);
 
-    font_list(0x2d, army_list[army_idx].morale + 0xb, x, y + 0x72, font1, 0x10);
+    font_list(0x2d, army_list[army_idx].morale + 0xb, panel_x, panel_y + 0x72, font1, 0x10);
 
     x_is = 0;
-    font_list(0x2d, army_list[army_idx].readiness_level + 0x10, x, y + 0x82, font1, 0x10);
-    if (army_list[army_idx].readiness_level == 0 && army_list[army_idx].morale_timer != 0) font_list(0x2d, 0xa, x_is + x, y + 0x82, font1, 0x10);
+    font_list(0x2d, army_list[army_idx].readiness_level + 0x10, panel_x, panel_y + 0x82, font1, 0x10);
+    if (army_list[army_idx].readiness_level == 0 && army_list[army_idx].morale_timer != 0) font_list(0x2d, 0xa, x_is + panel_x, panel_y + 0x82, font1, 0x10);
 }
 
 
@@ -686,13 +686,13 @@ void show_first_region_box(void)
 // Show information and available actions for the selected province.
 // FUNCTION: C2 0x5cd03
 // FUNCTION: C2WIN 0x004244a7
-void this_region_box(int p1)
+void this_region_box(int confirmation_mode)
 {
     int show_media;
     int box_height;
-    int r;
+    int region_idx;
 
-    if ((p1) == 0)
+    if ((confirmation_mode) == 0)
         box_height = 0x10;
     else
         box_height = 0xe;
@@ -706,8 +706,8 @@ void this_region_box(int p1)
 
     font_list(6, region_over, 0x90, 0x9c, font2, 0x10);
 
-    r = region_over; if (empire_won[r - 1] == 0) {
-        if (r - show_media == province_is) {
+    region_idx = region_over; if (empire_won[region_idx - 1] == 0) {
+        if (region_idx - show_media == province_is) {
             font_list(0x4d, 6, 0x90, 0xc0, font1, 0x10);
             show_media = 0;
         } else {
@@ -735,7 +735,7 @@ void this_region_box(int p1)
         play_speech(region_over + 0x3a);
     }
 
-    if ((p1) == 0) {
+    if ((confirmation_mode) == 0) {
         font_list(0x30, 3, 0xe0, 0x14c, font1, 0x10);
         show_buttons(0x170, 0x110, confirming_buttons, 2);
     } else {
@@ -782,19 +782,19 @@ void show_skill2_box(void)
 // Show the selected sound, music, speed, or scroll settings page.
 // FUNCTION: C2 0x5d0d7
 // FUNCTION: C2WIN 0x004248c2
-void show_fx_box(int p1)
+void show_fx_box(int settings_page)
 {
-    int edi;
+    int box_height;
 
-    if      (p1 == 0) edi = 7;
-    else if (p1 == 1) edi = 0xd;
-    else if (p1 == 2) edi = 5;
-    else if (p1 == 3) edi = 7;
+    if      (settings_page == 0) box_height = 7;
+    else if (settings_page == 1) box_height = 0xd;
+    else if (settings_page == 2) box_height = 5;
+    else if (settings_page == 3) box_height = 7;
 
-    show_a_mosaic_window(0x40, 0x70, 0x13, edi + 2);
+    show_a_mosaic_window(0x40, 0x70, 0x13, box_height + 2);
     setup_whole_screen_refresh();
 
-    if (p1 == 0) {
+    if (settings_page == 0) {
         font_list(0x39, 0, 0x60, 0x98, font1, 0x10);
         if (c2inf.tunes_on != 0)
             font_list(0x39, 3, 0xf0, 0x98, font1, 0x10);
@@ -803,7 +803,7 @@ void show_fx_box(int p1)
         font_list(0x39, 4, 0x60, 0xb8, font1, 0x10);
         font_no(c2inf.tunes_level, 0x20, "%",
                 0xf0, 0xb8, font1, 0x10);
-    } else if (p1 == 1) {
+    } else if (settings_page == 1) {
         font_list(0x39, 1, 0x60, 0x98, font1, 0x10);
         if (c2inf.samples_on != 0)
             font_list(0x39, 3, 0xf0, 0x98, font1, 0x10);
@@ -825,16 +825,16 @@ void show_fx_box(int p1)
         font_list(0x4e, 3, 0x60, 0x118, font1, 0x10);
         font_no(c2inf.max_samples, 0x20, " ",
                 0xf0, 0x118, font1, 0x10);
-    } else if (p1 == 2) {
+    } else if (settings_page == 2) {
         font_list(0x39, 5, 0x60, 0x98, font1, 0x10);
         if (c2inf.anims_on != 0)
             font_list(0x39, 3, 0xf0, 0x98, font1, 0x10);
         else
-            font_list(0x39, p1, 0xf0, 0x98, font1, 0x10);
-    } else if (p1 == 3) {
+            font_list(0x39, settings_page, 0xf0, 0x98, font1, 0x10);
+    } else if (settings_page == 3) {
         font_list(0x39, 6, 0x60, 0x98, font1, 0x10);
         if (c2inf.yearend_on != 0)
-            font_list(0x39, p1, 0xf0, 0x98, font1, 0x10);
+            font_list(0x39, settings_page, 0xf0, 0x98, font1, 0x10);
         else
             font_list(0x39, 2, 0xf0, 0x98, font1, 0x10);
         font_list(0x39, 9, 0x60, 0xb8, font1, 0x10);
@@ -844,7 +844,7 @@ void show_fx_box(int p1)
             font_list(0x39, 2, 0xf0, 0xb8, font1, 0x10);
     }
 
-    font_list(9, 1, 0x90, edi * 0x10 + 0x68, font1, 0x10);
+    font_list(9, 1, 0x90, box_height * 0x10 + 0x68, font1, 0x10);
     setup_whole_screen_refresh();
     hold_mouse_replace = 1;
 }
@@ -948,10 +948,10 @@ void show_loadsave_box(int title_id)
 // FUNCTION: C2WIN 0x004250c4
 void show_directory(int scroll_top)
 {
-    int x;
-    int y;
-    int entry;
-    int row;
+    int text_x;
+    int text_y;
+    int entry_idx;
+    int row_idx;
 
     got_cursx     = 0;
     cursor_x      = 0;
@@ -970,35 +970,35 @@ void show_directory(int scroll_top)
     cursor_x += 0x40;
     show_cursor(font1);
 
-    x = 0x40;
-    y = 0xbc;
+    text_x = 0x40;
+    text_y = 0xbc;
     show_a_system_blank(0x3e, 0xba, 0x13, 0xa);
 
-    entry = first_entry;
-    row = 0;
+    entry_idx = first_entry;
+    row_idx = 0;
     goto check_entries;
     for (;;) {
         char *name;
-        name = directory[entry];
-        if (entry == scroll_top) {
+        name = directory[entry_idx];
+        if (entry_idx == scroll_top) {
             sprite_width  = 9;
             sprite_height = 0xf;
-            show_fast_rect(x - 2, y - 2, 0x10);
-            put_a_font_string(name, x, y, font1, 0x20);
+            show_fast_rect(text_x - 2, text_y - 2, 0x10);
+            put_a_font_string(name, text_x, text_y, font1, 0x20);
         } else {
-            put_a_font_string(name, x, y, font1, 0x10);
+            put_a_font_string(name, text_x, text_y, font1, 0x10);
         }
-        if (row == 9) {
-            x = 0xe0;
-            y = 0xbc;
+        if (row_idx == 9) {
+            text_x = 0xe0;
+            text_y = 0xbc;
         } else {
-            y += 0x10;
+            text_y += 0x10;
         }
-        if (row >= 0x13) break;
-        entry++;
-        row++;
+        if (row_idx >= 0x13) break;
+        entry_idx++;
+        row_idx++;
 check_entries:
-        if (entry >= no_of_entries) break;
+        if (entry_idx >= no_of_entries) break;
     }
 }
 
@@ -1636,16 +1636,16 @@ void show_temple_tip(void)
 // FUNCTION: C2WIN 0x004271af
 void forum_clerks_screen(void)
 {
-    int dept;
+    int department_idx;
 
     cover_mouse_droppings();
     setup_whole_screen_refresh();
 
     get_history_in_buffer(((int *)((scratch_buffer) + 0x1fbd0)));
 
-    dept = last_forum_dept;
-    if (forum_repapering[dept] != 0) {
-        show_pl8file("forum.pl8", forum_repapering[dept]);
+    department_idx = last_forum_dept;
+    if (forum_repapering[department_idx] != 0) {
+        show_pl8file("forum.pl8", forum_repapering[department_idx]);
     }
 
     explain_forum();
@@ -1731,82 +1731,82 @@ void history_graphs(void)
 // Plot one historical statistic over the selected number of years.
 // FUNCTION: C2 0x5fbba
 // FUNCTION: C2WIN 0x004275a1
-int show_history_graph(int x, int y, int idx)
+int show_history_graph(int graph_x, int graph_y, int statistic_idx)
 {
     int years   = history_graph_years[history_graph_length];
-    int xstep   = 0xc8 / years;
-    int idx_circ;
-    int max_val = 0;
+    int x_step   = 0xc8 / years;
+    int sample_idx;
+    int max_value = 0;
     int top_value;
-    int mult;
-    int top_div;
-    int divis;
+    int multiplier;
+    int graph_height;
+    int divisor;
     int i;
-    int v;
+    int value;
 
-    idx_circ = history_end_ptr - years;
-    if (idx_circ < 0) idx_circ += 0xc8;
+    sample_idx = history_end_ptr - years;
+    if (sample_idx < 0) sample_idx += 0xc8;
     for (i = 0; i < years; i++) {
-        v = get_history_from_buffer(((int *)((scratch_buffer) + 0x1fbd0)),
-                                    idx_circ, idx);
-        if (v > max_val) max_val = v;
-        if (++idx_circ >= 0xc8) idx_circ = 0;
+        value = get_history_from_buffer(((int *)((scratch_buffer) + 0x1fbd0)),
+                                    sample_idx, statistic_idx);
+        if (value > max_value) max_value = value;
+        if (++sample_idx >= 0xc8) sample_idx = 0;
     }
 
-    mult = divis = 1;
-    if (1 >= idx) {
-        if      (max_val <= 0x32)    { top_value = 0x32;    mult = 2; }
-        else if (max_val <= 0x64)    { top_value = 0x64;    }
-        else if (max_val <= 0xc8)    { top_value = 0xc8;    divis = 2; }
-        else if (max_val <= 0x1f4)   { top_value = 0x1f4;   divis = 5; }
-        else if (max_val <= 0x3e8)   { top_value = 0x3e8;   divis = 0xa; }
-        else if (max_val <= 0x9c4)   { top_value = 0x9c4;   divis = 0x19; }
-        else if (max_val <= 0x1388)  { top_value = 0x1388;  divis = 0x32; }
-        else if (max_val <= 0x2710)  { top_value = 0x2710;  divis = 0x64; }
-        else if (max_val <= 0x61a8)  { top_value = 0x61a8;  divis = 0xfa; }
-        else if (max_val <= 0xc350)  { top_value = 0xc350;  divis = 0x1f4; }
-        else if (max_val <= 0x186a0) { top_value = 0x186a0; divis = 0x3e8; }
-        else                         { top_value = 0xf4240; divis = 0x2710; }
-        top_div = 0x64;
+    multiplier = divisor = 1;
+    if (1 >= statistic_idx) {
+        if      (max_value <= 0x32)    { top_value = 0x32;    multiplier = 2; }
+        else if (max_value <= 0x64)    { top_value = 0x64;    }
+        else if (max_value <= 0xc8)    { top_value = 0xc8;    divisor = 2; }
+        else if (max_value <= 0x1f4)   { top_value = 0x1f4;   divisor = 5; }
+        else if (max_value <= 0x3e8)   { top_value = 0x3e8;   divisor = 0xa; }
+        else if (max_value <= 0x9c4)   { top_value = 0x9c4;   divisor = 0x19; }
+        else if (max_value <= 0x1388)  { top_value = 0x1388;  divisor = 0x32; }
+        else if (max_value <= 0x2710)  { top_value = 0x2710;  divisor = 0x64; }
+        else if (max_value <= 0x61a8)  { top_value = 0x61a8;  divisor = 0xfa; }
+        else if (max_value <= 0xc350)  { top_value = 0xc350;  divisor = 0x1f4; }
+        else if (max_value <= 0x186a0) { top_value = 0x186a0; divisor = 0x3e8; }
+        else                         { top_value = 0xf4240; divisor = 0x2710; }
+        graph_height = 0x64;
     } else {
-        if      (max_val <= 0xa)     { top_value = 0xa;     mult = 5; }
-        else if (max_val <= 0x19)    { top_value = 0x19;    mult = 2; }
-        else if (max_val <= 0x32)    { top_value = 0x32;    }
-        else if (max_val <= 0x64)    { top_value = 0x64;    divis = 2; }
-        else if (max_val <= 0xc8)    { top_value = 0xc8;    divis = 4; }
-        else if (max_val <= 0x1f4)   { top_value = 0x1f4;   divis = 0xa; }
-        else if (max_val <= 0x3e8)   { top_value = 0x3e8;   divis = 0x14; }
-        else if (max_val <= 0x7d0)   { top_value = 0x7d0;   divis = 0x28; }
-        else if (max_val <= 0xfa0)   { top_value = 0xfa0;   divis = 0x50; }
-        else if (max_val <= 0x1f40)  { top_value = 0x1f40;  divis = 0xa0; }
-        else if (max_val <= 0x2710)  { top_value = 0x2710;  divis = 0xc8; }
-        else if (max_val <= 0x4e20)  { top_value = 0x4e20;  divis = 0x190; }
-        else                         { top_value = 0xc350;  divis = 0x3e8; }
-        top_div = 0x32;
+        if      (max_value <= 0xa)     { top_value = 0xa;     multiplier = 5; }
+        else if (max_value <= 0x19)    { top_value = 0x19;    multiplier = 2; }
+        else if (max_value <= 0x32)    { top_value = 0x32;    }
+        else if (max_value <= 0x64)    { top_value = 0x64;    divisor = 2; }
+        else if (max_value <= 0xc8)    { top_value = 0xc8;    divisor = 4; }
+        else if (max_value <= 0x1f4)   { top_value = 0x1f4;   divisor = 0xa; }
+        else if (max_value <= 0x3e8)   { top_value = 0x3e8;   divisor = 0x14; }
+        else if (max_value <= 0x7d0)   { top_value = 0x7d0;   divisor = 0x28; }
+        else if (max_value <= 0xfa0)   { top_value = 0xfa0;   divisor = 0x50; }
+        else if (max_value <= 0x1f40)  { top_value = 0x1f40;  divisor = 0xa0; }
+        else if (max_value <= 0x2710)  { top_value = 0x2710;  divisor = 0xc8; }
+        else if (max_value <= 0x4e20)  { top_value = 0x4e20;  divisor = 0x190; }
+        else                         { top_value = 0xc350;  divisor = 0x3e8; }
+        graph_height = 0x32;
     }
 
-    idx_circ = history_end_ptr - years;
-    if (idx_circ < 0) idx_circ += 0xc8;
-    draw_a_dias(x, y, 0xca, top_div + 2);
-    draw_a_rect(x + 1, y + 1, 0xc8, top_div, 0x20);
+    sample_idx = history_end_ptr - years;
+    if (sample_idx < 0) sample_idx += 0xc8;
+    draw_a_dias(graph_x, graph_y, 0xca, graph_height + 2);
+    draw_a_rect(graph_x + 1, graph_y + 1, 0xc8, graph_height, 0x20);
 
     for (i = 0; i < years; i++) {
         int colour;
         int bar_y;
-        v = get_history_from_buffer(((int *)((scratch_buffer) + 0x1fbd0)),
-                                    idx_circ, idx);
-        if (++idx_circ >= 0xc8) idx_circ = 0;
-        if (v <= 0) continue;
-        if (v > top_value) continue;
-        v = v / divis;
-        v = v * mult;
-        if (v < 0) continue;
-        if (v > 0xc8) continue;
+        value = get_history_from_buffer(((int *)((scratch_buffer) + 0x1fbd0)),
+                                    sample_idx, statistic_idx);
+        if (++sample_idx >= 0xc8) sample_idx = 0;
+        if (value <= 0) continue;
+        if (value > top_value) continue;
+        value = value / divisor;
+        value = value * multiplier;
+        if (value < 0) continue;
+        if (value > 0xc8) continue;
         colour = (i & 1) ? 0xa : 0xd;
-        bar_y = y + 1 + top_div - v;
-        if (bar_y < y) continue;
-        if (bar_y + v > y + 0xc9) continue;
-        draw_a_rect(x + 1 + i * xstep, bar_y, xstep, v, colour);
+        bar_y = graph_y + 1 + graph_height - value;
+        if (bar_y < graph_y) continue;
+        if (bar_y + value > graph_y + 0xc9) continue;
+        draw_a_rect(graph_x + 1 + i * x_step, bar_y, x_step, value, colour);
     }
 
     return top_value;

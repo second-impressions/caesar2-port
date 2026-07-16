@@ -45,7 +45,7 @@ void __pascal radfree(void *ptr)
 // Opens a Smacker movie and displays its first frame. Modes 0 and 1 decode to the internal
 // screen, with a still-image fallback for mode 1; mode 2 uses direct-screen playback.
 // FUNCTION: C2 0x135de
-void start_smacking(char *p, int left, int top, int mode)
+void start_smacking(char *file_or_palette_ptr, int left, int top, int mode)
 {
     int sample_flags;
 
@@ -53,10 +53,10 @@ void start_smacking(char *p, int left, int top, int mode)
     if (link_to_smacker() == 0) return;
 
     my_strcpy("SMK", extension, 4);
-    put_filename_extension(p);
-    smack_filename = p;
+    put_filename_extension(file_or_palette_ptr);
+    smack_filename = file_or_palette_ptr;
     smack_from_cd  = 1;
-    if (is_file_on_harddrive(p) != 0)
+    if (is_file_on_harddrive(file_or_palette_ptr) != 0)
         smack_from_cd = 0;
     if (smack_from_cd != 0)
         cd_path(smack_filename);
@@ -82,12 +82,12 @@ void start_smacking(char *p, int left, int top, int mode)
         if (mode != 1) return;
 
         my_strcpy("pl8", extension, 4);
-        put_filename_extension(p);
-        if (readfile(p, ((void *)scratch_buffer), 0x186a0, 0) == 0) return;
+        put_filename_extension(file_or_palette_ptr);
+        if (readfile(file_or_palette_ptr, ((void *)scratch_buffer), 0x186a0, 0) == 0) return;
 
         my_strcpy("256", extension, 4);
-        put_filename_extension(p);
-        if (readfile(p, temp_palette, 0x300, 0) == 0) return;
+        put_filename_extension(file_or_palette_ptr);
+        if (readfile(file_or_palette_ptr, temp_palette, 0x300, 0) == 0) return;
 
         set_palette(temp_palette);
         general_sprite(0, left, top);
@@ -122,12 +122,12 @@ void start_smacking(char *p, int left, int top, int mode)
     }
 
     if (smk->NewPalette != 0) {
-        p = (char *)smk;
+        file_or_palette_ptr = (char *)smk;
         if (smk->PalType == 1)
-            p += 0x70;
+            file_or_palette_ptr += 0x70;
         else
-            p += 0x374;
-        PaletteSet((unsigned char *)p);
+            file_or_palette_ptr += 0x374;
+        PaletteSet((unsigned char *)file_or_palette_ptr);
     }
     SmackDoFrame(smk);
     SmackNextFrame(smk);
@@ -149,19 +149,19 @@ void start_smacking(char *p, int left, int top, int mode)
 // Advances a ready movie frame, applies palette changes, schedules any required refresh region,
 // and closes the movie after its final frame.
 // FUNCTION: C2 0x138bc
-int continue_smacking(int p1, int x, int mode)
+int continue_smacking(int left, int top, int mode)
 {
-    int ret = 0;
+    int result = 0;
 
     if (link_to_smacker() == 0) return 0;
     if (smacker_on == 0) return 0;
     if ((short)SmackWait(smk) != 0) return 0;
 
     if (smk->NewPalette != 0) {
-        unsigned char *pal;
-        if (smk->PalType == 1) pal = smk->Palette;
-        else                   pal = smk->Palette2;
-        PaletteSet(pal);
+        unsigned char *palette_ptr;
+        if (smk->PalType == 1) palette_ptr = smk->Palette;
+        else                   palette_ptr = smk->Palette2;
+        PaletteSet(palette_ptr);
     }
 
     SmackDoFrame(smk);
@@ -170,17 +170,17 @@ int continue_smacking(int p1, int x, int mode)
         if (mode == 0)
             setup_refresh_area(0, 0, smk_ref_wi, smk_ref_hi, 1);
         else if (mode == 1)
-            setup_refresh_area(p1, x, 0x14, 0xa, mode);
-        ret = 1;
+            setup_refresh_area(left, top, 0x14, 0xa, mode);
+        result = 1;
     }
     smack_frame = smack_frame + 1;
     if (smack_frame >= smk->Frames) {
         SmackClose(smk);
         smacker_on = 0;
-        ret = 1;
+        result = 1;
         setup_scratch_buffer();
     }
-    return ret;
+    return result;
 }
 
 // Closes the active movie and restores the normal scratch-buffer and path state.
