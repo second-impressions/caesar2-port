@@ -2477,13 +2477,13 @@ void build_an_area(int x1, int y1, int x2, int y2,
     int row_skip;
     int x;
     int y;
-    int t;
+    int swap_value;
     unsigned char old_kind;
-    unsigned char bk;
+    unsigned char building_kind_byte;
 
-    bk = (unsigned char)base_kind;
-    if (x1 > x2) { t = x2; x2 = x1; x1 = t; }
-    if (y1 > y2) { t = y2; y2 = y1; y1 = t; }
+    building_kind_byte = (unsigned char)base_kind;
+    if (x1 > x2) { swap_value = x2; x2 = x1; x1 = swap_value; }
+    if (y1 > y2) { swap_value = y2; y2 = y1; y1 = swap_value; }
 
     cm_sptr = (x1 + y1 * CITY_W) * CITY_CELL_BYTES;
     row_skip = (CITY_W - (x2 - x1) - 1) * CITY_CELL_BYTES;
@@ -2499,7 +2499,7 @@ void build_an_area(int x1, int y1, int x2, int y2,
                 old_kind = CM_CELL(cm_sptr).base_kind;
                 particles_built++;
                 if (old_kind < 0x1a) particles_cleared++;
-                CM_CELL(cm_sptr).base_kind = bk;
+                CM_CELL(cm_sptr).base_kind = building_kind_byte;
                 CM_CELL(cm_sptr).terrain |= placing_flags;
                 CM_CELL(cm_sptr).extra_edge = color;
                 CM_CELL(cm_sptr).edge_bits &= 0xe3;
@@ -2552,7 +2552,7 @@ int put_x2_area(int x, int y, char base_kind, int edge_bits, int color)
     int row_skip;
     int xi;
     int yi;
-    int n;
+    int footprint_idx;
     int bad = 0;
     row_skip = (80 - 2) * 20;
 
@@ -2594,22 +2594,22 @@ int put_x2_area(int x, int y, char base_kind, int edge_bits, int color)
     if (bad) goto illegal;
 
     cm_sptr = start_sptr;
-    n = 0;
+    footprint_idx = 0;
     for (yi = y; yi < y + 2; ) {
         for (xi = x; xi < x + 2; ) {
             if ((unsigned char)(*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).base_kind < 0x1a)
                 particles_cleared++;
             (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).base_kind        = base_kind;
             (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).terrain    |= placing_flags;
-            (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).extra_edge  = (char)(color + diamond_ofsets_2x[n]);
+            (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).extra_edge  = (char)(color + diamond_ofsets_2x[footprint_idx]);
             (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).edge_bits  &= 0xe3;
             (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).edge_bits  |= (char)edge_bits;
-            (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).activity_a  = n;
+            (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).activity_a  = footprint_idx;
             if (map_direction == 2 || map_direction == 4)
                 (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).activity_b = 0x20;
             xi++;
             cm_sptr += 20;
-            n++;
+            footprint_idx++;
         }
         yi++;
         cm_sptr += row_skip;
@@ -2626,7 +2626,7 @@ int put_x3_area(int x, int y, char base_kind, int edge_bits, int color)
     int row_skip;
     int xi;
     int yi;
-    int n;
+    int footprint_idx;
     int bad = 0;
     row_skip = (80 - 3) * 20;
 
@@ -2668,22 +2668,22 @@ int put_x3_area(int x, int y, char base_kind, int edge_bits, int color)
     if (bad) goto illegal;
 
     cm_sptr = start_sptr;
-    n = 0;
+    footprint_idx = 0;
     for (yi = y; yi < y + 3; ) {
         for (xi = x; xi < x + 3; ) {
             if ((unsigned char)(*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).base_kind < 0x1a)
                 particles_cleared++;
             (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).base_kind        = base_kind;
             (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).terrain    |= placing_flags;
-            (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).extra_edge  = (char)(color + diamond_ofsets_3x[n]);
+            (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).extra_edge  = (char)(color + diamond_ofsets_3x[footprint_idx]);
             (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).edge_bits  &= 0xe3;
             (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).edge_bits  |= (char)edge_bits;
-            (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).activity_a  = n;
+            (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).activity_a  = footprint_idx;
             if (map_direction == 2 || map_direction == 4)
                 (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).activity_b = 0x20;
             xi++;
             cm_sptr += 20;
-            n++;
+            footprint_idx++;
         }
         yi++;
         cm_sptr += row_skip;
@@ -2700,7 +2700,7 @@ int put_x4_area(int x, int y, char base_kind, int edge_bits, int color)
     int row_skip;
     int xi;
     int yi;
-    int n;
+    int footprint_idx;
     int bad = 0;
     row_skip = (80 - 4) * 20;
 
@@ -2742,22 +2742,22 @@ int put_x4_area(int x, int y, char base_kind, int edge_bits, int color)
     if (bad) goto illegal;
 
     cm_sptr = start_sptr;
-    n = 0;
+    footprint_idx = 0;
     for (yi = y; yi < y + 4; ) {
         for (xi = x; xi < x + 4; ) {
             if ((unsigned char)(*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).base_kind < 0x1a)
                 particles_cleared++;
             (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).base_kind        = base_kind;
             (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).terrain    |= placing_flags;
-            (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).extra_edge  = (char)(color + diamond_ofsets_4x[n]);
+            (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).extra_edge  = (char)(color + diamond_ofsets_4x[footprint_idx]);
             (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).edge_bits  &= 0xe3;
             (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).edge_bits  |= (char)edge_bits;
-            (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).activity_a  = n;
+            (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).activity_a  = footprint_idx;
             if (map_direction == 2 || map_direction == 4)
                 (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).activity_b = 0x20;
             xi++;
             cm_sptr += 20;
-            n++;
+            footprint_idx++;
         }
         yi++;
         cm_sptr += row_skip;
@@ -2874,8 +2874,8 @@ int put_reg_x2_area(int x, int y, unsigned char base_kind, int edge_bits,
 {
     int xi;
     int yi;
-    int n;
-    int off;
+    int footprint_idx;
+    int cell_offset;
     int bad;
     int row_skip;
 
@@ -2892,9 +2892,9 @@ int put_reg_x2_area(int x, int y, unsigned char base_kind, int edge_bits,
 
     start_x_pos = x;
     start_y_pos = y;
-    off = ((x) + (y) * 60) * 8;
-    start_sptr = off;
-    cm_sptr = off;
+    cell_offset = ((x) + (y) * 60) * 8;
+    start_sptr = cell_offset;
+    cm_sptr = cell_offset;
 
     for (yi = y; yi < y + 2; yi++, cm_sptr += row_skip) {
         for (xi = x; xi < x + 2; xi++, cm_sptr += 8) {
@@ -2910,17 +2910,17 @@ int put_reg_x2_area(int x, int y, unsigned char base_kind, int edge_bits,
     if (bad) return 0;
 
     cm_sptr = start_sptr;
-    n = 0;
+    footprint_idx = 0;
     for (yi = y; yi < y + 2; yi++, cm_sptr += row_skip) {
-        for (xi = x; xi < x + 2; xi++, cm_sptr += 8, n++) {
+        for (xi = x; xi < x + 2; xi++, cm_sptr += 8, footprint_idx++) {
             if ((*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).base_kind < 0x10) particles_cleared++;
             (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).base_kind = (unsigned char)base_kind;
             (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).terrain |= reg_placing_flags;
-            (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).gfx = color + diamond_ofsets_2x[n];
+            (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).gfx = color + diamond_ofsets_2x[footprint_idx];
             (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).edge_bits &= 0xe3;
             (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).edge_bits |= (unsigned char)edge_bits;
             (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).edge_bits &= 0xbf;
-            (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).occupant = (unsigned char)n;
+            (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).occupant = (unsigned char)footprint_idx;
         }
     }
     particles_built++;
@@ -2930,73 +2930,73 @@ int put_reg_x2_area(int x, int y, unsigned char base_kind, int edge_bits,
 // Replace a regional building footprint with a new kind and appearance.
 // FUNCTION: C2 0x6aeac
 // FUNCTION: C2WIN 0x004a7b37
-void change_reg_sized(int rm_byte, int color, int size, int rm_offset)
+void change_reg_sized(int base_kind, int gfx_base_idx, int footprint_size, int cell_offset)
 {
     int xi;
     int yi;
-    int n;
-    int row_step = (60 - size) * 8;
+    int footprint_idx;
+    int row_step = (60 - footprint_size) * 8;
 
-    for (yi = 0, n = 0; yi < size; ) {
-        for (xi = 0; xi < size; ) {
-            (*(struct region_cell *)((unsigned char *)region_map + (rm_offset))).base_kind = rm_byte;
-            (*(struct region_cell *)((unsigned char *)region_map + (rm_offset))).edge_bits |= 1;
-            if (size == 1) {
-                (*(struct region_cell *)((unsigned char *)region_map + (rm_offset))).gfx = color;
-            } else if (size == 2) {
-                (*(struct region_cell *)((unsigned char *)region_map + (rm_offset))).gfx =
-                    color + diamond_ofsets_2x[n];
+    for (yi = 0, footprint_idx = 0; yi < footprint_size; ) {
+        for (xi = 0; xi < footprint_size; ) {
+            (*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).base_kind = base_kind;
+            (*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).edge_bits |= 1;
+            if (footprint_size == 1) {
+                (*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).gfx = gfx_base_idx;
+            } else if (footprint_size == 2) {
+                (*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).gfx =
+                    gfx_base_idx + diamond_ofsets_2x[footprint_idx];
             }
             xi++;
-            rm_offset += 8;
-            n++;
+            cell_offset += 8;
+            footprint_idx++;
         }
         yi++;
-        rm_offset += row_step;
+        cell_offset += row_step;
     }
 }
 
 // Validate and place an arbitrary square regional building.
 // FUNCTION: C2 0x6af11
 // FUNCTION: C2WIN 0x004a7c06
-int put_rm_area(int x, int y, int size, unsigned char base_kind,
-                int edge_bits, int color, int flags)
+int put_rm_area(int x, int y, int footprint_size, unsigned char base_kind,
+                int edge_bits, int color, int terrain_flags)
 {
     int row_skip;
-    int off, xi, yi, n;
-    unsigned char c = color;
+    int cell_offset, xi, yi, footprint_idx;
+    unsigned char gfx_base_idx = color;
 
 
-    row_skip = (60 - size) * 8;
+    row_skip = (60 - footprint_size) * 8;
 
-    if (map_direction == 2) x -= size - 1;
-    if (map_direction == 6) y -= size - 1;
-    if (map_direction == 4) { x -= size - 1; y -= size - 1; }
+    if (map_direction == 2) x -= footprint_size - 1;
+    if (map_direction == 6) y -= footprint_size - 1;
+    if (map_direction == 4) { x -= footprint_size - 1; y -= footprint_size - 1; }
     if (x < 0) return 0;
     if (y < 0) return 0;
 
-    off = (x + y * 60) * 8;
-    for (yi = y; yi < y + size; yi++, off += row_skip) {
-        for (xi = x; xi < x + size; xi++, off += 8) {
+    cell_offset = (x + y * 60) * 8;
+    for (yi = y; yi < y + footprint_size; yi++, cell_offset += row_skip) {
+        for (xi = x; xi < x + footprint_size; xi++, cell_offset += 8) {
 
-            if ((*(struct region_cell *)((unsigned char *)region_map + (off))).occupant != 0) return 0;
-            if (((*(struct region_cell *)((unsigned char *)region_map + (off))).terrain & 0x10) != 0) return 0;
-            if (((*(struct region_cell *)((unsigned char *)region_map + (off))).terrain & 1) != 0) return 0;
-            (*(struct region_cell *)((unsigned char *)region_map + (off))).edge_bits |= 1;
+            if ((*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).occupant != 0) return 0;
+            if (((*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).terrain & 0x10) != 0) return 0;
+            if (((*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).terrain & 1) != 0) return 0;
+            (*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).edge_bits |= 1;
         }
     }
-    off = (x + y * 60) * 8;
-    for (yi = y, n = 0; yi < y + size; yi++, off += row_skip) {
-        for (xi = x; xi < x + size; xi++, off += 8, n++) {
+    cell_offset = (x + y * 60) * 8;
+    for (yi = y, footprint_idx = 0; yi < y + footprint_size; yi++, cell_offset += row_skip) {
+        for (xi = x; xi < x + footprint_size; xi++, cell_offset += 8, footprint_idx++) {
 
-            (*(struct region_cell *)((unsigned char *)region_map + (off))).base_kind = base_kind;
-            (*(struct region_cell *)((unsigned char *)region_map + (off))).terrain |= flags;
-            (*(struct region_cell *)((unsigned char *)region_map + (off))).edge_bits &= 0xe3;
-            (*(struct region_cell *)((unsigned char *)region_map + (off))).edge_bits |= edge_bits;
-            if (size == 1) (*(struct region_cell *)((unsigned char *)region_map + (off))).gfx = c;
-            else if (size == 2) (*(struct region_cell *)((unsigned char *)region_map + (off))).gfx = c + diamond_ofsets_2x[n];
-            else if (size == 3) (*(struct region_cell *)((unsigned char *)region_map + (off))).gfx = c + diamond_ofsets_3x[n];
-            else if (size == 4) (*(struct region_cell *)((unsigned char *)region_map + (off))).gfx = c + diamond_ofsets_4x[n];
+            (*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).base_kind = base_kind;
+            (*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).terrain |= terrain_flags;
+            (*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).edge_bits &= 0xe3;
+            (*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).edge_bits |= edge_bits;
+            if (footprint_size == 1) (*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).gfx = gfx_base_idx;
+            else if (footprint_size == 2) (*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).gfx = gfx_base_idx + diamond_ofsets_2x[footprint_idx];
+            else if (footprint_size == 3) (*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).gfx = gfx_base_idx + diamond_ofsets_3x[footprint_idx];
+            else if (footprint_size == 4) (*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).gfx = gfx_base_idx + diamond_ofsets_4x[footprint_idx];
         }
     }
     return 1;
@@ -4430,7 +4430,7 @@ void change_lv(int x, int y, int radius, int extra, int delta)
     int width;
     int height;
     int row_skip;
-    int v;
+    int land_value;
 
     if (extra == 0) return;
     x -= radius;
@@ -4448,9 +4448,9 @@ void change_lv(int x, int y, int radius, int extra, int delta)
         for (gmn_x = x; gmn_x < x + width;) {
             signed char nv = (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).land_value;
             nv += (char)delta;
-            v = nv;
-            if (v > 0x40) nv = 0x40;
-            else if (v < -0x40) nv = -0x40;
+            land_value = nv;
+            if (land_value > 0x40) nv = 0x40;
+            else if (land_value < -0x40) nv = -0x40;
             (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).land_value = nv;
             gmn_x++;
             gmn_sptr += 20;
@@ -4539,22 +4539,22 @@ int get_range1(unsigned char *start, int range, char mask)
     int best;
     int row;
     int col;
-    int val;
-    unsigned char *c;
+    int range_value;
+    unsigned char *cell_ptr;
 
     if (range == 1) {
-        val = (start)[10];
-        val &= mask;
-        return val;
+        range_value = (start)[10];
+        range_value &= mask;
+        return range_value;
     }
     best = 0;
     for (row = 0; row < range; row++) {
         for (col = 0; col < range; col++) {
-            c = start + col * CITY_CELL_BYTES + row * CITY_ROW;
-            val = (c)[10];
-            val &= mask;
-            if (val > best)
-                best = val;
+            cell_ptr = start + col * CITY_CELL_BYTES + row * CITY_ROW;
+            range_value = (cell_ptr)[10];
+            range_value &= mask;
+            if (range_value > best)
+                best = range_value;
         }
     }
     return best;
@@ -4568,22 +4568,22 @@ int get_range3(unsigned char *start, int range, char mask)
     int best;
     int row;
     int col;
-    int val;
-    unsigned char *c;
+    int range_value;
+    unsigned char *cell_ptr;
 
     if (range == 1) {
-        val = (start)[12];
-        val &= mask;
-        return val;
+        range_value = (start)[12];
+        range_value &= mask;
+        return range_value;
     }
     best = 0;
     for (row = 0; row < range; row++) {
         for (col = 0; col < range; col++) {
-            c = start + col * CITY_CELL_BYTES + row * CITY_ROW;
-            val = (c)[12];
-            val &= mask;
-            if (val > best)
-                best = val;
+            cell_ptr = start + col * CITY_CELL_BYTES + row * CITY_ROW;
+            range_value = (cell_ptr)[12];
+            range_value &= mask;
+            if (range_value > best)
+                best = range_value;
         }
     }
     return best;
@@ -4670,7 +4670,7 @@ int test_range_for_road(int x, int y, int radius)
     int width;
     int sptr;
     int row_skip;
-    unsigned char t;
+    unsigned char road_flag;
     x -= radius;
     y -= radius;
     side = radius * 2 + 1;
@@ -4687,8 +4687,8 @@ int test_range_for_road(int x, int y, int radius)
     for (gmn_y = y; gmn_y < y + side; gmn_y++, sptr += row_skip) {
         for (gmn_x = x; gmn_x < x + width; gmn_x++, sptr += 20) {
 
-            t = (*(struct city_cell *)((unsigned char *)city_map + (sptr))).terrain & 0x20;
-            if (t != 0) return 1;
+            road_flag = (*(struct city_cell *)((unsigned char *)city_map + (sptr))).terrain & 0x20;
+            if (road_flag != 0) return 1;
         }
     }
     return 0;
@@ -5283,7 +5283,7 @@ int next_danger_flag(void)
 void goto_flag_marker_mode(void)
 {
     int i;
-    int p;
+    int cell_offset;
 
     flag_mode = 1;
     clear_all_cm(2);
@@ -5291,19 +5291,19 @@ void goto_flag_marker_mode(void)
 
     for (i = 0; i < 20; i++) {
         if (city_flag_list[i] != -1) {
-            p = city_flag_list[i];
-            (*(struct city_cell *)((unsigned char *)city_map + (p))).road_aqueduct = 1;
+            cell_offset = city_flag_list[i];
+            (*(struct city_cell *)((unsigned char *)city_map + (cell_offset))).road_aqueduct = 1;
         }
         if (prov_flag_list[i] != -1) {
-            p = prov_flag_list[i];
-            (*(struct region_cell *)((unsigned char *)region_map + (p))).place_state = 2;
+            cell_offset = prov_flag_list[i];
+            (*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).place_state = 2;
         }
         if (danger_flag_list[i] != -1) {
-            p = danger_flag_list[i];
+            cell_offset = danger_flag_list[i];
             if (danger_flag_map_mode == 0)
-                (*(struct city_cell *)((unsigned char *)city_map + (p))).road_aqueduct = 3;
+                (*(struct city_cell *)((unsigned char *)city_map + (cell_offset))).road_aqueduct = 3;
             else
-                (*(struct region_cell *)((unsigned char *)region_map + (p))).place_state = 3;
+                (*(struct region_cell *)((unsigned char *)region_map + (cell_offset))).place_state = 3;
         }
     }
 }

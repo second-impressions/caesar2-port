@@ -1315,17 +1315,17 @@ void place_sprite(int edge_side)
 // FUNCTION: C2WIN 0x0045ef7d
 void print_test_info(void)
 {
-    int v;
+    int debug_value;
     int colour;
 
     if (test_mode1 != 0) {
         if (((pm_shown_ptr) >= 0x0FFF0000)) return;
         old_sprite_x = sprite_x;
         old_sprite_y = sprite_y;
-        v = (signed char)(*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).terrain;
-        if (v < 0) { v = -v; colour = 3; }
+        debug_value = (signed char)(*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).terrain;
+        if (debug_value < 0) { debug_value = -debug_value; colour = 3; }
         else                colour = 0x3f;
-        font_no(v, 0x20, " ",
+        font_no(debug_value, 0x20, " ",
                 sprite_x + 0x14 - pm_diamond_width, sprite_y + 0xa,
                 font1, colour);
         sprite_x = old_sprite_x;
@@ -1334,10 +1334,10 @@ void print_test_info(void)
         if (((pm_shown_ptr) >= 0x0FFF0000)) return;
         old_sprite_x = sprite_x;
         old_sprite_y = sprite_y;
-        v = (signed char)(*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).road_aqueduct;
-        if (v < 0) { v = -v; colour = 3; }
+        debug_value = (signed char)(*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).road_aqueduct;
+        if (debug_value < 0) { debug_value = -debug_value; colour = 3; }
         else                colour = 0x3f;
-        font_no(v, 0x20, " ",
+        font_no(debug_value, 0x20, " ",
                 sprite_x + 0x14 - pm_diamond_width, sprite_y + 0xa,
                 font1, colour);
         sprite_x = old_sprite_x;
@@ -1402,44 +1402,44 @@ int show_overlay(int style)
 // FUNCTION: C2WIN 0x0045f34e
 int show_left_overlay(int style)
 {
-    unsigned char tile;
-    unsigned char b;
-    int idx;
+    unsigned char building_kind;
+    unsigned char overlay_value;
+    int cell_idx;
     unsigned char flag_lsb;
     int tile_in_building_range = 0;
-    int ov_image;
+    int overlay_image_idx;
 
     if (overlays_on != 1) return 0;
-    idx = pm_shown_ptr / 20;
-    if ((b = landfill_pool[idx]) == 0) {
+    cell_idx = pm_shown_ptr / 20;
+    if ((overlay_value = landfill_pool[cell_idx]) == 0) {
         flag_lsb = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).terrain & 0xe7;
-        tile = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).base_kind;
+        building_kind = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).base_kind;
         if (flag_lsb == 0)
             return 0;
         if (overlay0_empty_mode != 0)
             return 0;
-        if (tile >= 0x82 && tile <= 0xa1) sprite_image_no = 7;
+        if (building_kind >= 0x82 && building_kind <= 0xa1) sprite_image_no = 7;
         else sprite_image_no = 0;
     } else {
-        ov_image = b - 0x76; if (b == 0x96) {
-            if (ov_map_mode == 1) sprite_image_no = ov_image;
+        overlay_image_idx = overlay_value - 0x76; if (overlay_value == 0x96) {
+            if (ov_map_mode == 1) sprite_image_no = overlay_image_idx;
             else if (ov_map_mode == 6) {
-                tile = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).base_kind;
-                if (tile >= 0xe5 && tile <= 0xf0)
+                building_kind = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).base_kind;
+                if (building_kind >= 0xe5 && building_kind <= 0xf0)
                     return 0;
-                sprite_image_no = landfill_pool[idx] - 0x76;
+                sprite_image_no = landfill_pool[cell_idx] - 0x76;
             } else {
                 return 0;
             }
         } else {
-            sprite_image_no = ov_image;
+            sprite_image_no = overlay_image_idx;
         }
     }
 
     if (sprite_image_no >= 8) {
-        tile                  = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).base_kind;
+        building_kind                  = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).base_kind;
         flag_lsb              = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).terrain & 1;
-        tile_in_building_range = (tile >= 0x82 && tile <= 0xa1);
+        tile_in_building_range = (building_kind >= 0x82 && building_kind <= 0xa1);
         if (tile_in_building_range && sprite_image_no >= 8) sprite_image_no += 2;
         else if (flag_lsb) sprite_image_no++;
     }
@@ -1452,44 +1452,44 @@ int show_left_overlay(int style)
 // FUNCTION: C2WIN 0x0045f599
 int show_right_overlay(int style)
 {
-    unsigned char tile;
-    unsigned char b;
-    int idx;
+    unsigned char building_kind;
+    unsigned char overlay_value;
+    int cell_idx;
     unsigned char flag_lsb;
     int tile_in_building_range = 0;
-    int ov_image;
+    int overlay_image_idx;
 
     if (overlays_on != 1) return 0;
-    idx = pm_shown_ptr / 20;
-    if ((b = landfill_pool[idx]) == 0) {
+    cell_idx = pm_shown_ptr / 20;
+    if ((overlay_value = landfill_pool[cell_idx]) == 0) {
         flag_lsb = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).terrain & 0xe7;
-        tile = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).base_kind;
+        building_kind = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).base_kind;
         if (flag_lsb == 0)
             return 0;
         if (overlay0_empty_mode != 0)
             return 0;
-        if (tile >= 0x82 && tile <= 0xa1) sprite_image_no = 7;
+        if (building_kind >= 0x82 && building_kind <= 0xa1) sprite_image_no = 7;
         else sprite_image_no = 0;
     } else {
-        ov_image = b - 0x76; if (b == 0x96) {
-            if (ov_map_mode == 1) sprite_image_no = ov_image;
+        overlay_image_idx = overlay_value - 0x76; if (overlay_value == 0x96) {
+            if (ov_map_mode == 1) sprite_image_no = overlay_image_idx;
             else if (ov_map_mode == 6) {
-                tile = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).base_kind;
-                if (tile >= 0xe5 && tile <= 0xf0)
+                building_kind = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).base_kind;
+                if (building_kind >= 0xe5 && building_kind <= 0xf0)
                     return 0;
-                sprite_image_no = landfill_pool[idx] - 0x76;
+                sprite_image_no = landfill_pool[cell_idx] - 0x76;
             } else {
                 return 0;
             }
         } else {
-            sprite_image_no = ov_image;
+            sprite_image_no = overlay_image_idx;
         }
     }
 
     if (sprite_image_no >= 8) {
-        tile                  = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).base_kind;
+        building_kind                  = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).base_kind;
         flag_lsb              = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).terrain & 1;
-        tile_in_building_range = (tile >= 0x82 && tile <= 0xa1);
+        tile_in_building_range = (building_kind >= 0x82 && building_kind <= 0xa1);
         if (tile_in_building_range && sprite_image_no >= 8) sprite_image_no += 2;
         else if (flag_lsb) sprite_image_no++;
     }

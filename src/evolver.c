@@ -716,174 +716,174 @@ void evolve_land_value(int rows)
 // Cap each cell's land value according to its water, services, security, health, and education.
 // FUNCTION: C2 0x41138
 // FUNCTION: C2WIN 0x00463f66
-void cap_land_value(int rows)
+void cap_land_value(int row_count)
 {
-    unsigned char hit;
-    int col;
-    signed char cl;
-    int row;
-    unsigned char kind;
-    int a;
-    unsigned char act;
-    unsigned int size;
-    unsigned char boosted;
+    unsigned char coverage_hit;
+    int col_idx;
+    signed char land_value_cap;
+    int row_idx;
+    unsigned char building_kind;
+    int sub_aqueduct_cover;
+    unsigned char activity_state;
+    unsigned int footprint_size;
+    unsigned char security_score;
     signed char security;
-    char range3_top;
-    char range3_shifted;
-    unsigned char *p;
-    int raw;
-    char range3_tmp;
-    unsigned char rank_sum;
-    signed char rank;
-    signed char b;
+    char entertainment_high;
+    char entertainment_mid;
+    unsigned char *cell_ptr;
+    int range_value;
+    char entertainment_low;
+    unsigned char entertainment_rank;
+    signed char current_land_value;
+    signed char aqueduct_cover;
 
     cm_sptr = evolve_row * 1600;
-    for (row = 0; row < rows; row++)
+    for (row_idx = 0; row_idx < row_count; row_idx++)
     {
-        for (col = 0; col < 80; col++, cm_sptr += 20)
+        for (col_idx = 0; col_idx < 80; col_idx++, cm_sptr += 20)
         {
-            kind = ((unsigned char *)city_map)[cm_sptr];
-            if (kind >= 0x82) size = reg_aquaduct_gfxdat[kind + 8];
-            else size = 1;
+            building_kind = ((unsigned char *)city_map)[cm_sptr];
+            if (building_kind >= 0x82) footprint_size = reg_aquaduct_gfxdat[building_kind + 8];
+            else footprint_size = 1;
 
-            act = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).activity_a & 0xf;
+            activity_state = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).activity_a & 0xf;
 
-            p = (unsigned char *)city_map + cm_sptr;
-            if (act) p = get_ptr_to_corner(p, size);
+            cell_ptr = (unsigned char *)city_map + cm_sptr;
+            if (activity_state) cell_ptr = get_ptr_to_corner(cell_ptr, footprint_size);
 
-            if ((kind < 0x82) || (kind > 0xa1))
+            if ((building_kind < 0x82) || (building_kind > 0xa1))
                 goto non_housing;
 
-            a = affected_by_cover1(p, size, 2);
-            b = affected_by_cover1(p, size, 1);
-            if (b == 0 && (char)a == 0) { cl = 0x02; goto emit; }
+            sub_aqueduct_cover = affected_by_cover1(cell_ptr, footprint_size, 2);
+            aqueduct_cover = affected_by_cover1(cell_ptr, footprint_size, 1);
+            if (aqueduct_cover == 0 && (char)sub_aqueduct_cover == 0) { land_value_cap = 0x02; goto emit; }
 
-            hit = get_range1(p, size, 0x0c);
-            if (hit == 0) { cl = 0x06; goto emit; }
+            coverage_hit = get_range1(cell_ptr, footprint_size, 0x0c);
+            if (coverage_hit == 0) { land_value_cap = 0x06; goto emit; }
 
-            hit = affected_by_cover1(p, size, 0x80);
-            if (hit != 0) { cl = 0x0a; goto emit; }
+            coverage_hit = affected_by_cover1(cell_ptr, footprint_size, 0x80);
+            if (coverage_hit != 0) { land_value_cap = 0x0a; goto emit; }
 
-            hit = get_range1(p, size, 0xc0);
-            if (hit == 0) { cl = 0x0c; goto emit; }
+            coverage_hit = get_range1(cell_ptr, footprint_size, 0xc0);
+            if (coverage_hit == 0) { land_value_cap = 0x0c; goto emit; }
 
-            if (b == 0) { cl = 0x0e; goto emit; }
+            if (aqueduct_cover == 0) { land_value_cap = 0x0e; goto emit; }
 
-            hit = affected_by_cover2(p, size, 0x10);
-            if (hit != 0) { cl = 0x10; goto emit; }
+            coverage_hit = affected_by_cover2(cell_ptr, footprint_size, 0x10);
+            if (coverage_hit != 0) { land_value_cap = 0x10; goto emit; }
 
-            hit = affected_by_cover1(p, size, 0x08);
-            if (hit == 0) { cl = 0x12; goto emit; }
+            coverage_hit = affected_by_cover1(cell_ptr, footprint_size, 0x08);
+            if (coverage_hit == 0) { land_value_cap = 0x12; goto emit; }
 
-            range3_tmp = get_range3(p, size, 0x03);
-            raw = get_range3(p, size, 0x0c);
-            range3_shifted = (raw & 0xff) >> 2;
-            raw = get_range3(p, size, 0x30);
-            range3_top = (raw & 0xff) >> 4;
-            rank_sum = range3_tmp + range3_shifted + range3_top;
-            if (rank_sum == 0) { cl = 0x14; goto emit; }
+            entertainment_low = get_range3(cell_ptr, footprint_size, 0x03);
+            range_value = get_range3(cell_ptr, footprint_size, 0x0c);
+            entertainment_mid = (range_value & 0xff) >> 2;
+            range_value = get_range3(cell_ptr, footprint_size, 0x30);
+            entertainment_high = (range_value & 0xff) >> 4;
+            entertainment_rank = entertainment_low + entertainment_mid + entertainment_high;
+            if (entertainment_rank == 0) { land_value_cap = 0x14; goto emit; }
 
-            hit = affected_by_cover2(p, size, 0x01);
-            if (hit != 0) { cl = 0x18; goto emit; }
+            coverage_hit = affected_by_cover2(cell_ptr, footprint_size, 0x01);
+            if (coverage_hit != 0) { land_value_cap = 0x18; goto emit; }
 
             security = ((unsigned char *)city_map)[cm_sptr + 0x11];
-            hit = get_range1(p, size, 0x30);
-            boosted = (security >= 0x10);
+            coverage_hit = get_range1(cell_ptr, footprint_size, 0x30);
+            security_score = (security >= 0x10);
 
-            if (hit) { boosted &= 0xff; boosted++; }
-            if (boosted == 0) { cl = 0x18; goto emit; }
+            if (coverage_hit) { security_score &= 0xff; security_score++; }
+            if (security_score == 0) { land_value_cap = 0x18; goto emit; }
 
-            hit = affected_by_cover2(p, size, 0x20);
-            if (hit != 0) { cl = 0x1a; goto emit; }
+            coverage_hit = affected_by_cover2(cell_ptr, footprint_size, 0x20);
+            if (coverage_hit != 0) { land_value_cap = 0x1a; goto emit; }
 
-            if (rank_sum <= 1) { cl = 0x1a; goto emit; }
+            if (entertainment_rank <= 1) { land_value_cap = 0x1a; goto emit; }
 
-            hit = affected_by_cover2(p, size, 0x08);
-            if (hit != 0) { cl = 0x1a; goto emit; }
+            coverage_hit = affected_by_cover2(cell_ptr, footprint_size, 0x08);
+            if (coverage_hit != 0) { land_value_cap = 0x1a; goto emit; }
 
-            if (rank_sum <= 2) { cl = 0x1c; goto emit; }
+            if (entertainment_rank <= 2) { land_value_cap = 0x1c; goto emit; }
 
-            hit = affected_by_cover2(p, size, 0x04);
-            if (hit != 0) { cl = 0x1e; goto emit; }
+            coverage_hit = affected_by_cover2(cell_ptr, footprint_size, 0x04);
+            if (coverage_hit != 0) { land_value_cap = 0x1e; goto emit; }
 
-            if (hospital_cover < 0x14) { cl = 0x1e; goto emit; }
+            if (hospital_cover < 0x14) { land_value_cap = 0x1e; goto emit; }
 
-            if (rank_sum <= 3) { cl = 0x20; goto emit; }
+            if (entertainment_rank <= 3) { land_value_cap = 0x20; goto emit; }
 
-            hit = affected_by_cover1(p, size, 0x10);
-            if (hit == 0) { cl = 0x22; goto emit; }
+            coverage_hit = affected_by_cover1(cell_ptr, footprint_size, 0x10);
+            if (coverage_hit == 0) { land_value_cap = 0x22; goto emit; }
 
-            hit = affected_by_cover2(p, size, 0x02);
-            if (hit != 0) { cl = 0x22; goto emit; }
+            coverage_hit = affected_by_cover2(cell_ptr, footprint_size, 0x02);
+            if (coverage_hit != 0) { land_value_cap = 0x22; goto emit; }
 
-            if (hospital_cover < 0x28) { cl = 0x24; goto emit; }
+            if (hospital_cover < 0x28) { land_value_cap = 0x24; goto emit; }
 
-            if (rank_sum <= 4) { cl = 0x26; goto emit; }
+            if (entertainment_rank <= 4) { land_value_cap = 0x26; goto emit; }
 
-            hit = affected_by_cover1(p, size, 0x40);
-            if (hit != 0) { cl = 0x28; goto emit; }
+            coverage_hit = affected_by_cover1(cell_ptr, footprint_size, 0x40);
+            if (coverage_hit != 0) { land_value_cap = 0x28; goto emit; }
 
-            if (boosted <= 1) { cl = 0x2a; goto emit; }
+            if (security_score <= 1) { land_value_cap = 0x2a; goto emit; }
 
-            if (hospital_cover < 0x3c) { cl = 0x2c; goto emit; }
+            if (hospital_cover < 0x3c) { land_value_cap = 0x2c; goto emit; }
 
-            if (rank_sum <= 5) { cl = 0x2c; goto emit; }
+            if (entertainment_rank <= 5) { land_value_cap = 0x2c; goto emit; }
 
-            hit = affected_by_cover1(p, size, 0x20);
-            if (hit == 0) { cl = 0x2e; goto emit; }
+            coverage_hit = affected_by_cover1(cell_ptr, footprint_size, 0x20);
+            if (coverage_hit == 0) { land_value_cap = 0x2e; goto emit; }
 
-            if (library_cover < 0x14) { cl = 0x2e; goto emit; }
+            if (library_cover < 0x14) { land_value_cap = 0x2e; goto emit; }
 
-            if (rank_sum <= 6) { cl = 0x30; goto emit; }
+            if (entertainment_rank <= 6) { land_value_cap = 0x30; goto emit; }
 
-            if (library_cover < 0x28) { cl = 0x32; goto emit; }
+            if (library_cover < 0x28) { land_value_cap = 0x32; goto emit; }
 
-            if (hospital_cover < 0x50) { cl = 0x34; goto emit; }
+            if (hospital_cover < 0x50) { land_value_cap = 0x34; goto emit; }
 
-            if (library_cover < 0x3c) { cl = 0x36; goto emit; }
+            if (library_cover < 0x3c) { land_value_cap = 0x36; goto emit; }
 
-            if (rank_sum <= 7) { cl = 0x38; goto emit; }
+            if (entertainment_rank <= 7) { land_value_cap = 0x38; goto emit; }
 
-            if (hospital_cover < 0x64) { cl = 0x3a; goto emit; }
+            if (hospital_cover < 0x64) { land_value_cap = 0x3a; goto emit; }
 
-            if (library_cover < 0x50) { cl = 0x3a; goto emit; }
+            if (library_cover < 0x50) { land_value_cap = 0x3a; goto emit; }
 
-            if (rank_sum <= 8) { cl = 0x3c; goto emit; }
+            if (entertainment_rank <= 8) { land_value_cap = 0x3c; goto emit; }
 
-            if (library_cover < 0x64) { cl = 0x3e; goto emit; }
+            if (library_cover < 0x64) { land_value_cap = 0x3e; goto emit; }
 
-            cl = 0x40;
+            land_value_cap = 0x40;
             goto emit;
 
         non_housing:
-            hit = affected_by_cover1(p, size, 0x80);
-            if (hit != 0) { cl = 0x0a; goto emit; }
+            coverage_hit = affected_by_cover1(cell_ptr, footprint_size, 0x80);
+            if (coverage_hit != 0) { land_value_cap = 0x0a; goto emit; }
 
-            hit = affected_by_cover2(p, size, 0x10);
-            if (hit != 0) { cl = 0x10; goto emit; }
+            coverage_hit = affected_by_cover2(cell_ptr, footprint_size, 0x10);
+            if (coverage_hit != 0) { land_value_cap = 0x10; goto emit; }
 
-            hit = affected_by_cover2(p, size, 0x01);
-            if (hit != 0) { cl = 0x18; goto emit; }
+            coverage_hit = affected_by_cover2(cell_ptr, footprint_size, 0x01);
+            if (coverage_hit != 0) { land_value_cap = 0x18; goto emit; }
 
-            hit = affected_by_cover2(p, size, 0x20);
-            if (hit != 0) { cl = 0x1a; goto emit; }
+            coverage_hit = affected_by_cover2(cell_ptr, footprint_size, 0x20);
+            if (coverage_hit != 0) { land_value_cap = 0x1a; goto emit; }
 
-            hit = affected_by_cover2(p, size, 0x08);
-            if (hit != 0) { cl = 0x1a; goto emit; }
+            coverage_hit = affected_by_cover2(cell_ptr, footprint_size, 0x08);
+            if (coverage_hit != 0) { land_value_cap = 0x1a; goto emit; }
 
-            hit = affected_by_cover2(p, size, 0x04);
-            if (hit != 0) { cl = 0x1e; goto emit; }
+            coverage_hit = affected_by_cover2(cell_ptr, footprint_size, 0x04);
+            if (coverage_hit != 0) { land_value_cap = 0x1e; goto emit; }
 
-            hit = affected_by_cover2(p, size, 0x02);
-            if (hit != 0) { cl = 0x22; goto emit; }
+            coverage_hit = affected_by_cover2(cell_ptr, footprint_size, 0x02);
+            if (coverage_hit != 0) { land_value_cap = 0x22; goto emit; }
 
-            hit = affected_by_cover1(p, size, 0x40);
-            if (hit != 0) { cl = 0x28; goto emit; }
+            coverage_hit = affected_by_cover1(cell_ptr, footprint_size, 0x40);
+            if (coverage_hit != 0) { land_value_cap = 0x28; goto emit; }
 
-            cl = 0x40;
+            land_value_cap = 0x40;
         emit:
-            rank = ((signed char *)city_map)[cm_sptr + 0xf];
-            if (cl < rank) ((unsigned char *)city_map)[cm_sptr + 0xf] = cl;
+            current_land_value = ((signed char *)city_map)[cm_sptr + 0xf];
+            if (land_value_cap < current_land_value) ((unsigned char *)city_map)[cm_sptr + 0xf] = land_value_cap;
         }
     }
 }
@@ -2346,14 +2346,14 @@ int get_pop_level(void)
 void check_goods_in_region_warehouses(void)
 {
     int i;
-    int sx;
+    int col_idx;
     unsigned char delivered_now;
-    int t;
-    unsigned char idx;
-    unsigned char kind;
-    unsigned char unit;
-    unsigned char unit2;
-    int d;
+    int supply_capacity;
+    unsigned char goods_idx;
+    unsigned char building_kind;
+    unsigned char remaining_unit;
+    unsigned char warehouse_gfx_idx;
+    int delivered_count;
 
     if (c2inf.peace_mode) {
         for (i = 0; i < 16; i++) {
@@ -2373,40 +2373,40 @@ void check_goods_in_region_warehouses(void)
 
     i = 0; cm_sptr = 0;
     for (; i < 60; i++) {
-        for (sx = 0; sx < 60; sx++, cm_sptr += 8) {
-            kind = ((unsigned char *)region_map)[cm_sptr];
-            if (kind == 0xd4) {
+        for (col_idx = 0; col_idx < 60; col_idx++, cm_sptr += 8) {
+            building_kind = ((unsigned char *)region_map)[cm_sptr];
+            if (building_kind == 0xd4) {
                 delivered_now = ((unsigned char *)region_map)[cm_sptr + 7] & 0x0f;
-                idx = ((unsigned char *)region_map)[cm_sptr + 7] & 0xf0;
-                idx >>= 4;
-                idx &= 0xf;
-                industry[idx].count++;
+                goods_idx = ((unsigned char *)region_map)[cm_sptr + 7] & 0xf0;
+                goods_idx >>= 4;
+                goods_idx &= 0xf;
+                industry[goods_idx].count++;
                 if (delivered_now != 0) {
-                    industry[idx].status = 2;
-                    unit = industry[idx].unit_size;
-                    if (delivered_now <= unit) {
-                        unit -= delivered_now;
-                        industry[idx].delivered += delivered_now;
+                    industry[goods_idx].status = 2;
+                    remaining_unit = industry[goods_idx].unit_size;
+                    if (delivered_now <= remaining_unit) {
+                        remaining_unit -= delivered_now;
+                        industry[goods_idx].delivered += delivered_now;
                         delivered_now = 0;
                     } else {
-                        delivered_now -= unit;
-                        industry[idx].delivered += unit;
-                        industry[idx].supply += delivered_now;
-                        unit = 0;
+                        delivered_now -= remaining_unit;
+                        industry[goods_idx].delivered += remaining_unit;
+                        industry[goods_idx].supply += delivered_now;
+                        remaining_unit = 0;
                     }
-                    industry[idx].unit_size = unit;
+                    industry[goods_idx].unit_size = remaining_unit;
                     ((unsigned char *)region_map)[cm_sptr + 7] &= 0xf0;
                     ((unsigned char *)region_map)[cm_sptr + 7] |= delivered_now;
-                    if (delivered_now < 0xf) unit2 = delivered_now + 11;
-                    else unit2 = 0x24;
-                    change_reg_sized(kind, unit2, 1, cm_sptr);
+                    if (delivered_now < 0xf) warehouse_gfx_idx = delivered_now + 11;
+                    else warehouse_gfx_idx = 0x24;
+                    change_reg_sized(building_kind, warehouse_gfx_idx, 1, cm_sptr);
                 }
             } } }
 
     for (i = 0; i < 16; i++) {
-        d = industry[i].delivered;
-        t = industry[i].has_supply;
-        if (t) industry[i].city_supply = valueDIVtotal(d, t);
+        delivered_count = industry[i].delivered;
+        supply_capacity = industry[i].has_supply;
+        if (supply_capacity) industry[i].city_supply = valueDIVtotal(delivered_count, supply_capacity);
         else industry[i].city_supply = 0;
     }
 }

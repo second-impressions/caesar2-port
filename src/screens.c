@@ -2710,27 +2710,27 @@ void show_ov_legend_panel(void)
 // Draw three vertically stacked legend entries with ascending captions.
 // FUNCTION: C2 0x62634
 // FUNCTION: C2WIN 0x0042a5f3
-void place_3_legend_blocks(int p1, int p2, int p3, int p4)
+void place_3_legend_blocks(int caption_idx, int top_gfx_idx, int middle_gfx_idx, int bottom_gfx_idx)
 {
-    place_legend_block(p2, 0x1e8, 0x92);
-    place_legend_block(p3, 0x1e8, 0xa6);
-    place_legend_block(p4, 0x1e8, 0xba);
-    font_list(0x35, p1,     0x200, 0x94, font1, 0x10);
-    font_list(0x35, p1 + 1, 0x200, 0xa8, font1, 0x10);
-    font_list(0x35, p1 + 2, 0x200, 0xbc, font1, 0x10);
+    place_legend_block(top_gfx_idx, 0x1e8, 0x92);
+    place_legend_block(middle_gfx_idx, 0x1e8, 0xa6);
+    place_legend_block(bottom_gfx_idx, 0x1e8, 0xba);
+    font_list(0x35, caption_idx,     0x200, 0x94, font1, 0x10);
+    font_list(0x35, caption_idx + 1, 0x200, 0xa8, font1, 0x10);
+    font_list(0x35, caption_idx + 2, 0x200, 0xbc, font1, 0x10);
 }
 
 // Draw three vertically stacked legend entries with descending captions.
 // FUNCTION: C2 0x626c9
 // FUNCTION: C2WIN 0x0042a6a1
-void place_3x_legend_blocks(int p1, int p2, int p3, int p4)
+void place_3x_legend_blocks(int caption_idx, int top_gfx_idx, int middle_gfx_idx, int bottom_gfx_idx)
 {
-    place_legend_block(p2, 0x1e8, 0x92);
-    place_legend_block(p3, 0x1e8, 0xa6);
-    place_legend_block(p4, 0x1e8, 0xba);
-    font_list(0x35, p1,     0x200, 0x94, font1, 0x10);
-    font_list(0x35, p1 - 1, 0x200, 0xa8, font1, 0x10);
-    font_list(0x35, p1 - 2, 0x200, 0xbc, font1, 0x10);
+    place_legend_block(top_gfx_idx, 0x1e8, 0x92);
+    place_legend_block(middle_gfx_idx, 0x1e8, 0xa6);
+    place_legend_block(bottom_gfx_idx, 0x1e8, 0xba);
+    font_list(0x35, caption_idx,     0x200, 0x94, font1, 0x10);
+    font_list(0x35, caption_idx - 1, 0x200, 0xa8, font1, 0x10);
+    font_list(0x35, caption_idx - 2, 0x200, 0xbc, font1, 0x10);
 }
 
 // Draw the nine-color legend used by the population-density overlay.
@@ -3537,61 +3537,61 @@ void get_queried_person(void)
 void show_detailed_query_panel(void)
 {
     int row;
-    int esi;
+    int text_idx;
     int colour;
 
     for (row = 0; row < 0xb; row++) {
         colour = 0x10;
-        if (row == 0) { if (q_aqua) esi = 2; else if (q_sub_aqua) esi = 3; else { esi = 4; colour = 0xb; } }
-        if (row == 1) { if (q_admin) esi = 5; else { esi = 6; colour = 0xb; } }
+        if (row == 0) { if (q_aqua) text_idx = 2; else if (q_sub_aqua) text_idx = 3; else { text_idx = 4; colour = 0xb; } }
+        if (row == 1) { if (q_admin) text_idx = 5; else { text_idx = 6; colour = 0xb; } }
         if (row == 2) {
-            if (q_security > 1) esi = 0x5c;
-            else if (q_patrol) esi = 7;
-            else if (q_security > 0) esi = 8;
-            else { esi = 9; colour = 0xb; }
+            if (q_security > 1) text_idx = 0x5c;
+            else if (q_patrol) text_idx = 7;
+            else if (q_security > 0) text_idx = 8;
+            else { text_idx = 9; colour = 0xb; }
         }
-        if (row == 3) { if (q_market) esi = 0xa; else { esi = 0xb; colour = 0xb; } }
-        if (row == 4) { if (q_grammaticus) esi = 0xc; else { esi = 0xd; colour = 0xb; } }
-        if (row == 5) { if (q_rhetor) esi = 0xe; else { esi = 0xf; colour = 0xb; } }
-        if (row == 6) esi = 0x10;
-        if (row == 7) { if (q_baths) esi = 0x11; else { esi = 0x12; colour = 0xb; } }
+        if (row == 3) { if (q_market) text_idx = 0xa; else { text_idx = 0xb; colour = 0xb; } }
+        if (row == 4) { if (q_grammaticus) text_idx = 0xc; else { text_idx = 0xd; colour = 0xb; } }
+        if (row == 5) { if (q_rhetor) text_idx = 0xe; else { text_idx = 0xf; colour = 0xb; } }
+        if (row == 6) text_idx = 0x10;
+        if (row == 7) { if (q_baths) text_idx = 0x11; else { text_idx = 0x12; colour = 0xb; } }
         if (row == 8) {
-            if (hospital_cover >= 0x64) esi = 0x13;
-            else { if (hospital_cover <= 0) esi = 0x54;
-                else esi = 0x14; colour = 0xb; }
+            if (hospital_cover >= 0x64) text_idx = 0x13;
+            else { if (hospital_cover <= 0) text_idx = 0x54;
+                else text_idx = 0x14; colour = 0xb; }
         }
         if (row == 9) {
-            if (library_cover >= 0x64) esi = 0x15;
-            else { if (library_cover <= 0) esi = 0x55;
-                else esi = 0x16; colour = 0xb; }
+            if (library_cover >= 0x64) text_idx = 0x15;
+            else { if (library_cover <= 0) text_idx = 0x55;
+                else text_idx = 0x16; colour = 0xb; }
         }
         if (row == 0xa) {
-            if (q_road_access) esi = 0x58; else { esi = 0x59; colour = 0xb; }
+            if (q_road_access) text_idx = 0x58; else { text_idx = 0x59; colour = 0xb; }
         }
 
         if (not_pertinant_statistic1(row) != 0) colour = 0x29;
 
         x_is = 0;
-        font_list(0x3d, esi, 0x38, row * 0x10 + 0xac, font1, colour);
+        font_list(0x3d, text_idx, 0x38, row * 0x10 + 0xac, font1, colour);
         if (row == 6) font_no(q_entertainment, 0x20, " ", x_is + 0x38, row * 0x10 + 0xac, font1, colour);
-        if (row == 8 && esi == 0x14) font_no(hospital_cover, 0x20, "%", x_is + 0x38, row * 0x10 + 0xac, font1, colour);
-        if (row == 9 && esi == 0x16) font_no(library_cover, 0x20, "%", x_is + 0x38, row * 0x10 + 0xac, font1, colour);
+        if (row == 8 && text_idx == 0x14) font_no(hospital_cover, 0x20, "%", x_is + 0x38, row * 0x10 + 0xac, font1, colour);
+        if (row == 9 && text_idx == 0x16) font_no(library_cover, 0x20, "%", x_is + 0x38, row * 0x10 + 0xac, font1, colour);
     }
 
     for (row = 0; row < 6; row++) {
         colour = 0x10;
         if (row == 0) {
-            if (q_business) { esi = 0x17; colour = 0xb; }
-            else if (q_business_low) { esi = 0x17; colour = 0xb; }
-            else if (q_business_vlow) { esi = 0x17; colour = 0xb; }
-            else esi = 0x18;
+            if (q_business) { text_idx = 0x17; colour = 0xb; }
+            else if (q_business_low) { text_idx = 0x17; colour = 0xb; }
+            else if (q_business_vlow) { text_idx = 0x17; colour = 0xb; }
+            else text_idx = 0x18;
         }
-        if (row == 1) { if (!q_barracks) esi = 0x1a; else { esi = 0x19; colour = 0xb; } }
-        if (row == 2) { if (!q_wall) esi = 0x1c; else { esi = 0x1b; colour = 0xb; } }
-        if (row == 3) { if (!q_prefecture) esi = 0x1e; else { esi = 0x1d; colour = 0xb; } }
-        if (row == 4) { if (!q_near_market) esi = 0x20; else { esi = 0x1f; colour = 0xb; } }
-        if (row == 5) { if (!q_gate) esi = 0x22; else { esi = 0x21; colour = 0xb; } }
-        font_list(0x3d, esi, 0xf8, row * 0x10 + 0xac, font1, colour);
+        if (row == 1) { if (!q_barracks) text_idx = 0x1a; else { text_idx = 0x19; colour = 0xb; } }
+        if (row == 2) { if (!q_wall) text_idx = 0x1c; else { text_idx = 0x1b; colour = 0xb; } }
+        if (row == 3) { if (!q_prefecture) text_idx = 0x1e; else { text_idx = 0x1d; colour = 0xb; } }
+        if (row == 4) { if (!q_near_market) text_idx = 0x20; else { text_idx = 0x1f; colour = 0xb; } }
+        if (row == 5) { if (!q_gate) text_idx = 0x22; else { text_idx = 0x21; colour = 0xb; } }
+        font_list(0x3d, text_idx, 0xf8, row * 0x10 + 0xac, font1, colour);
     }
 
     draw_a_dias(0x28, 0x160, 0x180, 0x28);
@@ -3946,36 +3946,36 @@ void get_region_query_info(void)
 // Report whether a detailed statistic applies to the current query type.
 // FUNCTION: C2 0x65001
 // FUNCTION: C2WIN 0x0042e5dc
-int not_pertinant_statistic1(int p1)
+int not_pertinant_statistic1(int statistic_idx)
 {
     if (q_type >= 0x82 && q_type < 0xa2) {
-        if (p1 != 0xa) goto not_pert;
+        if (statistic_idx != 0xa) goto not_pert;
         return 1;
     }
     if (q_type >= 0xae && q_type <= 0xb9) {
-        if (p1 == 0xa) goto not_pert;
+        if (statistic_idx == 0xa) goto not_pert;
         return 1;
     }
     if (q_type >= 0xdb && q_type <= 0xe2) {
-        if (p1 == 0)   goto not_pert;
+        if (statistic_idx == 0)   goto not_pert;
         return 1;
     }
     if (q_type >= 0xe3 && q_type <= 0xe4) {
-        if (p1 == 0xa) goto not_pert;
+        if (statistic_idx == 0xa) goto not_pert;
         return 1;
     }
     if (q_type == 0xfb || q_type == 0xf5) {
-        if (p1 == 0xa) return 0;
-        if (p1 == 1) return 0;
+        if (statistic_idx == 0xa) return 0;
+        if (statistic_idx == 1) return 0;
         return 1;
     }
     if (q_type == 0xfa) {
-        if (p1 == 0xa) goto not_pert;
+        if (statistic_idx == 0xa) goto not_pert;
         return 1;
     }
     if (q_type >= 0xfc) {
         if (q_type <= 0xff) {
-            if (p1 == 0xa) goto not_pert;
+            if (statistic_idx == 0xa) goto not_pert;
             return 1;
         }
         return 1;
