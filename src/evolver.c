@@ -1,17 +1,11 @@
-// D:\C2\CODE\evolver.c
-
 #include "c2_data.h"
 #include "c2_types.h"
 
-#ifndef _MSC_VER   /* MSVC win-oracle build force-includes c2_funcs.h (typed) */
+#ifndef _MSC_VER
 extern int affected_by_cover1(unsigned char *p, int range, char mask);
 extern int affected_by_cover2(unsigned char *p, int range, char mask);
 #endif
 extern unsigned char *get_ptr_to_corner(unsigned char *base_ptr, int size);
-
-/*
- * DO NOT prototype these -- PS's evolver.c does NOT #include c2_funcs.h,
- */
 
 int stretch_ofsets_2x2[4][3] = {
     { 20, 1620, 1600 },
@@ -78,29 +72,11 @@ struct int_delta_rec putouts4[16] = {
     { -1, 1 },
     { -1, 0 }
 };
-/*
- * so these callees are declared IMPLICITLY (K&R `int f()`).  For the
- * `void` helpers that means the caller keeps treating EAX as a live
- * return def after the call, which is load-bearing for register
- * allocation.  Adding the real `void` prototype changes the caller's
- * regalloc and REGRESSES byte-exact siblings -- proven: adding
- * `extern void change_sized(int,int,int,int);` breaks the byte-exact
- * evolve_water_table (ir 0 -> 1) while market_image stays exact.  The
- * int-returning ones (get_reg_buildings_in_radius / get_pop_level)
- * happen to match the implicit `int` anyway.  Kept here, commented, so
- * no future session re-adds them:
- *
- *   extern void change_sized(int bk, int color, int size, int sptr);
- *   extern void change_reg_sized(int rm_byte, int color, int size, int rm_offset);
- *   extern void fill_warehouses_with(int x, int y, int amount, int goods, int refresh);
- *   extern int  get_reg_buildings_in_radius(int x, int y, int span, int radius, unsigned char building_kind);
- */
 
-// FUNCTION: C2 0x3FA14
-// WIN: 0x00461b10
-// Lines 63–71
-//
-// Reset every per-tick evolution counter to 0 and prime the region-warehouse inventory at game start / load.
+// Reset every per-tick evolution counter to 0 and prime the region-warehouse inventory at game
+// start / load.
+// FUNCTION: C2 0x3fa14
+// FUNCTION: C2WIN 0x00461b10
 void initiate_evolution(void)
 {
     evolve_row = 0;
@@ -111,15 +87,9 @@ void initiate_evolution(void)
     check_goods_in_region_warehouses();
 }
 
-// FUNCTION: C2 0x3FA3C
-// WIN: 0x00461b52
-// Lines 73–236
-//
-// Master tick dispatcher driven by `evolve_clock`.  Sets the per-subsystem debar gates, then
-// routes the clock value to the appropriate phase: per-row cell evolve at the start,
-// then the `evolve_water_supply_baths_industry` / security / amenity / water-table /
-// land-value / forum / fort / security / industrial / fire+plague / shell / census
-// passes, ending with the region-evolution and yearly housekeeping.
+// Master tick dispatcher driven by `evolve_clock`.
+// FUNCTION: C2 0x3fa3c
+// FUNCTION: C2WIN 0x00461b52
 void citymap_evolution(void)
 {
     if (evolve_clock <= 0x50) {
@@ -211,13 +181,10 @@ void citymap_evolution(void)
     setup_map_screen_refresh();
 }
 
-// FUNCTION: C2 0x3FF68
-// WIN: 0x00462296
-// Lines 240–261
-//
-// Run every per-row pass once across the whole 80x80 map so the city's coverage flags reflect
-// the current building layout (used after a load or a screen swap).  Restores `evolve_clock`
-// to a sensible phase afterwards.
+// Run every per-row pass once across the whole 80x80 map so the city's coverage flags reflect the
+// current building layout (used after a load or a screen swap).
+// FUNCTION: C2 0x3ff68
+// FUNCTION: C2WIN 0x00462296
 void evolve_to_current_fabric(void)
 {
     int t = evolve_clock;
@@ -241,12 +208,10 @@ void evolve_to_current_fabric(void)
     }
 }
 
-// FUNCTION: C2 0x3FFFF
-// WIN: 0x00462355
-// Lines 264–287
-//
-// Advance the in-game clock by one tick: bumps week/month/year counters, calls
-// `monthly_update` / `yearly_update` / `act_do_year_end` at the appropriate boundaries.
+// Advance the in-game clock by one tick: bumps week/month/year counters, calls `monthly_update` /
+// `yearly_update` / `act_do_year_end` at the appropriate boundaries.
+// FUNCTION: C2 0x3ffff
+// FUNCTION: C2WIN 0x00462355
 void update_time(void)
 {
     get_population_growth_factor();
@@ -280,12 +245,10 @@ void update_time(void)
     act_do_year_end();
 }
 
-// FUNCTION: C2 0x400D0
-// WIN: 0x00462456
-// Lines 289–313
-//
 // Once-per-month bookkeeping: random event, slave welfare/costs, salary, region/city trouble,
 // auto-conquest, plus the emperor-reply and emperor-warning reminder messages.
+// FUNCTION: C2 0x400d0
+// FUNCTION: C2WIN 0x00462456
 void monthly_update(void)
 {
     game_state = 0;
@@ -312,12 +275,10 @@ void monthly_update(void)
     }
 }
 
-// FUNCTION: C2 0x4016E
-// WIN: 0x0046250c
-// Lines 315–334
-//
 // Once-per-year bookkeeping: end-of-year accounts, new tribute target, push the year's
 // population/denarii/tax totals into the history graph and roll the "this year" snapshots.
+// FUNCTION: C2 0x4016e
+// FUNCTION: C2WIN 0x0046250c
 void yearly_update(void)
 {
     year_end_accounts();
@@ -338,12 +299,10 @@ void yearly_update(void)
     this_years_ind_tax = account_ind_tax;
 }
 
+// Per-row coverage pass for reservoirs (kind 0xbe), industries (0xfc..0xff) and businesses (0xfa):
+// write the appropriate water-supply / industry / baths flag bits via `flag_range`.
 // FUNCTION: C2 0x40200
-// WIN: 0x004625a8
-// Lines 338–366
-//
-// Per-row coverage pass for reservoirs (kind 0xbe), industries (0xfc..0xff) and businesses
-// (0xfa): write the appropriate water-supply / industry / baths flag bits via `flag_range`.
+// FUNCTION: C2WIN 0x004625a8
 void evolve_water_supply_baths_industry(int rows)
 {
     int yi;
@@ -371,13 +330,11 @@ void evolve_water_supply_baths_industry(int rows)
     }
 }
 
+// Per-row water-table pass: stamp water-coverage flags around reservoirs / wells / fountains and
+// tick the supply cooldown on baths/fountains, swapping their sprites between supplied and
+// unsupplied variants as the trouble rate dictates.
 // FUNCTION: C2 0x40327
-// WIN: 0x0046277b
-// Lines 371–442
-//
-// Per-row water-table pass: stamp water-coverage flags around reservoirs / wells / fountains
-// and tick the supply cooldown on baths/fountains, swapping their sprites between
-// supplied and unsupplied variants as the trouble rate dictates.
+// FUNCTION: C2WIN 0x0046277b
 void evolve_water_table(int rows)
 {
     unsigned char supplied;
@@ -458,12 +415,10 @@ void evolve_water_table(int rows)
         }
 }
 
+// Per-row security-coverage pass: stamp prefecture / fort / wall / forum coverage flag bits around
+// their source buildings via `flag_range`.
 // FUNCTION: C2 0x40617
-// WIN: 0x00462bda
-// Lines 446–472
-//
-// Per-row security-coverage pass: stamp prefecture / fort / wall / forum coverage flag bits
-// around their source buildings via `flag_range`.
+// FUNCTION: C2WIN 0x00462bda
 void evolve_security_cover(int rows)
 {
     int row;
@@ -500,12 +455,10 @@ void evolve_security_cover(int rows)
     }
 }
 
-// FUNCTION: C2 0x4077B
-// WIN: 0x00462e70
-// Lines 475–525
-//
-// Per-row amenity-coverage pass: stamp temple / school / hospital / theatre / arena radius
-// flags via `flag_range3` (the variant that also writes the per-tier rank bits).
+// Per-row amenity-coverage pass: stamp temple / school / hospital / theatre / arena radius flags
+// via `flag_range3` (the variant that also writes the per-tier rank bits).
+// FUNCTION: C2 0x4077b
+// FUNCTION: C2WIN 0x00462e70
 void evolve_amenity_cover(int rows)
 {
     int row;
@@ -554,14 +507,11 @@ void evolve_amenity_cover(int rows)
     }
 }
 
-// FUNCTION: C2 0x40AC5
-// WIN: 0x004632ce
-// Lines 530–790
-//
-//
-// Per-row land-value pass.  Walks each cell, looks up its base land-value delta + radius
-// from `house_lv_effect` / `buildings_lv_effect` / `forum_lv_effect` / `temple_lv_effect`,
-// stamps the contribution via `change_lv`, and remembers the city-wide top spot.
+// Per-row land-value pass. Walks each cell, looks up its base land-value delta + radius from
+// `house_lv_effect` / `buildings_lv_effect` / `forum_lv_effect` / `temple_lv_effect`, stamps the
+// contribution via `change_lv`, and remembers the city-wide top spot.
+// FUNCTION: C2 0x40ac5
+// FUNCTION: C2WIN 0x004632ce
 void evolve_land_value(int rows)
 {
     int row;
@@ -774,23 +724,11 @@ void evolve_land_value(int rows)
     }
 }
 
-// FUNCTION: C2 0x41138
-// WIN: 0x00463f66
-// Lines 793–969
-//
 // Per-row land-value cap: for every cell, derive an upper-bound rank `cl` from the surrounding
-// amenity / water / security / hospital / library coverage and clamp the cell's `+0xf`
-// land-value rank to it.
-//
-// Byte-exact (2026-07-11): PS L868 keeps `mov bh,al; inc bh; mov [slot],bh`.
-// A plain conditional increment reaches the same pre-compression IL, but Watcom's
-// final LdStCompress sees the move adjacent in chain order and folds it to `inc al`.
-// The explicit in-place byte normalization below leaves another move on the far
-// side of the increment in chain order (compress `prevkind=3`, `nextkind=3`, no
-// fuse verdict), while layout keeps the three instructions byte-adjacent.  Packing
-// the two source statements onto one line also matches PS's single L868 mark.
-// `line-compare` has no direction divergence; its only RC-only mark is the unrelated
-// outer-loop increment at +0x46a.
+// amenity / water / security / hospital / library coverage and clamp the cell's `+0xf` land-value
+// rank to it.
+// FUNCTION: C2 0x41138
+// FUNCTION: C2WIN 0x00463f66
 void cap_land_value(int rows)
 {
     unsigned char hit;
@@ -963,12 +901,10 @@ void cap_land_value(int rows)
     }
 }
 
-// FUNCTION: C2 0x415BB
-// WIN: 0x004647a0
-// Lines 974–1020
-//
-// Per-row pass for forum cells (0xae..0xb9): tick the shopper-spawn cooldown and emit
-// citizens via `put_out_a` once the population allows it.
+// Per-row pass for forum cells (0xae..0xb9): tick the shopper-spawn cooldown and emit citizens via
+// `put_out_a` once the population allows it.
+// FUNCTION: C2 0x415bb
+// FUNCTION: C2WIN 0x004647a0
 void evolve_forum_activity(int rows)
 {
     unsigned char flags;
@@ -1022,12 +958,10 @@ void evolve_forum_activity(int rows)
     }
 }
 
-// FUNCTION: C2 0x4176E
-// WIN: 0x00464a1f
-// Lines 1024–1063
-//
-// Per-row pass for fort cells (0xbf): tick the soldier-spawn cooldown, find a nearby enemy
-// citizen and dispatch a soldier to engage it.
+// Per-row pass for fort cells (0xbf): tick the soldier-spawn cooldown, find a nearby enemy citizen
+// and dispatch a soldier to engage it.
+// FUNCTION: C2 0x4176e
+// FUNCTION: C2WIN 0x00464a1f
 void evolve_fort_activity(int rows)
 {
     int row;
@@ -1069,12 +1003,10 @@ void evolve_fort_activity(int rows)
     }
 }
 
-// FUNCTION: C2 0x418D9
-// WIN: 0x00464c75
-// Lines 1068–1133
-//
-// Per-row pass for prefecture (0xe3) and watch-tower (0xe4) cells: tick the patrol cooldown
-// and spawn the next patrol citizen via `put_out_a`.
+// Per-row pass for prefecture (0xe3) and watch-tower (0xe4) cells: tick the patrol cooldown and
+// spawn the next patrol citizen via `put_out_a`.
+// FUNCTION: C2 0x418d9
+// FUNCTION: C2WIN 0x00464c75
 void evolve_security_activity(int rows)
 {
     int row;
@@ -1145,23 +1077,11 @@ void evolve_security_activity(int rows)
 }
 
 
-// FUNCTION: C2 0x41B49
-// WIN: 0x0046503e
-// Lines 1137–1215
-//
 // Per-row pass for markets (0xfc..0xff) and businesses (0xfa): refresh the market sprite via
-// `market_image`, recompute business supply via `business_output`, then spawn the next
-// shopper / trader citizen and record its envoy slot in the cell.
-//
-// EXACT (2026-07-11): Rule 121 duplicated-tail rover advance.  The old recovery routed
-// both activity arms through an invented `writeback` label and used inverted `occ` guards;
-// WIN /Od showed one loop-increment funnel, nested `occ == 0` arms, and four source-level
-// writeback statements duplicated in each arm.  Restoring that shape lets Watcom ComTail
-// merge the identical suffixes back to the SAME emitted CFG, but their pre-merge block
-// births move the first market cooldown spill-reload from RC AL to PS CL.  That one scratch
-// pick self-heals the full 11-byte byte-register cascade: 192/192 register-blind -> exact.
-// `line-compare` has no direction divergence (two harmless RC-only marks at +0x16a/+0x2dd);
-// WIN struct-diff also drops 44 -> 21.
+// `market_image`, recompute business supply via `business_output`, then spawn the next shopper /
+// trader citizen and record its envoy slot in the cell.
+// FUNCTION: C2 0x41b49
+// FUNCTION: C2WIN 0x0046503e
 void evolve_industrial_activity(int rows)
 {
     unsigned char kind;
@@ -1246,12 +1166,10 @@ void evolve_industrial_activity(int rows)
     }
 }
 
-// FUNCTION: C2 0x41E3A
-// WIN: 0x004654b5
-// Lines 1217–1223
-//
-// Detach the previous envoy citizen from the cell at `cm_sptr` so a new one can take its
-// slot: drives the old envoy's state to 2 (go-home) if it is still pointing back here.
+// Detach the previous envoy citizen from the cell at `cm_sptr` so a new one can take its slot:
+// drives the old envoy's state to 2 (go-home) if it is still pointing back here.
+// FUNCTION: C2 0x41e3a
+// FUNCTION: C2WIN 0x004654b5
 void remove_envoy(void)
 {
     citizen_a = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).industrial;
@@ -1261,12 +1179,10 @@ void remove_envoy(void)
     }
 }
 
-// FUNCTION: C2 0x41E7E
-// WIN: 0x0046553b
-// Lines 1225–1257
-//
-// Pick the market-tier sprite for the cell at `cm_sptr` based on its current shopper-count
-// state, and slowly drain the two state nibbles toward 0 on every second tick.
+// Pick the market-tier sprite for the cell at `cm_sptr` based on its current shopper-count state,
+// and slowly drain the two state nibbles toward 0 on every second tick.
+// FUNCTION: C2 0x41e7e
+// FUNCTION: C2WIN 0x0046553b
 void market_image(void)
 {
     unsigned char shape = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
@@ -1299,13 +1215,11 @@ void market_image(void)
     }
 }
 
-// FUNCTION: C2 0x41F63
-// WIN: 0x004656e6
-// Lines 1259–1336
-//
 // Recompute a business cell's production tier for the current month from the surrounding
-// population, supply pipeline, empire connections and city stockpile.  Writes the new tier
-// back into the cell's `building` byte.
+// population, supply pipeline, empire connections and city stockpile. Writes the new tier back
+// into the cell's `building` byte.
+// FUNCTION: C2 0x41f63
+// FUNCTION: C2WIN 0x004656e6
 void business_output(int col, int y)
 {
   unsigned char flags9 = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building;
@@ -1454,13 +1368,11 @@ void business_output(int col, int y)
   }
 }
 
+// Per-row pass that ticks down fire / plague timers, spreads them to a neighbour in the rolling
+// random direction, and re-evaluates unrest on housing cells (spawning a riot citizen and
+// destroying the house once unrest tips over 0xf).
 // FUNCTION: C2 0x42204
-// WIN: 0x00465bbb
-// Lines 1340–1446
-//
-// Per-row pass that ticks down fire / plague timers, spreads them to a neighbour in the
-// rolling random direction, and re-evaluates unrest on housing cells (spawning a riot
-// citizen and destroying the house once unrest tips over 0xf).
+// FUNCTION: C2WIN 0x00465bbb
 void spread_fire_and_plague_and_unrest(int rows)
 {
     int row;
@@ -1586,14 +1498,11 @@ next:
     }
 }
 
-// FUNCTION: C2 0x42666
-// WIN: 0x00466232
-// Lines 1465–1491
-//
 // Helper used by every "spawn a citizen" call site: pick a starting offset from one of the
-// `putoutsN[]` slot tables, find the first free direction that succeeds, and create the
-// citizen there.  Returns the next-free slot index (so the caller can resume next tick)
-// or 0 if no slot is available.
+// `putoutsN[]` slot tables, find the first free direction that succeeds, and create the citizen
+// there.
+// FUNCTION: C2 0x42666
+// FUNCTION: C2WIN 0x00466232
 int put_out_a(char type, char x, char y, int unused, char start_idx,
               char mask, char is_barb)
 {
@@ -1656,27 +1565,9 @@ int put_out_a(char type, char x, char y, int unused, char start_idx,
   return 0;
 }
 
+// Update one city-map row's services, fire risk, and building evolution state.
 // FUNCTION: C2 0x42790
-// WIN: 0x0046640d
-// Lines 1495–1662
-//
-// Once-per-row pass driven by `evolve_clock`: ticks down the amenity-decay nibbles, computes
-// the per-house water-supply / hospital tier, accumulates fire-zone heat, and — when the
-// cell's evolve cooldown is 0 — dispatches to the per-kind evolve/devolve helpers (house,
-// well, fountain, baths, forum, temple, plaza).
-//
-// BYTE-EXACT 2026-07-10 (was ir 1/116 "ComTail residue", 1150bd).  The fix was the
-// win-oracle shape (Hard Rule #7), NOT the t1/t2 ternary the 2026-07-07/09 sessions
-// probed: CAESAR2.EXE shows compound `water_ok -= 1/-= 2` arms with a nested
-// if/else in the >= 0x4b arm and NO t1/t2 temps -- the "speculative pre-compute"
-// (`mov dl,al; sub dl,2` before `cmp 0x64`) is Watcom's OWN cross-arm CSE hoist of
-// the compound forms, not evidence of source temps.  Also win-witnessed: the `b`
-// temp for city_qptr[0xb], `e2 = extra & 2` (not `extra &= 2`), and a chained
-// `odd = tick3 = tick4 = rand_ok = 0;` init with a dead `odd` flag from
-// `evolve_tick4 & 1` (Watcom eliminates it; byte-neutral but win-faithful).
-// All decls are C89 top-of-function; the decl ORDER is load-bearing (Rule 107/115:
-// m0c/b_state placement decides the m0c-vs-amenity_c0 spill pick and the
-// tick4/rand_ok slot order) -- found by `c2 sweep` composed decl perms.
+// FUNCTION: C2WIN 0x0046640d
 void evolve_a_cm_row(void)
 {
     unsigned char fire_row_off;
@@ -1843,12 +1734,10 @@ void evolve_a_cm_row(void)
     }
 }
 
-// FUNCTION: C2 0x42EAC
-// WIN: 0x0046707d
-// Lines 1667–1688
-//
-// Step a multi-tier building (well / fountain / baths / forum / temple) down one tier and
-// re-stamp its sprite via `change_sized`.
+// Step a multi-tier building (well / fountain / baths / forum / temple) down one tier and re-stamp
+// its sprite via `change_sized`.
+// FUNCTION: C2 0x42eac
+// FUNCTION: C2WIN 0x0046707d
 void devolve_a_building(
     int count, int size, unsigned char kind, unsigned char color_base,
     unsigned char color_step)
@@ -1874,12 +1763,10 @@ void devolve_a_building(
                  city_ptr + evolve_col * 20);
 }
 
-// FUNCTION: C2 0x42F46
-// WIN: 0x0046716d
-// Lines 1693–1703
-//
-// Step a multi-tier building (well / fountain / baths / forum / temple) up one tier and
-// re-stamp its sprite via `change_sized`.
+// Step a multi-tier building (well / fountain / baths / forum / temple) up one tier and re-stamp
+// its sprite via `change_sized`.
+// FUNCTION: C2 0x42f46
+// FUNCTION: C2WIN 0x0046716d
 void evolve_a_building(
     int count, int size, unsigned char kind, unsigned char color_base,
     unsigned char color_step)
@@ -1909,13 +1796,10 @@ void evolve_a_building(
     return;
 }
 
-// FUNCTION: C2 0x42F5D
-// WIN: 0x0046725d
-// Lines 1725–1736
-//
-// Drop a house from tier `n` to tier `n-1`, pulling the size down to the previous tier's
-// footprint (and padding the freed cells with domus stubs) or removing the house entirely
-// at tier 0.
+// Drop a house from tier `n` to tier `n-1`, pulling the size down to the previous tier's footprint
+// (and padding the freed cells with domus stubs) or removing the house entirely at tier 0.
+// FUNCTION: C2 0x42f5d
+// FUNCTION: C2WIN 0x0046725d
 int devolve_a_house(int n)
 {
     unsigned int curr;
@@ -1935,12 +1819,10 @@ int devolve_a_house(int n)
     return 1;
 }
 
-// FUNCTION: C2 0x42FA5
-// WIN: 0x004672d2
-// Lines 1738–1754
-//
-// Promote a house from tier `n` to tier `n+1`.  If the next tier is larger, first checks
+// Promote a house from tier `n` to tier `n+1`. If the next tier is larger, first checks
 // `stretch_house` can grow into the neighbouring cells; bails out otherwise.
+// FUNCTION: C2 0x42fa5
+// FUNCTION: C2WIN 0x004672d2
 int evolve_a_house(int n)
 {
     unsigned int curr;
@@ -1961,12 +1843,10 @@ int evolve_a_house(int n)
     return 1;
 }
 
-// FUNCTION: C2 0x42FF4
-// WIN: 0x0046736a
-// Lines 1758–1775
-//
-// Look for a free 2x2 or 3x3 footprint adjacent to the current cell so a house can grow into
-// the larger tier.  Returns the winning orientation (1..4) or 0 if no footprint fits.
+// Look for a free 2x2 or 3x3 footprint adjacent to the current cell so a house can grow into the
+// larger tier. Returns the winning orientation (1..4) or 0 if no footprint fits.
+// FUNCTION: C2 0x42ff4
+// FUNCTION: C2WIN 0x0046736a
 int stretch_house(int n, int variant)
 {
     if (variant == 2) {
@@ -1983,12 +1863,10 @@ int stretch_house(int n, int variant)
     return 0;
 }
 
-// FUNCTION: C2 0x430AF
-// WIN: 0x004674b5
-// Lines 1777–1798
-//
-// Test whether the current house can grow into a specific 2x2 orientation: every neighbour
-// in `stretch_ofsets_2x2[orient]` must be empty or a same-tier house belonging to us.
+// Test whether the current house can grow into a specific 2x2 orientation: every neighbour in
+// `stretch_ofsets_2x2[orient]` must be empty or a same-tier house belonging to us.
+// FUNCTION: C2 0x430af
+// FUNCTION: C2WIN 0x004674b5
 int stretch_to_2x2_house(int p1, int unused, int orient)
 {
     unsigned char *cell;
@@ -2018,22 +1896,10 @@ int stretch_to_2x2_house(int p1, int unused, int orient)
     return 1;
 }
 
-// FUNCTION: C2 0x4313D
-// WIN: 0x004675ef
-// Lines 1800–1836
-//
-// Test whether the current house can grow into a specific 3x3 orientation, and reduce any
-// villa cells found in that footprint back to domus stubs.
-//
-// BYTE-EXACT 2026-07-11.  The first loop deliberately uses the flat pointer form with
-// `(orient * 5) + i`; the second uses the 2D subscript.  Those associations reproduce
-// PS's two distinct index trees.  The corrected temp map plus WIN's nine stack slots
-// exposed the real final-loop locals: the masked value starts in `dy`, is copied to `dx`,
-// and both are updated in place; the ninth local is `cell`, not an invented `off`.  That
-// keeps `dy` in EBX through the *1600 chain and removes RC's final `mov eax,ebx`.
-// Replacing `off` changed the temp-birth order, so commuting the flat index terms was also
-// required to restore PS L1813.  `line-compare` reports no direction divergence.  Keep all
-// declarations at function scope in strict-C89 form.
+// Test whether the current house can grow into a specific 3x3 orientation, and reduce any villa
+// cells found in that footprint back to domus stubs.
+// FUNCTION: C2 0x4313d
+// FUNCTION: C2WIN 0x004675ef
 int stretch_to_3x3_house(int p1, int unused, int orient)
 {
     int toff;
@@ -2077,12 +1943,10 @@ int stretch_to_3x3_house(int p1, int unused, int orient)
     return 1;
 }
 
+// Stamp a `size`x`size` house of tier `n` onto the map starting from a chosen corner cell. Writes
+// the kind / edge / index / sprite bytes for every cell in the footprint.
 // FUNCTION: C2 0x43255
-// WIN: 0x00467804
-// Lines 1838–1866
-//
-// Stamp a `size`x`size` house of tier `n` onto the map starting from a chosen corner cell.
-// Writes the kind / edge / index / sprite bytes for every cell in the footprint.
+// FUNCTION: C2WIN 0x00467804
 void change_house(int n, int size, int variant)
 {
     int base = (unsigned char)house_gfxdat[n * 4];
@@ -2120,12 +1984,10 @@ void change_house(int n, int size, int variant)
     }
 }
 
-// FUNCTION: C2 0x4332A
-// WIN: 0x004679ae
-// Lines 1868–1891
-//
-// After shrinking a house from a `prev`x`prev` footprint, fill the freed L-shaped strip with
-// domus (kind 0x9b) stubs so the cells aren't left empty.
+// After shrinking a house from a `prev`x`prev` footprint, fill the freed L-shaped strip with domus
+// (kind 0x9b) stubs so the cells aren't left empty.
+// FUNCTION: C2 0x4332a
+// FUNCTION: C2WIN 0x004679ae
 void pad_house_with_domus(int prev)
 {
     int gfx;
@@ -2157,11 +2019,9 @@ void pad_house_with_domus(int prev)
     }
 }
 
-// FUNCTION: C2 0x433A1
-// WIN: 0x00467a9b
-// Lines 1893–1905
-//
 // Convert a 2x2 villa rooted at `cm` into four 1x1 domus cells.
+// FUNCTION: C2 0x433a1
+// FUNCTION: C2WIN 0x00467a9b
 void reduce_villa_to_domus(unsigned char *cm)
 {
     int cy;
@@ -2177,12 +2037,10 @@ void reduce_villa_to_domus(unsigned char *cm)
     }
 }
 
-// FUNCTION: C2 0x433D4
-// WIN: 0x00467b19
-// Lines 1907–1920
-//
-// Demolish the house at `city_qptr` back to dirt: clears all per-house flag bytes and resets
-// the cell's kind to plain ground (0x1a).
+// Demolish the house at `city_qptr` back to dirt: clears all per-house flag bytes and resets the
+// cell's kind to plain ground (0x1a).
+// FUNCTION: C2 0x433d4
+// FUNCTION: C2WIN 0x00467b19
 void remove_house(void)
 {
     city_qptr[0x00] = 0x1a;
@@ -2198,12 +2056,10 @@ void remove_house(void)
     city_qptr[0x05] = 0;
 }
 
-// FUNCTION: C2 0x43437
-// WIN: 0x00467be6
-// Lines 1923–1935
-//
 // Promote a plaza cell (kinds 0x7c..0x7e) to a higher tier based on its land-value rank `value`,
 // only on the even cells of the diamond pattern.
+// FUNCTION: C2 0x43437
+// FUNCTION: C2WIN 0x00467be6
 void evolve_a_plaza(signed char value, signed char old_kind, int x)
 {
     if ((evolve_row & 1) != 0) return;
@@ -2225,11 +2081,9 @@ void evolve_a_plaza(signed char value, signed char old_kind, int x)
     }
 }
 
-// FUNCTION: C2 0x434BB
-// WIN: 0x00467cc7
-// Lines 1941–1951
-//
 // Decay every entry in the 10x10 `fire_zones` heatmap one step toward 0 (capped at 2).
+// FUNCTION: C2 0x434bb
+// FUNCTION: C2WIN 0x00467cc7
 void clear_fire_zones(void)
 {
     int x;
@@ -2246,19 +2100,11 @@ void clear_fire_zones(void)
     }
 }
 
-// FUNCTION: C2 0x4350A
-// WIN: 0x00467d9c
-// Lines 1957–2002
-//
-// Per-row pass that propagates the wall-shadow / security value outward from walls
-// (terrain & 0x1e) in the rolling `shell_push_direction`.  Re-evaluates every cell's
-// `security` byte as it sweeps a single axis per call.
-//
-// The neighbour wall-test value is a SEPARATE local (neighbour_w), not a reuse of
-// max_local: splitting it drops max_local's savings (1210 -> 610) below inner's
-// (710), which flips the allocation order so inner takes EDX and max_local BL,
-// exactly PS's seats (the wall-branch phase and the loop-carried max_local are
-// disjoint, so neighbour_w shares BL).  This was the whole 41b EBX<->EDX residue.
+// Per-row pass that propagates the wall-shadow / security value outward from walls (terrain &
+// 0x1e) in the rolling `shell_push_direction`. Re-evaluates every cell's `security` byte as it
+// sweeps a single axis per call.
+// FUNCTION: C2 0x4350a
+// FUNCTION: C2WIN 0x00467d9c
 void push_shell(int rows)
 {
     int xstride;
@@ -2333,34 +2179,11 @@ void push_shell(int rows)
     }
 }
 
-// FUNCTION: C2 0x436AB
-// WIN: 0x00468079
-// Lines 2008–2214
-//
-// Per-row pass over the region map: evolves city tier sprites (kind 0x92, 0x97, 0x98..0x9b,
-// 0xd3), ticks down warehouse delivery flags, and pushes new goods deliveries into the
-// industry pipelines based on trader source and difficulty.
-//
-// Shape notes (2026-07-09, 1746bd -> 56bd): the inner for's increment clause carries
-// `cm_sptr += 8` (skip path is `continue`, NOT a trailing label stmt -- WIN funnel witness);
-// the difficulty pre-calc uses its own temp `t` (v owning it made v's whole-loop web spill,
-// wrecking every seat: PS has v=ESI, col=EDI, row=EBP, difficulty spilled); the e8-eb/ec-ef
-// map update is `x = v; x <<= 2;` (int x, WIN in-place-shl witness) + TWO compound RMWs on
-// the map byte (Rule 143 store-forwards them to one load / copy chain / one store); the
-// e0-e3/e4-e7 trader refill RMWs `trader` itself (no wkind intermediate, PS L2126-2129);
-// the ec-ef 0xd5 radius result lands in `t` (PS -d1 L2191/L2192 two marks + WIN iVar3).
-// SOLVED (2026-07-09, 56bd -> 0bd): the kind<->tier slot transposition (Rule 107,
-// shellsort-instability) fell to pure DECL ORDER after all -- but only a COMPOSED
-// two-swap permutation reaches it: t first / trader second-to-last (swap trader<->t)
-// PLUS skip before e3 / wkind late (swap wkind<->skip).  The earlier "decl-order is
-// inert" note held only for SINGLE swaps of the spilled pair; a full 503-variant
-// byte-oracle sweep (ForgeBuilder LE, docs/codegen-experiments/spell-verdict-audit.py
-// harness) found 9 single swaps reaching 6bd, and a second sweep on that baseline
-// found wkind<->skip closing the residual `mov dl,bh`-vs-`or` order flip at the e4-e7
-// trader refill.  Line-compare witness: the outer for is BRACELESS (both loop tails
-// attribute their -d1 mark to the inner `}` line -- Watcom marks for-increment/cond
-// insns with the closing-brace line); `if (...) stmt; else stmt;` packs at the
-// workcamps and 0xd5-radius sites; `cmu_count[4] = 0` sits on its own line.
+// Per-row pass over the region map: evolves city tier sprites (kind 0x92, 0x97, 0x98..0x9b, 0xd3),
+// ticks down warehouse delivery flags, and pushes new goods deliveries into the industry pipelines
+// based on trader source and difficulty.
+// FUNCTION: C2 0x436ab
+// FUNCTION: C2WIN 0x00468079
 void evolve_region(int rows)
 {
     int t;
@@ -2540,11 +2363,9 @@ void evolve_region(int rows)
         }
 }
 
-// FUNCTION: C2 0x43F9F
-// WIN: 0x00468d77
-// Lines 2216–2226
-//
 // Return the city population bracket (0..7) used to gate region-map growth.
+// FUNCTION: C2 0x43f9f
+// FUNCTION: C2WIN 0x00468d77
 int get_pop_level(void)
 {
     if (population > 12000) return 7;
@@ -2557,24 +2378,10 @@ int get_pop_level(void)
     return 0;
 }
 
-// FUNCTION: C2 0x44013
-// WIN: 0x00468e5d
-// Lines 2228–2296
-//
 // Walk the whole region map once and sum each industry's warehouse counts/supplies/deliveries.
-// Refreshes per-good sprites for warehouses still being unloaded.  In peace mode just
-// copies the static city-supply table.
-//
-// BYTE-EXACT (2026-07-12): the WIN /Od frame witnesses one `i` across all
-// three 16-loops and the outer 60-loop, an inner `sx`, and no early use of
-// the final-loop `t`.  The original peace branch writes the field directly
-// (`status = 0; status = i & 1; if (status) status++`), and the map walk is
-// two nested C89 `for` loops with `sx++, cm_sptr += 8` in the inner header.
-// Once those source identities were restored, Rule 115 made the function's
-// front-of-function declaration order load-bearing: i, sx, delivered_now,
-// t, idx, kind, unit, unit2, d seats kind in CL and closes the former 19/147b
-// allocator plateaus.  `line-compare` also proves the compact one-line
-// conditionals and shared `} } }` loop tail: 47/47 transitions, clean.
+// Refreshes per-good sprites for warehouses still being unloaded.
+// FUNCTION: C2 0x44013
+// FUNCTION: C2WIN 0x00468e5d
 void check_goods_in_region_warehouses(void)
 {
     int i;

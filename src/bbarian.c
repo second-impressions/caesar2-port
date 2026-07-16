@@ -1,33 +1,23 @@
-// D:\C2\CODE\bbarian.c
 
 #include "c2_data.h"
 
-/* ── TU-owned file-scope variables (PS.EXE _BSS, original declaration
-   order).  Recovered so the functional rebuild (`c2 rebuild`) links
-   self-sustained -- no auto-stubbed storage.  Extern decls: c2_data.h. */
+/* File-local state. */
 int revolt_size;
 int barb_ptr;
 int barb_entry_count;
 int barb_x;
 int barb_y;
-// FUNCTION: C2 0x52E1B
-// WIN: 0x00401384  (unverified)
-// Lines 82–82
-//
-// Shared no-op early-exit target for `region_trouble`.  Has no
-// effect at runtime; each `return` in region_trouble is compiled
-// as a branch into this `ret`.
+// Shared no-op early-exit target for `region_trouble`.
+// FUNCTION: C2 0x52e1b
+// FUNCTION: C2WIN 0x00401384
 void city_trouble(void)
 {
 }
 
-// FUNCTION: C2 0x52E1C
-// WIN: 0x0046e7c3
-// Lines 84–89
-//
-// Monthly trouble cascade: peace mode short-circuits; otherwise
-// roll each of revolt/raider/horde/war in turn, stopping on the
-// first one that fires.
+// Monthly trouble cascade: peace mode short-circuits; otherwise roll each of
+// revolt/raider/horde/war in turn, stopping on the first one that fires.
+// FUNCTION: C2 0x52e1c
+// FUNCTION: C2WIN 0x0046e7c3
 void region_trouble(void)
 {
     if (c2inf.peace_mode != 0) return;
@@ -37,13 +27,10 @@ void region_trouble(void)
     war_trouble();
 }
 
-// FUNCTION: C2 0x52FA2
-// WIN: 0x0046e82a
-// Lines 94–101
-//
-// Reset the five `months_since_last_*` dry-spell counters used by
-// the trouble-spawn timers (war / horde / raider / revolt /
-// city_attack).  Called once at the start of every new game.
+// Reset the five `months_since_last_*` dry-spell counters used by the trouble-spawn timers (war /
+// horde / raider / revolt / city_attack). Called once at the start of every new game.
+// FUNCTION: C2 0x52fa2
+// FUNCTION: C2WIN 0x0046e82a
 void init_region_trouble(void)
 {
     months_since_last_war           = 0;
@@ -53,13 +40,10 @@ void init_region_trouble(void)
     months_since_last_city_attack   = 0;
 }
 
-// FUNCTION: C2 0x52FC5
-// WIN: 0x0046e867
-// Lines 103–122
-//
-// Monthly rebel-army spawn.  On success, revolt_in_region() has
-// created an army at barb_x/barb_y; this routine fills its tribe and
-// troop counts, plays the uprising cue, and lowers Pax Romana.
+// Monthly rebel-army spawn. On success, revolt_in_region() has created an army at barb_x/barb_y;
+// this routine fills its tribe and troop counts, plays the uprising cue, and lowers Pax Romana.
+// FUNCTION: C2 0x52fc5
+// FUNCTION: C2WIN 0x0046e867
 int revolt_trouble(void)
 {
     months_since_last_revolt++;
@@ -85,18 +69,10 @@ int revolt_trouble(void)
     return 0;
 }
 
+// Monthly raider roll: bump the dry-spell counter, ask chance_of_attack(kind=1) whether a raid
+// lands this month, and (if so) ask raider_in_region() to nominate an attacking region.
 // FUNCTION: C2 0x53132
-// WIN: 0x0046eb23
-// Lines 125–142
-//
-// Monthly raider roll: bump the dry-spell counter, ask
-// chance_of_attack(kind=1) whether a raid lands this month, and
-// (if so) ask raider_in_region() to nominate an attacking region.
-// On success, stamp the newly-created army with the raiding tribe's
-// per-cohort body counts (tribe_to_troop_numbers × 3), sum them into
-// total_troops, queue the marching SFX, knock 12 months off
-// pax_romanum (clamped at 0) and reset the dry-spell counter.
-// Returns 1 on a raid, 0 on a quiet month.
+// FUNCTION: C2WIN 0x0046eb23
 int raider_trouble(void)
 {
     int   total;
@@ -129,18 +105,9 @@ int raider_trouble(void)
     return 0;
 }
 
-// FUNCTION: C2 0x5329D
-// WIN: 0x0046edd3
-// Lines 147–164
-//
-// Monthly horde roll — same shape as raider_trouble but for the
-// barbarian-horde event class.  Differences from a raid:
-//   * chance_of_attack(kind = 2)
-//   * pick the spawn region via barbarian_in_region()
-//   * scale tribe_to_troop_numbers ×6 (raid is ×3), i.e. a horde is
-//     twice the size of a raid drawn from the same tribe
-//   * pax_romanum -= 18 (raid is -12)
-//   * reset months_since_last_horde
+// Attempts to spawn a barbarian horde and scales its troops for the current difficulty.
+// FUNCTION: C2 0x5329d
+// FUNCTION: C2WIN 0x0046edd3
 int horde_trouble(void)
 {
     int total;
@@ -173,33 +140,9 @@ int horde_trouble(void)
     return 0;
 }
 
-// FUNCTION: C2 0x52E40
-// WIN: 0x0046f08d
-// Lines ~166–191 (defined HERE, after horde_trouble — the WIN build's
-// address order proves it: region 0x46e7c3 < revolt 0x46e867 < raider
-// 0x46eb23 < horde 0x46edd3 < war 0x46f08d).  In PS.EXE the BODY sits
-// at 0x52E40, directly behind region_trouble: the dispatcher's final
-// `war_trouble();` (line 90) is a call-before-ret, which Watcom's
-// OptPush transforms call+ret→jmp and then hauls the callee body to
-// the fall-through position; the hauled body keeps only the call
-// site's single L90 line mark.  This late definition is also why the
-// guard `je`s and the fall-off jmp tail-merge FORWARD-in-address /
-// backward-in-emission into revolt_trouble's return blocks (+0x169
-// return-0, +0x15c return-1), and why the CONST pool order is
-// uprise.wav (revolt) before marchb2.wav (raider) with no hack.
-//
-// Monthly war-trouble roll — same shape as raider_trouble /
-// horde_trouble but for a full empire-army incursion.
-// Differences from a raid:
-//   * chance_of_attack(kind = 3) with the 4th arg = 1 (the
-//     other two trouble types pass 0)
-//   * pick the spawn region via empire_in_region()
-//   * scale tribe_to_troop_numbers ×8 (raid is ×3, horde ×6)
-//   * pax_romanum -= 24 (raid -12, horde -18)
-//   * reset months_since_last_war
-//
-// Returns 1 when the war fired, 0 when the roll declined (the
-// dispatcher discards the result).
+// Attempts to start a foreign invasion based on difficulty and time since the last war.
+// FUNCTION: C2 0x52e40 REORDERED
+// FUNCTION: C2WIN 0x0046f08d
 int war_trouble(void)
 {
     int   total;
@@ -232,18 +175,9 @@ int war_trouble(void)
     return 0;
 }
 
-// FUNCTION: C2 0x5341A
-// WIN: 0x0046f33d
-// Lines 193–216
-//
-// Decide whether ``trouble_type`` should fire this month.
-//
-// The three skill_to_trouble_* tables are 4×4 int matrices
-// indexed [skill][trouble_type], i.e. each row is 16 bytes (4
-// ints) wide.
-//
-// param4 is unused inside the function but every caller passes
-// either 0 or 1.
+// Returns whether a monthly attack event passes its difficulty and cooldown checks.
+// FUNCTION: C2 0x5341a
+// FUNCTION: C2WIN 0x0046f33d
 int chance_of_attack(int trouble_type, int months_since,
                      int probe_only, int p4)
 {
@@ -273,21 +207,11 @@ int chance_of_attack(int trouble_type, int months_since,
     return 1;
 }
 
-// FUNCTION: C2 0x534FD
-// WIN: 0x0046f4d0
-// Lines 218–241
-//
-// Pick an attack direction for chance_of_attack.  region_borders is
-// laid out as 4 bytes per province (one per cardinal direction); a
-// neighbour kind in {6, 0xf, 0x12, 0x22} is considered hostile and
-// is selected if its empire[kind] entry is anything other than 6
-// (= friendly empire).  Returns 2 * dir for the matched direction
-// or 8 (= invalid, caller bails) when no direction qualifies.
-//
-//   * scan_all == 0: probe only one direction `dir`, taken straight
-//                    from chance_of_attack's caller-provided seed.
-//   * scan_all != 0: walk all four borders (overrides `dir`); the
-//                    returned direction is the first match.
+// Pick an attack direction for chance_of_attack. region_borders is laid out as 4 bytes per
+// province (one per cardinal direction); a neighbour kind in {6, 0xf, 0x12, 0x22} is considered
+// hostile and is selected if its empire[kind] entry is anything other than 6 (= friendly empire).
+// FUNCTION: C2 0x534fd
+// FUNCTION: C2WIN 0x0046f4d0
 int get_attackers(int dir, int scan_all)
 {
     int kind;
@@ -323,18 +247,11 @@ int get_attackers(int dir, int scan_all)
     return 8;
 }
 
-// FUNCTION: C2 0x5358C
-// WIN: 0x0046f5e3
-// Lines 244–268
-//
-// Spawn a raider army at one of the region's invasion points.  When
-// from_sea is non-zero, drop a sea-based raider (mode=1, state_idx
-// 0xe = sea-prowl); otherwise a land-based one (mode=2, state_idx 1
-// with wait_count 0x14).  The freshly created army gets
-// saved_state_idx=6, +0x94 (target_kind?) = 3, target_(x,y) zeroed,
-// and — sea variant only — a random low-bit at +0x30.  Notifies the
-// player via put_message(0x5b, 0x11, map_ref) and returns 1 on
-// success, 0 if no invasion point or the create_army call failed.
+// Spawn a raider army at one of the region's invasion points. When from_sea is non-zero, drop a
+// sea-based raider (mode=1, state_idx 0xe = sea-prowl); otherwise a land-based one (mode=2,
+// state_idx 1 with wait_count 0x14).
+// FUNCTION: C2 0x5358c
+// FUNCTION: C2WIN 0x0046f5e3
 int raider_in_region(int dirc, int from_sea)
 {
     int map_ref;
@@ -365,15 +282,11 @@ int raider_in_region(int dirc, int from_sea)
     return 1;
 }
 
+// Twin of raider_in_region but for barbarian armies: create_army with type=3, saved_state_idx=7,
+// target_kind=4 (vs raider 6/3), and the player notice message is 0x5d ("barbarians have invaded
+// ...").
 // FUNCTION: C2 0x53688
-// WIN: 0x0046f7fd
-// Lines 270–293
-//
-// Twin of raider_in_region but for barbarian armies: create_army with
-// type=3, saved_state_idx=7, target_kind=4 (vs raider 6/3), and the
-// player notice message is 0x5d ("barbarians have invaded ...").
-// The sea variant also stamps a random low-bit at +0x30; the land
-// variant omits the target_(x,y) clear that raider performs.
+// FUNCTION: C2WIN 0x0046f7fd
 int barbarian_in_region(int dirc, int from_sea)
 {
     int map_ref;
@@ -401,14 +314,10 @@ int barbarian_in_region(int dirc, int from_sea)
     return 1;
 }
 
+// Twin of barbarian_in_region but for hostile-empire armies (create_army type=2, message 0x5e).
+// Saved_state_idx = 7, target_kind = 4 — same as barbarian.
 // FUNCTION: C2 0x53776
-// WIN: 0x0046f9ce
-// Lines 295–318
-//
-// Twin of barbarian_in_region but for hostile-empire armies
-// (create_army type=2, message 0x5e).  Saved_state_idx = 7,
-// target_kind = 4 — same as barbarian.  Sea variant stamps the
-// random low-bit at +0x30 just like the other two flavours.
+// FUNCTION: C2WIN 0x0046f9ce
 int empire_in_region(int dirc, int from_sea)
 {
     int map_ref;
@@ -436,17 +345,10 @@ int empire_in_region(int dirc, int from_sea)
     return 1;
 }
 
+// Spawn a revolt army at (barb_x, barb_y) with revolt_size set from the region-points roll.
+// Returns 1 on success, 0 if the roll or the create_army call fails.
 // FUNCTION: C2 0x53861
-// WIN: 0x0046fb9f
-// Lines 320–330
-//
-// Spawn a revolt army at (barb_x, barb_y) with revolt_size set
-// from the region-points roll.  Returns 1 on success, 0 if the
-// roll or the create_army call fails.
-//
-// Sister signature to raider_in_region / barbarian_in_region /
-// empire_in_region: takes (dirc, from_sea) even though revolt
-// ignores them.  The caller (revolt_trouble) passes zeros.
+// FUNCTION: C2WIN 0x0046fb9f
 int revolt_in_region(int dirc, int from_sea)
 {
     (void)dirc;
@@ -462,18 +364,9 @@ int revolt_in_region(int dirc, int from_sea)
     return 1;
 }
 
-// FUNCTION: C2 0x538D6
-// WIN: 0x0046fc82
-// Lines 332–354
-//
-// Try up to 20 random (barb_x, barb_y) start points from a
-// given direction.  Each iteration calls
-// ``get_random_start_points_from_dirc`` (passing attempt # 1..
-// 20), then samples ``(*(struct region_cell *)((unsigned char *)region_map + ((barb_y*60 + barb_x)*8))).terrain``.
-// For sea invasions (``from_sea != 0``) the cell-flag bit 0x08
-// must be set; for land it requires bits 0x1c clear AND clears
-// the area first.  Returns 1 on success, 0 if all 20 attempts
-// fail.
+// Tries up to 20 random edge positions to find a valid land or sea invasion point.
+// FUNCTION: C2 0x538d6
+// FUNCTION: C2WIN 0x0046fc82
 int get_region_invasion_points(int dirc, int from_sea)
 {
     int i;
@@ -497,14 +390,11 @@ int get_region_invasion_points(int dirc, int from_sea)
     return 0;
 }
 
-// FUNCTION: C2 0x5395C
-// WIN: 0x0046fd4f
-// Lines 356–381
-//
-// Pick one of the four rebel-hut anchor tiles, then choose the first
-// adjacent clear tile in N/E/S/W order.  Returns hut kind minus 0x92
-// (1..4) and writes barb_x/barb_y for the army spawn, or 0 if the
-// chosen hut/adjacent cells are unsuitable.
+// Pick one of the four rebel-hut anchor tiles, then choose the first adjacent clear tile in
+// N/E/S/W order. Returns hut kind minus 0x92 (1..4) and writes barb_x/barb_y for the army spawn,
+// or 0 if the chosen hut/adjacent cells are unsuitable.
+// FUNCTION: C2 0x5395c
+// FUNCTION: C2WIN 0x0046fd4f
 int get_region_revolt_points(void)
 {
     int n;
@@ -535,24 +425,11 @@ int get_region_revolt_points(void)
 }
 
 
-
-
-// FUNCTION: C2 0x53AC3
-// WIN: 0x0046ff71
-// Lines 383–423
-//
-// Spawn a wave of barbarian citizens inside the city when an
-// auto-resolved (or unopposed) barbarian army reaches the walls.
-// Wave size scales with the attacker's total_troops in bands of
-// 800/600/400/200 → 9/7/5/3 invaders (2 below 200).  Entry
-// direction is the attacker's compass byte rotated 180° so they
-// march in from the opposite edge.  Each invader rolls a perimeter
-// (x, y), clears the cell if any of bits 0xE7 (road/wall/aqueduct)
-// are set, and spawns a type-3 barb citizen aimed at the player's
-// last-viewed tile.  Bails out if create_citizen runs out of slots.
-// On success queues message 0x53 ("barbarians have entered your
-// city") and deducts 64 from pax_romanum (clamped at 0).  Returns
-// 1 when at least one invader landed, 0 otherwise.
+// Spawn a wave of barbarian citizens inside the city when an auto-resolved (or unopposed)
+// barbarian army reaches the walls. Wave size scales with the attacker's total_troops in bands of
+// 800/600/400/200 → 9/7/5/3 invaders (2 below 200).
+// FUNCTION: C2 0x53ac3
+// FUNCTION: C2WIN 0x0046ff71
 int barbarian_invades_city(int army_idx)
 {
     int   count;
@@ -598,18 +475,11 @@ finished:
     return 1;
 }
 
-// FUNCTION: C2 0x53C43
-// WIN: 0x00470206
-// Lines 425–456
-//
-// Drop `count` type-3 barbarians (raiders/horde footsoldiers) on
-// random map-edge cells indicated by `dirc`.  Each spawn rolls an
-// edge cell, clears the 1×1 area if any road/wall/aqueduct bits
-// (mask 0xE7) are set, then creates a citizen aimed at the
-// player's last-viewed tile.  The loop bails out when
-// create_citizen runs out of slots.  If at least one barbarian
-// landed, queue the "barbarian raid" message and deduct 64 from
-// pax_romanum (clamped at 0).
+// Drop `count` type-3 barbarians (raiders/horde footsoldiers) on random map-edge cells indicated
+// by `dirc`. Each spawn rolls an edge cell, clears the 1×1 area if any road/wall/aqueduct bits
+// (mask 0xE7) are set, then creates a citizen aimed at the player's last-viewed tile.
+// FUNCTION: C2 0x53c43
+// FUNCTION: C2WIN 0x00470206
 void barbarians_drop_by_city(int dirc, int count)
 {
     int i;
@@ -642,15 +512,10 @@ finished:
     }
 }
 
-// FUNCTION: C2 0x53D4E
-// WIN: 0x004703be
-// Lines 461–501
-//
-// Pick a pseudo-random barbarian entry point on the edge indicated by
-// `dirc` (0..7).  `size` is the map dimension (normally 60) and `mask`
-// is the random mask (normally 0x3f).  barb_entry_count is folded into
-// rand128 so repeated attempts sweep different edge points; barb_x/y are
-// written as the chosen spawn cell.
+// Pick a pseudo-random barbarian entry point on the edge indicated by `dirc` (0..7). `size` is the
+// map dimension (normally 60) and `mask` is the random mask (normally 0x3f).
+// FUNCTION: C2 0x53d4e
+// FUNCTION: C2WIN 0x004703be
 void get_random_start_points_from_dirc(int dirc, int size, int mask)
 {
     int wrapped;
@@ -689,16 +554,10 @@ void get_random_start_points_from_dirc(int dirc, int size, int mask)
     }
 }
 
-// FUNCTION: C2 0x53E8E
-// WIN: 0x00470607
-// Lines 506–524
-//
-// Round-robin scan of army_list looking for a cohort.  Walks
-// ``temp_army`` from its last value up to 26 candidates, wrapping
-// from 26→1.  When ``strict`` is non-zero the candidate also has
-// to have ``state_idx != 10`` and a non-zero ``target_timer``
-// (i.e. is actively pursuing a target).  Returns 1 if a match
-// is found within 26 tries, 0 otherwise.
+// Round-robin scan of army_list looking for a cohort. Walks ``temp_army`` from its last value up
+// to 26 candidates, wrapping from 26→1.
+// FUNCTION: C2 0x53e8e
+// FUNCTION: C2WIN 0x00470607
 int get_next_temp_cohort(int strict)
 {
     int retries;
@@ -719,20 +578,11 @@ int get_next_temp_cohort(int strict)
     return 0;
 }
 
-// FUNCTION: C2 0x53F0C
-// WIN: 0x004706fe
-// Lines 526–540
-//
-// Rebuild the ``cohort_in_action[10]`` bitmap and the
-// ``no_of_cohorts_in_action`` total from the live army_list.
-// Each cohort army (type == 1) tags its name slot in the array
-// and bumps the total; a stray name >= 10 fires the
-// ``test_beeps`` debug stub.
-//
-// After the count phase, ``next_cohort_free`` walks
-// cohort_in_action[] until the first zero, advancing in
-// lockstep with the index so the in-action cohorts pack to
-// the low end of the array.
+// Rebuild the ``cohort_in_action[10]`` bitmap and the ``no_of_cohorts_in_action`` total from the
+// live army_list. Each cohort army (type == 1) tags its name slot in the array and bumps the
+// total; a stray name >= 10 fires the ``test_beeps`` debug stub.
+// FUNCTION: C2 0x53f0c
+// FUNCTION: C2WIN 0x004706fe
 void get_cohorts_in_action(void)
 {
     int i;
@@ -753,15 +603,11 @@ void get_cohorts_in_action(void)
     for (next_cohort_free = i = 0; i < 10; ) { if (cohort_in_action[i] == 0) break; i++; next_cohort_free++; }
 }
 
-// FUNCTION: C2 0x53F9D
-// WIN: 0x00470843
-// Lines 542–557
-//
-// Step `forum_viewed_army` to the previous (direction == 0) or
-// next (direction != 0) cohort marked active in `cohort_in_action`.
-// Wraps the index into [0..10] after each step; the value 10 is the
-// "all cohorts" / "no-match" sentinel and ends the search.  Bails
-// after one full cycle (11 tries), pinning the index at 10.
+// Step `forum_viewed_army` to the previous (direction == 0) or next (direction != 0) cohort marked
+// active in `cohort_in_action`. Wraps the index into [0..10] after each step; the value 10 is the
+// "all cohorts" / "no-match" sentinel and ends the search.
+// FUNCTION: C2 0x53f9d
+// FUNCTION: C2WIN 0x00470843
 void get_next_viewed_cohort(int direction)
 {
     int tries;
@@ -784,16 +630,10 @@ void get_next_viewed_cohort(int direction)
     forum_viewed_army = 10;
 }
 
+// Validate the currently-selected cohort index after external state changes (e.g. battle outcome,
+// page navigation).
 // FUNCTION: C2 0x54012
-// WIN: 0x004708f4
-// Lines 560–568
-//
-// Validate the currently-selected cohort index after
-// external state changes (e.g. battle outcome, page
-// navigation).  Refreshes `cohort_in_action[]`, wraps
-// `forum_viewed_army` into [0..10], and if the slot is
-// not the all-summary sentinel 10 *and* not currently
-// in action, advances forward to the next valid cohort.
+// FUNCTION: C2WIN 0x004708f4
 void check_viewed_cohort(void)
 {
     get_cohorts_in_action();
@@ -805,16 +645,11 @@ void check_viewed_cohort(void)
     }
 }
 
-// FUNCTION: C2 0x54065
-// WIN: 0x00470969
-// Lines 570–579
-//
-// Resolve the army record currently selected in the forum view to
-// its army_list[] index.  Returns `tracking_army` directly if it
-// points at a cohort; otherwise scans army_list[0..26) for the
+// Resolve the army record currently selected in the forum view to its army_list[] index. Returns
+// `tracking_army` directly if it points at a cohort; otherwise scans army_list[0..26) for the
 // first existing cohort whose `cohort_id` matches forum_viewed_army.
-// On no match, resets forum_viewed_army to the 0xa sentinel and
-// returns 0.
+// FUNCTION: C2 0x54065
+// FUNCTION: C2WIN 0x00470969
 int get_actual_viewed_army(void)
 {
     if (tracking_army != 0) {
@@ -833,15 +668,9 @@ int get_actual_viewed_army(void)
     return 0;
 }
 
-// FUNCTION: C2 0x540E4
-// WIN: 0x00470a6a
-// Lines 584–605
-//
-// Initialise the four cardinal sea-trader slots at game start: set
-// each direction's trader_count0/1 (tick gates) and derive its
-// trader_brings from region_sources[region_borders[province_is*4 +
-// dir] * 10] (the trader carries the major resource of the
-// neighbouring province).
+// Initialize sea traders for each border using the neighbouring province's primary resource.
+// FUNCTION: C2 0x540e4
+// FUNCTION: C2WIN 0x00470a6a
 void init_traders(void)
 {
     int pi;
@@ -867,26 +696,9 @@ void init_traders(void)
     west_trader_brings  = region_sources[border].primary;
 }
 
-// FUNCTION: C2 0x541C8
-// WIN: 0x00470b60
-// Lines 607–656
-//
-// Monthly trader spawner.  For each of the 4 compass borders
-// (N=0, E=2, S=4, W=6) tick down two countdowns:
-//
-//   * count0 = land-trader timer (lives if the border is overland)
-//   * count1 = sea-trader  timer (lives if the border faces water)
-//
-// When count0 reaches ≤ 0:
-//   - overland border (xxx_trader_is == 0): spawn a land caravan
-//     via do_land_trade(dir, brings, x, y); reseed count0 = 4.
-//   - sea border (xxx_trader_is != 0): try do_sea_trade(...,0).
-//     If the trader fits, park count0 at "effectively infinite"
-//     (0xF423F ≈ 1 million) so it never fires again; on a refusal,
-//     short reseed = 2 (retry next quarter).
-//
-// count1 is the same but for the *second* sea-trade flavour
-// (push=1) and only ticks on sea borders.
+// Monthly trader spawner.
+// FUNCTION: C2 0x541c8
+// FUNCTION: C2WIN 0x00470b60
 void launch_traders(void)
 {
     /* ---- North ---- */
@@ -986,17 +798,10 @@ void launch_traders(void)
     }
 }
 
+// Update a region-map cell's trade-route level after a successful land trade. Gated on bit 0x20 of
+// (*(struct region_cell *)((unsigned char *)region_map + (+3))).base_kind; otherwise no-op.
 // FUNCTION: C2 0x54503
-// WIN: 0x00470f23
-// Lines 659–692
-//
-// Update a region-map cell's trade-route level after a successful
-// land trade.  Gated on bit 0x20 of (*(struct region_cell *)((unsigned char *)region_map + (+3))).base_kind; otherwise no-op.
-// Searches a 16-cell radius for the nearest trading post and picks
-// a trade level from the resulting distance (1..7).  The new level
-// is OR'd into (*(struct region_cell *)((unsigned char *)region_map + (+7))).base_kind's bits 2..4 (preserving the prior
-// max), and the kind-flag bits 5..6 are set based on `kind`
-// (0=none, 2=incoming, 4=outgoing, 6=both).
+// FUNCTION: C2WIN 0x00470f23
 void do_land_trade(int kind, int p2, int x, int y)
 {
     int dist;
@@ -1031,17 +836,9 @@ void do_land_trade(int kind, int p2, int x, int y)
     if (kind == 6) { (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).occupant |= 0x60; return; }
 }
 
-// FUNCTION: C2 0x545E8
-// WIN: 0x0047110f
-// Lines 694–710
-//
-// Spawn a sea-trader army.  Called once per direction by
-// launch_traders.  Returns 1 on success (army slot allocated),
-// 0 if create_army(type=6) fails.
-//
-// compass_side / cargo / home_x / home_y are saved into the new
-// army_rec for later use (sa12_army_sail_home, etc.); army_id
-// is the trade-direction discriminator passed via stack.
+// Spawn a sea-trader army. Called once per direction by launch_traders.
+// FUNCTION: C2 0x545e8
+// FUNCTION: C2WIN 0x0047110f
 int do_sea_trade(int compass_side, int cargo,
                  int home_x, int home_y, int army_id)
 {
@@ -1064,27 +861,11 @@ int do_sea_trade(int compass_side, int cargo,
     return 1;
 }
 
-// FUNCTION: C2 0x5468F
-// WIN: 0x004712b4
-// Lines 716–761
-//
-// Resume or start an interrupted battle.  `pre_loaded == 0` runs
-// the intro path (battle_setup_count = 0x64, battle_intro,
-// get_battle_men, battle_state = 5); `pre_loaded != 0` skips the
-// confirm prompt and jumps straight into do_fight_battle.  After
-// the fight, dispatch on the terminal battle_state:
-//
-//    4  manual end        -> victor = lost iff men<=0 or morale<=0
-//    5  auto-resolve      -> battle_auto_resolve()
-//    6  voluntary retreat -> we_retreat(); victor = lost
-//    7  surrender         -> we_surrender(); victor = lost
-//    8  total victory     -> victor = won
-//    9  total defeat      -> victor = won (sense inverted later)
-//    0xa cancelled        -> early return, no outro animation
-//
-// Then play the won/lost SMK clip, refresh the map view, run
-// battle_outtro + do_battle_victory, return to the appropriate map
-// screen, and restart the city/province music.
+// Resume or start an interrupted battle. `pre_loaded == 0` runs the intro path (battle_setup_count
+// = 0x64, battle_intro, get_battle_men, battle_state = 5); `pre_loaded != 0` skips the confirm
+// prompt and jumps straight into do_fight_battle.
+// FUNCTION: C2 0x5468f
+// FUNCTION: C2WIN 0x004712b4
 void continue_battle(int pre_loaded)
 {
     unsigned char mm;
@@ -1154,13 +935,10 @@ void continue_battle(int pre_loaded)
     setup_map_screen_long_refresh(8);
 }
 
-// FUNCTION: C2 0x547FD
-// WIN: 0x004716c9
-// Lines 763–773
-//
-// Pre-battle intro: silence music, optionally load the
-// "prebatle.raw" sting, scroll the region map to the cohort, and
-// pump the intro game loop until the regular game-loop sets out1.
+// Pre-battle intro: silence music, optionally load the "prebatle.raw" sting, scroll the region map
+// to the cohort, and pump the intro game loop until the regular game-loop sets out1.
+// FUNCTION: C2 0x547fd
+// FUNCTION: C2WIN 0x004716c9
 void battle_intro(void)
 {
     pointer_mode = 0;
@@ -1178,13 +956,10 @@ void battle_intro(void)
     clear_mouse();
 }
 
+// Pump the idle game loop after a battle ends, displaying the outcome screen, until the player
+// right-clicks to dismiss it; then tear down the battle's music/SFX state.
 // FUNCTION: C2 0x54864
-// WIN: 0x00471794
-// Lines 775–785
-//
-// Pump the idle game loop after a battle ends, displaying the
-// outcome screen, until the player right-clicks to dismiss it;
-// then tear down the battle's music/SFX state.
+// FUNCTION: C2WIN 0x00471794
 void battle_outtro(void)
 {
     pointer_mode = 0;
@@ -1199,13 +974,10 @@ void battle_outtro(void)
     stop_db();
 }
 
-// FUNCTION: C2 0x548A7
-// WIN: 0x004717e6
-// Lines 787–794
-//
-// Wipe the our-side troop counts after a surrender.  All five
-// cohort-strength fields go to zero; the num_horse slot is a
-// legacy troop-count field that nothing else reads or writes.
+// Wipe the our-side troop counts after a surrender. All five cohort-strength fields go to zero;
+// the num_horse slot is a legacy troop-count field that nothing else reads or writes.
+// FUNCTION: C2 0x548a7
+// FUNCTION: C2WIN 0x004717e6
 void we_surrender(void)
 {
     army_list[our_battle_army].num_specials    = 0;
@@ -1215,14 +987,11 @@ void we_surrender(void)
     army_list[our_battle_army].num_auxillaries = 0;
 }
 
-// FUNCTION: C2 0x548D7
-// WIN: 0x0047187d
-// Lines 796–803
-//
-// Player retreats: scrap specialist troops entirely, decimate the
-// rest.  Specials and the legacy num_horse slot go to zero;
-// regulars halve, irregulars drop to a third, auxillaries shrink
-// to a quarter.
+// Player retreats: scrap specialist troops entirely, decimate the rest. Specials and the legacy
+// num_horse slot go to zero; regulars halve, irregulars drop to a third, auxillaries shrink to a
+// quarter.
+// FUNCTION: C2 0x548d7
+// FUNCTION: C2WIN 0x0047187d
 void we_retreat(void)
 {
     army_list[our_battle_army].num_specials    = 0;
@@ -1232,29 +1001,11 @@ void we_retreat(void)
     army_list[our_battle_army].num_auxillaries /= 4;
 }
 
-// FUNCTION: C2 0x5493F
-// WIN: 0x00471967
-// Lines 805–913
-//
-// Off-screen battle resolver invoked when the player picks "auto"
-// from the pre-battle prompt.  Computes a score for each side,
-// declares battle_victor (0 = us, 1 = them), and scales the
+// Off-screen battle resolver invoked when the player picks "auto" from the pre-battle prompt.
+// Computes a score for each side, declares battle_victor (0 = us, 1 = them), and scales the
 // loser's cohorts by a percentage derived from the strength ratio.
-//
-// Per-side score = loyalty × head-count band (20/50/80/100 for
-// totals <50, ≤100, ≤200, >200) + weighted cohort sums + a
-// rand128 dice term.  The enemy side also gets a tribal
-// aggression bonus (tribe_ai_data[tribe].aggression) scaled by
-// its head-count band (10/20/30/40/50/60).  Player body-count
-// deliberately excludes the legacy num_horse slot; the enemy
-// total uses all five cohort fields.
-//
-// Winner survives with a percentage of their cohorts derived
-// from the score+strength ratio (banded 10×/5×/3×/2×/1.5×/1×,
-// clamped to [10, 100] survival).  Loser is wiped to zero.
-// tune_mood is set to 0x11 (victory) on a win, 0x12 (defeat) on
-// a loss.  Internal calls to random() that discard rand128 are
-// kept as side-effect-only churns of the RNG.
+// FUNCTION: C2 0x5493f
+// FUNCTION: C2WIN 0x00471967
 void battle_auto_resolve(void)
 {
     int ratio_band;
@@ -1376,20 +1127,11 @@ void battle_auto_resolve(void)
 }
 
 
-// FUNCTION: C2 0x54F9E
-// WIN: 0x004724e7
-// Lines 915–928
-//
-// Pick the two armies for the upcoming battle: "our"
-// (player-controlled) army and "their" (enemy) army.
-//
-// army_no is the cell-target army (the one being attacked
-// or defending the cell); army_a is the actor (the army
-// that triggered the encounter).  If army_no is a cohort
-// (type 1), then army_no is OUR side and army_a is theirs;
-// otherwise the roles flip.
-//
-// Skipped entirely while game_state == 4 (paused / menu).
+// Pick the two armies for the upcoming battle: "our" (player-controlled) army and "their" (enemy)
+// army. army_no is the cell-target army (the one being attacked or defending the cell); army_a is
+// the actor (the army that triggered the encounter).
+// FUNCTION: C2 0x54f9e
+// FUNCTION: C2WIN 0x004724e7
 void get_contenders(void)
 {
     if (game_state == 4) return;
@@ -1402,24 +1144,10 @@ void get_contenders(void)
     }
 }
 
-// FUNCTION: C2 0x54FED
-// WIN: 0x0047255b
-// Lines 930–945
-//
-// Spawn a tribe-flavoured villager-militia in the auto-resolve army
-// slot 0x19 (used during the empire/region battle preview when the
-// player attacks an unprotected tribal province).  army_no for the
-// player's army is preserved in our_battle_army; army_a and
-// their_battle_army are pointed at the new slot, which is cleared
-// and stamped with target_kind=3, region=province_is, the
-// tribe-flavour byte from tribe_type[province_is], and a baseline
-// strength of x_count * 200.  Then — depending on which of the
-// tribe's three primary-weapon flags is set (tribe_battle_setup
-// offsets 5/6/4) — the per-cohort strength field (army.+0x7E / +0x7A
-// / +0x82) gets x_count * 150.  Finally battle_disposition is
-// set to 0xa ("hostile-villager" disposition).
-//
-// Skipped entirely when game_state == 4 (already inside a battle).
+// Spawn a tribe-flavoured villager-militia in the auto-resolve army slot 0x19 (used during the
+// empire/region battle preview when the player attacks an unprotected tribal province).
+// FUNCTION: C2 0x54fed
+// FUNCTION: C2WIN 0x0047255b
 void get_villagers(int x_count)
 {
     int   tribe;
@@ -1450,26 +1178,11 @@ void get_villagers(int x_count)
     army_list[army_a].battle_disposition = 0xa;
 }
 
-// FUNCTION: C2 0x550D9
-// WIN: 0x0047274e
-// Lines 947–998
-//
-// Post-fight bookkeeping for the most recent battle.  Branches on
-// battle_victor:
-//
-//   Won (0): bump our loyalty (clamped to 4); +12 pax_romanum if
-//   the loser was the villager slot 0x19, else +24 and mark them
-//   dispersed (state_idx = 2).  pax_romanum clamped at 1000.
-//
-//   Lost (1): bump their loyalty (clamped to 4); zero our morale
-//   and readiness, push our cohort through sa10_army_demobed, and
-//   deduct 12 pax_romanum (clamped at 0).
-//
-// Both paths then refresh total_troops on the relevant army and
-// settle the player's losses against the slave pool
-// (slave_requirements[6].current) and the mercenary pools
-// (mercs_in_army / max_mercs_allowed).  If slaves drops to <= 0
-// it snaps back to 4 to keep a minimum work-force on the map.
+// Post-fight bookkeeping for the most recent battle. Branches on battle_victor: Won (0): bump our
+// loyalty (clamped to 4); +12 pax_romanum if the loser was the villager slot 0x19, else +24 and
+// mark them dispersed (state_idx = 2).
+// FUNCTION: C2 0x550d9
+// FUNCTION: C2WIN 0x0047274e
 void do_battle_victory(void)
 {
     struct army_rec *our;

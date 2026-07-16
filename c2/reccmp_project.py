@@ -16,6 +16,7 @@ import yaml
 
 
 TARGET_ID = "C2"
+WINDOWS_TARGET_ID = "C2WIN"
 PROJECT_FILE = Path("reccmp-project.yml")
 USER_FILE = Path("reccmp-user.yml")
 BUILD_FILE = Path("reccmp-build.yml")
@@ -36,15 +37,18 @@ def _project_data(project_file: Path = PROJECT_FILE) -> dict:
     return data
 
 
-def expected_original_hash(project_file: Path = PROJECT_FILE) -> str:
-    """Read the authoritative original hash from the tracked project file."""
+def expected_original_hash(
+    project_file: Path = PROJECT_FILE,
+    target_id: str = TARGET_ID,
+) -> str:
+    """Read a target's authoritative original hash from the project file."""
     try:
         return str(
-            _project_data(project_file)["targets"][TARGET_ID]["hash"]["sha256"]
+            _project_data(project_file)["targets"][target_id]["hash"]["sha256"]
         ).lower()
     except (KeyError, TypeError) as exc:
         raise ValueError(
-            f"{project_file} has no {TARGET_ID} SHA-256 declaration"
+            f"{project_file} has no {target_id} SHA-256 declaration"
         ) from exc
 
 
@@ -57,16 +61,21 @@ def write_user_config(
     original: Path = Path("original/PS.EXE"),
     config_path: Path = USER_FILE,
     project_file: Path = PROJECT_FILE,
+    windows_original: Path | None = None,
 ) -> Path:
-    """Validate *original* and publish the machine-local reccmp user file."""
-    if not original.is_file():
-        raise FileNotFoundError(f"original executable not found: {original}")
-    expected = expected_original_hash(project_file)
-    actual = _sha256(original)
-    if actual != expected:
-        raise ValueError(
-            f"unexpected PS.EXE SHA-256: got {actual}, expected {expected}"
-        )
+    """Validate the supplied originals and publish reccmp's user file."""
+
+    def validate(path: Path, target_id: str) -> None:
+        if not path.is_file():
+            raise FileNotFoundError(f"original executable not found: {path}")
+        expected = expected_original_hash(project_file, target_id)
+        actual = _sha256(path)
+        if actual != expected:
+            raise ValueError(
+                f"unexpected {path.name} SHA-256: got {actual}, expected {expected}"
+            )
+
+    validate(original, TARGET_ID)
 
     payload = {
         "targets": {
@@ -75,6 +84,11 @@ def write_user_config(
             }
         }
     }
+    if windows_original is not None:
+        validate(windows_original, WINDOWS_TARGET_ID)
+        payload["targets"][WINDOWS_TARGET_ID] = {
+            "path": _portable_path(windows_original, config_path.parent),
+        }
     config_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
     return config_path
 

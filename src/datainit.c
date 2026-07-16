@@ -1,11 +1,3 @@
-// Static data initializers extracted from PS.EXE via `c2 data-init --all`.
-//
-// These globals are declared `extern` in c2_data.h or in a hand-written
-// header (entities.h / smacker.h / c2_types.h); their initial bytes are
-// taken verbatim from the LE data segment in PS.EXE so the rebuilt image
-// reproduces PS startup state.  Hand-decompiled .c files that own one
-// of these symbols should move the initializer there (with a matching
-// signature) and delete it from this file.
 
 #include "c2_data.h"
 
@@ -309,9 +301,4 @@ extern void sf16_beserk(void);
    data.  Same int[] storage rationale as LBM_HEADER1. */
 
 
-/* Slots 3+4 and 7+8 each point at ONE body in PS.EXE: the -d1 debug
-   info carries BOTH names (a03_horde == a04_raider @ 0x46349,
-   a07_enemy_ship == a08_raider_ship @ 0x463B7) for the same address.
-   int_c2.c recovers each body once under the a04/a08 name; the LE
-   fixups here only witness the shared address, not which spelling the
-   original initializer used. */
+/* These pairs intentionally share handlers. */

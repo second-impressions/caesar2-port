@@ -1,22 +1,8 @@
-// D:\C2\CODE\gloops.c
-
 #include "c2_data.h"
 #include "c2_types.h"
 
 int mouse_styles[10] = { 0, 1, 2, 3, 9, 0, 2, 3, 4, 4 };
 
-/* ---------------------------------------------------------------------
- * Implicit-int callees made VISIBLE (NOT the original PS source shape).
- *
- * PS's .c did not declare these helpers: the calls below were K&R
- * implicit-int, so wcc386 assumed `int f()`.  Declaring them `extern
- * int f()` here is BYTE-NEUTRAL -- identical codegen to the implicit
- * declaration the compiler already synthesised -- and exists only to
- * surface the real cross-TU contract.  The real definitions return a
- * narrower type (noted per line); the caller intentionally reads EAX
- * as int, exactly as PS.EXE does.  Do NOT "correct" these to the real
- * return type -- a typed (char / enum) decl CHANGES the bytes.
- * ------------------------------------------------------------------- */
 extern int colour_cycle_delay1();  /* really char -- lib32.c */
 extern int colour_cycle_delay2();  /* really char -- lib32.c */
 
@@ -29,9 +15,9 @@ extern void show_cursor(unsigned char *font);
 extern void exit_screen_void(void);  /* unused; placeholder if needed */
 
 
-// FUNCTION: C2 0x3D399
-// WIN: 0x0040f7f0
-// Lines 57–62
+// Begins one UI game-loop iteration by updating input and screen state.
+// FUNCTION: C2 0x3d399
+// FUNCTION: C2WIN 0x0040f7f0
 void gloop_start(void)
 {
     cycle_count++;
@@ -40,35 +26,9 @@ void gloop_start(void)
     random();
 }
 
-// FUNCTION: C2 0x3D9DF
-// Lines 302–302
-//
-// Common end-of-game-loop tail: refresh mouse cursor, refresh SVGA
-// screen, advance audio db, latch the running-delay tick into
-// button_time_flag.
-//
-// ⚠ ORDERING IS LOad-BEARING — keep gloop_end (and its ICF twin
-// mloop_end) DEFINED BEFORE floop_end, even though PS PLACES gloop_end
-// at 0x3D9DF, *after* floop_end (0x3D3AE).  This is the Mac-binary
-// source order, and it is what makes the whole file byte-exact:
-//
-//   * Watcom DECOUPLES placement from ComTail processing.  Placement
-//     is fall-through-driven — just_idle_game_loop tail-calls gloop_end,
-//     so gloop_end is PINNED right after just_idle (late address)
-//     regardless of where it is defined.
-//   * The ComTail tail-merge DONOR is chosen by SOURCE/emission order:
-//     whichever of {gloop_end, floop_end} is compiled first owns the
-//     shared `show_mouse(...); set_mouse_refresh; ...; ret` tail; the
-//     other folds into it.
-//
-// With gloop_end first, gloop_end is the donor and floop_end folds
-// FORWARD into it (floop_end early + gloop_end pinned late) -> floop_end
-// is the 28-byte forward jumper, byte-for-byte PS.  Put floop_end first
-// (the order PS's own -d1 L85<L302 implies) and OUR 10.0a makes floop_end
-// the donor instead -> gloop_end folds backward, floop_end diffs 7-8b.
-// func-order is satisfied because the ICF class (gloop_end+mloop_end at
-// one address) is exempt from the address-monotone check.  DO NOT
-// "fix" this back to PS address order.
+// Finish a UI loop iteration by refreshing the cursor and screen, advancing audio, and latching
+// the input-delay tick.
+// FUNCTION: C2 0x3d9df FOLDED
 void gloop_end(void)
 {
     get_mouse_droppings();
@@ -79,15 +39,8 @@ void gloop_end(void)
     button_time_flag = running_delay1();
 }
 
-// FUNCTION: C2 0x3D9DF
-//
-// Dead (uncalled) byte-identical twin of gloop_end, ICF-folded onto
-// gloop_end's address (0x3D9DF in PS).  Mac keeps mloop_end/gloop_end
-// at distinct addresses but their four bl targets resolve identically
-// -> genuine source duplicate.  NOTE: the Mac gloop_end body itself
-// differs from PS.EXE (Mac drops get_mouse_droppings/set_mouse_refresh/
-// continue_db and adds process_event) -- a different source revision --
-// so the body here mirrors the DOS PS.EXE gloop_end, not the Mac one.
+// Finishes a modal-loop iteration.
+// FUNCTION: C2 0x3d9df FOLDED
 void mloop_end(void)
 {
     get_mouse_droppings();
@@ -98,21 +51,10 @@ void mloop_end(void)
     button_time_flag = running_delay1();
 }
 
-// FUNCTION: C2 0x3D3AE
-// WIN: 0x0040f844
-// Lines 85–89
-//
-// Forum-loop end. Same as gloop_end but mouse cursor is forced to
-// style 0x15 when a forum department is hovered.
-//
-// PS tail-jumps INTO gloop_end's body — once at +5 (else: skipping
-// get_mouse_droppings) and once at +0xC (if: skipping the pointer_mode
-// load too).  floop_end folds FORWARD into gloop_end's shared tail.
-// This only reproduces because gloop_end is DEFINED EARLIER in this
-// file (see the gloop_end banner above): source order picks gloop_end
-// as the ComTail donor, while the just_idle fall-through pins gloop_end
-// to its late 0x3D9DF placement.  Keep this two-branch form (NOT a
-// single computed-style show_mouse) so the tail is actually shared.
+// Forum-loop end. Same as gloop_end but mouse cursor is forced to style 0x15 when a forum
+// department is hovered.
+// FUNCTION: C2 0x3d3ae
+// FUNCTION: C2WIN 0x0040f844
 void floop_end(void)
 {
     get_mouse_droppings();
@@ -126,9 +68,9 @@ void floop_end(void)
     button_time_flag = running_delay1();
 }
 
-// FUNCTION: C2 0x3D3CA
-// WIN: 0x0040fb4a
-// Lines 98–212
+// Runs the main game loop.
+// FUNCTION: C2 0x3d3ca
+// FUNCTION: C2WIN 0x0040fb4a
 void main_game_loop(void)
 {
     int sub_loops;
@@ -281,9 +223,9 @@ void main_game_loop(void)
     continue_db();
 }
 
-// FUNCTION: C2 0x3D816
-// WIN: 0x004101e4
-// Lines 214–279
+// Runs the battle game loop.
+// FUNCTION: C2 0x3d816
+// FUNCTION: C2WIN 0x004101e4
 void battle_game_loop(void)
 {
     cycle_count++;
@@ -366,34 +308,23 @@ void battle_game_loop(void)
     }
 }
 
-// FUNCTION: C2 0x3D9D9
-// (no confirmed CAESAR2.EXE slot; old 0x00401384 was a placeholder.)
-// 1-byte body — a bare `ret`. Probably a stub-out kept for symbol
-// linkage or for cases where mouse-on-top rendering is disabled.
+// No-op placeholder for the show mouse top hook.
+// FUNCTION: C2 0x3d9d9
 void show_mouse_top(void)
 {
 }
 
-// FUNCTION: C2 0x3D9DA
-// WIN: 0x00410478  (unverified)
-// Lines 299–299
-//
-// 5-byte function: just `call gloop_start;` then FALLS THROUGH into
-// gloop_end (Rule 15-fall: Watcom elides the trailing `call gloop_end;
-// ret` when gloop_end is placed immediately after).  This tail-call
-// fall-through is what PINS gloop_end to address 0x3D9DF (right after
-// this function) -- which is why gloop_end can be DEFINED earlier in
-// the file (so it is the ComTail donor) yet still be PLACED late.  See
-// the gloop_end banner for the full ordering rationale.
+// Runs the just idle game loop.
+// FUNCTION: C2 0x3d9da FOLDED
 void just_idle_game_loop(void)
 {
     gloop_start();
     gloop_end();
 }
 
-// FUNCTION: C2 0x3DA0A
-// WIN: 0x0041048d
-// Lines 305–313
+// Runs the forum admin game loop.
+// FUNCTION: C2 0x3da0a
+// FUNCTION: C2WIN 0x0041048d
 void forum_admin_game_loop(void)
 {
     gloop_start();
@@ -412,9 +343,9 @@ void forum_admin_game_loop(void)
     }
 }
 
-// FUNCTION: C2 0x3DA8A
-// WIN: 0x00410515
-// Lines 315–323
+// Runs the forum career game loop.
+// FUNCTION: C2 0x3da8a
+// FUNCTION: C2WIN 0x00410515
 void forum_career_game_loop(void)
 {
     gloop_start();
@@ -432,9 +363,9 @@ void forum_career_game_loop(void)
     }
 }
 
-// FUNCTION: C2 0x3DB05
-// WIN: 0x00410598
-// Lines 325–334
+// Runs the donation game loop.
+// FUNCTION: C2 0x3db05
+// FUNCTION: C2WIN 0x00410598
 void donation_game_loop(void)
 {
     gloop_start();
@@ -451,12 +382,10 @@ void donation_game_loop(void)
         out1 = 1;
 }
 
-// FUNCTION: C2 0x3DB84
-// WIN: 0x00410624
-// Lines 336–343
-//
-// Show emperor-related buttons unless we've already warned the
-// emperor this month (in which case the panel is unclickable).
+// Show emperor-related buttons unless we've already warned the emperor this month (in which case
+// the panel is unclickable).
+// FUNCTION: C2 0x3db84
+// FUNCTION: C2WIN 0x00410624
 void forum_rome_game_loop(void)
 {
     gloop_start();
@@ -472,12 +401,9 @@ void forum_rome_game_loop(void)
     }
 }
 
-// FUNCTION: C2 0x3DBFB
-// WIN: 0x004106aa
-// Lines 345–353
-//
-// Like other forum loops but takes a `gift_index` arg in eax which
-// is shifted (i*16 - 8) to get the per-gift Y offset.
+// Run the gift forum loop, placing its controls at the row selected by `gift_index`.
+// FUNCTION: C2 0x3dbfb
+// FUNCTION: C2WIN 0x004106aa
 void gift_game_loop(int gift_index)
 {
     gloop_start();
@@ -492,9 +418,9 @@ void gift_game_loop(int gift_index)
         out1 = 1;
 }
 
-// FUNCTION: C2 0x3DC73
-// WIN: 0x00410736
-// Lines 355–368
+// Runs the forum temple game loop.
+// FUNCTION: C2 0x3dc73
+// FUNCTION: C2WIN 0x00410736
 void forum_temple_game_loop(void)
 {
     int i;
@@ -520,9 +446,9 @@ void forum_temple_game_loop(void)
     }
 }
 
-// FUNCTION: C2 0x3DD00
-// WIN: 0x004107f6
-// Lines 370–378
+// Runs the forum clerks game loop.
+// FUNCTION: C2 0x3dd00
+// FUNCTION: C2WIN 0x004107f6
 void forum_clerks_game_loop(void)
 {
     gloop_start();
@@ -541,9 +467,9 @@ void forum_clerks_game_loop(void)
     }
 }
 
-// FUNCTION: C2 0x3DD80
-// WIN: 0x00410878
-// Lines 380–385
+// Runs the forum advisor game loop.
+// FUNCTION: C2 0x3dd80
+// FUNCTION: C2WIN 0x00410878
 void forum_advisor_game_loop(void)
 {
     gloop_start();
@@ -555,9 +481,9 @@ void forum_advisor_game_loop(void)
     }
 }
 
-// FUNCTION: C2 0x3DDAF
-// WIN: 0x004108b4
-// Lines 387–429
+// Runs the forum empire game loop.
+// FUNCTION: C2 0x3ddaf
+// FUNCTION: C2WIN 0x004108b4
 void forum_empire_game_loop(void)
 {
     if (c2inf.peace_mode) {
@@ -605,9 +531,9 @@ void forum_empire_game_loop(void)
     }
 }
 
-// FUNCTION: C2 0x3DF63
-// WIN: 0x00410a8d
-// Lines 431–448
+// Runs the forum army game loop.
+// FUNCTION: C2 0x3df63
+// FUNCTION: C2WIN 0x00410a8d
 void forum_army_game_loop(void)
 {
     if (c2inf.peace_mode) {
@@ -651,9 +577,9 @@ void forum_army_game_loop(void)
     }
 }
 
-// FUNCTION: C2 0x3E09E
-// WIN: 0x00410be8
-// Lines 450–455
+// Runs the forum industry game loop.
+// FUNCTION: C2 0x3e09e
+// FUNCTION: C2WIN 0x00410be8
 void forum_industry_game_loop(void)
 {
     gloop_start();
@@ -665,9 +591,9 @@ void forum_industry_game_loop(void)
     }
 }
 
-// FUNCTION: C2 0x3E0CD
-// WIN: 0x00410c24
-// Lines 457–476
+// Runs the forum slaves game loop.
+// FUNCTION: C2 0x3e0cd
+// FUNCTION: C2WIN 0x00410c24
 void forum_slaves_game_loop(void)
 {
     int i;
@@ -701,9 +627,9 @@ void forum_slaves_game_loop(void)
     }
 }
 
-// FUNCTION: C2 0x3E1D3
-// WIN: 0x00410d4f
-// Lines 478–484
+// Runs the forum idle game loop.
+// FUNCTION: C2 0x3e1d3
+// FUNCTION: C2WIN 0x00410d4f
 void forum_idle_game_loop(void)
 {
     gloop_start();
@@ -713,9 +639,9 @@ void forum_idle_game_loop(void)
         out1 = 1;
 }
 
-// FUNCTION: C2 0x3E1F6
-// WIN: 0x00410d82
-// Lines 486–495
+// Shows contextual help for the active forum department.
+// FUNCTION: C2 0x3e1f6
+// FUNCTION: C2WIN 0x00410d82
 void explain_forum(void)
 {
     int i;
@@ -729,14 +655,11 @@ void explain_forum(void)
     }
 }
 
-// FUNCTION: C2 0x3E227
-// WIN: 0x00410df1
-// Lines 497–508
-//
-// Render one of the 12 forum-department info panels: a 9x1 mosaic
-// background plus the dept name in font1. `forum_menu[idx*2]` /
-// `forum_menu[idx*2+1]` are the panel x/y; the +8/+5 offsets
-// position the inner content area.
+// Render one of the 12 forum-department info panels: a 9x1 mosaic background plus the dept name in
+// font1. `forum_menu[idx*2]` / `forum_menu[idx*2+1]` are the panel x/y; the +8/+5 offsets position
+// the inner content area.
+// FUNCTION: C2 0x3e227
+// FUNCTION: C2WIN 0x00410df1
 void forum_explanations(int idx, int hilite)
 {
     int x;
@@ -753,26 +676,17 @@ void forum_explanations(int idx, int hilite)
     setup_refresh_area(x, y, 0xa, 2, 1);
 }
 
-// FUNCTION: C2 0x3D9DA
-// WIN: 0x00410478  (unverified)
-//
-// Dead (uncalled) byte-identical twin of just_idle_game_loop -- a
-// source duplicate that Watcom ICF-folds onto just_idle's address
-// (both PUBDEFs resolve to 0x3D9DA in PS).  The Mac builds keep the
-// two separate at distinct addresses but with identical structure and
-// call targets, confirming it is a true duplicate (not demo/ifdef
-// variation).  Body must mirror just_idle exactly so ICF fires.
+// Runs the year end game loop.
+// FUNCTION: C2 0x3d9da FOLDED
 void year_end_game_loop(void)
 {
     gloop_start();
     gloop_end();
 }
 
-// FUNCTION: C2 0x3E2A3
-// WIN: 0x00410ea4
-// Lines 520–525
-//
-// Tail-merger — jmp FORWARD to skill1+0x34 (Rule 15).
+// Runs the battle intro game loop.
+// FUNCTION: C2 0x3e2a3
+// FUNCTION: C2WIN 0x00410ea4
 void battle_intro_game_loop(void)
 {
     gloop_start();
@@ -781,9 +695,9 @@ void battle_intro_game_loop(void)
     control_buttons(0x100, 0x104, confirming_buttons, 2);
 }
 
-// FUNCTION: C2 0x3E2E2
-// WIN: 0x00410eeb
-// Lines 530–537
+// Runs the tune game loop.
+// FUNCTION: C2 0x3e2e2
+// FUNCTION: C2WIN 0x00410eeb
 void tune_game_loop(void)
 {
     gloop_start();
@@ -794,9 +708,9 @@ void tune_game_loop(void)
         out1 = 1;
 }
 
-// FUNCTION: C2 0x3E338
-// WIN: 0x00410f45
-// Lines 539–546
+// Runs the samples game loop.
+// FUNCTION: C2 0x3e338
+// FUNCTION: C2WIN 0x00410f45
 void samples_game_loop(void)
 {
     gloop_start();
@@ -807,9 +721,9 @@ void samples_game_loop(void)
         out1 = 1;
 }
 
-// FUNCTION: C2 0x3E38E
-// WIN: 0x00410f9f
-// Lines 548–555
+// Runs the tog anims game loop.
+// FUNCTION: C2 0x3e38e
+// FUNCTION: C2WIN 0x00410f9f
 void tog_anims_game_loop(void)
 {
     gloop_start();
@@ -820,9 +734,9 @@ void tog_anims_game_loop(void)
         out1 = 1;
 }
 
-// FUNCTION: C2 0x3E3E4
-// WIN: 0x00410ff9
-// Lines 557–564
+// Runs the tog yearend game loop.
+// FUNCTION: C2 0x3e3e4
+// FUNCTION: C2WIN 0x00410ff9
 void tog_yearend_game_loop(void)
 {
     gloop_start();
@@ -833,13 +747,9 @@ void tog_yearend_game_loop(void)
         out1 = 1;
 }
 
-// FUNCTION: C2 0x3E43A
-// WIN: 0x00411053
-// Lines 566–571
-//
-// Tail-merges into skill1_game_loop's `call control_buttons` block
-// at +0x34 (Rule 15 cross-function). Watcom emits `jmp skill1+0x34`
-// instead of duplicating the call+epilogue.
+// Runs the exit game loop.
+// FUNCTION: C2 0x3e43a
+// FUNCTION: C2WIN 0x00411053
 void exit_game_loop(void)
 {
     gloop_start();
@@ -848,12 +758,9 @@ void exit_game_loop(void)
     control_buttons(0, 0, exit_buttons, 3);
 }
 
-// FUNCTION: C2 0x3E46A
-// WIN: 0x0041108e
-// Lines 574–579
-//
-// Merge target for the control_buttons-tail cluster (battle_intro,
-// exit, promotion all jmp into +0x34 here).
+// Run the skill-selection loop and process its four buttons.
+// FUNCTION: C2 0x3e46a
+// FUNCTION: C2WIN 0x0041108e
 void skill1_game_loop(void)
 {
     gloop_start();
@@ -862,12 +769,9 @@ void skill1_game_loop(void)
     control_buttons(0x50, 0x50, skill1_buttons, 4);
 }
 
-// FUNCTION: C2 0x3E4A7
-// WIN: 0x004110c9
-// Lines 582–589
-//
-// Tail-merger — jmp into skill1+0x2D (sharing the bigger tail
-// `mov edx,0x50; mov eax,edx; call control_buttons; pop;pop;pop;ret`).
+// Run the second skill-selection loop and refresh the displayed skill level when needed.
+// FUNCTION: C2 0x3e4a7
+// FUNCTION: C2WIN 0x004110c9
 void skill2_game_loop(void)
 {
     gloop_start();
@@ -884,18 +788,9 @@ void skill2_game_loop(void)
     control_buttons(0x50, 0x50, skill2_buttons, 6);
 }
 
-// FUNCTION: C2 0x3E502
-// WIN: 0x0041113a
-// Lines 592–630
-//
-// 2026-06-13 byte-EXACT (was 17b residue): the table index form
-// `empire_region_order[region_over + 10]` keeps region_over live in
-// EAX past the load (PS picks EDX for the table-value temp).  The
-// pointer-decay form `(&empire_region_order[10])[region_over]` makes
-// the codegen route the address through EAX, clobbering region_over
-// and forcing a reload before `empire[region_over - 1] = 6`.
-// Both spellings are semantically identical (C9899 6.5.6); only the
-// tree-genned shape differs.  Source-shape lever, not a regalloc tie.
+// Runs the initreg game loop.
+// FUNCTION: C2 0x3e502
+// FUNCTION: C2WIN 0x0041113a
 void initreg_game_loop(void)
 {
 
@@ -928,8 +823,6 @@ void initreg_game_loop(void)
         goto end;
     if (region_over == 0)
         goto end;
-    /* empire[] is 1-based here via region_over (Watcom folds the -1 into
-       the base address: PS reads byte [empire - 1 + region_over]). */
     if ((empire[region_over - 1] & 0xff) != 2)
         goto end;
 
@@ -944,16 +837,10 @@ void initreg_game_loop(void)
 end:;
 }
 
-// FUNCTION: C2 0x3E673
-// WIN: 0x004112b7
-// Lines 632–656
-//
-// Province-naming text-entry game loop. Edits format_buffer (the
-// running line of typed text) on every frame, repaints the entry
-// region, and exits (`out2 = 1`) on Escape, Enter, or right-click.
-//
-// `c2inf + 0x1A` is the running text buffer that out_format_buffer
-// flushes the format-buffer into.
+// Province-naming text-entry game loop. Edits format_buffer (the running line of typed text) on
+// every frame, repaints the entry region, and exits (`out2 = 1`) on Escape, Enter, or right-click.
+// FUNCTION: C2 0x3e673
+// FUNCTION: C2WIN 0x004112b7
 void new_name_game_loop(void)
 {
     int y;
@@ -987,12 +874,10 @@ void new_name_game_loop(void)
     gloop_end();
 }
 
-// FUNCTION: C2 0x3E7B1
-// WIN: 0x00411428
-// Lines 658–664
-//
-// Note the order: show_buttons → control_buttons → gloop_end
-// (different from sibling loops which do show → gloop_end → control).
+// Note the order: show_buttons → control_buttons → gloop_end (different from sibling loops which
+// do show → gloop_end → control).
+// FUNCTION: C2 0x3e7b1
+// FUNCTION: C2WIN 0x00411428
 void help_game_loop(void)
 {
     gloop_start();
@@ -1001,12 +886,10 @@ void help_game_loop(void)
     gloop_end();
 }
 
-// FUNCTION: C2 0x3E7F4
-// WIN: 0x0041146f
-// Lines 666–675
-//
-// Tooltip/query loop. Shows queery_buttons always, plus an extra
-// query_buttons2 panel when (map_mode == regionmap) AND (q_type == 0x92).
+// Tooltip/query loop. Shows queery_buttons always, plus an extra query_buttons2 panel when
+// (map_mode == regionmap) AND (q_type == 0x92).
+// FUNCTION: C2 0x3e7f4
+// FUNCTION: C2WIN 0x0041146f
 void queery_game_loop(void)
 {
     gloop_start();
@@ -1020,11 +903,9 @@ void queery_game_loop(void)
     get_queried_person();
 }
 
-// FUNCTION: C2 0x3E8AA
-// WIN: 0x00411521
-// Lines 677–682
-//
-// Forward tail-merger — jmp BACKWARD to skill1+0x34 (Rule 15).
+// Runs the promotion game loop.
+// FUNCTION: C2 0x3e8aa
+// FUNCTION: C2WIN 0x00411521
 void promotion_game_loop(void)
 {
     gloop_start();
@@ -1033,17 +914,10 @@ void promotion_game_loop(void)
     control_buttons(0x80, 0x70, promotion_buttons, 3);
 }
 
-// FUNCTION: C2 0x3E8E9
-// WIN: 0x00411562
-// Lines 687–709
-//
-// Decide whether the game-tick should advance this frame. Returns 1
-// if the cumulative button-time tick passed the speed threshold,
-// 0 otherwise. Always returns 1 in turbo. Inhibited by the
-// game-paused flag (c2inf[6]), active scrolling, an active
-// flag_mode, the pointer being in flag-mode (>=5), or the left
-// mouse button being held.  Nested positive guards keep PS's shared
-// return-0 tail without a source label (Rule 92).
+// Decide whether the game-tick should advance this frame. Returns 1 if the cumulative button-time
+// tick passed the speed threshold, 0 otherwise.
+// FUNCTION: C2 0x3e8e9
+// FUNCTION: C2WIN 0x00411562
 int game_speed(void)
 {
     int q;
@@ -1060,7 +934,7 @@ int game_speed(void)
                     if (pointer_mode < 5) {
                         if (!mouse_left_button) {
                             if (q * 50 + 50 <= cmu_count[1]) {
-                                cmu_count[1] = flag_mode;  /* known 0 — lets Watcom reuse esi reg */
+                                cmu_count[1] = flag_mode;
                                 return 1;
                             }
                         }
@@ -1072,13 +946,9 @@ int game_speed(void)
     return 0;
 }
 
-// FUNCTION: C2 0x3E972
-// WIN: 0x00411657
-// Lines 712–726
-//
-// Decide whether the map should auto-scroll this frame. Uses the
-// Rule-92 positive-success form so Watcom keeps a single shared
-// return-0 tail; repeated early `return 0` guards diverge.
+// Decide whether the map should auto-scroll this frame.
+// FUNCTION: C2 0x3e972
+// FUNCTION: C2WIN 0x00411657
 int scroll_speed(void)
 {
     int q;
@@ -1093,4 +963,3 @@ int scroll_speed(void)
     }
     return 0;
 }
-

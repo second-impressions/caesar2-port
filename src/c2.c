@@ -1,4 +1,3 @@
-// D:\C2\CODE\c2.c
 
 #include <stdlib.h>     /* free() */
 
@@ -203,9 +202,7 @@ struct gfx_entry c2_battle_aux_gfx[68] = {
     { "PA3SWDBX.PL8", 100000 }
 };
 
-/* ── TU-owned file-scope variables (PS.EXE _BSS, original declaration
-   order).  Recovered so the functional rebuild (`c2 rebuild`) links
-   self-sustained -- no auto-stubbed storage.  Extern decls: c2_data.h. */
+/* File-local state. */
 struct c2inf_rec c2inf;
 
 /* sb_cm_undo_flushed and sb_rm_undo_flushed are byte-wide flags. */
@@ -216,19 +213,7 @@ extern void *malloc(unsigned int size);
 extern void  printf(const char *fmt, ...);
 extern void  exit(int status);
 
-/* ---------------------------------------------------------------------
- * Implicit-int callees made VISIBLE (NOT the original PS source shape).
- *
- * PS's .c did not declare these helpers: the calls below were K&R
- * implicit-int, so wcc386 assumed `int f()`.  Declaring them `extern
- * int f()` here is BYTE-NEUTRAL -- identical codegen to the implicit
- * declaration the compiler already synthesised -- and exists only to
- * surface the real cross-TU contract.  The real definitions return a
- * narrower type (noted per line); the caller intentionally reads EAX
- * as int, exactly as PS.EXE does.  Do NOT "correct" these to the real
- * return type -- a typed (char / enum) decl CHANGES the bytes.
- * ------------------------------------------------------------------- */
-#ifndef _MSC_VER   /* MSVC win-oracle build force-includes c2_funcs.h (typed) */
+#ifndef _MSC_VER
 extern int read_config();  /* really char -- lib32.c */
 extern int to_upper();     /* really char -- lib32.c */
 #endif
@@ -237,24 +222,10 @@ extern int to_upper();     /* really char -- lib32.c */
 
 
 extern int   _getdrive(void);
-// FUNCTION: C2 0x10010
-// WIN: 0x00443733
-// Lines 42–215
-//
-// Caesar II program entry point.  Resolves the CD drive (with an
-// interactive retry loop), loads the boot art / palette / fonts,
-// initializes the mouse / sound / scratch buffers, plays the
-// intro logos and Smacker animation, then runs the outer game
-// loop until exit_flag goes high.
-//
-// On exit: rolls the demo slideshow, saves preferences via
-// save_inf, frees the sample / tune buffers, clears the
-// map / battle GFX caches, and calls exit_game.
 extern int   getch(void);
 extern void  demo_lead_in_slideshow(void);
 extern void  free_tune_buffer(void);
 void *load_a_battle_gfx_file(int n, int idx, int aux);
-
 extern void get_pseudo_map(int n);
 extern unsigned _dos_setdrive(unsigned drive, unsigned *total);
 extern unsigned _dos_getdrive(unsigned *drive);
@@ -262,6 +233,9 @@ extern int      chdir(const char *path);
 extern int      open(const char *path, int flags, ...);
 extern int      close(int fd);
 
+// Caesar II program entry point.
+// FUNCTION: C2 0x10010
+// FUNCTION: C2WIN 0x00443733
 void main(int argc, char *argv[])
 {
     unsigned int e;
@@ -420,21 +394,9 @@ void main(int argc, char *argv[])
 end:;
 }
 
+// Per-tick battle bookkeeping. Only fires when the game is in the BATTLE state (game_state == 4).
 // FUNCTION: C2 0x10409
-// WIN: 0x00443c91
-// Lines 217–234
-//
-// Per-tick battle bookkeeping.  Only fires when the game is in
-// the BATTLE state (game_state == 4).  For battle_type 2 (cohort
-// fight), continues the battle and -- if the player won --
-// stamps two marker bytes (0x97, 0x32) into region_map at the
-// battle2_ptr offset.  For other battle types, continues only
-// when neither army's state_idx is 2 (state 2 == "wait/stuck").
-//
-// After processing, clears game_state unless restart_flag is set
-// (some path needs to keep the BATTLE state alive across the next
-// tick).
-
+// FUNCTION: C2WIN 0x00443c91
 void deal_with_battles(void)
 {
     if (game_state != 4) return;
@@ -455,9 +417,9 @@ void deal_with_battles(void)
     }
 }
 
-// FUNCTION: C2 0x1049B
-// WIN: 0x00443d62
-// Lines 236–254
+// Starts a new game.
+// FUNCTION: C2 0x1049b
+// FUNCTION: C2WIN 0x00443d62
 void start_a_new_game(void)
 {
     setup_game();
@@ -478,9 +440,9 @@ void start_a_new_game(void)
     new_province();
 }
 
+// Starts a promotion.
 // FUNCTION: C2 0x10529
-// WIN: 0x00443e35
-// Lines 257–264
+// FUNCTION: C2WIN 0x00443e35
 void start_a_promotion(void)
 {
     setup_game();
@@ -493,17 +455,11 @@ void start_a_promotion(void)
     if (restart_flag) start_a_new_game();
 }
 
+// Initialize a fresh province for play: clear figures and armies, reset growth counters, set
+// starting denarii (skill-tier scaled minus a per-completed-province reduction), and call the
+// province-setup helpers.
 // FUNCTION: C2 0x10565
-// WIN: 0x00443eca
-// Lines 266–319
-//
-// Initialize a fresh province for play: clear figures and armies,
-// reset growth counters, set starting denarii (skill-tier scaled
-// minus a per-completed-province reduction), and call the
-// province-setup helpers.  When restart_flag goes high (player
-// chose Quit / Restart from the choose-region screen), exits
-// before re-running the long initialization tail.
-
+// FUNCTION: C2WIN 0x00443eca
 void new_province(void)
 {
     int skill;
@@ -568,16 +524,11 @@ void new_province(void)
     pax_romanum             = 0;
 }
 
-// FUNCTION: C2 0x106BB
-// WIN: 0x004440a8
-// Lines 321–356
-//
-// One-shot reset of the per-game runtime state: panel-map cursor,
-// city/province camera, zoom and rotation, command-window pixel
-// rect, ambient map dimensions, and the placing/cheat/highlight
-// scratchpads.  Loads the pseudo-map and the per-zoom map graphics
-// for the freshly-zoomed view.
-
+// One-shot reset of the per-game runtime state: panel-map cursor, city/province camera, zoom and
+// rotation, command-window pixel rect, ambient map dimensions, and the placing/cheat/highlight
+// scratchpads. Loads the pseudo-map and the per-zoom map graphics for the freshly-zoomed view.
+// FUNCTION: C2 0x106bb
+// FUNCTION: C2WIN 0x004440a8
 void setup_game(void)
 {
     pm_y       = 0x50;
@@ -623,19 +574,10 @@ void setup_game(void)
     pm_build_shape    = 0;
 }
 
-// FUNCTION: C2 0x107DB
-// WIN: 0x0044421c
-// Lines 358–434
-//
-// Reload the eight per-zoom map-graphics buffers (people, fixtures,
-// houses, four building tiers, and tops) from c2_map_gfx.
-// Mode and level select an 8-entry block in the table:
-//   block_idx = mode * 24 + level * 8
-// (mode is clamped to 0 if > 1 -- only modes 0 and 1 are valid.)
-//
-// Each iteration: read the entry's size; if zero, skip.  Otherwise
-// malloc the slot, readfile the named asset, and continue.  On any
-// malloc or readfile failure, stop_system + printf + exit(100).
+// Reload the eight per-zoom map-graphics buffers (people, fixtures, houses, four building tiers,
+// and tops) from c2_map_gfx.
+// FUNCTION: C2 0x107db
+// FUNCTION: C2WIN 0x0044421c
 int load_map_graphics(int mode, int level)
 {
     int   base_idx;
@@ -719,9 +661,9 @@ done:
     return ret;
 }
 
+// Swaps the active circus graphics set and refreshes its cached sprites.
 // FUNCTION: C2 0x10944
-// WIN: 0x0044474a
-// Lines 436–460
+// FUNCTION: C2WIN 0x0044474a
 void swap_circus_gfx(void)
 {
     if (population < 2000) return;
@@ -748,18 +690,11 @@ void swap_circus_gfx(void)
     }
 }
 
-// FUNCTION: C2 0x10A40
-// WIN: 0x004448fb
-// Lines 462–485
-//
-// Read one zoom-keyed graphics-table entry into the people_data
-// buffer.  The 0-arg path uses c2_map_gfx (8 entries per zoom),
-// the non-zero arg path uses c2_overlay_gfx (1 entry per zoom);
+// Read one zoom-keyed graphics-table entry into the people_data buffer. The 0-arg path uses
+// c2_map_gfx (8 entries per zoom), the non-zero arg path uses c2_overlay_gfx (1 entry per zoom);
 // each entry is 20 bytes (16-byte filename + 4-byte size).
-//
-// On read failure, stops the game and exit(100)s.
-// Tail-merges into init_battle_gfx_buffers' 5-pop epilogue at
-// 0x10D7A.
+// FUNCTION: C2 0x10a40
+// FUNCTION: C2WIN 0x004448fb
 int load_overlay_graphics(int param)
 {
     int   size;
@@ -787,18 +722,9 @@ int load_overlay_graphics(int param)
     return ok;
 }
 
-// FUNCTION: C2 0x10AC9
-// WIN: 0x004449df
-// Lines 487–520
-//
-// Reset and reload all of the per-battle graphics: city/region map
-// fixtures, the four base figure sets, and (when the player army
-// has mercenaries) the mercenary figure set.  Sub-tables 4..6 are
-// keyed by the defending army's tribe, sub-tables 7/8 by the
-// player's mercenary tribe and category.
-//
-// Tail-merge into init_battle_gfx_buffers' 5-pop epilogue at 0x10D7A.
-
+// Reload map, unit, and optional mercenary graphics for the active battle.
+// FUNCTION: C2 0x10ac9
+// FUNCTION: C2WIN 0x004449df
 int load_battle_graphics(int n)
 {
     int idx_base;
@@ -839,21 +765,10 @@ int load_battle_graphics(int n)
     return 1;
 }
 
-// FUNCTION: C2 0x10C03
-// WIN: 0x00444cf6
-// Lines 523–557
-//
-// Read one slot of a 2D graphics-file table and load the named
-// file into a freshly malloc'd buffer.  Each table entry is 20
-// bytes: 16-byte filename followed by a 4-byte size field.  The
-// table is indexed as [(n-1)*34 + idx] and selected between
-// the main (`c2_battle_gfx`) or auxiliary (`c2_battle_aux_gfx`)
-// table by `aux`.
-//
-// Returns NULL when the entry's size field is 0 (slot unused),
-// otherwise the malloc'd buffer.  On allocation or read failure
-// the game stops and prints an error before exit(100).
-
+// Read one slot of a 2D graphics-file table and load the named file into a freshly malloc'd
+// buffer. Each table entry is 20 bytes: 16-byte filename followed by a 4-byte size field.
+// FUNCTION: C2 0x10c03
+// FUNCTION: C2WIN 0x00444cf6
 void *load_a_battle_gfx_file(int n, int idx, int aux)
 {
     int    slot;
@@ -894,9 +809,9 @@ void *load_a_battle_gfx_file(int n, int idx, int aux)
     return buf;
 }
 
-// FUNCTION: C2 0x10CB9
-// WIN: 0x00444e27
-// Lines 559–569
+// Initializes map gfx buffers.
+// FUNCTION: C2 0x10cb9
+// FUNCTION: C2WIN 0x00444e27
 void init_map_gfx_buffers(void)
 {
     people_data    = 0;
@@ -909,9 +824,9 @@ void init_map_gfx_buffers(void)
     tops_data      = 0;
 }
 
-// FUNCTION: C2 0x10CEE
-// WIN: 0x00444fd3
-// Lines 571–581
+// Clears map gfx buffers.
+// FUNCTION: C2 0x10cee
+// FUNCTION: C2WIN 0x00444fd3
 void clear_map_gfx_buffers(void)
 {
     if (people_data)    free(people_data);
@@ -924,9 +839,9 @@ void clear_map_gfx_buffers(void)
     if (tops_data)      free(tops_data);
 }
 
-// FUNCTION: C2 0x10D80
-// WIN: 0x004451bf
-// Lines 583–596
+// Initializes battle gfx buffers.
+// FUNCTION: C2 0x10d80
+// FUNCTION: C2WIN 0x004451bf
 void init_battle_gfx_buffers(void)
 {
     fixt_data     = 0;
@@ -942,9 +857,9 @@ void init_battle_gfx_buffers(void)
     figure10_data = 0;
 }
 
-// FUNCTION: C2 0x10DC7
-// WIN: 0x0044536f
-// Lines 598–610
+// Clears battle gfx buffers.
+// FUNCTION: C2 0x10dc7
+// FUNCTION: C2WIN 0x0044536f
 void clear_battle_gfx_buffers(void)
 {
     if (fixt_data)     free(fixt_data);
@@ -960,13 +875,10 @@ void clear_battle_gfx_buffers(void)
     if (figure10_data) free(figure10_data);
 }
 
-// FUNCTION: C2 0x10E89
-// WIN: 0x0044551f
-// Lines 614–633
-//
-// Read the 14 boot-time art / data blobs into their fixed
-// destination buffers.  Returns 0 on success or a 1-based code
-// identifying the first file that failed to load.
+// Read the 14 boot-time art / data blobs into their fixed destination buffers. Returns 0 on
+// success or a 1-based code identifying the first file that failed to load.
+// FUNCTION: C2 0x10e89
+// FUNCTION: C2WIN 0x0044551f
 int load_start_graphics(void)
 {
     if (!readfile("cityfixt.256", city_palette,        0x300,  0)) return 1;
@@ -986,50 +898,34 @@ int load_start_graphics(void)
     return 0;
 }
 
-// FUNCTION: C2 0x1107C
-// WIN: 0x0044578b
-// Lines 635–639
+// Flushes the pending sound-buffer data.
+// FUNCTION: C2 0x1107c
+// FUNCTION: C2WIN 0x0044578b
 void flush_sb_buffer(void)
 {
     sb_cm_undo_flushed = 1;
     sb_rm_undo_flushed = 1;
 }
 
-// FUNCTION: C2 0x1108B
-// WIN: 0x004457a4
-// Lines 641–641
+// Performs pos.
+// FUNCTION: C2 0x1108b
+// FUNCTION: C2WIN 0x004457a4
 void do_pos(void)
 {
     pos_sound();
 }
 
+// Performs neg.
 // FUNCTION: C2 0x11090
-// WIN: 0x004457b4
-// Lines 642–642
+// FUNCTION: C2WIN 0x004457b4
 void do_neg(void)
 {
     neg_sound();
 }
 
-// FUNCTION: C2 0x11095
-// WIN: 0x004457c4
-// Lines 646–684
-//
 // Verify that the configured CD-ROM drive contains "cd.dat".
-// Returns 0 when everything checks out, otherwise a numbered
-// error code:
-//   1 - c2inf.cd_letter not set (< 'A')
-//   2 - couldn't switch to CD drive
-//   3 - chdir to CD root failed
-//   4 - "cd.dat" missing on the CD
-//   5 - couldn't restore previous drive
-//   6 - couldn't restore previous working directory
-//
-// Cases 3..6 don't early-exit: the function continues so that the
-// previous working directory and drive get restored even when one
-// of the CD checks failed.
-
-
+// FUNCTION: C2 0x11095
+// FUNCTION: C2WIN 0x004457c4
 int test_cd_drive(void)
 {
     int            ret;

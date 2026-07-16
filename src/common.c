@@ -1,12 +1,9 @@
-// D:\C2\CODE\common.c
 
 #include "common.h"
 #include "c2_data.h"
 #include "c2_types.h"
 
-/* ── TU-owned file-scope variables (PS.EXE _BSS, original declaration
-   order).  Recovered so the functional rebuild (`c2 rebuild`) links
-   self-sustained -- no auto-stubbed storage.  Extern decls: c2_data.h. */
+/* File-local state. */
 int ferret_targ_x;
 int ferret_targ_y;
 int anti_ferret_moves;
@@ -50,14 +47,9 @@ unsigned char ferret_heading(int x, int y);
 unsigned char get_tb_value(int dir);
 unsigned char get_ferret2(int dir);
 
-// FUNCTION: C2 0x2A907
-// WIN: 0x004691b0
-// Lines 52–104
-//
-// The create_* family was off-by-one in CAESAR2.EXE (its first slot,
-// create_citizen @0x004691b0, had been left unmapped, shifting every
-// later create_* up one).  Recovered via AST call-graph + per-slot
-// global signature: this slot refs citizen_a/citizen_b/created_citizen_no.
+// Creates citizen.
+// FUNCTION: C2 0x2a907
+// FUNCTION: C2WIN 0x004691b0
 int create_citizen(int type, int x, int y, char is_barb)
 {
     int ref;
@@ -114,10 +106,10 @@ int create_citizen(int type, int x, int y, char is_barb)
                     citizen_list[created_citizen_no].name_id = roman_name_count;
                 }
                 roman_name_count++;
-                if (roman_name_count >= 0x20)             // Rule 4
+                if (roman_name_count >= 0x20)
                     roman_name_count = 0;
                 barbarian_name_count++;
-                if (barbarian_name_count >= 0x10)         // Rule 4
+                if (barbarian_name_count >= 0x10)
                     barbarian_name_count = 0;
                 return 1;
             }
@@ -126,10 +118,9 @@ int create_citizen(int type, int x, int y, char is_barb)
     return 0;
 }
 
-// FUNCTION: C2 0x2AB1A
-// WIN: 0x004695b9
-// Lines 106–145
-// (CAESAR2.EXE 0x004695b9 refs army_a/army_list/rand128 — create_army.)
+// Creates army.
+// FUNCTION: C2 0x2ab1a
+// FUNCTION: C2WIN 0x004695b9
 int create_army(int type, int x, int y, char mode)
 {
     int ref;
@@ -185,10 +176,9 @@ int create_army(int type, int x, int y, char mode)
     return 0;
 }
 
-// FUNCTION: C2 0x2AC8B
-// WIN: 0x0046993d
-// Lines 147–161
-// (CAESAR2.EXE 0x0046993d refs created_unit_no — create_unit.)
+// Creates unit.
+// FUNCTION: C2 0x2ac8b
+// FUNCTION: C2WIN 0x0046993d
 int create_unit(int owner, int x, int y, int type)
 {
     for (created_unit_no = 1; created_unit_no < 0x33; created_unit_no++) {
@@ -207,10 +197,9 @@ int create_unit(int owner, int x, int y, int type)
     return 0;
 }
 
-// FUNCTION: C2 0x2ACFB
-// WIN: 0x00469aa3
-// Lines 163–190
-// (CAESAR2.EXE 0x00469aa3 refs created_figure_no — create_figure.)
+// Creates figure.
+// FUNCTION: C2 0x2acfb
+// FUNCTION: C2WIN 0x00469aa3
 int create_figure(int sprite_type, int base_x, int off_x, int base_y, int off_y, int owner, int unit_no)
 {
     for (created_figure_no = 1; created_figure_no < 0xC9; created_figure_no++) {
@@ -244,10 +233,9 @@ int create_figure(int sprite_type, int base_x, int off_x, int base_y, int off_y,
     return 0;
 }
 
-// FUNCTION: C2 0x2AE0E
-// WIN: 0x00469d49
-// Lines 192–215
-// (CAESAR2.EXE 0x00469d49 refs arrow_no/created_arrow_no — create_arrow.)
+// Creates arrow.
+// FUNCTION: C2 0x2ae0e
+// FUNCTION: C2WIN 0x00469d49
 int create_arrow(unsigned char *arrow_data_ptr, int owner, int sx, int sy, int ex, int ey)
 {
     for (created_arrow_no = 1; created_arrow_no < 0xC9; created_arrow_no++) {
@@ -274,9 +262,9 @@ int create_arrow(unsigned char *arrow_data_ptr, int owner, int sx, int sy, int e
     return 0;
 }
 
-// FUNCTION: C2 0x2AF5A
-// WIN: 0x00469f7e  (unverified)
-// Lines 221–225
+// Clears citizen.
+// FUNCTION: C2 0x2af5a
+// FUNCTION: C2WIN 0x00469f7e
 void clear_citizen(struct citizen_rec *p)
 {
     unsigned int i;
@@ -286,9 +274,9 @@ void clear_citizen(struct citizen_rec *p)
     }
 }
 
-// FUNCTION: C2 0x2AF6D
-// WIN: 0x00469f9c  (unverified)
-// Lines 226–230
+// Clears army.
+// FUNCTION: C2 0x2af6d
+// FUNCTION: C2WIN 0x00469f9c
 void clear_army(struct army_rec *p)
 {
     unsigned int i;
@@ -298,23 +286,8 @@ void clear_army(struct army_rec *p)
     }
 }
 
-// FUNCTION: C2 0x2AFBC
-// Lines 231–235 — SOURCE POSITION IS LOAD-BEARING (Rule 125, haul-DOWN).
-//
-// The symbol 0x2AFBC is the HAULED HEAD, not the source position.  The
-// "orphan tail" at clear_army+0x15 (0x2AF82, 10 bytes: a 0x4E-byte
-// clear loop + pop/ret with no prologue) is THIS function's body:
-// clear_unit is defined HERE in PS source (lines 231-235, right after
-// clear_army — its body's surviving line records L234/L235 at
-// 0x2AF82/0x2AF8C prove it; the head lines' records were orphaned and
-// collapsed per Rule 125).  remove_unit's tail call
-// `clear_unit(&unit_list[n])` became `jmp clear_unit` (CallRet) and
-// StraightenCode "pushed the code down to the jump": clear_unit's head
-// (entry label; push ebx; mov ebx,eax; xor eax,eax; jmp Lcmp — label
-// through first unconditional jmp) moved into remove_unit at 0x2AFBC,
-// jumping BACK to the loop left behind at 0x2AF87.  The entry label —
-// and therefore the PUBDEF symbol — traveled with the moved head,
-// which is why clear_unit's symbol sits inside remove_unit's range.
+// Clears every field in a unit record.
+// FUNCTION: C2 0x2afbc
 void clear_unit(struct unit_rec *p)
 {
     unsigned int i;
@@ -324,9 +297,9 @@ void clear_unit(struct unit_rec *p)
     }
 }
 
-// FUNCTION: C2 0x2AF8E
-// WIN: 0x00469fb7  (unverified)
-// Lines 236–240
+// Clears figure.
+// FUNCTION: C2 0x2af8e REORDERED
+// FUNCTION: C2WIN 0x00469fb7
 void clear_figure(struct figure_rec *p)
 {
     unsigned int i;
@@ -336,9 +309,9 @@ void clear_figure(struct figure_rec *p)
     }
 }
 
-// FUNCTION: C2 0x2AFA1
-// WIN: 0x00469fd2  (unverified)
-// Lines 241–245
+// Clears arrow.
+// FUNCTION: C2 0x2afa1
+// FUNCTION: C2WIN 0x00469fd2
 void clear_arrow(struct arrow_rec *p)
 {
     unsigned int i;
@@ -348,20 +321,17 @@ void clear_arrow(struct arrow_rec *p)
     }
 }
 
-// FUNCTION: C2 0x2AFB4
-// WIN: 0x00469fed
-// Lines 247–247
-//
-// PS emits imul/add then falls into clear_unit's hauled-down head (see
-// the static clear_unit above, Rule 125).
+// Removes unit.
+// FUNCTION: C2 0x2afb4
+// FUNCTION: C2WIN 0x00469fed
 void remove_unit(int n)
 {
     clear_unit(&unit_list[n]);
 }
 
-// FUNCTION: C2 0x2AFC3
-// WIN: 0x0046a016
-// Lines 248–252
+// Removes figure.
+// FUNCTION: C2 0x2afc3
+// FUNCTION: C2WIN 0x0046a016
 void remove_figure(int n)
 {
     char zero = 0;
@@ -370,8 +340,9 @@ void remove_figure(int n)
     clear_figure(&figure_list[n]);
 }
 
-// FUNCTION: C2 0x2AFE3
-// Lines 255–260
+// Removes citizen.
+// FUNCTION: C2 0x2afe3
+// FUNCTION: C2WIN 0x0046a055
 void remove_citizen(int n)
 {
     char zero = 0;
@@ -384,9 +355,9 @@ void remove_citizen(int n)
     clear_citizen(&citizen_list[n]);
 }
 
-// FUNCTION: C2 0x2B02A
-// WIN: 0x0046a102
-// Lines 262–266
+// Removes army.
+// FUNCTION: C2 0x2b02a
+// FUNCTION: C2WIN 0x0046a102
 void remove_army(int n)
 {
     char zero = 0;
@@ -395,9 +366,9 @@ void remove_army(int n)
     clear_army(&army_list[n]);
 }
 
-// FUNCTION: C2 0x2B04D
-// WIN: 0x0046a146
-// Lines 269–273
+// Clears unit list.
+// FUNCTION: C2 0x2b04d
+// FUNCTION: C2WIN 0x0046a146
 void clear_unit_list(void)
 {
     for (unit_no = 1; unit_no < 0x33; unit_no++) {
@@ -405,9 +376,9 @@ void clear_unit_list(void)
     }
 }
 
-// FUNCTION: C2 0x2B079
-// WIN: 0x0046a19d
-// Lines 274–278
+// Clears figure list.
+// FUNCTION: C2 0x2b079
+// FUNCTION: C2WIN 0x0046a19d
 void clear_figure_list(void)
 {
     for (figure_no = 1; figure_no < 0xC9; figure_no++) {
@@ -415,9 +386,9 @@ void clear_figure_list(void)
     }
 }
 
-// FUNCTION: C2 0x2B0A7
-// WIN: 0x0046a1f3
-// Lines 279–283
+// Clears arrow list.
+// FUNCTION: C2 0x2b0a7
+// FUNCTION: C2WIN 0x0046a1f3
 void clear_arrow_list(void)
 {
     for (arrow_no = 1; arrow_no < 0xC9; arrow_no++) {
@@ -425,9 +396,9 @@ void clear_arrow_list(void)
     }
 }
 
-// FUNCTION: C2 0x2B0E3
-// WIN: 0x0046a245
-// Lines 287–311
+// Checks citizen list and returns the result.
+// FUNCTION: C2 0x2b0e3
+// FUNCTION: C2WIN 0x0046a245
 void check_citizen_list(void)
 {
     int i;
@@ -461,9 +432,9 @@ void check_citizen_list(void)
     }
 }
 
-// FUNCTION: C2 0x2B1BA
-// WIN: 0x0046a3ed
-// Lines 313–337
+// Checks army list and returns the result.
+// FUNCTION: C2 0x2b1ba
+// FUNCTION: C2WIN 0x0046a3ed
 void check_army_list(void)
 {
     int i;
@@ -491,9 +462,9 @@ void check_army_list(void)
     }
 }
 
-// FUNCTION: C2 0x2B282
-// WIN: 0x0046a551
-// Lines 339–344
+// Clears citizen list.
+// FUNCTION: C2 0x2b282
+// FUNCTION: C2WIN 0x0046a551
 void clear_citizen_list(void)
 {
     for (citizen_no = 1; citizen_no < 0xC9; citizen_no++) {
@@ -501,9 +472,9 @@ void clear_citizen_list(void)
     }
 }
 
-// FUNCTION: C2 0x2B2A8
-// WIN: 0x0046a59b
-// Lines 346–351
+// Clears army list.
+// FUNCTION: C2 0x2b2a8
+// FUNCTION: C2WIN 0x0046a59b
 void clear_army_list(void)
 {
     for (army_no = 1; army_no < 0x1A; army_no++) {
@@ -511,9 +482,9 @@ void clear_army_list(void)
     }
 }
 
-// FUNCTION: C2 0x2B2CC
-// WIN: 0x0046a5e3
-// Lines 353–361
+// Normalizes temporary army existence states after restoring a game.
+// FUNCTION: C2 0x2b2cc
+// FUNCTION: C2WIN 0x0046a5e3
 void army_restoring_adjusts(void)
 {
     for (army_no = 0; army_no < 0x1A; army_no++) {
@@ -527,9 +498,9 @@ void army_restoring_adjusts(void)
     }
 }
 
-// FUNCTION: C2 0x2B31D
-// WIN: 0x0046a6b4
-// Lines 363–372
+// Normalizes temporary army states and reports whether any army is still being built.
+// FUNCTION: C2 0x2b31d
+// FUNCTION: C2WIN 0x0046a6b4
 int any_army_building_adjusts(void)
 {
     int result = 0;
@@ -544,9 +515,9 @@ int any_army_building_adjusts(void)
     return result;
 }
 
-// FUNCTION: C2 0x2B37B
-// WIN: 0x0046a75f
-// Lines 374–378
+// Removes armies left in the temporary building state.
+// FUNCTION: C2 0x2b37b
+// FUNCTION: C2WIN 0x0046a75f
 void army_building_adjusts(void)
 {
     for (army_no = 0; army_no < 0x1A; army_no++) {
@@ -556,12 +527,12 @@ void army_building_adjusts(void)
     }
 }
 
-// FUNCTION: C2 0x2B3B3
-// WIN: 0x0046a7c6
-// Lines 380–387
+// Clears army from fort ref.
+// FUNCTION: C2 0x2b3b3
+// FUNCTION: C2WIN 0x0046a7c6
 void clear_army_from_fort_ref(int ref)
 {
-    for (army_no = 0; army_no < 26; army_no++) {   // Watcom preserves <26 vs <=25 literally
+    for (army_no = 0; army_no < 26; army_no++) {
         if (army_list[army_no].exists != 0 && ref == army_list[army_no].fort_ref) {
             army_list[army_no].exists = 3;
             return;
@@ -569,16 +540,14 @@ void clear_army_from_fort_ref(int ref)
     }
 }
 
-// FUNCTION: C2 0x2B3F9
-// WIN: 0x0046a85b
-// Lines 389–396
+// Returns army name from fort ref.
+// FUNCTION: C2 0x2b3f9
+// FUNCTION: C2WIN 0x0046a85b
 int get_army_name_from_fort_ref(int ref)
 {
     int result;
-    /* No-match path returns whatever EBX holds on entry (PS bug:
-       no explicit init).  Matches PS asm where EBX is only written
-       inside the match branch.  Callers guarantee a match. */
-    for (army_no = 0; army_no < 26; army_no++) {     // Rule 4
+    /* Callers guarantee a matching fort reference. */
+    for (army_no = 0; army_no < 26; army_no++) {
         if (army_list[army_no].exists != 0 && ref == army_list[army_no].fort_ref) {
             result = army_list[army_no].cohort_id;           /* signed-char movsx */
             return result;
@@ -587,9 +556,9 @@ int get_army_name_from_fort_ref(int ref)
     return result;
 }
 
-// FUNCTION: C2 0x2B442
-// WIN: 0x0046a8f0
-// Lines 398–412
+// Returns nearest army to track.
+// FUNCTION: C2 0x2b442
+// FUNCTION: C2WIN 0x0046a8f0
 int get_nearest_army_to_track(int x, int y)
 {
     int dist;
@@ -608,16 +577,16 @@ int get_nearest_army_to_track(int x, int y)
     return best;
 }
 
-// FUNCTION: C2 0x2B4CB
-// WIN: 0x0046aa26
-// Lines 414–426
+// Returns nearest enemy to track.
+// FUNCTION: C2 0x2b4cb
+// FUNCTION: C2WIN 0x0046aa26
 int get_nearest_enemy_to_track(int x, int y)
 {
     int dist;
     int best = 9999;
     for (army_no = 0; army_no < 26; army_no++) {
         if (army_list[army_no].exists != 0
-            && army_list[army_no].type >= 2                /* Rule 4 */
+            && army_list[army_no].type >= 2
             && army_list[army_no].type <= 5
             && army_list[army_no].map_x != 0 && army_list[army_no].map_y != 0) {
             dist = get_longest_distance(army_list[army_no].map_x,
@@ -631,9 +600,9 @@ int get_nearest_enemy_to_track(int x, int y)
     return best;
 }
 
-// FUNCTION: C2 0x2B557
-// WIN: 0x0046ab7e
-// Lines 430–436
+// Returns tracking army distance.
+// FUNCTION: C2 0x2b557
+// FUNCTION: C2WIN 0x0046ab7e
 int get_tracking_army_distance(int n, int x, int y)
 {
     if (army_list[n].map_x == 0 || army_list[n].map_y == 0) return 999;
@@ -641,9 +610,9 @@ int get_tracking_army_distance(int n, int x, int y)
                                 army_list[n].map_y, x, y);
 }
 
-// FUNCTION: C2 0x2B593
-// WIN: 0x0046ac17
-// Lines 442–442
+// Returns a unit centered on mouse.
+// FUNCTION: C2 0x2b593
+// FUNCTION: C2WIN 0x0046ac17
 int get_a_unit_centered_on_mouse(void)
 {
     if (mouse_left_preclick == 0) {
@@ -653,17 +622,16 @@ int get_a_unit_centered_on_mouse(void)
     return temp_unit;
 }
 
-// FUNCTION: C2 0x2B59C
-// (no confirmed CAESAR2.EXE slot; old 0x00482825 was a placeholder magnet.)
-// Lines 446–448
+// Returns 0 for the find figure query.
+// FUNCTION: C2 0x2b59c
 int find_figure(int mode)
 {
     return 0;
 }
 
-// FUNCTION: C2 0x2B5B1
-// WIN: 0x0046ac54
-// Lines 450–458
+// Returns a shootable unit.
+// FUNCTION: C2 0x2b5b1
+// FUNCTION: C2WIN 0x0046ac54
 int get_a_shootable_unit(void)
 {
     for (temp_unit = 1; temp_unit < 0x33; temp_unit++) {
@@ -674,12 +642,13 @@ int get_a_shootable_unit(void)
     return temp_unit;
 }
 
-// FUNCTION: C2 0x2B5F5
-// Lines 488–510
+// Returns heading.
+// FUNCTION: C2 0x2b5f5
+// FUNCTION: C2WIN 0x0046ad14
 heading_t get_heading(int sx, int sy, int ex, int ey, char mode)
 {
     heading_t heading;
-    if (sx > ex) {                                     /* PS: cmp eax,ebx; jle (Rule 4) */
+    if (sx > ex) {
         if (sy > ey) heading = HEADING_NW;
         else if (sy == ey) heading = HEADING_W;
         else if (sy < ey) heading = HEADING_SW;
@@ -695,15 +664,12 @@ heading_t get_heading(int sx, int sy, int ex, int ey, char mode)
     return heading;
 }
 
-// FUNCTION: C2 0x2B662
-// WIN: 0x0046ae0d
-// Lines 564–621
+// Clears ferret map.
+// FUNCTION: C2 0x2b662
+// FUNCTION: C2WIN 0x0046ae0d
 void clear_ferret_map(int margin, unsigned char *map_base, int map_wi, int map_hi,
                       int cell_size, int x1, int y1, int x2, int y2)
 {
-    /* Decl order is load-bearing (Rule 115/107): y-pair before x-pair,
-     * and ey before ex, reproduce PS's parm homes (x1=ebx y1=esi x2=edx,
-     * y2 memory) + spill-slot layout.  Shape from Mac PPC build. */
     int miny;
     int maxy;
     int minx;
@@ -784,17 +750,13 @@ void clear_ferret_map(int margin, unsigned char *map_base, int map_wi, int map_h
     }
 }
 
-// FUNCTION: C2 0x2B7E0
-// WIN: 0x0046b083
-// Lines 624–708
+// Clears region ferret map.
+// FUNCTION: C2 0x2b7e0
+// FUNCTION: C2WIN 0x0046b083
 void clear_region_ferret_map(int mode, int margin, unsigned char *map_base, int map_wi,
                              int map_hi, int cell_size, int x1, int y1,
                              int x2, int y2)
 {
-    /* Shape from the Mac PPC build (c2 mac-fn), semantics confirmed against
-     * PS x86: separate else-if val chains (no &&/goto funnels), cell0/cell7
-     * loaded up-front as byte locals, no cached cell pointer, and a dead
-     * re-test of (terrain & 8) in the tail that PS's CSE hoists. */
     int maxy;
     int miny;
     int minx;
@@ -909,8 +871,9 @@ void clear_region_ferret_map(int mode, int margin, unsigned char *map_base, int 
     }
 }
 
-// FUNCTION: C2 0x2BA5E
-// Lines 711–757
+// Clears sea ferret map.
+// FUNCTION: C2 0x2ba5e
+// FUNCTION: C2WIN 0x0046b4a9
 void clear_sea_ferret_map(int unused, int margin, unsigned char *map_base, int map_wi,
                           int map_hi, int cell_size, int x1, int y1,
                           int x2, int y2)
@@ -981,9 +944,9 @@ void clear_sea_ferret_map(int unused, int margin, unsigned char *map_base, int m
     }
 }
 
-// FUNCTION: C2 0x2BB7B
-// WIN: 0x0046b68b
-// Lines 759–802
+// Runs 2 map ferrets.
+// FUNCTION: C2 0x2bb7b
+// FUNCTION: C2WIN 0x0046b68b
 int run_2_map_ferrets(int param1, unsigned char *map_base, int map_wi, int map_hi,
                       int cell_size, int start_x, int start_y,
                       int targ_x, int targ_y)
@@ -1019,11 +982,11 @@ int run_2_map_ferrets(int param1, unsigned char *map_base, int map_wi, int map_h
         run_anti_ferret();
         if (ferret_home != 0) break;
         ferret_energy--;
-        if (ferret_energy <= 0) break;              // Rule 4 (enables `test`)
+        if (ferret_energy <= 0) break;
     }
 
     for (i = 0; i < 20; i++)
-        ferret_run[i] = 0;                          /* Watcom lowers this to `call __STOSB` */
+        ferret_run[i] = 0;
 
     if (ferret_home != 0) {
         smooth_ferret_run(param1, map_base, map_wi, map_hi,
@@ -1036,9 +999,9 @@ int run_2_map_ferrets(int param1, unsigned char *map_base, int map_wi, int map_h
     return 0;
 }
 
-// FUNCTION: C2 0x2BCEB
-// WIN: 0x0046b875
-// Lines 804–825
+// Loads ferret run.
+// FUNCTION: C2 0x2bceb
+// FUNCTION: C2WIN 0x0046b875
 void load_ferret_run(int x, int y, int max_len)
 {
     unsigned char dir;
@@ -1060,9 +1023,9 @@ void load_ferret_run(int x, int y, int max_len)
     }
 }
 
-// FUNCTION: C2 0x2BD7C
-// WIN: 0x0046b96b
-// Lines 827–885
+// Relaxes pathfinding costs within the corridor around the current ferret route.
+// FUNCTION: C2 0x2bd7c
+// FUNCTION: C2WIN 0x0046b96b
 void smooth_ferret_run(int margin, unsigned char *map_base, int map_wi, int map_hi,
                        int cell_size, int x1, int y1, int x2, int y2)
 {
@@ -1147,9 +1110,9 @@ void smooth_ferret_run(int margin, unsigned char *map_base, int map_wi, int map_
     *(map_base + ferret_targ_ptr + 2) = saved_targ;
 }
 
-// FUNCTION: C2 0x2BF23
-// WIN: 0x0046bc3b
-// Lines 887–918
+// Traces a ferret route backward from the target along decreasing path costs.
+// FUNCTION: C2 0x2bf23
+// FUNCTION: C2WIN 0x0046bc3b
 int trace_back_ferret(void)
 {
     unsigned char cur_val;
@@ -1168,7 +1131,7 @@ int trace_back_ferret(void)
     while (cur_val > 1) {
         energy--;
         if (energy < 0) return 0;
-        cur_val++;                             /* PS: inc bh; mov bl, bh */
+        cur_val++;
         best_val = cur_val;
         best_dir = 0;
         for (dir = 0; dir < 8; dir++) {
@@ -1189,9 +1152,9 @@ int trace_back_ferret(void)
     return 1;
 }
 
-// FUNCTION: C2 0x2BFCA
-// WIN: 0x0046bd96
-// Lines 920–947
+// Traces a ferret route forward for a bounded number of steps.
+// FUNCTION: C2 0x2bfca
+// FUNCTION: C2WIN 0x0046bd96
 int trace_forward_ferret(int steps)
 {
     unsigned char cur_val;
@@ -1222,9 +1185,9 @@ int trace_forward_ferret(int steps)
     return 1;
 }
 
-// FUNCTION: C2 0x2C062
-// WIN: 0x0046bedd
-// Lines 950–992
+// Runs clock ferret.
+// FUNCTION: C2 0x2c062
+// FUNCTION: C2WIN 0x0046bedd
 void run_clock_ferret(void)
 {
     unsigned char heading;
@@ -1242,12 +1205,6 @@ void run_clock_ferret(void)
 
     dir = heading;
     count = 0;
-    /* NB: the `(signed char)dir` casts below are LOAD-BEARING, not
-     * redundant: move_clock_ferret / check_clock_ferret_move are called
-     * here BEFORE their definitions (unprototyped), so the cast is the
-     * only thing narrowing `dir` (int) to the callee's signed-char
-     * width.  Dropping it regresses byte-exactness (a width divergence);
-     * decl-audit flags it as "cast == real param" but do NOT remove. */
     do {
         result = (unsigned char)check_clock_ferret_move((signed char)dir);
         if (tb_occ_a_flag != 0 && tb_occ_b_flag != 0) result = 0xFE;
@@ -1285,9 +1242,9 @@ void run_clock_ferret(void)
     clock_ferret_running = 0;
 }
 
-// FUNCTION: C2 0x2C1AB
-// WIN: 0x0046c10f
-// Lines 994–1036
+// Runs anti ferret.
+// FUNCTION: C2 0x2c1ab
+// FUNCTION: C2WIN 0x0046c10f
 void run_anti_ferret(void)
 {
     unsigned char heading;
@@ -1342,18 +1299,9 @@ void run_anti_ferret(void)
     anti_ferret_running = 0;
 }
 
-// FUNCTION: C2 0x2C31B
-// WIN: 0x0046c335
-// Lines 1038–1104
-/* BYTE-EXACT 2026-06-12 (was 686 b).  Shape from Mac PPC + PS x86:
- * per-case inline cell reads, tb_prev_flag = cell[5] & 0x80, and — THE
- * lever — every bounds check is an inline `return -1;` (Mac: one
- * `li r3,0xff; b end` PER site), NOT a `break` to a shared return.
- * The old "Rule 111 value-number overflow" theory was wrong: the
- * control-flow shape of the per-site returns is what reproduces PS's
- * per-case CSE pattern (ingredient recompute in early cases, cached
- * address in later ones) and the cross-function tail-merge of the
- * return -1 block. */
+// Checks clock ferret move and returns the result.
+// FUNCTION: C2 0x2c31b
+// FUNCTION: C2WIN 0x0046c335
 signed char check_clock_ferret_move(signed char dir)
 {
     switch (dir) {
@@ -1421,9 +1369,9 @@ signed char check_clock_ferret_move(signed char dir)
     return -1;
 }
 
-// FUNCTION: C2 0x2C70B
-// WIN: 0x0046c965
-// Lines 1106–1162
+// Moves the clockwise path probe one cell and stamps its accumulated route cost.
+// FUNCTION: C2 0x2c70b
+// FUNCTION: C2WIN 0x0046c965
 void move_clock_ferret(signed char dir, char mode)
 {
     unsigned char val;
@@ -1482,15 +1430,9 @@ void move_clock_ferret(signed char dir, char mode)
     }
 }
 
-// FUNCTION: C2 0x2C883
-// WIN: 0x0046cb49
-// Lines 1164–1230
-/* BYTE-EXACT 2026-06-12 (was 608 b).  Mirror of check_clock_ferret_move
- * with the ANTI mask: tb_prev_flag = cell[5] & 0x40 (PS `and al,0x40`;
- * the old 0x80 was copied from the clock twin — semantic fix).  Same
- * per-site `return -1;` lever; its return -1 block tail-merges
- * backward into the clock twin's (Rule 42 — the jle targets land
- * before this function's entry). */
+// Checks anti ferret move and returns the result.
+// FUNCTION: C2 0x2c883
+// FUNCTION: C2WIN 0x0046cb49
 signed char check_anti_ferret_move(signed char dir)
 {
     switch (dir) {
@@ -1558,9 +1500,9 @@ signed char check_anti_ferret_move(signed char dir)
     return -1;
 }
 
-// FUNCTION: C2 0x2CC73
-// WIN: 0x0046d179
-// Lines 1232–1287
+// Moves the anticlockwise path probe one cell and stamps its accumulated route cost.
+// FUNCTION: C2 0x2cc73
+// FUNCTION: C2WIN 0x0046d179
 void move_anti_ferret(signed char dir, char mode)
 {
     unsigned char val;
@@ -1619,9 +1561,9 @@ void move_anti_ferret(signed char dir, char mode)
     }
 }
 
-// FUNCTION: C2 0x2CDCD
-// WIN: 0x0046d35d
-// Lines 1290–1311
+// Returns the compass direction from a point toward the ferret target.
+// FUNCTION: C2 0x2cdcd
+// FUNCTION: C2WIN 0x0046d35d
 unsigned char ferret_heading(int x, int y)
 {
     if (x > ferret_targ_x) {
@@ -1640,9 +1582,9 @@ unsigned char ferret_heading(int x, int y)
     return 8;
 }
 
-// FUNCTION: C2 0x2CE5B
-// WIN: 0x0046d47e
-// Lines 1313–1355
+// Returns tb value.
+// FUNCTION: C2 0x2ce5b
+// FUNCTION: C2WIN 0x0046d47e
 unsigned char get_tb_value(int dir)
 {
     switch (dir) {
@@ -1686,9 +1628,9 @@ unsigned char get_tb_value(int dir)
     return 0xFF;
 }
 
-// FUNCTION: C2 0x2CFEF
-// WIN: 0x0046d7dd
-// Lines 1358–1400
+// Returns ferret2.
+// FUNCTION: C2 0x2cfef
+// FUNCTION: C2WIN 0x0046d7dd
 unsigned char get_ferret2(int dir)
 {
     switch (dir) {
@@ -1732,22 +1674,9 @@ unsigned char get_ferret2(int dir)
     return 0xFF;
 }
 
-// FUNCTION: C2 0x2D1EF
-// WIN: 0x0046db8c
-// Lines 1402–1447
-//
-// BYTE-EXACT 2026-06-12 (was 96 b).  Two fixes:
-//   1. The function was MISSING its final statement
-//      `*(ferret_map + tb_ptr + 6) = 1;` (PS L1447 marks the
-//      destination ferret cell) — semantic bug, 96→36 b.
-//   2. Prefix `--tb_y;` / `++tb_x;` forms (Rule 72), not postfix:
-//      flips the CSE pass's discovery order so the six hoisted
-//      candidate values (tb_y±1, tb_x±1, tb_ptr±vert) are emitted
-//      in PS's order/homes (edi,ebx,eax,ecx,esi,edx), 36→0 b.
-// The pre-dispatch hoist block itself is Watcom's own cross-case
-// CSE (no line records in PS) — the per-case RMW source below IS
-// the original shape (confirmed by the Mac PPC build, which keeps
-// per-case lwz/addi/stw with no hoist).
+// Advances the current ferret trace and marks the destination cell.
+// FUNCTION: C2 0x2d1ef
+// FUNCTION: C2WIN 0x0046db8c
 void move_to_tb_value(int dir)
 {
     switch (dir) {
@@ -1795,9 +1724,9 @@ void move_to_tb_value(int dir)
     *(ferret_map + tb_ptr + 6) = 1;
 }
 
-// FUNCTION: C2 0x2D305
-// WIN: 0x0046dd00
-// Lines 1450–1455
+// Returns over coords.
+// FUNCTION: C2 0x2d305
+// FUNCTION: C2WIN 0x0046dd00
 void get_over_coords(void)
 {
     over_ptr = pm_over_cm_ptr / map_actual_atom;
@@ -1805,9 +1734,9 @@ void get_over_coords(void)
     over_y = over_ptr / map_actual_width;
 }
 
-// FUNCTION: C2 0x2D349
-// WIN: 0x0046dd3f
-// Lines 1457–1464
+// Returns whether the current overview coordinates lie on a map edge.
+// FUNCTION: C2 0x2d349
+// FUNCTION: C2WIN 0x0046dd3f
 int at_edge_of_map(int x, int y)
 {
     if (x <= 0) return 1;
@@ -1817,12 +1746,12 @@ int at_edge_of_map(int x, int y)
     return 0;
 }
 
-// FUNCTION: C2 0x2D372
-// WIN: 0x0046ddab
-// Lines 1466–1502
+// Returns over army.
+// FUNCTION: C2 0x2d372
+// FUNCTION: C2WIN 0x0046ddab
 void get_over_army(void)
 {
-    int sy; /* declaration order drives regalloc */
+    int sy;
     int sx;
     int ey;
     int ex;

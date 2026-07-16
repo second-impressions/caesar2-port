@@ -1,12 +1,11 @@
-// D:\C2\CODE\empire.c
 
 #include "c2_data.h"
 #include "c2_types.h"     /* struct province_industry / mercs_class */
 
 
-// FUNCTION: C2 0x57B49
-// WIN: 0x00459540
-// Lines 12–20
+// Clears empire.
+// FUNCTION: C2 0x57b49
+// FUNCTION: C2WIN 0x00459540
 void clear_empire(void)
 {
     int i;
@@ -16,9 +15,9 @@ void clear_empire(void)
     empire_won[0] = 99998;
 }
 
-// FUNCTION: C2 0x57B81
-// WIN: 0x004595b3
-// Lines 22–45
+// Returns new province options.
+// FUNCTION: C2 0x57b81
+// FUNCTION: C2WIN 0x004595b3
 void get_new_province_options(void)
 {
     int i;
@@ -46,9 +45,9 @@ void get_new_province_options(void)
     }
 }
 
-// FUNCTION: C2 0x57C25
-// WIN: 0x004596d5
-// Lines 47–58
+// Returns whether a province is controlled by Rome or borders a Roman province.
+// FUNCTION: C2 0x57c25
+// FUNCTION: C2WIN 0x004596d5
 int known_world(int prov)
 {
     int i;
@@ -62,9 +61,9 @@ int known_world(int prov)
     return 0;
 }
 
-// FUNCTION: C2 0x57C74
-// WIN: 0x00459760
-// Lines 60–95
+// Periodically grants an adjacent province when automatic conquest is enabled.
+// FUNCTION: C2 0x57c74
+// FUNCTION: C2WIN 0x00459760
 void auto_conquer(void)
 {
     int i;
@@ -87,7 +86,7 @@ void auto_conquer(void)
             idx = region_borders[i].u.dir[j];
             if (idx >= 44) continue;
             if (empire[idx] != 6) continue;
-            if (count == pick) {                          /* Rule 9: action-first */
+            if (count == pick) {
                 put_message(100, 0, 11);
                 empire[i]     = 6;
                 empire_won[i] = 99999;
@@ -100,9 +99,9 @@ void auto_conquer(void)
     }
 }
 
-// FUNCTION: C2 0x57D45
-// WIN: 0x0045989f
-// Lines 97–160
+// Sets new province.
+// FUNCTION: C2 0x57d45
+// FUNCTION: C2WIN 0x0045989f
 void set_new_province(void)
 {
     int i;

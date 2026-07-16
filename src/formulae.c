@@ -1,9 +1,3 @@
-// D:\C2\CODE\formulae.c
-//
-// Financial and military accounting, promotion logic, slave/army management.
-//
-// Functions marked FUNCTION have been decompiled and verified byte-identical.
-// Functions marked STUB have not yet been reverse engineered.
 
 #include "c2_data.h"
 #include "c2_types.h"
@@ -26,40 +20,18 @@ char events[5][64] = {
 // Only the fields needed by formulae.c are declared; the rest are padding.
 //
 // Cohort `type` encoding (used in centuries[]): 0=empty, 1=regulars,
-// 2=irregulars, 3=auxillaries, 4=specials. (Yes, this is the order baked
-// into the original game logic; it does not match the offset order of the
-// num_* fields below.)
+// 2=irregulars, 3=auxillaries, 4=specials. This differs from the order of
+// the num_* fields below.
 // army_rec and century are defined in c2_types.h.
 // ── External functions ────────────────────────────────────────────────────────
 void stop_db(void);
 
-// `#pragma aux NAME modify exact [eax]`: PS.EXE's functions all push/pop
-// every register they touch, so from the caller's perspective they only
-// clobber EAX (and flags). Advertising this via a narrow modify clause
-// does two useful things:
-//
-//   1. Forces the callee's own codegen to preserve ebx/ecx/edx/esi/edi/ebp
-//      whenever it uses them (matching PS.EXE's "save everything" prologue).
-//   2. Tells caller-side cost heuristics that the call is cheap to cross
-//      with live values in the scratch set. This does NOT force the
-//      allocator to pick specific registers (Watcom has no GCC-style
-//      `register int x asm("ebx")` hint), but it does change which
-//      allocation schemes the compiler considers affordable.
-//
-// NOTE: empirically these pragmas interact poorly with `-os` (the compiler
-// picks a size-favouring body layout that no longer fills the forced
-// callee-saved slots) so we don't sprinkle them everywhere. If a specific
-// function benefits, add a targeted pragma immediately before its
-// definition.
 
 // ── Stubs ─────────────────────────────────────────────────────────────────────
 
+// Checks game over and returns the result.
 // FUNCTION: C2 0x55326
-// WIN: 0x00454cb0
-// Lines 58–71
-// Rule 1 (strong form) applied: every read of months_to_game_over is inline
-// (no `x` local). This triggers value-pool allocation into EBX and produces
-// `lea ecx,[ebx-1]` for the decrement (keeping the pre-op value live).
+// FUNCTION: C2WIN 0x00454cb0
 void check_game_over(void) {
     if (denarii >= 0) {
         months_to_game_over = 0;
@@ -79,12 +51,9 @@ void check_game_over(void) {
     }
 }
 
-// FUNCTION: C2 0x5539D
-// WIN: 0x00454d39
-// Lines 73–106
-// Rule 1 applied: read empire_rating, refused_promotion, c2inf.skill_level,
-// and completed_provinces inline instead of via `emp`, `ref`, `lv`,
-// `compl` locals so Watcom CSE hoists them into value-pool registers.
+// Checks for promotion and returns the result.
+// FUNCTION: C2 0x5539d
+// FUNCTION: C2WIN 0x00454d39
 void check_for_promotion(void) {
     int level;
     adjust_culture_criteria();
@@ -114,12 +83,9 @@ void check_for_promotion(void) {
     }
 }
 
-// FUNCTION: C2 0x554F3
-// WIN: 0x00454f27
-// Lines 108–120
-// Rule 2 applied: pre-load pax_romanum into `t` local before the divide to
-// force EDX-first dividend ordering (`mov edx,[m]; mov ebx,10; mov eax,edx;
-// sar edx,31; idiv ebx`) matching PS.EXE.
+// Recomputes the peace rating and applies its population cap.
+// FUNCTION: C2 0x554f3
+// FUNCTION: C2WIN 0x00454f27
 void adjust_peace_criteria(void) {
     int orig;
     int adj;
@@ -137,14 +103,9 @@ void adjust_peace_criteria(void) {
         peace_rating_pop_limit = 0;
 }
 
+// Recomputes culture from entertainment, religion, and public-service coverage.
 // FUNCTION: C2 0x55573
-// WIN: 0x00454fdb
-// Lines 122–163
-// NOTE: Original uses LEA-chain register pattern and multiple intermediate stores;
-// compiler register allocation differs. Logic correct.
-// Direct-global-update pattern: apply `+=` directly to each level global
-// (no `ent`/`rel`/`util` locals). Watcom emits `mov [m],reg` then
-// `add [m],reg` for each subsequent term, matching PS.EXE exactly.
+// FUNCTION: C2WIN 0x00454fdb
 void adjust_culture_criteria(void) {
     int divisor;
     int orig;
@@ -181,12 +142,9 @@ void adjust_culture_criteria(void) {
     if (population < 10) culture_rating_pop_limit = 0;
 }
 
-// FUNCTION: C2 0x557AF
-// WIN: 0x00455201
-// Lines 165–192
-// Rule 3 applied: `current_gdp = sum; current_gdp /= 4;` (two assignments
-// straddling the divide) makes Watcom emit a pre-divide store in addition
-// to the post-divide store, matching PS.EXE's triple-store-to-global.
+// Recomputes prosperity from GDP, population, and recent profit.
+// FUNCTION: C2 0x557af
+// FUNCTION: C2WIN 0x00455201
 void adjust_proserity_criteria(void) {
     int pop_cap;
     int rating;
@@ -206,12 +164,10 @@ void adjust_proserity_criteria(void) {
     if (population < 10) prosperity_rating_pop_limit = 0;
 }
 
-// FUNCTION: C2 0x558A0
-// WIN: 0x00455342
-// Lines 194–212
-// Direct-global-update pattern: apply `+=` directly to empire_rating in
-// memory (no `rating` local). Watcom emits the full 6-reg push set
-// (ebx,ecx,edx,esi,edi,ebp) matching PS.EXE.
+// Direct-global-update pattern: apply `+=` directly to empire_rating in memory (no `rating`
+// local).
+// FUNCTION: C2 0x558a0
+// FUNCTION: C2WIN 0x00455342
 void adjust_empire_criteria(void) {
     int orig;
     int adj;
@@ -231,9 +187,9 @@ void adjust_empire_criteria(void) {
     if (population < 10) empire_rating_pop_limit = 0;
 }
 
+// Caps a rating according to the city's current population tier.
 // FUNCTION: C2 0x55992
-// WIN: 0x00455432
-// Lines 215–230
+// FUNCTION: C2WIN 0x00455432
 int city_pop_limit_10_to_1(int value, int factor) {
     int counter;
     if (value < 0) value = 0;
@@ -247,11 +203,9 @@ int city_pop_limit_10_to_1(int value, int factor) {
     return value;
 }
 
-// FUNCTION: C2 0x559D5
-// WIN: 0x004554ba
-// Lines 232–260
-// NOTE: Original pushes EBX/ECX/EDX and zero-extends bytes via xor+mov al;
-// compiler uses movzx and drops ECX from the save list. Logic correct.
+// Asks whether the player accepts an offered promotion.
+// FUNCTION: C2 0x559d5
+// FUNCTION: C2WIN 0x004554ba
 int want_promotion(int level) {
     int top_rank;
     pointer_mode = 0;
@@ -291,49 +245,43 @@ int want_promotion(int level) {
     return 0;
 }
 
-// ── Decompiled functions ──────────────────────────────────────────────────────
 
-// FUNCTION: C2 0x55AC7
-// WIN: 0x004556eb
-// Lines 262–262
+// Handles the take promotion user-interface action.
+// FUNCTION: C2 0x55ac7
+// FUNCTION: C2WIN 0x004556eb
 void act_take_promotion(void) {
     decision = 1;
     out2 = 1;
 }
 
-// FUNCTION: C2 0x55AD9
-// WIN: 0x00455707
-// Lines 263–263
-// NOTE: PS.EXE emits `xor ah,ah; mov [decision],ah` (10.0-era quirk for
-// char = 0) where Watcom 10.0a emits `mov byte [decision],0`. Logic correct.
+// Handles the review in 10 user-interface action.
+// FUNCTION: C2 0x55ad9
+// FUNCTION: C2WIN 0x00455707
 void act_review_in_10(void) {
     decision = 0;
     out2 = 1;
     refused_promotion = 120;
 }
 
-// FUNCTION: C2 0x55AF6
-// WIN: 0x0045572d
-// Lines 264–264
-// NOTE: Same xor ah / mov byte,0 codegen difference as act_review_in_10.
+// Handles the review in 25 user-interface action.
+// FUNCTION: C2 0x55af6
+// FUNCTION: C2WIN 0x0045572d
 void act_review_in_25(void) {
     decision = 0;
     out2 = 1;
     refused_promotion = 300;
 }
 
-// FUNCTION: C2 0x55B13
-// WIN: 0x00455753
-// Lines 266–269
+// Finishes the current province and opens the next-province selection.
+// FUNCTION: C2 0x55b13
+// FUNCTION: C2WIN 0x00455753
 void assign_to_new_province(void) {
     game_state = 3;
 }
 
-// FUNCTION: C2 0x55B1E
-// WIN: 0x00455768
-// Lines 271–277
-// Rule 1 applied: read player_rank inline twice (no `rank` local) so
-// Watcom CSE hoists the load into EBX (value-pool) rather than EDX (temp).
+// Performs promotion.
+// FUNCTION: C2 0x55b1e
+// FUNCTION: C2WIN 0x00455768
 void do_promotion(int level) {
     game_state = 3;
     if (player_rank < 10) {
@@ -344,19 +292,17 @@ void do_promotion(int level) {
     }
 }
 
-// FUNCTION: C2 0x55B42
-// WIN: 0x004557af
-// Lines 279–283
+// Promotes the player to emperor and triggers the victory sequence.
+// FUNCTION: C2 0x55b42
+// FUNCTION: C2WIN 0x004557af
 void make_emperor(void) {
     black_out();
     game_state = 2;
 }
 
-// FUNCTION: C2 0x55B52
-// WIN: 0x004557c9
-// Lines 287–307
-// NOTE: Original uses xor edx,edx then mov [...],edx for all zero-stores (shorter);
-// all available Watcom versions constant-propagate to mov [...],0 (longer). Logic correct.
+// Initializes legion.
+// FUNCTION: C2 0x55b52
+// FUNCTION: C2WIN 0x004557c9
 void init_legion(void) {
     int s;
     army_wage_level = 0;
@@ -391,11 +337,9 @@ void init_legion(void) {
     get_cohorts_in_action();
 }
 
-// FUNCTION: C2 0x55C0B
-// WIN: 0x004558f1
-// Lines 309–322
-// NOTE: Original pushes esi+edi and uses EBX as idiv divisor; all Watcom 10.x
-// use sub esp,4 stack slot for divisor and EDX/EBX for denarii ops. Logic correct.
+// Converts available recruits into trained cohort soldiers.
+// FUNCTION: C2 0x55c0b
+// FUNCTION: C2WIN 0x004558f1
 void train_soldiers(void) {
     int mercs_cost;
     if (c2inf.peace_mode != 0) return;
@@ -412,16 +356,9 @@ void train_soldiers(void) {
     denarii -= mercs_cost;
 }
 
-// FUNCTION: C2 0x55C82
-// WIN: 0x00455983
-// Lines 324–349
-// BYTE-EXACT 2026-06-12 (was 162 b).  Two levers off the Mac PPC
-// oracle: (1) no named `r` — the threshold chain reads
-// army_list[temp_army].total_troops inline per compare (Mac reloads
-// it every time; x86 Watcom CSEs the loads into EBP itself, which IS
-// PS's register — naming it forced EDX + dropped the EBP save);
-// (2) Rule 79 zero-init order active_count, readiness_sum,
-// morale_sum (PS: xor ecx; xor ebx; xor edx).
+// Returns morale and readiness.
+// FUNCTION: C2 0x55c82
+// FUNCTION: C2WIN 0x00455983
 void get_morale_and_readiness(void) {
     int active_count = 0;
     int readiness_sum = 0;
@@ -451,12 +388,9 @@ void get_morale_and_readiness(void) {
     }
 }
 
-// FUNCTION: C2 0x55D79
-// WIN: 0x00455b9a
-// Lines 351–363
-// NOTE: Same pattern as init_legion — original uses `xor edx,edx` + reg stores
-// for the four zero-inits (saves 14 bytes); Watcom 10.0a emits immediate-0
-// stores instead. Logic correct.
+// Returns current cohort totals.
+// FUNCTION: C2 0x55d79
+// FUNCTION: C2WIN 0x00455b9a
 void get_current_cohort_totals(void) {
     current_no_of_specials = 0;
     current_no_of_regulars = 0;
@@ -474,20 +408,9 @@ void get_current_cohort_totals(void) {
                            + current_no_of_auxillaries + current_no_of_specials;
 }
 
-// FUNCTION: C2 0x55E1D
-// WIN: 0x00455cce
-// Lines 365–444
-//
-// Rebalances cohort counts across armies:
-//   (1) consume `lacking_*` by decrementing from active armies that still
-//       have units of that type,
-//   (2) distribute `extra_*` onto active armies, in bursts of 1/2/4 units
-//       depending on the army's cohort_size_class,
-//   (3) recompute total_troops per army and zero assigned_needs,
-//   (4) spread `needed_no_of_*` as reinforcement assignments across armies.
-//
-// The outer `count` guard (40000) is a runaway-loop safety net inherited
-// from the original source; in normal play it is never reached.
+// Remove troop shortfalls, distribute available reinforcements, and refresh each army's totals.
+// FUNCTION: C2 0x55e1d
+// FUNCTION: C2WIN 0x00455cce
 void set_current_cohort_totals(void) {
     int count;
     int i;
@@ -646,9 +569,9 @@ void set_current_cohort_totals(void) {
     }
 }
 
+// Distributes cohort troops across its century records.
 // FUNCTION: C2 0x56322
-// WIN: 0x00456551
-// Lines 447–502
+// FUNCTION: C2WIN 0x00456551
 void fill_cohort_centuries(void) {
     int aux;
     int irr;
@@ -762,9 +685,9 @@ void fill_cohort_centuries(void) {
     }
 }
 
-// FUNCTION: C2 0x5654E
-// WIN: 0x00456d85
-// Lines 505–545
+// Returns army totals.
+// FUNCTION: C2 0x5654e
+// FUNCTION: C2WIN 0x00456d85
 void get_army_totals(void) {
     lacking_specials = 0;
     lacking_regulars = 0;
@@ -826,19 +749,9 @@ void get_army_totals(void) {
     current_no_of_soldiers = current_no_of_regulars + current_no_of_irregulars + current_no_of_auxillaries + current_no_of_specials;
 }
 
-// FUNCTION: C2 0x567FC
-// WIN: 0x00457094
-// Lines 548–568
-// ----------------------------------------------------------------------------
-// Speculative version of `set_current_cohort_totals`: recomputes the per-type
-// totals from province parameters, calls `get_current_cohort_totals` for the
-// current snapshot, then derives `needed_no_of_*` = total - current,
-// clamping negatives to zero (and pinning total = current in that case).
-// Finally computes the summary `total_no_of_soldiers` / `needed_no_of_soldiers`.
-//
-// NOTE: tail-call to a far address inside `adjust_proserity_criteria`'s
-// epilogue at 0x457a8 (shared `pop ebp/edi/esi/edx/ecx/ebx ret`). The
-// compiler emits its own per-function epilogue instead; diff is cosmetic.
+// Predict total and still-needed troop counts from the province's current army parameters.
+// FUNCTION: C2 0x567fc
+// FUNCTION: C2WIN 0x00457094
 void predict_army_totals(void) {
     get_current_cohort_totals();
 
@@ -875,14 +788,9 @@ void predict_army_totals(void) {
                           + needed_no_of_auxillaries + needed_no_of_specials;
 }
 
+// Initialize the slave economy and workforce requirements for a new province.
 // FUNCTION: C2 0x56943
-// WIN: 0x004571e5
-// Lines 573–584
-// ----------------------------------------------------------------------------
-// One-shot initialisation of the slave economy + zeroing of the
-// slave_requirements table. Called once per new province.
-//
-// `init_salary` is a per-difficulty welfare/slave record table.
+// FUNCTION: C2WIN 0x004571e5
 void init_slaves(void) {
     slave_welfare_bill = init_salary[province_difficulty].welfare_bill;
     slaves             = init_salary[province_difficulty].slaves;
@@ -896,19 +804,9 @@ void init_slaves(void) {
     slave_requirements[6].current = 0;
 }
 
-// FUNCTION: C2 0x569A1
-// WIN: 0x00457258
-// Lines 586–627
-// ----------------------------------------------------------------------------
-// Runs one slave-economy tick. Computes a "welfare quality" index from the
-// province's welfare bill, then picks a (growth %, mortality %) pair from a
-// 16-way range table and updates `slaves` / `slave_population_change`.
-//
-// NOTE: the "bored happiness" band (95..=105) short-circuits with
-// `slave_population_change = 0` and a tail-jmp to `0x457a8` (shared epilogue).
-// All other bands also tail-jmp after updating `slaves` + `change`; our
-// emit will be per-function epilogues instead, the cascade diff is cosmetic.
-//
+// Advance the slave population by one welfare-driven growth and mortality tick.
+// FUNCTION: C2 0x569a1
+// FUNCTION: C2WIN 0x00457258
 void slave_welfare(void) {
     int orig_slaves = slaves;
     int standard    = main_paras[0] - province_difficulty / 3;
@@ -940,35 +838,27 @@ void slave_welfare(void) {
         return;
     }
 
-    // Both percent calls read the *original* `slaves` in the asm (the two
-    // writes below only happen after both calls), so stage the computation
-    // via locals rather than letting the second call see an updated value.
     growth_amt    = totalXpercent(slaves, growth_pct);
     mortality_amt = totalXpercent(slaves, mortality_pct);
-    growth_amt++;                              /* PS: inc esi */
-    slaves += growth_amt;                      /* RMW pattern */
+    growth_amt++;
+    slaves += growth_amt;
     slaves -= mortality_amt;
     if (slaves < 1) slaves = 1;
     slave_population_change = slaves - orig_slaves;
 }
 
-// FUNCTION: C2 0x56B5A
-// WIN: 0x004574e1
-// Lines 629–633
+// Charges monthly slave costs and updates the slave workforce totals.
+// FUNCTION: C2 0x56b5a
+// FUNCTION: C2WIN 0x004574e1
 void slave_costs(void) {
     int bill = slave_welfare_bill;
     denarii -= bill;
     current_operating_cost += bill;
 }
 
-// FUNCTION: C2 0x56B6C
-// WIN: 0x00457507
-// Lines 635–646
-// ----------------------------------------------------------------------------
-// Runs the slave-welfare simulation forward one tick to get a short-term
-// estimate, then 99 more ticks to get a long-term one, finally restoring
-// the real `slaves` / `slave_population_change` state so this function has
-// no net side effects.
+// Estimate short- and long-term slave populations without changing the live simulation state.
+// FUNCTION: C2 0x56b6c
+// FUNCTION: C2WIN 0x00457507
 void slave_estimate(void) {
     int saved_slaves = slaves;
     int saved_change = slave_population_change;
@@ -986,22 +876,9 @@ void slave_estimate(void) {
     slave_population_change = saved_change;
 }
 
-// FUNCTION: C2 0x56BB5
-// WIN: 0x00457571
-// Lines 650–666
-// ----------------------------------------------------------------------------
-// Walks the 7 priority buckets in `slave_requirements` and distributes the
-// province's `slaves` pool across them. Each bucket's `current` field gets
-// set to min(remaining pool, bucket.max). Any unspent slaves go into
-// record 7 (the overflow bucket).
-//
-// Record 0's `current` is reset from `slave_requirements[0].max` at the
-// top of the function so the allocation starts from a clean state.
-//
-// NOTE: Watcom 10.0a -os inverts the register roles (we get `eax = pool,
-// edx = scratch` where PS.EXE has `edx = pool, eax = scratch`) and flips
-// the `pool < quota` branch polarity to `jge` fall-through. Logic is
-// identical; byte diff is cosmetic.
+// Distribute the available slave workforce across requirement buckets in priority order.
+// FUNCTION: C2 0x56bb5
+// FUNCTION: C2WIN 0x00457571
 void adjust_slave_usage(void) {
     int pool = slaves;
     int i;
@@ -1019,39 +896,12 @@ void adjust_slave_usage(void) {
     slave_requirements[i].current = pool;              /* i == 7, indexed store */
 }
 
-// FUNCTION: C2 0x56BF6
-// WIN: 0x004575f9
-// Lines 699–771
-// ----------------------------------------------------------------------------
-// Draws a random event for this turn from a [c2inf.skill_level][64] lookup table,
-// then executes the event logic:
-//
-//   0  — "good fortune" check: possibly trigger robbery based on
-//         denarii/temple ratio vs a random threshold.
-//   2  — revolt warning / quarter-denarii penalty (no temples guard).
-//   3  — temple-protected robbery: percentage of denarii stolen based on
-//         weighted temple coverage vs weighted robbery exposure.
-//   4  — plague: get_rand_max(plague_running_count) -> plague_accident.
-//
-// NOTE: the `cmp eax, 0x4e20` before `cmp eax, 0x2710` in the good-fortune
-// path is dead (no conditional jump follows the first cmp; the second cmp
-// immediately overwrites the flags).  It is the redundant
-// `if (denarii_per_temple >= 20000) bonus = 20;` line: bonus=20 duplicates the
-// >=10000 arm so Watcom DCEs the store+branch but leaves the cmp behind.
-//
-// BYTE-EXACT.  Three load-bearing shape facts, all confirmed against PS's -d1
-// marks (L758 temple_w, L759 rob_w, L760 valueDIVtotal) and the Mac decompile:
-//   1. temple_w-FIRST: event-3 computes temple_w (L758) before rob_w (L759).
-//   2. ONE reused int (temple_score) holds BOTH the event-0 temple ratio and
-//      the event-3 robbery percentage — PS's iVar7 reuse.  Sharing the name
-//      seats both in EBX; two separate locals split the conflict and the
-//      percentage lands in ECX (the dead event hole), diverging.
-//   3. The rob_w divisor is the global `robbery_count` INLINED, not a
-//      `rob_count` local.  The inline seats robbery_count in ECX, freeing EBX
-//      for temple_w; a named rob_count steals EBX and swaps the pair (14b).
+// Draw and apply a skill-dependent random province event for the current turn.
+// FUNCTION: C2 0x56bf6
+// FUNCTION: C2WIN 0x004575f9
 void random_event(void) {
     int event;
-    int temple_score;   /* also reused for the event-3 robbery % (PS iVar7) */
+    int temple_score;
     int denarii_per_temple;
     int bonus;
     int temple_w;
@@ -1107,10 +957,6 @@ void random_event(void) {
         // temples_count != 0: fall through to event==3 check below
     }
 
-    // ── event 3: temple-protected robbery ─────────────────────────────────
-    // Reached directly (event==3) or via fall-through from event-2 when temples
-    // are present (event still 2 → this block is skipped, which is correct:
-    // Ghidra shows `if (uVar2 != 3) return` before the robbery code).
     if (event != 3) return;
     if (denarii < 1000)   return;
     if (population < 100) return;
@@ -1136,14 +982,14 @@ void random_event(void) {
     if (temple_score < 10)  temple_score = 10;
     if (temple_score > 80)  temple_score = 80;
     stolen_denarii = totalXpercent(denarii / 4, temple_score);
-    if (stolen_denarii <= 0) return;               // Rule 4 (enables `test eax,eax`)
+    if (stolen_denarii <= 0) return;
     denarii -= stolen_denarii;
     put_message(86, 0, 16);
 }
 
-// FUNCTION: C2 0x56EB8
-// WIN: 0x00457984
-// Lines 776–781
+// Pays the governor's salary for the current rank.
+// FUNCTION: C2 0x56eb8
+// FUNCTION: C2WIN 0x00457984
 void pay_salary(void) {
     int sal = players_salary;
     current_operating_cost += sal;
@@ -1151,9 +997,9 @@ void pay_salary(void) {
     denarii -= sal;
 }
 
-// FUNCTION: C2 0x56ED0
-// WIN: 0x004579b5
-// Lines 783–793
+// Returns population growth factor.
+// FUNCTION: C2 0x56ed0
+// FUNCTION: C2WIN 0x004579b5
 void get_population_growth_factor(void) {
     pop_growth_future += pop_tax_to_growth_data[pop_tax_rate];
     pop_growth_future += employment_to_pop_growth_factor[employment_rate / 5];
@@ -1164,9 +1010,9 @@ void get_population_growth_factor(void) {
     pop_growth_factor = pop_growth_future / 8;          // sar-shl-sbb idiom
 }
 
-// FUNCTION: C2 0x56F74
-// WIN: 0x00457a5d
-// Lines 795–802
+// Returns industry growth factor.
+// FUNCTION: C2 0x56f74
+// FUNCTION: C2WIN 0x00457a5d
 void get_industry_growth_factor(void) {
     ind_growth_future += ind_tax_to_growth_data[ind_tax_rate];
     if (ind_growth_future >  36) ind_growth_future =  36;
@@ -1175,13 +1021,9 @@ void get_industry_growth_factor(void) {
     ind_growth_factor = ind_growth_future / 8;    // sar-shl-sbb idiom (signed /8)
 }
 
-// FUNCTION: C2 0x56FDD
-// WIN: 0x00457ad2
-// Lines 804–823
-// NOTE: recomp is 6 bytes short. PS.EXE emits a 2-byte short `je` for the
-// tutorial_mode tail and uses 5 callee-saved registers (ebx/ecx/edx/esi/edi);
-// Watcom 10.0a -os only allocates 3-4, leaving fewer push/pop bytes and
-// forcing a 6-byte near `je`. Cosmetic; logic is identical.
+// Returns insurrection factor.
+// FUNCTION: C2 0x56fdd
+// FUNCTION: C2WIN 0x00457ad2
 void get_insurrection_factor(void) {
     insurrection_future += tax_to_revolt_data[pop_tax_rate];
     insurrection_future += (province_difficulty - 4) / 2;
@@ -1201,9 +1043,9 @@ void get_insurrection_factor(void) {
     if (tutorial_mode != 0) insurrection_factor = -2;
 }
 
-// FUNCTION: C2 0x5717D
-// WIN: 0x00457cad
-// Lines 827–840
+// Closes the annual accounts and rolls yearly financial totals forward.
+// FUNCTION: C2 0x5717d
+// FUNCTION: C2WIN 0x00457cad
 void year_end_accounts(void) {
     collect_pop_tax();
     collect_ind_tax();
@@ -1221,9 +1063,9 @@ void year_end_accounts(void) {
     if (account_total > 0) months_to_game_over = 0;
 }
 
+// Collects population tax and records the assessed and paid amounts.
 // FUNCTION: C2 0x57200
-// WIN: 0x00457d4d
-// Lines 842–850
+// FUNCTION: C2WIN 0x00457d4d
 void collect_pop_tax(void) {
     if (pop_tax_counts != 0) {
         account_pop_tax       = pop_tax_running_total / pop_tax_counts;  // two-step
@@ -1234,9 +1076,9 @@ void collect_pop_tax(void) {
     }
 }
 
-// FUNCTION: C2 0x5724D
-// WIN: 0x00457dac
-// Lines 852–860
+// Collects industry tax and records the assessed and paid amounts.
+// FUNCTION: C2 0x5724d
+// FUNCTION: C2WIN 0x00457dac
 void collect_ind_tax(void) {
     if (ind_tax_counts != 0) {
         account_ind_tax       = ind_tax_running_total / ind_tax_counts;  // two-step
@@ -1247,11 +1089,9 @@ void collect_ind_tax(void) {
     }
 }
 
-// FUNCTION: C2 0x5729A
-// WIN: 0x00457e0b
-// Lines 862–878
-// NOTE: operating_cost is accumulated via 5 separate assignments so the
-// compiler generates the same incremental store pattern as the original.
+// Returns estimates.
+// FUNCTION: C2 0x5729a
+// FUNCTION: C2WIN 0x00457e0b
 void get_estimates(void) {
     int months_left;
     get_pop_tax_estimate();
@@ -1270,10 +1110,9 @@ void get_estimates(void) {
                                 - tribute;
 }
 
-// FUNCTION: C2 0x57356
-// WIN: 0x00457ec2
-// Lines 882–896
 // Projects pop tax for remaining months and divides by 12 to get monthly avg.
+// FUNCTION: C2 0x57356
+// FUNCTION: C2WIN 0x00457ec2
 void get_pop_tax_estimate(void) {
     int projected = 0;
     if (pop_tax_counts < 12) {
@@ -1286,9 +1125,9 @@ void get_pop_tax_estimate(void) {
     estimate_pop_tax /= 100;
 }
 
-// FUNCTION: C2 0x573B5
-// WIN: 0x00457f44
-// Lines 898–912
+// Returns ind tax estimate.
+// FUNCTION: C2 0x573b5
+// FUNCTION: C2WIN 0x00457f44
 void get_ind_tax_estimate(void) {
     int projected = 0;
     if (ind_tax_counts < 12) {
@@ -1301,10 +1140,9 @@ void get_ind_tax_estimate(void) {
     estimate_ind_tax /= 100;
 }
 
-// FUNCTION: C2 0x57414
-// WIN: 0x00457fc6
-// Lines 915–925
 // Computes average pop tax per person in denarii and asses (100 asses = 1 denarius).
+// FUNCTION: C2 0x57414
+// FUNCTION: C2WIN 0x00457fc6
 void get_average_pop_tax(void) {
     int per_person;
     int denarii_part;
@@ -1320,9 +1158,9 @@ void get_average_pop_tax(void) {
     average_pop_tax_asses     = per_person % 100;
 }
 
-// FUNCTION: C2 0x5747E
-// WIN: 0x00458046
-// Lines 927–937
+// Returns average ind tax.
+// FUNCTION: C2 0x5747e
+// FUNCTION: C2WIN 0x00458046
 void get_average_ind_tax(void) {
     int per_business;
     int denarii_part;
@@ -1338,10 +1176,9 @@ void get_average_ind_tax(void) {
     average_ind_tax_asses     = per_business % 100;
 }
 
-// FUNCTION: C2 0x574E8
-// WIN: 0x004580c6
-// Lines 939–1041
 // Updates imperial tribute demand, processes requests and reviews.
+// FUNCTION: C2 0x574e8
+// FUNCTION: C2WIN 0x004580c6
 void get_new_tribute(void) {
     int delta;
     int cp;
@@ -1361,7 +1198,7 @@ void get_new_tribute(void) {
     if (imperial_favour <   0) imperial_favour =   0;
     if (imperial_favour > 200) imperial_favour = 200;
 
-    if (player_rank >= 10) {                     // Rule 4
+    if (player_rank >= 10) {
         imperial_favour  = 200;
         tribute          =   0;
         imperial_request = 100;
@@ -1434,9 +1271,9 @@ void get_new_tribute(void) {
     }
 }
 
+// Initializes tribute.
 // FUNCTION: C2 0x57958
-// WIN: 0x004586ae
-// Lines 1044–1058
+// FUNCTION: C2WIN 0x004586ae
 void init_tribute(void) {
     imperial_favour         = 110;
     tribute                 = 45;
@@ -1452,9 +1289,9 @@ void init_tribute(void) {
     total_imperial_taxes      = 0;
 }
 
-// FUNCTION: C2 0x579B1
-// WIN: 0x0045873d
-// Lines 1062–1091
+// Returns temple tip.
+// FUNCTION: C2 0x579b1
+// FUNCTION: C2WIN 0x0045873d
 void get_temple_tip(int param_1) {
     if (param_1 == 0) {
         if (empire_rating_pop_limit != 0) { current_temple_tip = 1; play_speech(31); return; }

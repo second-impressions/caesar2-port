@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 import subprocess
 import sys
-from typing import Annotated
+from typing import Annotated, Optional
 
 import typer
 
@@ -43,14 +43,22 @@ def prepare(
         Path,
         typer.Option("--original", help="Original debug-build PS.EXE."),
     ] = Path("original/PS.EXE"),
+    windows_original: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--windows-original",
+            help="Original Windows build A CAESAR2.EXE for C2WIN annotations.",
+        ),
+    ] = None,
 ) -> None:
-    """Validate PS.EXE and write the ignored reccmp-user.yml."""
+    """Validate original binaries and write the ignored reccmp-user.yml."""
     try:
-        path = write_user_config(original)
+        path = write_user_config(original, windows_original=windows_original)
     except (FileNotFoundError, ValueError) as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1) from exc
-    typer.echo(f"wrote {path} for target C2")
+    targets = "C2 and C2WIN" if windows_original is not None else "C2"
+    typer.echo(f"wrote {path} for {targets}")
 
 
 _PASSTHROUGH = {"allow_extra_args": True, "ignore_unknown_options": True}

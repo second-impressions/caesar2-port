@@ -1,4 +1,3 @@
-// D:\C2\CODE\pm_map1.c
 
 #include "pm_map1.h"
 #include "c2_data.h"
@@ -40,9 +39,7 @@ struct int_delta_rec colos_top_data[3][4] = {
     { { -2, -2 },  { 11, -9 },  { 0, -14 },  { -11, -9 } }
 };
 
-/* ── TU-owned file-scope variables (PS.EXE _BSS, original declaration
-   order).  Recovered so the functional rebuild (`c2 rebuild`) links
-   self-sustained -- no auto-stubbed storage.  Extern decls: c2_data.h. */
+/* File-local state. */
 int city_anim64;
 int city_anim128;
 int city_anim32;
@@ -57,13 +54,11 @@ extern void write_i_sprite(unsigned char *sprite_addr);
 extern void write_i_left_sprite(unsigned char *sprite_addr);
 extern void write_i_right_sprite(unsigned char *sprite_addr);
 
-// FUNCTION: C2 0x364F5
-// WIN: 0x0045b1e0
-// Lines 45–63
-//
-// Per-frame city-map renderer: advances animation counters, chooses
-// overlay empty-mode, invalidates map updates requested by landfill,
-// then draws base/sprites/top layers and counts down update_map.
+// Per-frame city-map renderer: advances animation counters, chooses overlay empty-mode,
+// invalidates map updates requested by landfill, then draws base/sprites/top layers and counts
+// down update_map.
+// FUNCTION: C2 0x364f5
+// FUNCTION: C2WIN 0x0045b1e0
 void show_citymap(void)
 {
     sprite_error = 0;
@@ -101,15 +96,11 @@ void show_citymap(void)
     }
 }
 
-// FUNCTION: C2 0x365DA
-// WIN: 0x0045b314
-// Lines 65–149
-//
-// City-map base layer.  Reads the base tile from the city_cell at
-// pm_shown_ptr and dispatches buildings (tile >= 0x78) to
-// place_a_building_base; otherwise looks up the rotated base sprite
-// via rotated_map and stamps a diamond.  A non-zero show_overlay
-// return short-circuits the normal base draw for that cell.
+// City-map base layer. Reads the base tile from the city_cell at pm_shown_ptr and dispatches
+// buildings (tile >= 0x78) to place_a_building_base; otherwise looks up the rotated base sprite
+// via rotated_map and stamps a diamond.
+// FUNCTION: C2 0x365da
+// FUNCTION: C2WIN 0x0045b314
 void show_citymap_base(void)
 {
     int i;
@@ -187,13 +178,9 @@ void show_citymap_base(void)
     }
 }
 
-// FUNCTION: C2 0x3689E
-// WIN: 0x0045b6bc
-// Lines 152–185
-//
-// City-map sprite layer.  Top edge: place_sprite for each
-// non-virtual cell.  Interior: alternating
-// sprites_with_sides / sprites_no_sides pair rows.
+// City-map sprite layer. Top edge: place_sprite for each non-virtual cell.
+// FUNCTION: C2 0x3689e
+// FUNCTION: C2WIN 0x0045b6bc
 void show_citymap_sprites(void)
 {
     int i;
@@ -231,15 +218,10 @@ void show_citymap_sprites(void)
     }
 }
 
-// FUNCTION: C2 0x369CA
-// WIN: 0x0045b874
-// Lines 187–236
-//
-// City-map top layer: building tops via place_a_building_top and
-// road / bridge overhead via top_it.  Status-bar clear when
-// zoom_level == 1.  Per cell, are_overlays_on() short-circuits the
-// draw; otherwise buildings (tile >= 0x78) get place_a_building_top
-// and the overhead flag (edge_bits & 0x80) triggers top_it.
+// City-map top layer: building tops via place_a_building_top and road / bridge overhead via
+// top_it. Status-bar clear when zoom_level == 1.
+// FUNCTION: C2 0x369ca
+// FUNCTION: C2WIN 0x0045b874
 void show_citymap_top(void)
 {
     int i;
@@ -301,14 +283,10 @@ void show_citymap_top(void)
     bottom_line_no_sides();
 }
 
-// FUNCTION: C2 0x36BFE
-// WIN: 0x0045bb2b
-// Lines 240–265
-//
-// Sprite-layer scanline (no edge clipping).  Left/right
-// one-cell spillovers so figures on columns just outside
-// the visible range still get their clipped tails drawn
-// into the visible area.
+// Sprite-layer scanline (no edge clipping). Left/right one-cell spillovers so figures on columns
+// just outside the visible range still get their clipped tails drawn into the visible area.
+// FUNCTION: C2 0x36bfe
+// FUNCTION: C2WIN 0x0045bb2b
 void sprites_no_sides(void)
 {
     int i;
@@ -343,14 +321,10 @@ void sprites_no_sides(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x36CFC
-// WIN: 0x0045bcb4
-// Lines 267–289
-//
-// Draw one pseudo-map sprite row including the left/right side caps.
-// The first tile is drawn as side=1, middle tiles as side=0, and the
-// rightmost cap as side=0.  Advances sprite_y, pm_shown_y, and y clip
-// by one diamond half-height.
+// Draw one pseudo-map sprite row including the left/right side caps. The first tile is drawn as
+// side=1, middle tiles as side=0, and the rightmost cap as side=0.
+// FUNCTION: C2 0x36cfc
+// FUNCTION: C2WIN 0x0045bcb4
 void sprites_with_sides(void)
 {
     int i;
@@ -373,13 +347,10 @@ void sprites_with_sides(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x36DFB
-// WIN: 0x0045be2a
-// Lines 293–327
-//
-// City-map base interior scanline (no edge clipping).
-// Mirrors mid2_line_no_sides_base over city_map +
-// rotated_map + the >= 0x78 building threshold.
+// City-map base interior scanline (no edge clipping). Mirrors mid2_line_no_sides_base over
+// city_map + rotated_map + the >= 0x78 building threshold.
+// FUNCTION: C2 0x36dfb
+// FUNCTION: C2WIN 0x0045be2a
 void mid_line_no_sides_base(void)
 {
     int i;
@@ -418,16 +389,11 @@ void mid_line_no_sides_base(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x36F49
-// WIN: 0x0045bfd3
-// Lines 329–410
-//
-// City-map base scanline with edge clipping.  Leftmost
-// cell uses place_lefthalf_diamond + show_left_overlay;
-// rightmost uses place_righthalf_diamond +
-// show_right_overlay; middle cells use place_diamond +
-// show_overlay.  Buildings on edges call
-// place_a_building_base with style 3 (left) or 4 (right).
+// City-map base scanline with edge clipping. Leftmost cell uses place_lefthalf_diamond +
+// show_left_overlay; rightmost uses place_righthalf_diamond + show_right_overlay; middle cells use
+// place_diamond + show_overlay.
+// FUNCTION: C2 0x36f49
+// FUNCTION: C2WIN 0x0045bfd3
 void mid_line_with_sides_base(void)
 {
     int i;
@@ -514,14 +480,11 @@ void mid_line_with_sides_base(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x372A9
-// WIN: 0x0045c430
-// Lines 413–430
-//
-// City-map top-layer scanline (no edge clipping).  For
-// each cell: are_overlays_on bails (just advance sprite_x);
-// else for tile >= 0x78 call place_a_building_top(0); if
-// (*(struct city_cell *)((unsigned char *)city_map + (ptr))).edge_bits & 0x80 set, call top_it(0).
+// City-map top-layer scanline (no edge clipping). For each cell: are_overlays_on bails (just
+// advance sprite_x); else for tile >= 0x78 call place_a_building_top(0); if (*(struct city_cell
+// *)((unsigned char *)city_map + (ptr))).edge_bits & 0x80 set, call top_it(0).
+// FUNCTION: C2 0x372a9
+// FUNCTION: C2WIN 0x0045c430
 void mid_line_no_sides_top(void)
 {
     int i;
@@ -551,13 +514,10 @@ void mid_line_no_sides_top(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x3738B
-// WIN: 0x0045c558
-// Lines 433–465
-//
-// City-map top-layer scanline with edge clipping.  Left
-// edge uses style 3 (building) / 1 (top_it); right edge
-// uses style 4 / 2.  Middle cells use 0.
+// City-map top-layer scanline with edge clipping. Left edge uses style 3 (building) / 1 (top_it);
+// right edge uses style 4 / 2.
+// FUNCTION: C2 0x3738b
+// FUNCTION: C2WIN 0x0045c558
 void mid_line_with_sides_top(void)
 {
     int i;
@@ -608,15 +568,11 @@ void mid_line_with_sides_top(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
+// Twin of mid_line_with_sides_top for the bottom edge of the displayed slice. Wrapped in `if
+// (pm_shown_y < 0xA1)` so it no-ops past the map bottom and uses place_a_building_roof instead of
+// place_a_building_top.
 // FUNCTION: C2 0x37556
-// WIN: 0x0045c7bc
-// Lines 473–505
-//
-// Twin of mid_line_with_sides_top for the bottom edge of the
-// displayed slice.  Wrapped in `if (pm_shown_y < 0xA1)` so it
-// no-ops past the map bottom and uses place_a_building_roof
-// instead of place_a_building_top.  Tail updates only pm_shown_y
-// and pm_y_clip (sprite_y advance happens in the caller).
+// FUNCTION: C2WIN 0x0045c7bc
 void bottom_line_with_sides(void)
 {
     int i;
@@ -662,15 +618,11 @@ void bottom_line_with_sides(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x376CF
-// WIN: 0x0045c9c9
-// Lines 507–524
-//
-// Draw one bottom clipped pseudo-map line when there are no side tiles.
-// For each screen column, fetch the pseudo_map city pointer; sentinel
-// entries only advance sprite_x, while normal city tiles draw a roof for
-// building kinds >= 0x78 when overlays are not active.  Advances the
-// shown Y row and bottom clip by one diamond half-height.
+// Draw one bottom clipped pseudo-map line when there are no side tiles. For each screen column,
+// fetch the pseudo_map city pointer; sentinel entries only advance sprite_x, while normal city
+// tiles draw a roof for building kinds >= 0x78 when overlays are not active.
+// FUNCTION: C2 0x376cf
+// FUNCTION: C2WIN 0x0045c9c9
 void bottom_line_no_sides(void)
 {
     int i;
@@ -699,16 +651,9 @@ void bottom_line_no_sides(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x3779D
-// WIN: 0x0045cac7
-// Lines 528–580
-//
-// City-map building-base diamond.  Reads the cell's bank_kind
-// (edge_bits & 0x1c) and routes into one of six sprite banks
-// (house_data / building_data1..4 / fixt_data) via the rotated_bank*
-// lookup tables, then dispatches to place_i_{large,medium,small}_
-// diamond[_lefthalf|_righthalf] per zoom_level and the requested
-// half-edge style.
+// Draw a city building's base diamond from the appropriate sprite bank, zoom, and half-edge style.
+// FUNCTION: C2 0x3779d
+// FUNCTION: C2WIN 0x0045cac7
 void place_a_building_base(int style)
 {
     char bank_kind;
@@ -785,29 +730,9 @@ void place_a_building_base(int style)
     }
 }
 
-// FUNCTION: C2 0x379EB
-// WIN: 0x0045cec9
-// Lines 585–677
-//
-// City-map building-top ("hat") diamond.  Same six-bank lookup as
-// place_a_building_base (incl. the 0x10 fixt arm reading
-// rotated_map[img-0x10] and the 0x14 building_data4 arm); then
-// the reused bank_kind char (bank kind, then height class -- one
-// local, WIN /Od witness bVar2) gates the write_*_diamond_*hat
-// fan-out per style / zoom.  The y_length==0 early-out repeats
-// inside each style arm.  Style 4's hc==2 and hc==3 are two separate
-// ifs (the righthat call falls through to the hc==3 test); styles 3
-// and 0/1 use else-if chains.  The four bounds tests are separate
-// ifs whose error bodies share a tail.
-//
-// LOAD-BEARING: `int dir` must be declared LAST (after data_base).
-// The decl order perturbs the regalloc queue enough to flip the
-// CountRegMoves coalesce in the 0x10 arm: with dir last, the byte
-// load keeps PS's two-IL-value form (shl eax,2; add esi,eax;
-// xor eax,eax; mov al,[esi+K]); with dir earlier the index and load
-// destination coalesce into eax and Watcom emits the fused
-// mov al,[esi+eax*4+K]; and eax,0xff instead (probe-verified: the
-// arm spelling itself is NOT the lever -- 10 spellings all fuse).
+// City-map building-top ("hat") diamond. Same six-bank lookup as place_a_building_base (incl.
+// FUNCTION: C2 0x379eb
+// FUNCTION: C2WIN 0x0045cec9
 void place_a_building_top(int style)
 {
     char bank_kind;
@@ -880,26 +805,11 @@ void place_a_building_top(int style)
     }
 }
 
-// FUNCTION: C2 0x37DC4
-// WIN: 0x0045d530
-// Lines 680–786
-//
-// City-map roof slice of a building.  Snapshot sprite_y, do the
-// same bank / image / rotation lookup as place_a_building_top, then:
-//
-//   * Re-stamp sprite_y = pm_screen_y_end - 1 so the roof renders at
-//     the bottom of the visible slice.
-//   * If edge_bits bit 0 is set: clear it and refresh the bigger
-//     square around the building.
-//   * Subtract pm_y_clip from y_length and advance sprite_hat_start
-//     by pm_y_clip * K(zoom_level, bank_kind), where K tracks the
-//     stride of each per-zoom diamond row.
-//   * Style fan-out to nine write_*_diamond_*roof blitters keyed on
-//     (zoom_level, style, bank_kind).
-//
-// The bank_kind==0x10 arm assigns `data_base = fixt_data` BEFORE the
-// rotated_map lookup (the order is mirrored opposite
-// place_a_building_top -- live-set driven).
+// City-map roof slice of a building. Snapshot sprite_y, do the same bank / image / rotation lookup
+// as place_a_building_top, then: * Re-stamp sprite_y = pm_screen_y_end - 1 so the roof renders at
+// the bottom of the visible slice.
+// FUNCTION: C2 0x37dc4
+// FUNCTION: C2WIN 0x0045d530
 void place_a_building_roof(int mode)
 {
     int rot;
@@ -1016,106 +926,9 @@ void place_a_building_roof(int mode)
     }
 }
 
-// FUNCTION: C2 0x3820D
-// WIN: 0x0045dc3f
-// Lines 809–927
-//
-// Per-cell overhead sprite renderer.  Triggered when edge_bits bit
-// 0x80 is set.  Reads base_kind (tile) and building (anim_arg) from
-// the cell and dispatches one of nine cases:
-//
-//   * tile < 8           - fire flames (animates via city_anim64 /
-//                          city_anim16, fire_offs offset table,
-//                          set_this_ambient(6), emergency_mood = 10).
-//   * tile in 0x82..0xa1 - riot, sprite_image_no = 8 at fixed
-//                          per-zoom offsets, emergency_mood = 10.
-//   * tile == 0xfa       - jars on building exterior; activity_a & 0xf
-//                          picks city_jars_x/y_off, else falls back
-//                          to city_type_x/y_off (business & 0xf).
-//   * tile == 0xe3       - smoke / steam, image 0x21..0x28.
-//   * tile == 0xe7       - arena overhead (arena_top_count >= 6).
-//   * tile == 0xe8       - colosseum overhead (colosseum_top_count >= 9).
-//   * tile == 0xc0       - aqueduct top via rotated_bank2 + 0x1d.
-//   * tile in 0xd5..0xd6 - skill-to-attack lookup, zoom <= 1.
-//
-// Common epilogue: read sprite_start / width / height from
-// tops_data[img*16 + 8] with bounds checks, snapshot sprite_x/y,
-// apply img_off_x/y, refresh_sprite[_2w]_square per ambient_mode,
-// xclip + yclip, then dispatch to write_i_sprite / write_i_left_sprite
-// / write_i_right_sprite (skip entirely when yclipped == 5).
-//
-// REGALLOC RESIDUE (seat 1/8, ir 0/90 clean): the 0xd5..0xd6 arm's
-// zoom_level guard-read (EAX in PS) ties against a compiler-generated
-// reload of the just-stored `sprite_image_no - 0x60` result for the
-// `> 2` comparison (savings ~5 vs zoom's ~3) -- PS seats zoom=EAX /
-// reload=EDX, we seat the opposite.  Exhausted: all 120 decl-order
-// permutations of (b,img,zoom,dir,t), zoom named/unnamed/uchar,
-// compound `-=`, operand commutes in both rotated_bank2/rotated_map
-// lookups, Rule 121 tail-duplication (no size/seat change -- grew
-// bytes, ComTail did not re-absorb it, so this isn't the mechanism).
-// win-verify is not clean here (145/454 struct) but the divergence is
-// concentrated in unrelated CAESAR2.EXE port-drift regions, not this
-// arm.  Not source-lever-reachable with current tooling; seat tie only.
-//
-// RE-AUDIT 2026-07-09 (the certificate above was written while the
-// Rover-closeable machinery was TRACE-STARVED by the decomp_verify _rh
-// shadowing bug, fixed 1db35afd): closeability now fires and names the
-// exact requirement -- a +1 dword rover advance injected after L1031
-// `fire_idx = ...`, L1044 `emergency_mood = 0xa;`, or L1139
-// `img_off_x -= ...` SELF-HEALS offline.  So the residue IS a rover
-// cursor off-by-one, not a pure allocator tie.  Probed 2026-07-09:
-// data_ptr/t merge + both split forms (357->498 regress, arena
-// reshuffle), fire_idx inline / partial inline (IL-inert, CSE).  The
-// four proven +1 idioms don't apply in the window (no loop, no
-// checked-global call arg, no dead branch, no shared textual tail).
-// Open: a byte-neutral +1 dword op spelling for this window.
-// lw-MAP EVIDENCE (2026-07-09, the new ~WV1 lw complete-walk probe):
-// both closeability windows contain ZERO kind-flippable dword ops --
-// every skipped op is convert/bound/const->REG/all-REG in our compile
-// AND PS's asm shows the same reg-only forms (side-compare-from-slot
-// falsified: PS cmp edi,1).  So the +1 is an IL-op-BIRTH or block
-// WALK-ORDER difference, not an operand-kind flip; next probes: ni
-// pairing / bk order diff (watcom10.0a tools/lw_map.py).
-// SWEEP DATUM 2026-07-09b (503-variant byte-oracle sweep, 2 passes):
-// `(unsigned char)` cast at the d5 rotated_map read scores (shape 1,
-// 10bd) vs the mask form's (2, 116bd) -- but the cast form is a FALSE
-// improvement: Rule 49b fires (xor-before vs PS's and-after) and the
-// d5 fold [ecx+edx*4+K] unfolds to shl/add.  The mask form is
-// IR-right; its whole 116bd is ONE dir-seat flip (ECX->EAX, +0x277)
-// cascading.  Composed probes (cast x mask per arm, dir-first
-// subscript commutes, flat-array spellings, de-invent img) all inert
-// or regress -- consistent with the lw-map verdict above (sub-source
-// birth/walk-order).  Keep the mask form.
-// (c)-LEG CLOSURE 2026-07-09b: spell --walk-order confirms the
-// reverse-arm class (else-if arms walk in reverse source order,
-// birth ordinals out of walk order, 22 optimizer-born blocks).
-// Mechanism argument closes the +1 hunt: a byte-neutral +1 dword
-// advance can ONLY come from re-classifying an existing mov+op pair
-// via load-folding; the lw census proves zero such candidates in the
-// windows, and any manufactured op changes bytes by construction.
-// The two remaining data_ptr/t spellings screen LIVE (dword -1, wrong
-// sign) and regress at the byte oracle (116->362/367).  Residue is
-// sub-source unless a restructure MOVES the advance windows -- the
-// open research direction, not a per-function lever.
-// 2026-07-10: `kind` hoisted from the tile==0xfa arm to C89
-// top-of-function (corpus norm; win-census slot count 11=11 agrees
-// kind is a real local).  Layered shape is IDENTICAL to the old
-// block form (ir 1/90 isl 1 [sub-vs-lea @ sprite_image_no -= 0x60],
-// seat 1/8); the byte count moved 116->357 = the same single-seat
-// cascade re-rippling, not a shape change.  Sweep over the flat decl
-// space: tile-first ordering is best; the only shape-2 variant was
-// commuting sprite_height to `(t[3]<<8) + t[2]`, REJECTED as a false
-// improvement (corpus spells X[2] + (X[3]<<8) at 10/10 sites).
-// CLOSURE 2026-07-10 (Rule 49b + Rule 115): shape ir1/90, seat1/8 -> all
-// zero and BYTE-EXACT.  `c2 forge solve top_it` found the load-bearing
-// three-edit composition after 2,057 variants: use the explicit
-// `(unsigned char)` conversion at the rotated_map read, swap `tile` with
-// `ambient_mode`, and swap `img_off_y` with `dir`.  The cast alone was the
-// previously documented 10bd false minimum, while the declaration swaps
-// alone did not close the function; together they create the conflicts in
-// the order that seats the lookup in EDX, so Watcom emits PS's scaled byte
-// load followed by the in-place `and edx,0xff`.  This exact composition
-// supersedes the earlier "keep the mask form" conclusion above.
+// Per-cell overhead sprite renderer. Triggered when edge_bits bit 0x80 is set.
+// FUNCTION: C2 0x3820d
+// FUNCTION: C2WIN 0x0045dc3f
 void top_it(int side)
 {
     int ambient_mode;
@@ -1294,65 +1107,9 @@ void top_it(int side)
     sprite_y = old_sprite_y;
 }
 
-// FUNCTION: C2 0x386F9
-// WIN: 0x0045e38c
-// Lines 931–1106
-//
-// City-map sprite layer.  Renders the citizen sprite passes (one per
-// occupant in city_map+7 / +8, the draw_citizen_pass body inlined twice
-// exactly as PS.EXE does) followed by the optional "mice" overlay sprite
-// (flag_mode, city_map+2).  Each pass computes a walking x/y offset from
-// the citizen's facing direction and speed_count, applies the diamond
-// half-extent + wobble, then clips and blits via write_i_sprite.
-//
-// 2026-07-11: 5bd -> 2bd (place2_a_building_top's rot-lesson applied:
-// composed spelling fixes the earlier sessions had only probed
-// separately).  Three witnessed shape recoveries:
-//   * mice sprite_width = `(word = mice[dp+0]) + ((word = mice[dp+1])
-//     << 8);` with a new `int word;` local -- reproduces PS's L1086
-//     byte-for-byte: BOTH loads xor-idiom (Rule 49 named-int-from-
-//     uchar defs, NOT anon movzx) + the `mov esi,ecx` copy before the
-//     shl (shift of a named value) + `add ecx,esi` accumulator.  The
-//     sibling place2_sprite's maskless anon form was the wrong
-//     template for THIS statement; _top's 0xd4 word/dummy embedded-
-//     assign template was the right one.
-//   * citizen_a sprite_start = `(people[5] << 8) + people[4] + ...`
-//     (shifted-first, per the +01bd spill-reload accumulator witness);
-//     citizen_b = `(people[6] << 16) + (people[4] + (people[5] << 8))`
-//     (both adds' accumulators witnessed: inner acc = p5<<8's reg,
-//     final acc = p6<<16's reg, NO spill -- the two inlined
-//     draw_citizen_pass bodies are spelled DIFFERENTLY in PS; the
-//     spill lives in citizen_a only, sub esp,8 = flag_byte + spill).
-//   * mice sprite_start kept in the binir-identical grouped form
-//     `(m6<<16) + (m4 + (m5<<8))` -- the plain left-assoc spelling is
-//     174bd (the sum temp's ECX seat cascades m6 into movzx/ESI);
-//     grouped, everything collapses to the ONE remaining tie.
-// BYTE-EXACT 2026-07-13 (2bd -> 0; all 130 PS -d1 marks paired).
-// POSTMORTEM of the final 2bd: the diff (`add ecx,esi` vs PS
-// `add esi,ecx` + the store reg) was NOT a GiveBestReg seat at all --
-// every round-0 seat in the statement matches PS (m5s/m6s = ECX,
-// m4/inner sum = ESI).  Reading the round-0 IL walk showed the
-// sprite_start final ADD has an N_MEMORY result and realizes directly
-// as `add op0reg, op1reg; mov mem, op0reg` -- the 2bd was the ADD's
-// OPERAND ORDER: RC op0 = m6<<16 (from the grouped source), PS op0 =
-// the inner sum (left-assoc source).  Plain left-assoc alone breaks
-// the m6 load idiom (movzx anon instead of the xor-idiom named-int
-// pair, 174bd cascade); the closer is the COMPOSED form
-//   (mice[dp+4] + (mice[dp+5] << 8)) + ((word = mice[dp+6]) << 16);
-// left-assoc for op0=inner PLUS the word-embedded def on m6 (same
-// device as the sprite_width line) to pin the named-int xor-idiom
-// load.  Two prior sessions had probed both halves separately (the
-// place2_a_building_top lesson, again).  The earlier 'given-subset
-// tie on 6c201d94' attribution was a red herring: that round-1 temp
-// is sprite_width's word->shift carrier (seat byte-invisible); the
-// seat_recon LOCALIZED caveat was right to warn.
-// Fan-out packing: the three write_i_* if/else-if chains carry PS
-// -d1 marks on the CALL lines (L1003/L1004 pattern) -> guard and
-// call on separate lines.
-// Historical (pre-2026-07-11) probe notes: switch(side) impossible
-// (PS = jne chain); de-inventing `people` 584bd; decl perms inert;
-// win-verify cannot certify (WIN is a later source revision).
-//
+// City-map sprite layer.
+// FUNCTION: C2 0x386f9
+// FUNCTION: C2WIN 0x0045e38c
 void place_sprite(int side)
 {
     unsigned char flag_byte;
@@ -1575,15 +1332,11 @@ void place_sprite(int side)
     sprite_y = old_sprite_y;
 }
 
-// FUNCTION: C2 0x38E80
-// WIN: 0x0045ef7d
-// Lines 1110–1134
-//
-// Debug/test overlay for city-map cells.  test_mode1 prints city_map+1
-// (negative values shown positive in colour 3, otherwise colour 0x3f),
-// while test_mode2 prints city_map+2 with the same sign colouring.
-// sprite_x/y are saved around the font_no call because font rendering
-// mutates the global sprite cursor.
+// Debug/test overlay for city-map cells. test_mode1 prints city_map+1 (negative values shown
+// positive in colour 3, otherwise colour 0x3f), while test_mode2 prints city_map+2 with the same
+// sign colouring.
+// FUNCTION: C2 0x38e80
+// FUNCTION: C2WIN 0x0045ef7d
 void print_test_info(void)
 {
     int v;
@@ -1616,34 +1369,10 @@ void print_test_info(void)
     }
 }
 
-// FUNCTION: C2 0x38F5B
-// WIN: 0x0045f0f8
-// Lines 1138–1179
-//
-// Per-cell overlay dispatcher.  Returns 0 when no overlay drew the
-// cell (caller falls back to the normal draw) and 1 when the overlay
-// handled it.
-//
-// Image selection:
-//   * landfill_pool[idx] == 0 (no landfill): only draw when the cell's
-//     terrain flags (terrain & 0xe7) are set AND overlay0_empty_mode
-//     == 0.  Image is 7 for population cells (base_kind in 0x82..0xa1)
-//     and 0 otherwise.
-//   * landfill == 0x96 ("flag"): use landfill - 0x76 in ov_map_mode 1;
-//     in ov_map_mode 6 only when the tile is outside 0xe5..0xf0; bail
-//     in other modes.
-//   * other landfill values: image is landfill - 0x76.
-//
-// After resolution, population cells (0x82..0xa1) shift the image by
-// +2 if it's >= 8, otherwise non-population cells advance by 1 when
-// terrain & 1 is set ("under construction" marker).  Images < 0x23
-// get stamped through place_overlay(style); sprite_x then advances
-// by pm_diamond_width.
-//
-// In the landfill==0 branch base_kind is cached into `tile` so the
-// later 0x82..0xa1 range check reuses the same load.  show_overlay,
-// show_left_overlay and show_right_overlay share this body modulo
-// the routed place_*_overlay call.
+// Per-cell overlay dispatcher. Returns 0 when no overlay drew the cell (caller falls back to the
+// normal draw) and 1 when the overlay handled it.
+// FUNCTION: C2 0x38f5b
+// FUNCTION: C2WIN 0x0045f0f8
 int show_overlay(int style)
 {
     int idx;
@@ -1693,32 +1422,11 @@ int show_overlay(int style)
     return 1;
 }
 
-// FUNCTION: C2 0x390C3
-// WIN: 0x0045f34e
-// Lines 1181–1221
-//
-// Left-edge half-diamond overlay.  Same image-selection
-// logic as show_overlay; routes through
-// place_lefthalf_overlay and does NOT advance sprite_x
-// (the caller bumps it by pm_diamond_half_width after
-// returning).
-//
-// BYTE-EXACT (twin: show_right_overlay, same shape).  2026-07-14: the
-// comma-dup allocator hack is GONE -- PS's true source shape was
-// recovered from its own asm: the subtraction is computed ONCE into a
-// named local BEFORE the 0x96 test (PS L1198: xor ecx,ecx; mov cl,dl;
-// lea edx,[ecx-0x76]; cmp ecx,0x96 -- widen + sub + compare in one
-// line's run), and the b!=0x96 / mode==1 paths both store that local
-// (two source stores, ComTail-merged into the single L1209
-// `mov [sprite_image_no],edx`; the jne/je branch straight to it).
-// That gives the sub temp its sav=3 (def + 2 uses) honestly -- the
-// exact +1 use-unit the `c2 savings --flip` cascade demanded (the old
-// comma dup simulated it).  The mode-6 arm recomputes fresh from the
-// array (PS L1205 reload witnessed).  Decl order (tile, b, idx, ...)
-// is the Rule 115 lever; the original (idx, b, tile) order = 191bd.
-// ONE RC-only -d1 mark remains at +0xD1 (the merged store's second
-// source line; placement-invariant, same class as mid3's +0x240).
-//
+// Left-edge half-diamond overlay. Same image-selection logic as show_overlay; routes through
+// place_lefthalf_overlay and does NOT advance sprite_x (the caller bumps it by
+// pm_diamond_half_width after returning).
+// FUNCTION: C2 0x390c3
+// FUNCTION: C2WIN 0x0045f34e
 int show_left_overlay(int style)
 {
     unsigned char tile;
@@ -1766,16 +1474,10 @@ int show_left_overlay(int style)
     return 1;
 }
 
-// FUNCTION: C2 0x3921D
-// WIN: 0x0045f599
-// Lines 1223–1263
-//
-// Right-edge half-diamond overlay.  Same image-selection
-// logic; routes through place_righthalf_overlay.
-// BYTE-EXACT; the ov_image named-local shape and Rule 115 decl order
-// mirror show_left_overlay (see its comment for the full recovery
-// postmortem -- the comma-dup hack is gone in both twins).
-//
+// Right-edge half-diamond overlay. Same image-selection logic; routes through
+// place_righthalf_overlay.
+// FUNCTION: C2 0x3921d
+// FUNCTION: C2WIN 0x0045f599
 int show_right_overlay(int style)
 {
     unsigned char tile;
@@ -1823,16 +1525,10 @@ int show_right_overlay(int style)
     return 1;
 }
 
+// Predicate used by the top / sprite passes: returns 1 when the cell at pm_shown_ptr is currently
+// covered by an overlay sprite (so the caller should skip the normal draw).
 // FUNCTION: C2 0x39377
-// WIN: 0x0045f7e4
-// Lines 1265–1291
-//
-// Predicate used by the top / sprite passes: returns 1 when the cell
-// at pm_shown_ptr is currently covered by an overlay sprite (so the
-// caller should skip the normal draw).  Returns 0 when overlays are
-// off, the cell is a virtual sentinel, or the landfill-pool entry
-// resolves to a no-overlay state for this ov_map_mode.  Mirrors the
-// gating in show_overlay's image-selection chain.
+// FUNCTION: C2WIN 0x0045f7e4
 int are_overlays_on(void)
 {
     unsigned char x, b;

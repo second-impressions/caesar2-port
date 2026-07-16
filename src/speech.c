@@ -1,4 +1,3 @@
-// D:\C2\CODE\speech.c
 
 #include "pcsound.h"
 #include "c2_data.h"
@@ -110,17 +109,13 @@ struct speech_file_rec speech_files[104] = {
     { "c44.raw" }
 };
 
-/* ── TU-owned file-scope variables (PS.EXE _BSS, original declaration
-   order).  Recovered so the functional rebuild (`c2 rebuild`) links
-   self-sustained -- no auto-stubbed storage.  Extern decls: c2_data.h. */
+/* File-local state. */
 char *speech_filaname;
 
 
-// FUNCTION: C2 0x135A4
-// WIN: 0x00482a90
-// Lines 23–27
-// NOTE: 4-byte diff is relative call displacement to set_db_sound (cross-module,
-//       intra-segment; no LE fixup entry, verifier cannot mask it)
+// Starts the requested speech sample when speech playback is enabled.
+// FUNCTION: C2 0x135a4
+// FUNCTION: C2WIN 0x00482a90
 void play_speech(int param_1) {
     speech_filaname = speech_files[param_1].name;
     set_db_sound(speech_filaname);

@@ -1,26 +1,9 @@
-// D:\C2\CODE\pcsound.c
 
 #pragma aux _ds "*"
 #include "pcsound.h"
 #include "c2_data.h"
 #include "smacker.h"
 #include <fcntl.h>             /* O_BINARY */
-/* The TU's own far-pointer error-code builder, MK_FP(off, seg) --
- * NOT <i86.h>'s MK_FP(seg, off) macro.  Recovered 2026-07-12 from
- * three witnesses (full detail above start_samples):
- *   DOS retail: an EMPTY-BODY #pragma aux -- the "call" vanishes and
- *     the args land in the return pair directly (off->EAX, seg->EDX,
- *     value [dx eax]).  This is the ONLY spelling whose seg=0 at the
- *     handle-check fail compiles with NO xor edx,edx (the encoder's
- *     branch-implied-zero tracker elides the materialization after
- *     `test edx,edx; jne`) while keeping the split load live-out --
- *     byte-exact where every macro/cast form diverged.
- *   DOS demo (C2DEMO 1995-08): the same helper WITH a real body
- *     (`test edx,edx` dispatcher) called via a shared fail tail.
- *   Win port: MSVC can't express #pragma aux -> they made it a real
- *     DEAD function (the empty stub at 0x409344; eax left undefined,
- *     callers discard the sentinel).  Same (off, seg) arg order as
- *     the push sequence shows.  */
 #ifdef __WATCOMC__
 char __far *MK_FP(int off, int seg);
 #pragma aux MK_FP = parm [eax] [edx] value [dx eax];
@@ -35,9 +18,7 @@ extern int _ds;
 
 #include "ail.h"
 
-/* ── TU-owned file-scope variables (PS.EXE _BSS, original declaration
-   order).  Recovered so the functional rebuild (`c2 rebuild`) links
-   self-sustained -- no auto-stubbed storage.  Extern decls: c2_data.h. */
+/* File-local state. */
 char negative_buffer[624];
 unsigned char * db_buf[2];
 struct sample_slot_rec ss_entries[10];
@@ -67,21 +48,7 @@ int db_recommended_buffer_size;
 int db_buffer_size;
 struct ambient_rec ambient_list[25];   /* stride 0x46=70 (init_city_ambients imul), bound cmp edx,0x19 -> 25; span 1752 has 2b trailing pad */
 
-/* Forward declarations of pcsound.c functions used internally.
- *
- * The `modify exact [eax gs]` contracts (measured load-bearing, both
- * functions): `exact` makes EDX callee-saved -> the prologue gains
- * `push edx` and every error return funnels through ONE shared
- * pop-chain epilogue (without it each fail gets its own inline
- * epilogue and EDX stays scratch).  Note the consequence: the
- * epilogue's `pop edx` restores the CALLER's EDX over the far-ptr
- * seg half -- every error return's segment is garbage by contract;
- * callers only ever read the offset half.  `gs` neutralizes the -mf
- * GS-float default (calls zap GS; an exact-save function would
- * otherwise bracket itself in push/pop gs).  EAX in the list is
- * redundant (return regs exempt); `[gs]` alone is byte-identical,
- * as is -zgp + `[eax]` TU-wide.  start_sound/start_tune carry no
- * pragma: default convention (no push edx, inline epilogues). */
+/* Far-pointer startup hooks preserve the register contract expected by Miles. */
 char __far *start_samples(void);
 #pragma aux start_samples modify exact [eax gs];
 char __far *start_sequences(void);
@@ -94,15 +61,12 @@ void init_ss_entires(void);
 void free(void *p);
 
 extern void _pos_ret3(void);
-// FUNCTION: C2 0x11758
-// WIN: 0x00401000
-// Lines 109–125
-//
-// Boot the sound subsystem: clear the playback flags, enable
-// both digital + MIDI in c2inf, install AIL, and bring up the
-// sample + sequence drivers.
 extern void *malloc(unsigned int size);
 
+// Boot the sound subsystem: clear the playback flags, enable both digital + MIDI in c2inf, install
+// AIL, and bring up the sample + sequence drivers.
+// FUNCTION: C2 0x11758
+// FUNCTION: C2WIN 0x00401000
 void start_sounds(void)
 {
     db_playing      = 0;
@@ -118,54 +82,19 @@ void start_sounds(void)
     start_sequences();
 }
 
-// FUNCTION: C2 0x117A2
-// Lines 127–132
-//
-// Tear down the sound subsystem: end both AIL driver halves and
-// shut AIL down.
+// Tear down the sound subsystem: end both AIL driver halves and shut AIL down.
+// FUNCTION: C2 0x117a2
 void stop_sounds(void)
 {
     stop_samples();
     stop_sequences();
     AIL_shutdown();
 }
-// FUNCTION: C2 0x117B8
-// WIN: 0x00401085
-// Lines 131-146
-//
-// Installs the digital sound driver: loads the two click WAVs into
-// the preloaded buffers, installs DIG.INI, allocates 6 sample
-// handles, verifies them, and flips `samples_running`.  Re-entry is a
-// no-op.  Error far-pointers built by the TU's own MK_FP(off, seg)
-// helper (see its declaration at the file top): 4 = a WAV failed,
-// 1 = AIL_install_DIG_INI failed, 2 = a sample handle came back
-// NULL.  The success/no-op path falls off through the uninitialised
-// `rc`, which the lone caller discards.
-//
-// BYTE-EXACT 2026-07-12 after ~950 probed variants across 5
-// sessions.  The load-bearing pieces, each proven by measurement:
-//   * the empty-body #pragma aux MK_FP: its parm [edx] keeps the
-//     tested value live-out of the check-loop cond block, so the
-//     split load survives LdStCompress (`mov edx,[eax*4+S_dig];
-//     test edx,edx` -- every cast/macro spelling re-fused it);
-//   * seg literal 0 at the check fail: the encoder's branch-implied
-//     -zero tracker elides the `xor edx,edx` after `test edx,edx;
-//     jne` (fail1/fail2 keep theirs -- EDX unknown there);
-//   * the ANONYMOUS check (`if (S_dig[ds] == 0)`): its fr'd split
-//     advances the RISCify rover cursor so the ds++ increment's
-//     pick lands EBX (`lea ebx,[eax+1]`); naming the value kills
-//     the advance (inc eax), a second S_dig[ds] mention makes the
-//     FE bind the address (shl eax,2) -- both fatal, all compiler
-//     versions 9.5-11.0;
-//   * the one-line do-while: a `for` re-marks its cond/incr in the
-//     -d1 stream (line-compare RC-only marks); PS marked the loop
-//     once.
-// Witnesses: C2DEMO 1995-08 (same helper WITH a body -- a
-// `test edx,edx` dispatcher -- via a shared fail tail) and the Win
-// port (MSVC can't #pragma aux, so MK_FP became the real dead stub
-// at 0x409344).  Full mechanism history: git log + the watcom10.0a
-// repo's notes/start-samples-p5p6.md.
-//
+// Installs the digital sound driver: loads the two click WAVs into the preloaded buffers, installs
+// DIG.INI, allocates 6 sample handles, verifies them, and flips `samples_running`. Re-entry is a
+// no-op.
+// FUNCTION: C2 0x117b8
+// FUNCTION: C2WIN 0x00401085
 char __far *start_samples(void)
 {
     char __far *rc;
@@ -183,15 +112,10 @@ char __far *start_samples(void)
     return rc;
 }
 
-// FUNCTION: C2 0x118A2
-// Lines 147–158
-// AIL MIDI sequence bootstrap.  Installs the MDI driver, allocates
-// two sequence handles, and initialises the mood-tracking globals.
-// Error codes (char __far *)1 / MK_FP(2,1) flag install / handle
-// failures; the success/no-op path returns through an uninitialised
-// `rc` (the AIL far-ptr value-less idiom).  `modify exact [eax gs]`
-// (file top) shapes the prologue/epilogue -- see the note there.
-// WIN: 0x00401250
+// AIL MIDI sequence bootstrap. Installs the MDI driver, allocates two sequence handles, and
+// initialises the mood-tracking globals.
+// FUNCTION: C2 0x118a2
+// FUNCTION: C2WIN 0x00401250
 char __far *start_sequences(void)
 {
     char __far *rc;
@@ -216,12 +140,10 @@ char __far *start_sequences(void)
     return rc;
 }
 
-// FUNCTION: C2 0x1197B
-// WIN: 0x0040138f
-// Lines 169–178
-//
-// Stop every active digital sample slot.  Clears db_playing and ends
-// any S_dig handle currently reporting status 4 (PLAYING).
+// Stop every active digital sample slot. Clears db_playing and ends any S_dig handle currently
+// reporting status 4 (PLAYING).
+// FUNCTION: C2 0x1197b
+// FUNCTION: C2WIN 0x0040138f
 void stop_samples(void)
 {
     if (samples_running == 0) return;
@@ -234,11 +156,9 @@ void stop_samples(void)
     }
 }
 
-// FUNCTION: C2 0x119E7
-// Lines 180–189
-//
-// Stop every active music sequence.  Clears the city tune flag and
-// ends any S_mdi handle currently reporting status 4 (PLAYING).
+// Stop every active music sequence. Clears the city tune flag and ends any S_mdi handle currently
+// reporting status 4 (PLAYING).
+// FUNCTION: C2 0x119e7
 void stop_sequences(void)
 {
     city_tune_playing = 0;
@@ -251,14 +171,11 @@ void stop_sequences(void)
     }
 }
 
-// FUNCTION: C2 0x11A53
-// WIN: 0x0040149b
-// Lines 193–202
-//
-// Push the user-configured digital-sample volume to AIL, scaled
-// from c2inf.samples_level (0..100) to AIL's 0..127 range via
-// totalXpercent.  No-op if samples are disabled or the digital
-// driver isn't initialised.
+// Push the user-configured digital-sample volume to AIL, scaled from c2inf.samples_level (0..100)
+// to AIL's 0..127 range via totalXpercent. No-op if samples are disabled or the digital driver
+// isn't initialised.
+// FUNCTION: C2 0x11a53
+// FUNCTION: C2WIN 0x0040149b
 void set_samples_volume(void)
 {
     if (c2inf.samples_on == 0)   return;
@@ -266,13 +183,10 @@ void set_samples_volume(void)
     AIL_set_digital_master_volume(dig, totalXpercent(0x7f, c2inf.samples_level));
 }
 
-// FUNCTION: C2 0x11A8C
-// WIN: 0x00401515
-// Lines 203–212
-//
-// Push the user-configured music volume to both AIL sequence
-// handles (tune1 and tune2) — scaled from c2inf.tunes_level
-// (0..100) to AIL's 0..127 range; fade=0 (instant).
+// Push the user-configured music volume to both AIL sequence handles (tune1 and tune2) — scaled
+// from c2inf.tunes_level (0..100) to AIL's 0..127 range; fade=0 (instant).
+// FUNCTION: C2 0x11a8c
+// FUNCTION: C2WIN 0x00401515
 void set_sequences_volume(void)
 {
     int vol;
@@ -284,12 +198,10 @@ void set_sequences_volume(void)
     AIL_set_sequence_volume(S_mdi[tune2], vol, 0);
 }
 
-// FUNCTION: C2 0x11AE9
-// WIN: 0x0040158e
-// Lines 213–222
-//
-// Begin a 1-second fade-in on S_mdi[idx]: snap to 0 then fade up to
-// the user-configured master volume.  Skipped if music is disabled.
+// Begin a 1-second fade-in on S_mdi[idx]: snap to 0 then fade up to the user-configured master
+// volume. Skipped if music is disabled.
+// FUNCTION: C2 0x11ae9
+// FUNCTION: C2WIN 0x0040158e
 void fade_sequence_in(int idx)
 {
     int vol;
@@ -301,13 +213,10 @@ void fade_sequence_in(int idx)
     AIL_set_sequence_volume(S_mdi[idx], vol, 1000);
 }
 
-// FUNCTION: C2 0x11B4B
-// WIN: 0x00401604
-// Lines 223–228
-//
-// Begin a 1-second fade-out on S_mdi[idx] iff music is enabled
-// (c2inf.tunes_on) and the global sequences_running flag is set.
-// `AIL_set_sequence_volume(h, target=0, fade_ms=1000)`.
+// Begin a 1-second fade-out on S_mdi[idx] iff music is enabled (c2inf.tunes_on) and the global
+// sequences_running flag is set. `AIL_set_sequence_volume(h, target=0, fade_ms=1000)`.
+// FUNCTION: C2 0x11b4b
+// FUNCTION: C2WIN 0x00401604
 void fade_sequences_out(int idx)
 {
     if (c2inf.tunes_on == 0)      return;
@@ -315,20 +224,11 @@ void fade_sequences_out(int idx)
     AIL_set_sequence_volume(S_mdi[idx], 0, 1000);
 }
 
-// FUNCTION: C2 0x11B7B
-// WIN: 0x0040164d
-// Lines 232–248
-//
-// Schedule a digital sample for playback.  Each sample slot
-// owns a 20 000-byte (0x4E20) chunk of `sample_buffer`; if the
-// same fname has been queued before, ``check_old_sslots``
-// returns the existing slot and we skip the load.  Otherwise
-// allocate a new slot via ``get_new_sslot``, ``readfile`` 20 000
-// bytes into it, and on success start the sound.
-//
-// Four guards bypass everything: master samples toggle off,
-// AIL not running, empty fname, or no free slot available.
-//
+// Schedule a digital sample for playback. Each sample slot owns a 20 000-byte (0x4E20) chunk of
+// `sample_buffer`; if the same fname has been queued before, ``check_old_sslots`` returns the
+// existing slot and we skip the load.
+// FUNCTION: C2 0x11b7b
+// FUNCTION: C2WIN 0x0040164d
 void set_sound(char *fname, int arg2)
 {
     if (c2inf.samples_on == 0) return;
@@ -346,15 +246,10 @@ void set_sound(char *fname, int arg2)
     start_sound(sample_buffer + sslot * 0x4e20, arg2);
 }
 
-// FUNCTION: C2 0x11C35
-// WIN: 0x00401734
-// Lines 250–265
-//
-// "Priority" variant of set_sound — same flow, but skips the
-// check_for_free_slot gate.  Used by callers that always want
-// the sample played, displacing the oldest slot if all 10 are
-// busy.
-//
+// "Priority" variant of set_sound — same flow, but skips the check_for_free_slot gate. Used by
+// callers that always want the sample played, displacing the oldest slot if all 10 are busy.
+// FUNCTION: C2 0x11c35
+// FUNCTION: C2WIN 0x00401734
 void set_pri_sound(char *fname, int arg2)
 {
     if (c2inf.samples_on == 0) return;
@@ -371,21 +266,10 @@ void set_pri_sound(char *fname, int arg2)
     start_sound(sample_buffer + sslot * 0x4e20, arg2);
 }
 
-// FUNCTION: C2 0x11CE2
-// WIN: 0x00401809
-// Lines 267–283
-//
-// Allocate a free voice slot and start a one-shot sample.
-// Walks S_dig[0..max_samples) looking for a slot in idle
-// (status 2) or paused (status 8) state.  If none found,
-// uses the round-robin `next_sample` index regardless.
-// Then recycles the slot (end_sample if status 4), inits,
-// loads the buffer, sets loop count, and starts.
-//
-// Far-ptr return is required: error code 3 is MK_FP(0, 3) (lowered to
-// `xor edx,edx; mov eax,3`), and the success path returns the AIL
-// call's edx:eax directly via tail position so the compiler
-// move-eliminates the return.
+// Allocate a free voice slot and start a one-shot sample. Walks S_dig[0..max_samples) looking for
+// a slot in idle (status 2) or paused (status 8) state.
+// FUNCTION: C2 0x11ce2
+// FUNCTION: C2WIN 0x00401809
 char __far *start_sound(char *buf, int loop_count)
 {
     for (ds = 0; ds < c2inf.max_samples; ds++) {
@@ -406,11 +290,9 @@ char __far *start_sound(char *buf, int loop_count)
     return AIL_start_sample(S_dig[ds]);
 }
 
-// FUNCTION: C2 0x11DF2
-// WIN: 0x0040198e
-// Lines 285–294
-//
 // Returns nonzero if a sample slot is available.
+// FUNCTION: C2 0x11df2
+// FUNCTION: C2WIN 0x0040198e
 int check_for_free_slot(void)
 {
     for (ds = 0; ds < c2inf.max_samples; ds++) {
@@ -420,11 +302,8 @@ int check_for_free_slot(void)
     return 0;
 }
 
-// FUNCTION: C2 0x11E3B
-// Lines 296–303
-//
-// Walk all 4 digital sample slots and end any that report status
-// SMP_PLAYING (4).
+// Walk all 4 digital sample slots and end any that report status SMP_PLAYING (4).
+// FUNCTION: C2 0x11e3b
 void stop_all_sounds(void)
 {
     for (ds = 0; ds < 4; ds++) {
@@ -433,19 +312,12 @@ void stop_all_sounds(void)
     }
 }
 
-// FUNCTION: C2 0x11E92
-// Lines 305–315
-//
-// Cinematic "positive" sting playback.  Latches sample slot
-// 4, recycles it if currently active, then plays the
-// preloaded `positive_buffer`.
-//
-// The set_sample_file == 0 path emits an unused `xor edx,edx; mov
-// eax,3` store that PS keeps but a stricter DSE would remove.  The
-// `_pos_ret3` inline-asm thunk forces those exact bytes to land
-// in-place because inline asm is treated as a side-effect.
 #pragma aux _pos_ret3 = "xor edx,edx" "mov eax,3" modify exact [eax edx]
-// WIN: 0x00401a69
+
+// Cinematic "positive" sting playback. Latches sample slot 4, recycles it if currently active,
+// then plays the preloaded `positive_buffer`.
+// FUNCTION: C2 0x11e92
+// FUNCTION: C2WIN 0x00401a69
 void pos_sound(void)
 {
     if (c2inf.samples_on != 0 && samples_running != 0) {
@@ -458,13 +330,9 @@ void pos_sound(void)
     }
 }
 
-// FUNCTION: C2 0x11F40
-// WIN: 0x00401b30
-// Lines 317–326
-//
-// Twin of pos_sound for `negative_buffer`.  Source order matters --
-// the back half (set_sample_file + start) tail-merges with
-// pos_sound at the shared push-buf/push-(-1) site.
+// Play the negative feedback sample when digital audio is available.
+// FUNCTION: C2 0x11f40
+// FUNCTION: C2WIN 0x00401b30
 void neg_sound(void)
 {
     if (c2inf.samples_on != 0 && samples_running != 0) {
@@ -477,14 +345,10 @@ void neg_sound(void)
     }
 }
 
-// FUNCTION: C2 0x11FB9
-// Lines 332–341
-//
-// Refill one of AIL's double-buffered sample slots from the
-// open db_handle file.  buf is an array of byte-buffer pointers
-// (one per sample buffer slot); the slot index is the one AIL
-// reports ready via AIL_sample_buffer_ready (-1 if none ready,
-// silent no-op).
+// Refill one of AIL's double-buffered sample slots from the open db_handle file. buf is an array
+// of byte-buffer pointers (one per sample buffer slot); the slot index is the one AIL reports
+// ready via AIL_sample_buffer_ready (-1 if none ready, silent no-op).
+// FUNCTION: C2 0x11fb9
 void serve_sample(int sample_handle, unsigned char **buf, int size)
 {
     int slot;
@@ -496,25 +360,11 @@ void serve_sample(int sample_handle, unsigned char **buf, int size)
     AIL_load_sample_buffer(sample_handle, slot, buf[slot], n);
 }
 
+// Stage a streaming digital sample ("db" = digital buffer) for double-buffered playback. Bails out
+// if the master sample/speech toggles are off, AIL isn't running, another db is already playing,
+// the filename is empty, or the file doesn't exist.
 // FUNCTION: C2 0x12003
-// WIN: 0x00401c57
-// Lines 343–368
-//
-// Stage a streaming digital sample ("db" = digital buffer)
-// for double-buffered playback.  Bails out if the master
-// sample/speech toggles are off, AIL isn't running, another
-// db is already playing, the filename is empty, or the file
-// doesn't exist.
-//
-// Once committed, the file is opened, db_playing is latched,
-// the two ping-pong buffers are pinned at scratch_buffer
-// +140000 / +150000, AIL is told the recommended buffer size
-// for 22050 Hz, our buffer chunk size (10000), and that we'll
-// drive sample slot 5 (`ds`).  Then init_sample sets up the
-// AIL handle, set_sample_type configures format, and
-// set_sample_playback_rate sets the rate.  main_path() flips
-// the working drive back to the install dir (since cd_path
-// switched it earlier).
+// FUNCTION: C2WIN 0x00401c57
 void set_db_sound(char *fname)
 {
     if (c2inf.samples_on == 0)   return;
@@ -542,15 +392,11 @@ void set_db_sound(char *fname)
     main_path();
 }
 
-// FUNCTION: C2 0x1211E
-// WIN: 0x00401da8
-// Lines 370–381
-//
-// Resume / advance the digital-buffer (db) playback loop.  Re-stages
-// a chunk via serve_sample(), then if AIL says the previous sample
-// finished (status == 2), closes the file handle and clears
-// db_playing.  main_path() restores the working directory in either
-// case.
+// Resume / advance the digital-buffer (db) playback loop. Re-stages a chunk via serve_sample(),
+// then if AIL says the previous sample finished (status == 2), closes the file handle and clears
+// db_playing.
+// FUNCTION: C2 0x1211e
+// FUNCTION: C2WIN 0x00401da8
 void continue_db(void)
 {
     if (c2inf.samples_on == 0) return;
@@ -566,13 +412,10 @@ void continue_db(void)
     main_path();
 }
 
-// FUNCTION: C2 0x121A9
-// WIN: 0x00401e49
-// Lines 384–391
-//
-// Stop the current db playback.  Same early-out triple-guard as
-// continue_db, then ends the AIL sample, clears db_playing, closes
-// the file handle, and restores CWD via main_path().
+// Stop the current db playback. Same early-out triple-guard as continue_db, then ends the AIL
+// sample, clears db_playing, closes the file handle, and restores CWD via main_path().
+// FUNCTION: C2 0x121a9
+// FUNCTION: C2WIN 0x00401e49
 void stop_db(void)
 {
     if (c2inf.samples_on == 0) return;
@@ -586,15 +429,10 @@ void stop_db(void)
     main_path();
 }
 
-// FUNCTION: C2 0x121FA
-// WIN: 0x00401ec1
-// Lines 396–405
-//
-// Pause/resume the digital "background" sample channel (S_dig[5]).
-// No-op if samples are disabled or the db_playing flag is clear.
-// Status 4 (PLAYING) -> AIL_stop_sample; status 8 (PAUSED) ->
-// AIL_resume_sample.  Returns 1 on success / no-action, 0 if any
-// guard failed.
+// Pause/resume the digital "background" sample channel (S_dig[5]). No-op if samples are disabled
+// or the db_playing flag is clear.
+// FUNCTION: C2 0x121fa
+// FUNCTION: C2WIN 0x00401ec1
 int pause_db(void)
 {
     if (c2inf.samples_on == 0) return 0;
@@ -607,16 +445,8 @@ int pause_db(void)
     return 1;
 }
 
+// Load and start an XMI tune unless music or the sequence engine is disabled.
 // FUNCTION: C2 0x12279
-// Lines 411–418
-//
-// Load `fname` into `tune_buffer` (27 500-byte staging area)
-// via readfile(), then hand the buffer off to start_tune()
-// for AIL-driven sequence playback.  Three guards skip the
-// load if music is globally disabled (c2inf.tunes_on),
-// the AIL sequence engine isn't running, or `fname` is the
-// empty string.  `loops` is the AIL "loop count" forwarded
-// to start_tune.
 void play_tune(char *fname, int loops)
 {
     if (c2inf.tunes_on == 0) return;
@@ -626,24 +456,9 @@ void play_tune(char *fname, int loops)
     start_tune(tune_buffer, 0, loops);
 }
 
-// FUNCTION: C2 0x122BC
-// Lines 420–441
-//
-// Drive a music sequence on MDI slot `slot`.  Special-cases:
-//   slot == 0 — first end the *other* slot (S_mdi[1]) so two
-//               sequences don't clash.
-//   slot == 1 — first stop slot 0 (pauses, doesn't free).
-// Then probes the target slot's status:
-//   status == 4 (DONE)    — release it via end_sequence
-//   status == 8 (PAUSED)  — resume in place and tail-jump out
-// Otherwise initialises the sequence with the user buffer,
-// installs `mood_modfication` as the trigger callback,
-// returns error codes 3/4 for init failure, otherwise fades
-// in and starts.
-//
-// Far-ptr return: the two error exits use MK_FP(1, 3) and MK_FP(1,
-// 4); the resume / start paths tail-return the AIL call's edx:eax
-// directly so the compiler move-eliminates the return.
+// Drive a music sequence on MDI slot `slot`. Special-cases: slot == 0 — first end the *other* slot
+// (S_mdi[1]) so two sequences don't clash.
+// FUNCTION: C2 0x122bc
 char __far *start_tune(unsigned char *seq_arg, int sequence_num, int slot)
 {
     int rc;
@@ -665,12 +480,9 @@ char __far *start_tune(unsigned char *seq_arg, int sequence_num, int slot)
     return AIL_start_sequence(S_mdi[slot]);
 }
 
-// FUNCTION: C2 0x1239C
-// Lines 443–449
-//
-// Halt all currently-playing music sequences.  Probes both MDI
-// handles in S_mdi[] and uses the asymmetric AIL pair: stop_sequence
-// (pauses) for slot 0, end_sequence (frees) for slot 1.
+// Halt all currently-playing music sequences. Probes both MDI handles in S_mdi[] and uses the
+// asymmetric AIL pair: stop_sequence (pauses) for slot 0, end_sequence (frees) for slot 1.
+// FUNCTION: C2 0x1239c
 void stop_tune(void)
 {
     mdi_status = AIL_sequence_status(S_mdi[0]);
@@ -679,27 +491,18 @@ void stop_tune(void)
     if (mdi_status == 4) AIL_end_sequence(S_mdi[1]);
 }
 
-// FUNCTION: C2 0x123F5
-// Lines 451–455
-//
 // Halt only S_mdi[0] — the first half of stop_tune.
+// FUNCTION: C2 0x123f5
 void stop_tune0(void)
 {
     mdi_status = AIL_sequence_status(S_mdi[0]);
     if (mdi_status == 4) AIL_stop_sequence(S_mdi[0]);
 }
 
+// Branch-on-mood callback: invoked from the AIL sequencer when a tune reaches a marked branch
+// point. Re-evaluates the current mood (battle or city, depending on map mode) and tells the
+// sequencer where to branch next via `AIL_branch_index(seq, tune_branch)`.
 // FUNCTION: C2 0x12424
-// Lines 457–465
-//
-// Branch-on-mood callback: invoked from the AIL sequencer
-// when a tune reaches a marked branch point.  Re-evaluates
-// the current mood (battle or city, depending on map mode)
-// and tells the sequencer where to branch next via
-// `AIL_branch_index(seq, tune_branch)`.
-//
-// Note the typo "modfication" preserved from the PS.EXE
-// debug symbol.
 void __cdecl mood_modfication(int seq)
 {
     tune_mood_hold = 0;
@@ -709,13 +512,10 @@ void __cdecl mood_modfication(int seq)
     AIL_branch_index(seq, tune_branch);
 }
 
+// Restore the last-known mood for the current map mode (battle uses last_battle_mood, otherwise
+// last_city_mood) into the live tune_mood global and return it.
 // FUNCTION: C2 0x12461
-// WIN: 0x004021fd
-// Lines 467–471
-//
-// Restore the last-known mood for the current map mode (battle
-// uses last_battle_mood, otherwise last_city_mood) into the live
-// tune_mood global and return it.
+// FUNCTION: C2WIN 0x004021fd
 int get_old_mood(void)
 {
     int mood;
@@ -725,13 +525,9 @@ int get_old_mood(void)
     return mood;
 }
 
-// FUNCTION: C2 0x1247F
-// WIN: 0x00402231
-// Lines 473–507
-//
-// Faithful mood→branch dispatcher.  The body follows the PS state
-// machine, including transient bad/threat/emergency overrides and the
-// fallback away from repeated high moods.
+// Choose the music branch from the current mood, including temporary threat and emergency states.
+// FUNCTION: C2 0x1247f
+// FUNCTION: C2WIN 0x00402231
 void get_city_mood(void)
 {
     if (tune_mood == 10) { tune_mood = 0; tune_branch = 0x28; }
@@ -765,15 +561,11 @@ void get_city_mood(void)
     last_city_mood = tune_mood;
 }
 
+// Battle-tune branch selector. Moods 1..5 delegate to choose_odd_tune (paired branch markers at
+// 0xe / 0x16 / 0x1e / 0x26 / 0x2e); moods 6..18 select fixed branch indices 0..13; everything else
+// uses a random branch (rand128 + 0xe) & 7.
 // FUNCTION: C2 0x12751
-// WIN: 0x0040266b
-// Lines 510–532
-//
-// Battle-tune branch selector.  Moods 1..5 delegate to
-// choose_odd_tune (paired branch markers at 0xe / 0x16 / 0x1e / 0x26
-// / 0x2e); moods 6..18 select fixed branch indices 0..13; everything
-// else uses a random branch (rand128 + 0xe) & 7.  Caches the chosen
-// mood in last_battle_mood for get_old_mood.
+// FUNCTION: C2WIN 0x0040266b
 void get_battle_mood(void)
 {
     if      (tune_mood == 1)  choose_odd_tune(0xe);
@@ -798,16 +590,9 @@ void get_battle_mood(void)
     last_battle_mood = tune_mood;
 }
 
-// FUNCTION: C2 0x128AD
-// WIN: 0x00402888
-// Lines 534–546
-//
-// Branch-callback helper invoked when a battle tune reaches
-// an "odd-tune" marker.  Toggles the `odd_battle_tune` flag
-// and either picks a randomised branch index (`x + (rand128
-// & 6)`) on the *first* visit, or just bumps the existing
-// branch by 1 on the *second* visit, alternating between the
-// two halves of a paired tune.
+// Branch-callback helper invoked when a battle tune reaches an "odd-tune" marker.
+// FUNCTION: C2 0x128ad
+// FUNCTION: C2WIN 0x00402888
 void choose_odd_tune(int x)
 {
     if (odd_battle_tune) {
@@ -819,13 +604,10 @@ void choose_odd_tune(int x)
     }
 }
 
-// FUNCTION: C2 0x128EA
-// WIN: 0x004028cf
-// Lines 548–552
-//
-// Periodic mood-cooldown tick: decrements each of the three
-// transient anger counters that bias music selection if non-
-// zero, leaving the long-term `tune_mood` untouched.
+// Periodic mood-cooldown tick: decrements each of the three transient anger counters that bias
+// music selection if non- zero, leaving the long-term `tune_mood` untouched.
+// FUNCTION: C2 0x128ea
+// FUNCTION: C2WIN 0x004028cf
 void sooth_mood(void)
 {
     if (emergency_mood) emergency_mood -= 1;
@@ -833,13 +615,10 @@ void sooth_mood(void)
     if (bad_mood)       bad_mood       -= 1;
 }
 
+// Seed the 10 sample-slot LRU counters with their own index (so slot 9 will be the oldest and
+// recycled first) and reset the current-slot cursor.
 // FUNCTION: C2 0x12932
-// WIN: 0x00402913
-// Lines 557–562
-//
-// Seed the 10 sample-slot LRU counters with their own index (so
-// slot 9 will be the oldest and recycled first) and reset the
-// current-slot cursor.
+// FUNCTION: C2WIN 0x00402913
 void init_ss_entires(void)
 {
     int i;
@@ -847,20 +626,9 @@ void init_ss_entires(void)
     sslot = 0;
 }
 
+// Returns new sslot.
 // FUNCTION: C2 0x12953
-// WIN: 0x00402959
-// Lines 564–576
-//
-// LRU sample-slot allocator.  Each entry of `ss_entries`
-// (10 × 20 bytes = `int count` + `char name[16]`) gets its
-// hit-count bumped on every miss; the slot with the highest
-// count is the *least* recently used and gets recycled with
-// the new file name.  Ties go to the lowest index thanks to
-// the strict `>` comparison.
-//
-// Layout: ss_entries[i*5]   = count (int)
-//         ss_entries[i*5+1] = first int of name  (16-byte char field)
-//
+// FUNCTION: C2WIN 0x00402959
 void get_new_sslot(char *fname)
 {
     int max_c = 0;
@@ -878,29 +646,21 @@ void get_new_sslot(char *fname)
     strcpy(ss_entries[best].name, fname);
 }
 
-// FUNCTION: C2 0x129B1
-// WIN: 0x00402a06
-// Lines 579–583
-//
-// Mark a sample slot as unused: bias its LRU counter to a
-// huge value (1000, way above any real ply count) so it'll
-// be the next one chosen by `get_new_sslot`, and overwrite
-// its name field with the placeholder "unused.wav".
+// Mark a sample slot as unused: bias its LRU counter to a huge value (1000, way above any real ply
+// count) so it'll be the next one chosen by `get_new_sslot`, and overwrite its name field with the
+// placeholder "unused.wav".
+// FUNCTION: C2 0x129b1
+// FUNCTION: C2WIN 0x00402a06
 void free_up_sslot(int slot)
 {
     ss_entries[slot].hits = 1000;
     strcpy(ss_entries[slot].name, "unused.wav");
 }
 
-// FUNCTION: C2 0x129DB
-// WIN: 0x00402a41
-// Lines 586–597
-//
-// Linear search of the 10 sample slots for one already
-// holding `fname`.  On a hit, resets that slot's LRU
-// counter to 0 (most recently used), updates `sslot`, and
-// returns 1.  On a miss, returns 0 leaving sslot/entries
-// untouched.
+// Linear search of the 10 sample slots for one already holding `fname`. On a hit, resets that
+// slot's LRU counter to 0 (most recently used), updates `sslot`, and returns 1.
+// FUNCTION: C2 0x129db
+// FUNCTION: C2WIN 0x00402a41
 int check_old_sslots(char *fname)
 {
     int i;
@@ -914,13 +674,10 @@ int check_old_sslots(char *fname)
     return 0;
 }
 
-// FUNCTION: C2 0x12A25
-// WIN: 0x00402abd
-// Lines 601–608
-//
-// Hand the AIL digital driver pointer to the Smacker video library
-// so movie audio mixes through the same DAC as game SFX.  Idempotent
-// -- bails early with 1 if already linked.
+// Hand the AIL digital driver pointer to the Smacker video library so movie audio mixes through
+// the same DAC as game SFX. Idempotent -- bails early with 1 if already linked.
+// FUNCTION: C2 0x12a25
+// FUNCTION: C2WIN 0x00402abd
 int link_to_smacker(void)
 {
     int o;
@@ -931,50 +688,36 @@ int link_to_smacker(void)
     return 1;
 }
 
-// FUNCTION: C2 0x12A5C
-// WIN: 0x00402b01
-// Lines 611–611
-//
 // True when the AIL digital subsystem is running.
+// FUNCTION: C2 0x12a5c
+// FUNCTION: C2WIN 0x00402b01
 int allow_samples(void)
 {
     return samples_running != 0;
 }
 
-// FUNCTION: C2 0x12A6C
-// WIN: 0x00402b2a
-// Lines 617–620
-//
-// Flag ambient slot `idx` for playback on the next play_ambient_fx
-// tick.
+// Flag ambient slot `idx` for playback on the next play_ambient_fx tick.
+// FUNCTION: C2 0x12a6c
+// FUNCTION: C2WIN 0x00402b2a
 void set_this_ambient(int idx)
 {
     ambient_list[idx].active = 1;
 }
 
-// FUNCTION: C2 0x12A77
-// WIN: 0x00402b4a
-// Lines 622–625
-//
-// Floor an ambient slot's delay_counter at `min` (bias toward firing
-// sooner; leaves the slot alone if its counter already exceeds min).
+// Floor an ambient slot's delay_counter at `min` (bias toward firing sooner; leaves the slot alone
+// if its counter already exceeds min).
+// FUNCTION: C2 0x12a77
+// FUNCTION: C2WIN 0x00402b4a
 void set_ambient_minimum(int idx, int min)
 {
     if (ambient_list[idx].delay_counter < min)
         ambient_list[idx].delay_counter = min;
 }
 
-// FUNCTION: C2 0x12A8F
-// WIN: 0x00402b8b
-// Lines 627–665
-//
-// City building-kind -> ambient-slot dispatcher: a dense if/else
-// chain mapping every building tile range (0x78..0xff) to one of the
-// 24 ambient slots and marking it active.  The 0xfa..0xfb range
-// (well / aqueduct overflow) picks between slots 0x14 / 0x15 based
-// on the cell's upper-nibble building field; ranges that don't map
-// to a slot (< 0x78 / 0x7c..0x82 / 0xa2..0xae / 0xbf..0xcb /
-// 0xf5..0xfa) are no-ops.
+// City building-kind -> ambient-slot dispatcher: a dense if/else chain mapping every building tile
+// range (0x78..0xff) to one of the 24 ambient slots and marking it active.
+// FUNCTION: C2 0x12a8f
+// FUNCTION: C2WIN 0x00402b8b
 void set_city_ambient(int kind)
 {
     int slot;
@@ -1014,15 +757,10 @@ void set_city_ambient(int kind)
     ambient_list[slot].active = 1;
 }
 
-// FUNCTION: C2 0x12C22
-// WIN: 0x00402e37
-// Lines 668–684
-//
-// Province-event → ambient-slot dispatcher.  Like
-// set_battle_fight_fx but with a denser if/else chain mapping
-// province event ids 0xd2..0xeb to slots 0xc/5/4/0xb/2/6/7/3.
-// Out-of-range events early-return.  Only sets the active
-// byte — no priority bump.
+// Province-event → ambient-slot dispatcher. Like set_battle_fight_fx but with a denser if/else
+// chain mapping province event ids 0xd2..0xeb to slots 0xc/5/4/0xb/2/6/7/3.
+// FUNCTION: C2 0x12c22
+// FUNCTION: C2WIN 0x00402e37
 void set_prov_ambient(int event)
 {
     if (event <  0xd2) return;
@@ -1039,13 +777,11 @@ void set_prov_ambient(int event)
     ambient_list[event].active = 1;
 }
 
-// FUNCTION: C2 0x12CAD
-// WIN: 0x00402f45
-// Lines 686–697
-//
-// Schedule a battle-death sound effect for the given unit-type id
-// (0-17): picks one of 4 sample-slot indices via an if/else chain,
-// activates that slot, and pins its delay_counter to 0xC8.
+// Schedule a battle-death sound effect for the given unit-type id (0-17): picks one of 4
+// sample-slot indices via an if/else chain, activates that slot, and pins its delay_counter to
+// 0xC8.
+// FUNCTION: C2 0x12cad
+// FUNCTION: C2WIN 0x00402f45
 void set_battle_death_fx(int unit_type)
 {
     int idx = 0;
@@ -1059,16 +795,9 @@ void set_battle_death_fx(int unit_type)
     ambient_list[idx].delay_counter = 0xc8;
 }
 
-// FUNCTION: C2 0x12CEC
-// WIN: 0x00402fd9
-// Lines 699–714
-//
 // Schedule a unit-march sound for the given unit-type id.
-// Picks one of two sample slots (15 or 16) by if/else-if
-// chain, marks it active in ambient_list[], and updates
-// the global ambient minimum to the appropriate sample id
-// (0xC7 if marching_fx hadn't been bumped yet, 0xB9 once it
-// has).  Finally sets marching_fx = 10 (frame countdown).
+// FUNCTION: C2 0x12cec
+// FUNCTION: C2WIN 0x00402fd9
 void set_battle_march_fx(int unit_type)
 {
     int idx = 0;
@@ -1086,12 +815,10 @@ void set_battle_march_fx(int unit_type)
     marching_fx = 10;
 }
 
-// FUNCTION: C2 0x12D41
-// WIN: 0x00403094
-// Lines 716–732
-//
-// Battle event-id -> ambient-slot dispatcher.  Activates the slot
-// and bumps delay_counter by 0x19 (priority boost).
+// Battle event-id -> ambient-slot dispatcher. Activates the slot and bumps delay_counter by 0x19
+// (priority boost).
+// FUNCTION: C2 0x12d41
+// FUNCTION: C2WIN 0x00403094
 void set_battle_fight_fx(int event)
 {
     int slot = 0;
@@ -1110,14 +837,11 @@ void set_battle_fight_fx(int event)
     ambient_list[slot].delay_counter += 0x19;
 }
 
-// FUNCTION: C2 0x12D9F
-// WIN: 0x004031ac
-// Lines 734–746
-//
-// Event-id → ambient-slot dispatcher: maps an event/missile
-// type to one of the canonical ambient slots (3, 6, 0xb, or
-// the default 0), then marks that slot active in
-// ambient_list[] and bumps its priority counter by 0x19.
+// Event-id → ambient-slot dispatcher: maps an event/missile type to one of the canonical ambient
+// slots (3, 6, 0xb, or the default 0), then marks that slot active in ambient_list[] and bumps its
+// priority counter by 0x19.
+// FUNCTION: C2 0x12d9f
+// FUNCTION: C2WIN 0x004031ac
 void set_missile_fight_fx(int event)
 {
     int slot = 0;
@@ -1132,13 +856,10 @@ void set_missile_fight_fx(int event)
     ambient_list[slot].delay_counter += 0x19;
 }
 
-// FUNCTION: C2 0x12DE2
-// WIN: 0x0040326c
-// Lines 748–760
-//
-// Missile launch SFX dispatcher: maps missile_type to one of three
-// ambient slots (0 / 1 / 4), activates it, and bumps the slot's
-// delay_counter by 0x28 (priority boost).
+// Missile launch SFX dispatcher: maps missile_type to one of three ambient slots (0 / 1 / 4),
+// activates it, and bumps the slot's delay_counter by 0x28 (priority boost).
+// FUNCTION: C2 0x12de2
+// FUNCTION: C2WIN 0x0040326c
 void set_missile_fire_fx(int missile_type)
 {
     int idx = 0;
@@ -1153,16 +874,11 @@ void set_missile_fire_fx(int missile_type)
     ambient_list[idx].delay_counter += 0x28;
 }
 
-// FUNCTION: C2 0x12E1E
-// WIN: 0x0040332c
-// Lines 762–784
-//
-// Service pending ambient SFX slots.  Slots 1..24 have a 70-byte
-// record: active flag, rotating filename index, filename count,
-// priority/base volume byte, a short delay/priority counter, then up
-// to four 16-byte sample names at +6/+0x16/+0x26/+0x36.  When a slot
-// is active its counter is bumped; once it reaches 200, rand128 seeds
-// the next delay and the current filename is queued via set_sound().
+// Service pending ambient SFX slots. Slots 1..24 have a 70-byte record: active flag, rotating
+// filename index, filename count, priority/base volume byte, a short delay/priority counter, then
+// up to four 16-byte sample names at +6/+0x16/+0x26/+0x36.
+// FUNCTION: C2 0x12e1e
+// FUNCTION: C2WIN 0x0040332c
 void play_ambient_fx(void)
 {
     int i;
@@ -1191,23 +907,11 @@ void play_ambient_fx(void)
     }
 }
 
-// FUNCTION: C2 0x12F2A
-// WIN: 0x004035c9
-// Lines 786–854
-//
-// Populate the 24 ambient slots with the city-screen sample bank --
-// gardens, circus, bath house, colliseum, forum, fountain, schools,
-// market, plaza, well, reservoir, aqueduct, temple, theatre, business
-// districts, fire siren, ...  Each slot gets a stagger delay (i * 8),
-// a default volume (1), and one or more 16-byte sample file names.
-//
-// WARNING: every "*.wav" literal below is a REAL truncated DOS 8.3
-// filename baked into PS.EXE (reserv.wav, colisum5.wav, bathhs.wav,
-// fountn.wav, grammat2.wav, marketh.wav, ...).  They are NOT typos --
-// do NOT "correct" them.  Expanding one (e.g. reserv->reserve) changes
-// the emitted string data AND the code that references it, breaking
-// byte-exactness here and, via the start_sequences tail-merge, in
-// neighbouring functions too.
+// Populate the 24 ambient slots with the city-screen sample bank -- gardens, circus, bath house,
+// colliseum, forum, fountain, schools, market, plaza, well, reservoir, aqueduct, temple, theatre,
+// business districts, fire siren, ...
+// FUNCTION: C2 0x12f2a
+// FUNCTION: C2WIN 0x004035c9
 void init_city_ambients(void)
 {
     int i;
@@ -1278,22 +982,16 @@ void init_city_ambients(void)
     strcpy(ambient_list[23].names[0], "null.wav");
 }
 
+// Empty sound-error hook.
 // FUNCTION: C2 0x13186
-// WIN: 0x00401384  (unverified)
-//
-// Empty placeholder.  Reserved label that PS's shared 5-pop epilogue
-// jumps to (`pop ebp; ret`).
 void sound_error(void)
 {
 }
 
+// Populate the ambient slots with the province-screen sample bank -- birds, mining, surf / shore,
+// shipyard, warehouse, quarry, trading, march cadences, uprising, farms.
 // FUNCTION: C2 0x13187
-// WIN: 0x00403999
-// Lines 857–903
-//
-// Populate the ambient slots with the province-screen sample bank --
-// birds, mining, surf / shore, shipyard, warehouse, quarry, trading,
-// march cadences, uprising, farms.
+// FUNCTION: C2WIN 0x00403999
 void init_prov_ambients(void)
 {
     int i;
@@ -1342,14 +1040,11 @@ void init_prov_ambients(void)
     strcpy(ambient_list[12].names[0], "null.wav");
 }
 
+// Populate the ambient slots with the battle-screen sample bank -- bow/sling launches and hits,
+// melee weapon hits (axe, sword, club, spear, knife), death cries, elephant trumpets,
+// advance/cavalry/mob march cadences, melee fight loops.
 // FUNCTION: C2 0x13351
-// WIN: 0x00403cab
-// Lines 906–961
-//
-// Populate the ambient slots with the battle-screen sample bank --
-// bow/sling launches and hits, melee weapon hits (axe, sword, club,
-// spear, knife), death cries, elephant trumpets, advance/cavalry/mob
-// march cadences, melee fight loops.
+// FUNCTION: C2WIN 0x00403cab
 void init_battle_ambients(void)
 {
     int i;
@@ -1407,14 +1102,11 @@ void init_battle_ambients(void)
 }
 
 
+// Reserve `n * 20000` bytes for the per-slot sample buffer (each slot holds a 20 000-byte raw PCM
+// clip). No-op when the audio system isn't running or the user disabled samples; returns 0 only
+// when malloc fails so the caller can flag init_err = 4.
 // FUNCTION: C2 0x13546
-// WIN: 0x00403fd7
-// Lines 964–975
-//
-// Reserve `n * 20000` bytes for the per-slot sample buffer (each slot
-// holds a 20 000-byte raw PCM clip).  No-op when the audio system
-// isn't running or the user disabled samples; returns 0 only when
-// malloc fails so the caller can flag init_err = 4.
+// FUNCTION: C2WIN 0x00403fd7
 int init_sample_buffer(int n)
 {
     sample_buffer = 0;
@@ -1425,30 +1117,24 @@ int init_sample_buffer(int n)
     return 1;
 }
 
-// FUNCTION: C2 0x1358A
-// Lines 977–984
-//
-// Release the sample buffer if it was allocated; `n` is unused
-// (legacy signature kept symmetric with init_sample_buffer).
+// Release the sample buffer if it was allocated; `n` is unused (legacy signature kept symmetric
+// with init_sample_buffer).
+// FUNCTION: C2 0x1358a
 void free_sample_buffer(int n)
 {
     if (sample_buffer != 0) free(sample_buffer);
 }
 
-// FUNCTION: C2 0x1359E
-// WIN: 0x0040408f  (unverified)
-// Lines 988–988
-//
-// No-op stub kept for symmetry with init_sample_buffer.  Always 1.
+// No-op stub kept for symmetry with init_sample_buffer. Always 1.
+// FUNCTION: C2 0x1359e
+// FUNCTION: C2WIN 0x0040408f
 int init_tune_buffer(void)
 {
     return 1;
 }
 
-// FUNCTION: C2 0x135A3
-// WIN: 0x00401384  (unverified)
-//
 // Empty placeholder (tune_buffer is a static global, never freed).
+// FUNCTION: C2 0x135a3
 void free_tune_buffer(void)
 {
 }

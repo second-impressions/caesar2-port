@@ -1,8 +1,5 @@
-// D:\C2\CODE\refresh.c
 
-/* svga_refresh_table is a 1200-byte (30×40) flag array; each cell
-   tracks whether a screen tile needs redrawing.  Override added to
-   _TYPE_OVERRIDES so c2_data.h declares it as char[]. */
+/* svga_refresh_table is a 30×40 grid of screen-tile redraw flags. */
 #include "refresh.h"
 #include "c2_data.h"
 
@@ -39,9 +36,7 @@ struct refresh_bank_row refresh_bank_switch_data[30] = {
     { 0, 4, 0, 0 }
 };
 
-/* ── TU-owned file-scope variables (PS.EXE _BSS, original declaration
-   order).  Recovered so the functional rebuild (`c2 rebuild`) links
-   self-sustained -- no auto-stubbed storage.  Extern decls: c2_data.h. */
+/* File-local state. */
 struct svga_cell svga_refresh_data[1361];
 int ref_y;
 int ref_x;
@@ -53,15 +48,10 @@ char svga_refresh_table[1364];
 extern void refresh_16x16_partblock(int screen_off, unsigned short bank_off,
                                     int width);
 
-/* The svga_refresh_table zero-fill loop in setup_svga_refresh_data
- * compiles to `call __STOSB` (eax=dst, edx=val, ecx=n) via Watcom's
- * fill-loop recognition; see mmedia.c for the memset()-is-impossible
- * note. */
 
-
-// FUNCTION: C2 0x28E94
-// WIN: 0x0043a640
-// Lines 44–49
+// Sets up whole screen refresh.
+// FUNCTION: C2 0x28e94
+// FUNCTION: C2WIN 0x0043a640
 void setup_whole_screen_refresh(void)
 {
     int i;
@@ -71,59 +61,11 @@ void setup_whole_screen_refresh(void)
     }
 }
 
-// FUNCTION: C2 0x28EB2
-// WIN: 0x0043a68c
-// Lines 51–65
-//
-// Mark the cells under the mouse cursor as needing
-// refresh.  Two paths:
-//
-//   * pointer_mode == 6 or 7 (special pointers):
-//     defer to setup_refresh_area(mouse_x, mouse_y,
-//                                 3, 3, 2)
-//     to mark a 3×3 pixel block centred on the cursor.
-//
-//   * Otherwise convert mouse_x/y to cell coords (÷16,
-//     signed) into the globals `ref_x` / `ref_y`, then
-//     stamp the up-to-2×2 cluster at (ref_x, ref_y) at
-//     priority 2.  Each of the four cells is gated by a
-//     bounds check so the cluster shrinks at the right
-//     and bottom edges of the 40×30 refresh table.
-//
-// 5 callers: high-leverage refresh hot-path donor.
-//
-// NOTE: faithful but ~42 b residue.  PS and recomp share
-// the SAME logical structure but Watcom makes two
-// cascading regalloc choices that differ:
-//
-//   * PS picks `ebp` as the 4th callee-save (push ebx,
-//     ecx, edx, ebp), recomp picks `edi`.  Rule 28
-//     callee-save swap, function-wide tie-breaker.
-//   * For the cell-1+cell-2 stores, PS keeps
-//     `edx = 40*ref_y` and `eax = ref_x` as separate
-//     registers and stores via
-//     `[edx + eax + svga + N]` (SIB scale=1).  Recomp
-//     merges them into `eax = 40*ref_y + ref_x` and
-//     stores via `[eax + svga + N]` (flat).  This costs
-//     ~10 b code size.
-//   * Cascading jump-distance changes throughout add
-//     another ~30 b of one-bit displacement diffs.
-//
-// 4 source variations + 7 cgex trials all stuck at the
-// same 42 b regalloc cascade — likely a function-wide
-// register-pressure tie-breaker we don't yet have a
-// source-level lever for.  All instruction-level logic
-// matches PS exactly; only the register / addressing
-// encoding differs.  See
-// docs/codegen-experiments/set-mouse-refresh.py for the
-// negative-result trial matrix.
-/* 2D access to svga_refresh_table is inlined at each callsite
- * (rather than via a local pointer) so Watcom's addrfold treats it
- * as a CL_GLOBAL_INDEX with a scaled row index, producing the SIB-
- * form `mov [edx+eax+disp], bl` store PS.EXE emits.  Storing it in
- * a `char (*)[40]` local converts to CL_POINTER and produces flat
- * `[eax+disp]` stores instead.  See Rule 68. */
-
+// Mark the cells under the mouse cursor as needing refresh. Two paths: * pointer_mode == 6 or 7
+// (special pointers): defer to setup_refresh_area(mouse_x, mouse_y, 3, 3, 2) to mark a 3×3 pixel
+// block centred on the cursor.
+// FUNCTION: C2 0x28eb2
+// FUNCTION: C2WIN 0x0043a68c
 void set_mouse_refresh(void)
 {
     if (pointer_mode == 6 || pointer_mode == 7) {
@@ -149,25 +91,9 @@ void set_mouse_refresh(void)
 }
 
 
-
-// FUNCTION: C2 0x28FB5
-// WIN: 0x0043a7d2
-// Lines 67–77
-//
-// Mark a 2×2 cell square in the SVGA refresh table dirty
-// (140 b, L67–77).  The refresh table is a 40×30 grid of
-// per-cell refresh-priority bytes; this function bumps the
-// priority of cells (x, y), (x+1, y), (x, y+1), (x+1, y+1)
-// to 2, but only if they're currently < 2 (don't downgrade
-// higher-priority pending refreshes).
-//
-// Negative `x` and `y` clamp to 0.  Out-of-table refs
-// (>= 1200 = 40*30) are skipped entirely.
-//
-// `ref_ptr` is the global linear cell index used by callers
-// (do_the_fight et al) to drive subsequent refresh ops.
-//
-// 6 callers: high-leverage refresh hot-path donor.
+// Mark a 2×2 cell square in the SVGA refresh table dirty.
+// FUNCTION: C2 0x28fb5
+// FUNCTION: C2WIN 0x0043a7d2
 void refresh_sprite_square(int x, int y)
 {
     if (y < 0) y = 0;
@@ -185,20 +111,11 @@ void refresh_sprite_square(int x, int y)
     }
 }
 
+// Mark a 4×4 cell square in the SVGA refresh table at priority 2. Like
+// refresh_a_bigger_square (and unlike refresh_sprite_square), the stamp is unconditional — no < 2
+// priority check.
 // FUNCTION: C2 0x29041
-// WIN: 0x0043a8ad
-// Lines 79–101
-//
-// Mark a 4×4 cell square in the SVGA refresh table at
-// priority 2 (141 b, L79–101).  Like refresh_a_bigger_square
-// (and unlike refresh_sprite_square), the stamp is
-// unconditional — no < 2 priority check.
-//
-// Negative x/y clamp to 0; out-of-table refs (>= 1200)
-// are skipped entirely.  All 16 cell stores are unrolled
-// (4 rows × 4 cells, row stride 40).
-//
-// 3 callers — refresh-path donor.
+// FUNCTION: C2WIN 0x0043a8ad
 void refresh_figure_square(int x, int y)
 {
     if (y < 0) y = 0;
@@ -224,21 +141,10 @@ void refresh_figure_square(int x, int y)
     }
 }
 
-// FUNCTION: C2 0x290CE
-// WIN: 0x0043a9c0
-// Lines 103–120
-//
-// Mark a 5×5 cell square in the SVGA refresh table at
-// priority 2.  Bigger version of refresh_figure_square.
-//
-// Negative x/y clamp to 0; out-of-table refs (>= 1200)
-// short-circuit the rest of the loop.  Five rows of five
-// cells each, row stride 40.  Note that `ref_ptr` is
-// reloaded from memory each iteration: the per-iteration
-// `ref_ptr += 40` mutates the global, and the next iter's
-// bound check + base-pointer reads back through it.
-//
-// Single caller — refresh.c.
+// Mark a 5×5 cell square in the SVGA refresh table at priority 2. Bigger version of
+// refresh_figure_square.
+// FUNCTION: C2 0x290ce
+// FUNCTION: C2WIN 0x0043a9c0
 void refresh_figure2_square(int x, int y)
 {
     int i;
@@ -257,13 +163,10 @@ void refresh_figure2_square(int x, int y)
     }
 }
 
+// Mark a 6×6 cell square in the SVGA refresh table at priority 2. Same loop shape as
+// refresh_figure2_square, just one more cell per row and one more row.
 // FUNCTION: C2 0x29131
-// WIN: 0x0043aa77
-// Lines 122–140
-//
-// Mark a 6×6 cell square in the SVGA refresh table at
-// priority 2.  Same loop shape as refresh_figure2_square,
-// just one more cell per row and one more row.
+// FUNCTION: C2WIN 0x0043aa77
 void refresh_figure3_square(int x, int y)
 {
     int i;
@@ -283,21 +186,10 @@ void refresh_figure3_square(int x, int y)
     }
 }
 
-// FUNCTION: C2 0x2919A
-// WIN: 0x0043ab3a
-// Lines 142–156
-//
-// Mark a 4×2 cell rectangle in the SVGA refresh table at
-// priority 2 (only over cells whose current priority is
-// < 2).  Wider cousin of refresh_sprite_square (2×2) for
-// double-wide sprites.
-//
-// Negative x/y clamp to 0.  Out-of-table refs (>= 1200)
-// short-circuit the whole stamp.  All 8 cell stores are
-// unrolled, with PS reloading `ref_ptr` from memory before
-// each store after the first because the global is typed
-// `int` (Watcom can't keep it in a register across the
-// per-cell stores).
+// Mark a 4×2 cell rectangle in the SVGA refresh table at priority 2 (only over cells whose current
+// priority is < 2). Wider cousin of refresh_sprite_square (2×2) for double-wide sprites.
+// FUNCTION: C2 0x2919a
+// FUNCTION: C2WIN 0x0043ab3a
 void refresh_sprite2w_square(int x, int y)
 {
     if (y < 0) y = 0;
@@ -323,19 +215,11 @@ void refresh_sprite2w_square(int x, int y)
     }
 }
 
-// FUNCTION: C2 0x2928E
-// WIN: 0x0043ac9d
-// Lines 158–175
-//
-// Mark a 5×6 cell rectangle in the SVGA refresh table at
-// priority 2 (only over cells whose current priority is
-// < 2).  Used by region/empire-map refresh paths where
-// each region-sprite occupies more screen cells than a
-// regular city sprite.
-//
-// Negative x/y clamp to 0.  Out-of-table refs (>= 1200)
-// short-circuit the rest of the loop.  Inner row is
-// unrolled (5 cells); outer loop runs 6 rows.
+// Mark a 5×6 cell rectangle in the SVGA refresh table at priority 2 (only over cells whose current
+// priority is < 2). Used by region/empire-map refresh paths where each region-sprite occupies more
+// screen cells than a regular city sprite.
+// FUNCTION: C2 0x2928e
+// FUNCTION: C2WIN 0x0043ac9d
 void refresh_region_sprite_square(int x, int y)
 {
     int i;
@@ -360,9 +244,9 @@ void refresh_region_sprite_square(int x, int y)
     }
 }
 
+// Marks one map square for redraw at the requested refresh priority.
 // FUNCTION: C2 0x29361
-// WIN: 0x0043add7
-// Lines 178–196
+// FUNCTION: C2WIN 0x0043add7
 void refresh_a_square(int x, int y, char val)
 {
     ref_ptr = x + y * 0x28;
@@ -383,26 +267,11 @@ void refresh_a_square(int x, int y, char val)
     svga_refresh_table[ref_ptr + 0x54] = val;
 }
 
-// FUNCTION: C2 0x293D2
-// WIN: 0x0043aed4
-// Lines 198–216
-//
-// Mark a 5-cell-wide vertical strip in the SVGA refresh
-// table at priority 2 (134 b, L198–216).  Unlike
-// refresh_sprite_square, this version unconditionally
-// stamps 2 (no "don't downgrade" check).
-//
-// Strip height depends on initial y:
-//   y < -32  → 3 rows, y forced to 0
-//   y < -16  → 4 rows, y forced to 0
-//   y <   0  → 5 rows, y forced to 0
-//   y >=  0  → 6 rows, y unchanged
-//
-// Each row paints 5 contiguous cells (offsets +0..+4)
-// then advances ref_ptr by 40 (one row).  Stops early
-// if ref_ptr >= 1200 mid-loop.
-//
-// 4 callers — high-leverage refresh-path donor.
+// Mark a 5-cell-wide vertical strip in the SVGA refresh table at priority 2.
+// Unlike refresh_sprite_square, this version unconditionally stamps 2 (no "don't downgrade"
+// check).
+// FUNCTION: C2 0x293d2
+// FUNCTION: C2WIN 0x0043aed4
 void refresh_a_bigger_square(int x, int y)
 {
     int rows;
@@ -431,28 +300,10 @@ void refresh_a_bigger_square(int x, int y)
     }
 }
 
+// Mark a 14×12 cell rectangle in the SVGA refresh table at priority 2, but only over cells whose
+// current priority is < 2 (so a higher-priority refresh isn't downgraded).
 // FUNCTION: C2 0x29458
-// WIN: 0x0043afc4
-// Lines 218–233
-//
-// Mark a 14×12 cell rectangle in the SVGA refresh table
-// at priority 2, but only over cells whose current
-// priority is < 2 (so a higher-priority refresh isn't
-// downgraded).
-//
-// Negative x/y don't just clamp — they also shrink the
-// stamp:
-//   * x < 0 → x = 0, width = 8 (was 14)
-//   * y < 0 → y = 0, height = 8 (was 12)
-// (Empirically: covers a 14×12 region centred on a 3×3
-// `refresh_a_bigger_square` site, but only when both
-// coords are non-negative; otherwise truncate to the
-// in-range portion.)
-//
-// Bail entirely the moment any cell index would exceed
-// the 1200-byte table.
-//
-// Single caller — refresh.c.
+// FUNCTION: C2WIN 0x0043afc4
 void refresh_big_action_square(int x, int y)
 {
     int w;
@@ -482,15 +333,11 @@ void refresh_big_action_square(int x, int y)
     }
 }
 
-// FUNCTION: C2 0x294D0
-// WIN: 0x0043b0aa
-// Lines 235–242
+// Sets up map screen refresh.
+// FUNCTION: C2 0x294d0
+// FUNCTION: C2WIN 0x0043b0aa
 void setup_map_screen_refresh(void)
 {
-    /* Rule 27 (three places): the parm-init order at function entry
-     * and both loop-tail update orders are determined by C statement
-     * order.  Putting all increments in the for-update lists matches
-     * PS’s `inc <counter>; <other update>` sequence. */
     int j = 1;
     int idx = 0x28;
     int i;
@@ -502,12 +349,11 @@ void setup_map_screen_refresh(void)
     }
 }
 
+// Sets up map screen long refresh.
 // FUNCTION: C2 0x29506
-// WIN: 0x0043b11f
-// Lines 244–249
+// FUNCTION: C2WIN 0x0043b11f
 void setup_map_screen_long_refresh(int fill)
 {
-    /* Rule 27 (twice): see setup_map_screen_refresh for the lever. */
     int j = 1;
     int idx = 0x28;
     int i;
@@ -519,9 +365,9 @@ void setup_map_screen_long_refresh(int fill)
     }
 }
 
+// Sets up battle screen refresh.
 // FUNCTION: C2 0x29533
-// WIN: 0x0043b183
-// Lines 251–257
+// FUNCTION: C2WIN 0x0043b183
 void setup_battle_screen_refresh(void)
 {
     int i;
@@ -535,23 +381,10 @@ void setup_battle_screen_refresh(void)
     }
 }
 
-// FUNCTION: C2 0x2955B
-// WIN: 0x0043b1e1
-// Lines 259–272
-//
-// Mark a rectangular region of the 40×30 SVGA refresh grid as
-// dirty.  The grid quantizes screen pixels by 16 (so a 640×480
-// screen has a 40×30 cell grid).  Args are pixel coordinates and
-// dimensions; the function clamps negative origins, divides by
-// 16 to get cell coordinates, then walks the cell rectangle and
-// stamps `value` into svga_refresh_table[].
-//
-// `value` is passed as a stack argument (5th); PS reads it as
-// 32-bit (`mov ecx, [esp+0x10]`) and writes via cl, so a `char`
-// at the call site widens to int and PS emits `ret 4` to clean
-// up the stack arg.
-//
-// Globals updated: ref_ptr, ref_x, ref_y track the current cell.
+// Mark a rectangular region of the 40×30 SVGA refresh grid as dirty. The grid quantizes screen
+// pixels by 16 (so a 640×480 screen has a 40×30 cell grid).
+// FUNCTION: C2 0x2955b
+// FUNCTION: C2WIN 0x0043b1e1
 void setup_refresh_area(int x, int y, int w, int h, int value)
 {
     if (x < 0) x = 0;
@@ -571,43 +404,11 @@ void setup_refresh_area(int x, int y, int w, int h, int value)
     }
 }
 
-// FUNCTION: C2 0x2960D
-// WIN: 0x0043b2c9
-// Lines 274–292
-//
-// Pre-compute the per-cell SVGA refresh tables.  For
-// each of the 1200 (40×30) screen tiles, fills:
-//
-//   svga_refresh_data[idx].screen_off = pixel offset in
-//       the linear video buffer (esi*640 + ecx, where
-//       esi/ecx are pixel coords).
-//
-//   svga_refresh_data[idx].bank_off = the same offset
-//       modulo 0x10000 (offset within the current bank).
-//
-//   svga_refresh_data[idx].split_off = 0 by default; for
-//       cells in rows that cross a bank boundary, the
-//       offset within the *other* bank.
-//
-// Also memsets `svga_refresh_table` to zero (the dirty-
-// flag grid).  Single caller — part of SVGA mode
-// initialisation.
+// Precompute screen offsets and bank-switch metadata for all 40×30 refresh tiles.
+// FUNCTION: C2 0x2960d
+// FUNCTION: C2WIN 0x0043b2c9
 void setup_svga_refresh_data(void)
 {
-    /* Source-shape levers (BYTE-EXACT):
-     *   - py = 0 BEFORE idx = 0 : emits the prologue `xor esi`(py)
-     *     before `xor edi`(idx), matching PS's zero-init order
-     *     (Rule 79 Lever-A corollary: binding pinned by use-order,
-     *     only the xor EMISSION order tracks source assignment order).
-     *   - outer `for ( ; py < 0x1e0; py += 0x10)` (empty init) : the
-     *     rotated/bottom-tested outer loop (Rule 71); a plain
-     *     while/for(py=0;...) would NOT rotate.
-     *   - idx++ in the for-increment + (unsigned short) cast INSIDE the
-     *     `% modbase` (Rule 102): the cast narrows the dividend so Watcom
-     *     does NOT CSE py*0x280+px with screen_off (== py*640+px) and
-     *     re-emits the imul + ushort-truncate before the idiv, as PS does.
-     *   - `modbase` (a written-once local, not a literal) keeps the
-     *     0x10000 divisor hoisted into EBP across the loop (Rule 102 companion). */
     int py;
     int px;
     int idx;
@@ -638,23 +439,9 @@ void setup_svga_refresh_data(void)
     }
 }
 
-// FUNCTION: C2 0x296E5
-// WIN: 0x0043b412
-// Lines 296–337
-//
-// Reconfigure pseudo-map (PM) viewport globals for the
-// city screen at the given zoom level.
-//
-//   * level == 0: 8×30 cells, 60×30 diamonds, scroll 1
-//   * level == 1: 17×64 cells, 28×14 diamonds, scroll 2
-//   * level == 2: 40×150 cells, 12×6 diamonds, scroll 4
-//   * other:      no per-level set, only x/y_end recomp
-//
-// `zoom_level` is stashed (single byte cast).  Always
-// finishes by recomputing pm_screen_{x,y}_end from the
-// updated width/height × diamond half-step values.
-//
-// 7 callers — city-zoom path donor.
+// Reconfigure pseudo-map (PM) viewport globals for the city screen at the given zoom level.
+// FUNCTION: C2 0x296e5
+// FUNCTION: C2WIN 0x0043b412
 void refresh_zoom_mode(int level)
 {
     zoom_level = level;
@@ -694,22 +481,9 @@ void refresh_zoom_mode(int level)
                       + (pm_screen_height + 1) * pm_diamond_half_height;
 }
 
+// Reconfigure pseudo-map (PM) viewport globals for the battle screen at the given zoom level.
 // FUNCTION: C2 0x29833
-// WIN: 0x0043b5b2
-// Lines 339–368
-//
-// Reconfigure pseudo-map (PM) viewport globals for the
-// battle screen at the given zoom level.
-//
-//   * level == 1: 23×48 cell screen, 28×14 diamonds
-//   * level == 2: 53×112 cell screen, 12×6 diamonds
-//   * other:      no per-level set, only x/y_end recomp
-//
-// `zoom_level` is stashed (single byte cast).  Always
-// finishes by recomputing pm_screen_{x,y}_end from the
-// updated width/height × diamond half-step values.
-//
-// 3 callers — battle-zoom path.
+// FUNCTION: C2WIN 0x0043b5b2
 void refresh_battle_zoom_mode(int level)
 {
     zoom_level = level;
@@ -739,71 +513,11 @@ void refresh_battle_zoom_mode(int level)
                       + (pm_screen_height + 1) * pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x2992D
-// WIN: 0x0043b6cd
-// Lines 373–423
-//
-// Per-frame SVGA bulk-refresh sweep.  Walks the 40×30
-// `svga_refresh_table` priority grid; for every dirty
-// cell, dispatches to `refresh_16x16_block` (or two
-// `refresh_16x16_partblock` calls when the row crosses
-// an SVGA bank boundary).
-//
-//   `refresh_bank_switch_data[row]` is a 16-byte struct
-//   indexed by the 30 row IDs.  Field [0] is the split
-//   flag; when zero the row is fully inside one bank.
-//   When non-zero, fields [1] (split bank), [2] (col_a)
-//   and [3] (split_col) describe where in the row the
-//   bank boundary falls.
-//
-//   `svga_refresh_data[idx]` is an 8-byte struct indexed
-//   by linear cell id (row*40 + col).  Layout: int
-//   screen_off, ushort bank_off, ushort split_off (set
-//   only for cells in split-bank rows).
-//
-// Tail-jumps into `setup_svga_refresh_data`'s epilogue
-// at 0x296de (Rule 15 cross-function tail-merge).
-// 41 callers — highest-leverage refresh donor.
-//
-// BYTE-EXACT.  The body indexes `svga_refresh_data[idx].field` inline
-// (PS-faithful; PS recomputes `row<<4`/`idx*8` at every access — do NOT cache a
-// row pointer or a cell pointer, both diverge).  Two allocation roots had to be
-// matched, BOTH fixed by declaring the locals at FUNCTION scope (not in inner
-// blocks).  This is a pure scope choice — `off` and `saved_idx` are real locals
-// with real uses; function scope just changes which Watcom allocation phase
-// processes them, with no effect on semantics or on any other instruction.
-//
-// 1. SPILL-SLOT ORDER (`off` at function scope).  The split rows pass
-//    `svga_refresh_data[idx].screen_off + eax*5*128`.  PS spills the `eax*5*128`
-//    PRODUCT to a distinct stack slot (so `ReUsableStack`, temps.c, does not
-//    coalesce it with the pass-1 spill -> the 3-slot `sub esp,0xc` frame).  The
-//    three same-size (4 B) spilled temps get slots from `SetTempLocation`
-//    (i86temps.c: each call bumps `locals.size`, so the FIRST allocated gets
-//    the HIGHEST [esp+N]); same-size order falls to creation/`Names[]` order
-//    (Rule 107 / watcom-codegen-patterns.md).  A *block-scoped* `int off` is
-//    created so that it slots BEFORE the earlier inline pass-1 spill, mirroring
-//    PS's slots ([esp]<->[esp+4]) and cascading every jump displacement.
-//    Declaring `off` at FUNCTION scope changes its creation order so the slots
-//    fall in source order: saved_idx@8, screen_off@4, off@0 — exactly PS.
-//    (Inline `off` -> 2-slot coalesced frame, 167 b; block-scope `off` ->
-//    3-slot but mirrored slots, 112 b.)
-//
-// 2. PASS-1 EBP TIE (`saved_idx` at function scope).  In pass 1 PS keeps
-//    `bank_off` (arg2) in ebp (`movzx ebp`) and spills `screen_off` (arg1); the
-//    two arg-load temps tie on savings, so the winner is the first-created
-//    conflict (ConfBefore name-pointer order).  Inline, our build creates
-//    screen_off first -> it wins ebp (wrong), forcing the `xor;mov` zext of the
-//    spilled bank_off.  Moving `saved_idx` to function scope shifts the
-//    whole-function conflict numbering by exactly the amount that flips the tie
-//    so bank_off wins ebp — matching PS.  (Do NOT instead add a throwaway
-//    `int bk = bank` cache: it also flips the tie but is a forbidden
-//    dummy-conflict hack; the scope move is the faithful lever.)
-//
-// MEMORY IS NOT INVOLVED (exhaustively ruled out): refresh.c is a small TU,
-// compiled in ordinary mode; the 3-slot frame is reachable without memory
-// pressure.  `_MemLow`/BlockByBlock is unreachable in this toolchain anyway
-// (qemu `-m 2` and `WCGMEMORY`=64K leave codegen byte-identical; the W32RUN
-// extender reports a fixed 4 MB) — see watcom-codegen-patterns.md.
+// Per-frame SVGA bulk-refresh sweep. Walks the 40×30 `svga_refresh_table` priority grid; for every
+// dirty cell, dispatches to `refresh_16x16_block` (or two `refresh_16x16_partblock` calls when the
+// row crosses an SVGA bank boundary).
+// FUNCTION: C2 0x2992d
+// FUNCTION: C2WIN 0x0043b6cd
 void refresh_svga_screen(void)
 {
     int row;

@@ -32,6 +32,8 @@ uv sync
 # for manual options), then validate it and configure reccmp
 uv run c2 fetch-original
 uv run c2 reccmp prepare
+# If you also have the closest Windows source witness (build A):
+uv run c2 reccmp prepare --windows-original original/CAESAR2.EXE
 
 # Build the runnable game and publish the separate pre-bind analysis image
 uv run c2 rebuild
@@ -41,12 +43,17 @@ uv run c2 reccmp code --html build/reccmp.html --json build/reccmp.json
 uv run c2 reccmp data
 ```
 
-The original executable, generated binaries, and machine-local reccmp
+The original executables, generated binaries, and machine-local reccmp
 configs are intentionally untracked.  The target hash is pinned in
 `reccmp-project.yml`; `c2 reccmp prepare` validates the local original
 against it.  Compare functions/data against the pre-bind
 `build/PS.reccmp.EXE` — never the runnable `build/PS.EXE`, which carries
 the original's grafted debug trailer.
+
+Function annotations use the reccmp target ids `C2` (DOS) and `C2WIN`
+(Windows build A).  `C2WIN` is an original-binary/source-location target: the
+repository does not produce a complete Windows rebuild or PDB, so the normal
+code and data reports remain targeted at `C2`.
 
 ## CLI Commands
 

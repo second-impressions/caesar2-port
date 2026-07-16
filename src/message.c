@@ -1,4 +1,3 @@
-// D:\C2\CODE\message.c
 
 // Message queue: 16 slots, each holds a message id and a goto-screen param.
 // message_list is typed `struct msg_slot[]` at the definition level
@@ -14,15 +13,8 @@ extern void font_format_split(int idx, int word_skip, int x, int y_start, int ma
 
 // c2inf.skill_level and c2inf.peace_mode are bytes inside the c2inf struct
 
-// Mid-structure offsets absent from debug symbols
-
-
 // Globals owned by this translation unit
 struct request_message  request_message;
-// Smacker video filename table: message id (msg - 0x50) -> cinematic.
-// Initializer recovered verbatim from PS.EXE data+0xA758 (560 file-backed
-// bytes; found zero-filled by the rebuild comparator 2026-07-10 -- the
-// recompiled game never played message movies until this was restored).
 char smacks[40][14] = {
     "congrat.smk",  "sick.smk",     "fire.smk",     "warning.smk",
     "congrat.smk",  "warning.smk",  "robbery.smk",  "rioters.smk",
@@ -40,9 +32,9 @@ char smacks[40][14] = {
 extern void region_map_screen(int flag);
 
 
-// FUNCTION: C2 0x5910F
-// WIN: 0x00459c40
-// Lines 64–84
+// Initializes messages.
+// FUNCTION: C2 0x5910f
+// FUNCTION: C2WIN 0x00459c40
 void init_messages(void) {
     clear_messages();
     warned_city_size              = 0;
@@ -62,9 +54,9 @@ void init_messages(void) {
     }
 }
 
-// FUNCTION: C2 0x5919F
-// WIN: 0x00459ce9
-// Lines 86–95
+// Clears messages.
+// FUNCTION: C2 0x5919f
+// FUNCTION: C2WIN 0x00459ce9
 void clear_messages(void) {
     int i;
     warned_of_fire     = 0;
@@ -79,23 +71,23 @@ void clear_messages(void) {
     }
 }
 
-// FUNCTION: C2 0x591E8
-// WIN: 0x00459d67
-// Lines 97–104
+// Queues a message and optionally changes the music mood.
+// FUNCTION: C2 0x591e8
+// FUNCTION: C2WIN 0x00459d67
 void put_message(int msg, int param, int tune) {
     message_list[free_message_ptr].msg   = msg;
     message_list[free_message_ptr].param = param;
     free_message_ptr++;
-    if (free_message_ptr >= 16)   // Watcom preserves >= vs > literally
+    if (free_message_ptr >= 16)
         free_message_ptr = 0;
     put_a_message = 1;
     if (tune != 0)
         tune_mood = tune;
 }
 
+// Renders messages.
 // FUNCTION: C2 0x59229
-// WIN: 0x00459dc8
-// Lines 106–121
+// FUNCTION: C2WIN 0x00459dc8
 void show_messages(void) {
     int msg;
     int param;
@@ -106,54 +98,16 @@ void show_messages(void) {
         message_list[show_message_ptr].msg   = 0;
         message_list[show_message_ptr].param = 0;
         show_message_ptr++;
-        if (show_message_ptr >= 16)                 // Rule 4: PS uses `jle 15`, not `jl 16`
+        if (show_message_ptr >= 16)
             show_message_ptr = 0;
         if (msg != 0)
-            message(msg, msg >= 0x78, param);       // Rule 4: PS uses `setg 0x77`, not `setge 0x78`
+            message(msg, msg >= 0x78, param);
     }
 }
 
+// Displays and processes a queued game message.
 // FUNCTION: C2 0x59292
-// WIN: 0x00459e8d
-// Lines 125–212
-//
-// Residue: ~249 b, NOT a source-shape bug (faithful body, verified semantics;
-// the loop body is byte-identical to PS -- only the loop `message_goto_ptr = 0`
-// store registers and the post-loop read register diverge).  PS materializes
-// the three exit-block `=0` stores in EAX/EBX/EAX (the 5-byte `a3` form for
-// EAX) and reads message_goto_ptr post-loop into EBP; our build uses EBP/EDX/EBP
-// for the stores (6-byte `89 2d`) and ECX for the read.  The 1-byte store-size
-// growth x2 cascades every later branch displacement (= the bulk of the 249).
-// This is a whole-function REGALLOC register-identity tie-break, EXHAUSTIVELY
-// robust: unchanged by every opt sub-flag, by -ol, by WCGMEMORY 1..4096 KB (so
-// BlockByBlock/_MemLow is NOT the cause -- disproven; the obj is byte-identical
-// down to 2 KB) and by all 31 callee prototypes (each matches PS's CallZap).
-// ~30 faithful source variants (inline/cache/reorder/restructure of the exit
-// blocks, post-loop mgp block, ret/turbo placement, map_mode/palette/screen
-// sections, local decl order) leave it at 249; the only reductions are
-// 249-byte residue = the FindRegister RISCify ROVER, not a savings/decl tie
-// (`c2 decomp-verify -f message` now flags it: "RISCify dword rover swap").
-// The two diffs are the loop-tail `message_goto_ptr = 0` stores (mouse_right_click
-// + local_time blocks): `MOV N_MEMORY <- 0` is RISCified to `xor reg,reg;
-// mov [mgp],reg`, and `reg` is a rover pick.  RC's three loop-tail picks are
-// EBP,EDX,EBP; PS's are EAX,EBX,EAX -- a uniform +1 step in the live-skipped
-// rover cycle (EAX,EDX,EBX,ECX,EBP; ESI/EDI hold param/msg).  PS's two EAX picks
-// take the 5-byte `a3` accumulator store, ours take 6 b -> +2 -> jump-target shift
-// -> all 249.  Replay with watcom10.0a tools/rover_sim.py: the tail `except` is a
-// clean {esi,edi,esp} (param/msg/stack -- eax/edx/ebx/ecx/ebp ALL free), so the
-// swap is purely accumulated rover POSITION -- PS has one more dword advance than
-// us somewhere in the loop BODY (the prologue is byte-identical, so idx 0-9 already
-// match).  CONFIRMED: injecting a single +1 dword advance at the loop-tail entry
-// (between the last loop-body op and the mouse block) makes the sim's idx 26/28/31
-// = EAX/EBX/EAX and 27/29/30 = EDX/ECX/EBP -- i.e. uniformly PS, byte-exact.
-// So the fix is ONE BYTE-NEUTRAL +1 dword rover advance right before
-// `if (mouse_right_click)` (a coalesced/dead-branch load, the trick that solved
-// start_smacking).  message's shape offers no faithful spot there yet: no
-// if/else with a duplicable dword store, and the call args are all immediates.  The faithful levers tried via
-// docs/codegen-experiments/message.py (block order [PS's is mouse>exit>time = this
-// one], Rule-28a condition commute, Rule-115 decl order, prologue 0-store order,
-// loop form) don't produce a clean +1.  Only mgp-before-out1 recovers one store
-// (-> 832 b) but reverses PS's verified store order (non-faithful).
+// FUNCTION: C2WIN 0x00459e8d
 void message(int msg, int is_emperor, int param) {
     int ret;
     int old_pointer_mode;
@@ -212,10 +166,6 @@ void message(int msg, int is_emperor, int param) {
         if (request_message.active != 0) {
             request_outcome();
         } else {
-            /* out1 is always 1 here: the while(out1 != 1) loop only exits
-               once out1 has been set to 1.  The original wrote the literal 1
-               (a const store, not an out1 load), which is what selects the
-               EAX-rover for the loop-tail message_goto_ptr=0 stores. */
             if (msg >= 0x7d && msg <= 0x84 && final_bribe == 2)
                 game_state = 1;
         }
@@ -261,9 +211,9 @@ void message(int msg, int is_emperor, int param) {
     }
 }
 
-// FUNCTION: C2 0x595D1
-// WIN: 0x0045a701
-// Lines 215–257
+// Renders basic message.
+// FUNCTION: C2 0x595d1
+// FUNCTION: C2WIN 0x0045a701
 void show_basic_message(int msg, int param) {
     cover_mouse_droppings();
     grey_a_screen();
@@ -298,9 +248,9 @@ void show_basic_message(int msg, int param) {
     hold_mouse_replace = 1;
 }
 
-// FUNCTION: C2 0x597DC
-// WIN: 0x0045a935
-// Lines 259–325
+// Renders emperor message.
+// FUNCTION: C2 0x597dc
+// FUNCTION: C2WIN 0x0045a935
 void show_emperor_message(int msg, int is_emperor) {
     int favour_sub;
     (void)is_emperor;
@@ -372,9 +322,9 @@ void show_emperor_message(int msg, int is_emperor) {
     hold_mouse_replace = 1;
 }
 
-// FUNCTION: C2 0x59C55
-// WIN: 0x0045adce
-// Lines 327–334
+// Renders request amount.
+// FUNCTION: C2 0x59c55
+// FUNCTION: C2WIN 0x0045adce
 void show_request_amount(void) {
     stone_random_count = 13;
     show_a_mosaic_blank(0x60, 0x188, 18, 2);
@@ -383,18 +333,11 @@ void show_request_amount(void) {
     setup_refresh_area(0x60, 0x188, 20, 2, 1);
 }
 
-// FUNCTION: C2 0x59CDC
-// WIN: 0x0045ae33
-// Lines 336–366
-//
-// Note the nested `if (imperial_request <= -2)` block: when the
-// outer `if` is false we have `imperial_request >= -1 && pct < 75`,
-// which already implies `imperial_request <= -2` is false, so the
-// inner block is dead in the !outer path.  PS exploits this by
-// jumping straight to the function epilogue when `pct < 75` and
-// `imperial_request >= -1`.  Writing the inner if as a sibling
-// instead breaks byte-equivalence (1-byte diff at +0x40, the rel32
-// of the early-out jl).
+// Note the nested `if (imperial_request <= -2)` block: when the outer `if` is false we have
+// `imperial_request >= -1 && pct < 75`, which already implies `imperial_request <= -2` is false,
+// so the inner block is dead in the !outer path.
+// FUNCTION: C2 0x59cdc
+// FUNCTION: C2WIN 0x0045ae33
 void request_outcome(void) {
     int pct;
     take_from_warehouses(imperial_send_amount, imperial_req_goods);
@@ -435,22 +378,12 @@ void request_outcome(void) {
     }
 }
 
-// FUNCTION: C2 0x59DFD
-// WIN: 0x0045afba
-// Lines 368–404
+// Applies the selected imperial bribe and updates the emperor's opinion.
+// FUNCTION: C2 0x59dfd
+// FUNCTION: C2WIN 0x0045afba
 void bribe_emperor(void) {
     int rating;
 
-    /* No gift/trib/avg locals: PS reads imperial_gift_level and tribute
-     * inline at every use, so gift is the first read (left operand of the
-     * comparisons) and tribute is cached after it.  This reproduces PS's
-     * register layout (gift re-read into EDI for the trib*N chain while EAX
-     * holds the product) and its callee-save set; caching them in locals
-     * forces a single held copy and cascades the whole body (291 b diff).
-     * The tier guard is `!= tribute`, not `> tribute`: PS reuses the one
-     * `cmp` from the `< tribute` test and emits `je` to skip the chain when
-     * equal (Watcom does no value-range propagation, so `>` would lower to
-     * `jle` instead).  On this path gift >= tribute, so `!=` == `>`. */
     if (imperial_gift_level < av_imperial_gift_level)
         rating = -1;
     else if (imperial_gift_level == av_imperial_gift_level)
@@ -482,8 +415,8 @@ void bribe_emperor(void) {
     if (imperial_favour > 200)
         imperial_favour = 200;
 
-    if (rating <= -1) rating = -1;              // Rule 4
-    if (rating >= 5)  rating = 5;                // Rule 4
+    if (rating <= -1) rating = -1;
+    if (rating >= 5)  rating = 5;
 
     warned_of_emperor_reply_month = month + 2;
     if (warned_of_emperor_reply_month >= 12)

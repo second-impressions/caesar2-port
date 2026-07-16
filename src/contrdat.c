@@ -1,7 +1,6 @@
-// D:\C2\CODE\contrdat.c
 //
-// Recovered file-scope initialized data in PS.EXE offset order.
-// This is a data-only original translation unit (no functions).
+// Initialized control data.
+// Data-only translation unit.
 
 #include "c2_data.h"
 #include "c2_funcs.h"

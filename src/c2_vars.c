@@ -1,17 +1,3 @@
-// D:\C2\CODE\c2_vars.c
-//
-// The original project's shared-variables TU: PS.EXE's -d1 debug info
-// attributes 791 data symbols and ZERO functions to this module -- it
-// was a pure file-scope-variable file.  The uninitialized (_BSS)
-// variables below are listed in PS.EXE's _BSS layout order.  Watcom does
-// not emit declaration order directly: it groups by size, reverses its
-// 25-entry symbol pages, and walks each page by name hash.  c2_vars.h
-// reconstructs that original first-declaration page order; the definitions
-// here retain the readable PS layout order and PS-span-derived array sizes.
-//
-// Every symbol is declared extern in c2_data.h; these are the
-// definitions the self-sustained functional rebuild (`c2 rebuild`)
-// links against -- no auto-stubbed storage.
 
 #include "c2_vars.h"
 #include "c2_types.h"

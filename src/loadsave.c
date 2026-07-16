@@ -1,4 +1,3 @@
-// D:\C2\CODE\loadsave.c
 
 #include "c2_data.h"
 #include "c2_types.h"
@@ -549,22 +548,17 @@ struct save_entry savegame_entries[500] = {
     { &dummy_sav, 4 }
 };
 
-/* ── TU-owned file-scope variables (PS.EXE _BSS, original declaration
-   order).  Recovered so the functional rebuild (`c2 rebuild`) links
-   self-sustained -- no auto-stubbed storage.  Extern decls: c2_data.h. */
+/* File-local state. */
 int dummy_sav;
 
 
 extern void font_list(int idx, int word_count, int x, int y, unsigned char *font, int color);
 
 extern int read(int fd, void *buf, unsigned int size);
+// Load-game dialog loop. `select_filename` drives out1; when a valid .SAV is picked, loadgame()
+// performs the actual block restore.
 // FUNCTION: C2 0x70461
-// WIN: 0x00482ac0
-// Lines 582–622
-//
-// Load-game dialog loop.  `select_filename` drives out1; when a valid
-// .SAV is picked, loadgame() performs the actual block restore.
-
+// FUNCTION: C2WIN 0x00482ac0
 void load_a_game(void)
 {
     int done;
@@ -608,12 +602,10 @@ void load_a_game(void)
     hold_mouse_replace = 1;
 }
 
-// FUNCTION: C2 0x705BA
-// WIN: 0x00482c33
-// Lines 624–658
-//
-// Save-game dialog loop.  Existing filenames require confirmation;
-// savegame() writes the registered blocks and history payload.
+// Save-game dialog loop. Existing filenames require confirmation; savegame() writes the registered
+// blocks and history payload.
+// FUNCTION: C2 0x705ba
+// FUNCTION: C2WIN 0x00482c33
 void save_a_game(void)
 {
     int done;
@@ -655,12 +647,10 @@ void save_a_game(void)
     }
 }
 
-// FUNCTION: C2 0x706D9
-// WIN: 0x00482d77
-// Lines 663–719
-//
-// Modal filename picker/editor shared by load and save.  Returns the
-// decision flag after restoring the previous pointer mode.
+// Modal filename picker/editor shared by load and save. Returns the decision flag after restoring
+// the previous pointer mode.
+// FUNCTION: C2 0x706d9
+// FUNCTION: C2WIN 0x00482d77
 int select_filename(int mode)
 {
     int old_pointer_mode;
@@ -735,44 +725,37 @@ int select_filename(int mode)
     return 0;
 }
 
-// FUNCTION: C2 0x7093B
-// WIN: 0x0048302f
-// Lines 721–721
-//
-// Scroll the directory listing down by one entry, capped at
-// (no_of_entries - 14).  14 is the visible row count.
+// Scroll the directory listing down by one entry, capped at (no_of_entries - 14). 14 is the
+// visible row count.
+// FUNCTION: C2 0x7093b
+// FUNCTION: C2WIN 0x0048302f
 void act_down_directory(void)
 {
     if (no_of_entries - 0xe > first_entry) first_entry++;
 }
 
-// FUNCTION: C2 0x7095B
-// WIN: 0x00483054
-// Lines 722–722
-//
-// Scroll the directory listing up by one entry, floored
-// at 0.
+// Scroll the directory listing up by one entry, floored at 0.
+// FUNCTION: C2 0x7095b
+// FUNCTION: C2WIN 0x00483054
 void act_up_directory(void)
 {
     if (first_entry != 0) first_entry--;
 }
 
+// Handles the do file op user-interface action.
 // FUNCTION: C2 0x70973
-// WIN: 0x00483072
-// Lines 723–723
+// FUNCTION: C2WIN 0x00483072
 void act_do_file_op(void)     { out1 = 2; }
 
-// FUNCTION: C2 0x7097E
-// WIN: 0x00483087
-// Lines 724–724
+// Handles the cancel file op user-interface action.
+// FUNCTION: C2 0x7097e
+// FUNCTION: C2WIN 0x00483087
 void act_cancel_file_op(void) { out1 = 1; }
 
+// Save all registered savegame data blocks, then append the current history.dat payload. Returns
+// non-zero on success.
 // FUNCTION: C2 0x70989
-// WIN: 0x0048309c
-// Lines 726–749
-//
-// Save all registered savegame data blocks, then append the current
-// history.dat payload.  Returns non-zero on success.
+// FUNCTION: C2WIN 0x0048309c
 int savegame(char *fname)
 {
     int fd;
@@ -805,12 +788,9 @@ int savegame(char *fname)
     return 1;
 }
 
-// FUNCTION: C2 0x70A5C
-// WIN: 0x004832e3
-// Lines 751–779
-//
-// Load registered savegame blocks and the appended history.dat payload.
-// The success return shares savegame()'s `return 1` epilogue in PS.
+// Load the registered savegame blocks and appended history.dat payload.
+// FUNCTION: C2 0x70a5c
+// FUNCTION: C2WIN 0x004832e3
 int loadgame(char *fname)
 {
     int fd;
@@ -856,13 +836,10 @@ int loadgame(char *fname)
     return 1;
 }
 
-// FUNCTION: C2 0x70BBA
-// WIN: 0x00483554
-// Lines 786–793
-//
-// Persist the 64-byte c2inf preferences block to caesar2.inf.
-// Open with O_WRONLY|O_CREAT|O_TRUNC|O_BINARY (0x261), mode
-// 0600 (0x180); write c2inf; close.
+// Persist the 64-byte c2inf preferences block to caesar2.inf. Open with
+// O_WRONLY|O_CREAT|O_TRUNC|O_BINARY (0x261), mode 0600 (0x180); write c2inf; close.
+// FUNCTION: C2 0x70bba
+// FUNCTION: C2WIN 0x00483554
 void save_inf(void)
 {
     int fd;
@@ -874,12 +851,10 @@ void save_inf(void)
     }
 }
 
-// FUNCTION: C2 0x70BF5
-// WIN: 0x004835b1
-// Lines 795–820
-//
-// Load caesar2.inf, preserving the two leading runtime bytes that the
-// executable seeds before reading the on-disk options block.
+// Load caesar2.inf, preserving the two leading runtime bytes that the executable seeds before
+// reading the on-disk options block.
+// FUNCTION: C2 0x70bf5
+// FUNCTION: C2WIN 0x004835b1
 void load_inf(void)
 {
     int old0;
@@ -915,12 +890,10 @@ void load_inf(void)
     }
 }
 
-// FUNCTION: C2 0x70CD1
-// WIN: 0x004836fb
-// Lines 822–832
-//
-// Select language and help/media table filenames.  English is the
-// default; language ids 2/3/4 replace it with German/French/Spanish.
+// Select language and help/media table filenames. English is the default; language ids 2/3/4
+// replace it with German/French/Spanish.
+// FUNCTION: C2 0x70cd1
+// FUNCTION: C2WIN 0x004836fb
 void set_language(int language)
 {
     my_strcpy("c2.eng", lang_file, 0xc);
@@ -942,13 +915,10 @@ void set_language(int language)
     }
 }
 
-// FUNCTION: C2 0x70D94
-// WIN: 0x0048372e
-// Lines 834–842
-//
-// Validate the loaded game's settings: if the year header
-// isn't the magic 0x7D5 marker, fall back to defaults.
-// Then clear skill_level (signed) and arm peace_mode.
+// Validate the loaded game's settings: if the year header isn't the magic 0x7D5 marker, fall back
+// to defaults. Then clear skill_level (signed) and arm peace_mode.
+// FUNCTION: C2 0x70d94
+// FUNCTION: C2WIN 0x0048372e
 void test_inf_settings(void)
 {
     if ((unsigned short)c2inf.starting_year != 0x7d5)
@@ -957,14 +927,10 @@ void test_inf_settings(void)
     c2inf.peace_mode = 1;
 }
 
-// FUNCTION: C2 0x70DB8
-// WIN: 0x0048375f
-// Lines 844–865
-//
-// Defaults for the persistent INF/options block: initial year,
-// player name, scroll/game speed, sound toggles/levels, tutorial
-// flags, and max sample count.  The assignments are intentionally
-// kept in PS order to preserve Watcom's byte-store register reuse.
+// Defaults for the persistent INF/options block: initial year, player name, scroll/game speed,
+// sound toggles/levels, tutorial flags, and max sample count.
+// FUNCTION: C2 0x70db8
+// FUNCTION: C2WIN 0x0048375f
 void basic_inf_settings(void)
 {
     c2inf.starting_year = 0x7d5;
@@ -988,11 +954,9 @@ void basic_inf_settings(void)
     c2inf.config37 = 1;
 }
 
-// FUNCTION: C2 0x70E57
-// WIN: 0x00483834
-// Lines 868–882
-//
 // Load registered model blocks until the first zero-size entry.
+// FUNCTION: C2 0x70e57
+// FUNCTION: C2WIN 0x00483834
 int loadmodel(char *fname)
 {
     int fd;
@@ -1009,13 +973,10 @@ int loadmodel(char *fname)
     return 1;
 }
 
-// FUNCTION: C2 0x70EAE
-// WIN: 0x004838d3
-// Lines 884–893
-//
-// Sanitise the player name in `buf`: replace control chars
-// (< 0x20) with spaces, then null-terminate at the first
-// existing 0 byte (or at offset 24 if longer).
+// Sanitise the player name in `buf`: replace control chars (< 0x20) with spaces, then
+// null-terminate at the first existing 0 byte (or at offset 24 if longer).
+// FUNCTION: C2 0x70eae
+// FUNCTION: C2WIN 0x004838d3
 void fix_plyr_name(char *buf)
 {
     int i;
@@ -1027,13 +988,10 @@ void fix_plyr_name(char *buf)
     buf[i] = 0;
 }
 
-// FUNCTION: C2 0x70ED8
-// WIN: 0x0048393f
-// Lines 896–939
-//
-// Decode one 60x60 province region-map record from regions.dat into
-// region_map, recording the city/hut/border metadata encountered while
-// expanding tile codes into region-map area records.
+// Decode one 60x60 province region-map record from regions.dat into region_map, recording the
+// city/hut/border metadata encountered while expanding tile codes into region-map area records.
+// FUNCTION: C2 0x70ed8
+// FUNCTION: C2WIN 0x0048393f
 void load_region_map(int province)
 {
     int off;
@@ -1112,11 +1070,9 @@ void load_region_map(int province)
     return;
 }
 
-// FUNCTION: C2 0x711A6
-// WIN: 0x00483e56
-// Lines 942–946
-//
 // Clear the 4-entry hut list (3 bytes per entry).
+// FUNCTION: C2 0x711a6
+// FUNCTION: C2WIN 0x00483e56
 void clear_huts(void)
 {
     int i;
@@ -1127,12 +1083,10 @@ void clear_huts(void)
     }
 }
 
-// FUNCTION: C2 0x711CE
-// WIN: 0x00483ea3
-// Lines 948–954
-//
-// Place a hut record into the first empty slot of the
-// 4-entry hut_list (3 bytes per entry: x, y, hut kind).
+// Place a hut record into the first empty slot of the 4-entry hut_list (3 bytes per entry: x, y,
+// hut kind).
+// FUNCTION: C2 0x711ce
+// FUNCTION: C2WIN 0x00483ea3
 void put_a_hut(int x, int y, int kind)
 {
     int i;
@@ -1146,15 +1100,9 @@ void put_a_hut(int x, int y, int kind)
     }
 }
 
+// Records which region-map border a trader reached and returns its direction.
 // FUNCTION: C2 0x71216
-// WIN: 0x00483f0f
-// Lines 956–959 (W/E branches; N/S/test_beeps tail spills past the
-// 49-byte symbol boundary into the `allowed_keys` stub region —
-// PS source is a single function, but the symbol table splits it
-// in two and `allowed_keys` has no direct callers).
-//
-// Caller passes (x in eax, y in edx, trader_is in ebx).  Returns
-// a direction code: 3=west, 1=east, 0=north (or fallback), 2=south.
+// FUNCTION: C2WIN 0x00483f0f
 int get_border_position(int x, int y, int trader_is)
 {
     if (x == 0) {
@@ -1185,65 +1133,33 @@ int get_border_position(int x, int y, int trader_is)
     return 0;
 }
 
+// Stripped stub (`return 1`).
 // FUNCTION: C2 0x71247
-// WIN: 0x0048423b
-// Lines 960–962
-//
-// Stripped stub (`return 1`).  In CAESAR2.EXE the loadsave demo/recorder
-// stubs are byte-identical empty functions emitted AFTER the history
-// block (not in declared order); mapped to the matching return-shape
-// stub slot.  This is the only `mov eax,1; ret` stub → 0x0048423b.
+// FUNCTION: C2WIN 0x0048423b
 int allowed_keys(void)
 {
     return 1;
 }
 
-// FUNCTION: C2 0x71286
-// WIN: 0x004841eb
-// Lines 963–964
-//
-// Demo-recorder hook stripped from release builds — body is just
-// `xor eax, eax; ret`.  PS folds `mouse_recorder` and `out_of_sync`
-// to the same address (linker alias); we emit them as two separate
-// 3-byte functions, accepting a 3-byte cascade vs PS.
-// CAESAR2.EXE: byte-identical `xor eax,eax; ret` stub slot.
+// Returns zero for the disabled mouse-recorder hook.
+// FUNCTION: C2 0x71286 FOLDED
+// FUNCTION: C2WIN 0x004841eb REORDERED
 int mouse_recorder(void)
 {
     return 0;
 }
 
-// FUNCTION: C2 0x71286 (alias)
-// WIN: 0x00484213
-//
-// Linker-aliased to `mouse_recorder` in PS.EXE — both names point
-// to the same `xor eax, eax; ret` body.  We emit a separate copy.
+// Returns 0 for the out of sync query.
+// FUNCTION: C2 0x71286 FOLDED
+// FUNCTION: C2WIN 0x00484213
 int out_of_sync(void)
 {
     return 0;
 }
 
+// Create history.dat and initialize its first five score fields to zero.
 // FUNCTION: C2 0x71289
-// WIN: 0x00483fd3
-// Lines 966–977
-//
-// Initialize the on-disk history.dat file (111 b,
-// L966–977).  history_entry is a 200-row × 5-int table
-// (200 * 20 = 4000 b) that records prior reigns'
-// scores; this routine creates the file fresh.
-//
-//   1. zero history_entry's first 5 ints (template row).
-//   2. Open history.dat for write+create+trunc, mode 0600.
-//      Skip the rest if open fails (no history file).
-//   3. Write 200 copies of the zero template (each 20 b).
-//   4. Close fd.
-//   5. Reset the in-memory pointers / counter to 0.
-//
-// The 5-int zero-fill loop compiles to `call __STOSD` (count in
-// ecx = 5 dwords) via Watcom's fill-loop recognition — same
-// recognition as the __STOSB byte fills in controls.c / lib32.c /
-// mmedia.c.  (memset would instead be a real call, count in ebx.)
-//
-// 2 callers — loadsave.c donor.
+// FUNCTION: C2WIN 0x00483fd3 REORDERED
 void setup_history_data(void)
 {
     int fd;
@@ -1263,14 +1179,10 @@ void setup_history_data(void)
     }
 }
 
-// FUNCTION: C2 0x712F8
-// WIN: 0x00484094
-// Lines 979–992
-//
-// Append/overwrite the current 5-int history_entry in the 200-slot
-// ring file history.dat at history_end_ptr.  The file offset is
-// history_end_ptr * 20.  history_entries saturates at 200 and
-// history_end_ptr wraps to 0 after slot 199.
+// Append/overwrite the current 5-int history_entry in the 200-slot ring file history.dat at
+// history_end_ptr. The file offset is history_end_ptr * 20.
+// FUNCTION: C2 0x712f8
+// FUNCTION: C2WIN 0x00484094
 void save_history(void)
 {
     int fd;
@@ -1292,13 +1204,10 @@ void save_history(void)
 }
 
 
-// FUNCTION: C2 0x7138B
-// WIN: 0x0048414d
-// Lines 994–1000
-//
-// Slurp the entire 4 000-byte / 200x5-int history.dat file into the
-// caller-supplied buffer.  Open with O_RDONLY|O_BINARY (0x200);
-// silently no-op when the file is absent.
+// Slurp the entire 4 000-byte / 200x5-int history.dat file into the caller-supplied buffer. Open
+// with O_RDONLY|O_BINARY (0x200); silently no-op when the file is absent.
+// FUNCTION: C2 0x7138b
+// FUNCTION: C2WIN 0x0048414d
 void get_history_in_buffer(int *buf)
 {
     int fd;
@@ -1310,52 +1219,45 @@ void get_history_in_buffer(int *buf)
     }
 }
 
-// FUNCTION: C2 0x713BE
-// WIN: 0x004841a0
-// Lines 1002–1009
+// Returns buf[row * 5 + col] for the get history from buffer query.
+// FUNCTION: C2 0x713be
+// FUNCTION: C2WIN 0x004841a0
 int get_history_from_buffer(int *buf, int row, int col)
 {
     return buf[row * 5 + col];
 }
 
-// FUNCTION: C2 0x713CE
-// WIN: 0x00484230
-//
-// Demo-recorder hook stripped from release — body is `c3 ret`.
-// CAESAR2.EXE emits the five folded void names as five byte-identical
-// empty stub slots after the history block; assigned in declaration
-// order to the void-return stub slots 0x004841ce..0x00484230.
-// PS folds five names (`stop_mouse_recorder`, `start_demo`,
-// `start_mouse_recorder`, `go_demo_play_mode`, `go_demo_build_mode`)
-// to the same 1-byte function at 0x713CE.  This is a COMPILER
-// (intra-TU) fold, not a linker alias: wcc386 10.0a emits identical
-// empty functions at the same segment offset (5 PUBDEFs → one `c3`).
-// Our build reproduces this exactly — all five resolve to a single
-// address, byte-identical to PS (verified, no cascade).
+// No-op hook for stopping mouse recording.
+// FUNCTION: C2 0x713ce FOLDED
+// FUNCTION: C2WIN 0x00484230
 void stop_mouse_recorder(void)
 {
 }
 
-// FUNCTION: C2 0x713CE (alias)
-// WIN: 0x00484208
+// No-op placeholder for the start demo hook.
+// FUNCTION: C2 0x713ce FOLDED
+// FUNCTION: C2WIN 0x00484208 REORDERED
 void start_demo(void)
 {
 }
 
-// FUNCTION: C2 0x713CE (alias)
-// WIN: 0x00484225
+// No-op placeholder for the start mouse recorder hook.
+// FUNCTION: C2 0x713ce FOLDED
+// FUNCTION: C2WIN 0x00484225
 void start_mouse_recorder(void)
 {
 }
 
-// FUNCTION: C2 0x713CE (alias)
-// WIN: 0x004841fd
+// No-op placeholder for the go demo play mode hook.
+// FUNCTION: C2 0x713ce FOLDED
+// FUNCTION: C2WIN 0x004841fd REORDERED
 void go_demo_play_mode(void)
 {
 }
 
-// FUNCTION: C2 0x713CE (alias)
-// WIN: 0x004841ce
+// No-op placeholder for the go demo build mode hook.
+// FUNCTION: C2 0x713ce FOLDED
+// FUNCTION: C2WIN 0x004841ce REORDERED
 void go_demo_build_mode(void)
 {
 }

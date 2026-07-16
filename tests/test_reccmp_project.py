@@ -10,6 +10,7 @@ import yaml
 
 from c2.reccmp_project import (
     TARGET_ID,
+    WINDOWS_TARGET_ID,
     publish_build_artifacts,
     write_user_config,
 )
@@ -44,6 +45,11 @@ def test_tracked_project_selects_watcom_pipeline():
     assert target.filename == "PS.EXE"
     assert target.source_root == (Path("src"),)
 
+    windows = project.targets[WINDOWS_TARGET_ID]
+    assert windows.compiler == Compiler.MSVC
+    assert windows.filename == "CAESAR2.EXE"
+    assert windows.source_root == (Path("src"),)
+
 
 def test_write_user_config_validates_and_relativizes_original(tmp_path: Path):
     original_data = b"synthetic original"
@@ -68,6 +74,49 @@ def test_write_user_config_rejects_wrong_original(tmp_path: Path):
 
     with pytest.raises(ValueError, match="unexpected PS.EXE SHA-256"):
         write_user_config(original, tmp_path / "reccmp-user.yml", project_file)
+
+
+def test_write_user_config_includes_valid_windows_original(tmp_path: Path):
+    dos_data = b"synthetic DOS original"
+    windows_data = b"synthetic Windows original"
+    project_file = tmp_path / "reccmp-project.yml"
+    original = tmp_path / "inputs" / "PS.EXE"
+    windows = tmp_path / "inputs" / "CAESAR2.EXE"
+    config = tmp_path / "reccmp-user.yml"
+    original.parent.mkdir()
+    original.write_bytes(dos_data)
+    windows.write_bytes(windows_data)
+    project_file.write_text(
+        yaml.safe_dump(
+            {
+                "targets": {
+                    TARGET_ID: {
+                        "filename": "PS.EXE",
+                        "compiler": "watcom",
+                        "hash": {"sha256": hashlib.sha256(dos_data).hexdigest()},
+                    },
+                    WINDOWS_TARGET_ID: {
+                        "filename": "CAESAR2.EXE",
+                        "compiler": "msvc",
+                        "hash": {
+                            "sha256": hashlib.sha256(windows_data).hexdigest()
+                        },
+                    },
+                }
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    write_user_config(original, config, project_file, windows)
+
+    assert yaml.safe_load(config.read_text(encoding="utf-8")) == {
+        "targets": {
+            TARGET_ID: {"path": "inputs/PS.EXE"},
+            WINDOWS_TARGET_ID: {"path": "inputs/CAESAR2.EXE"},
+        }
+    }
 
 
 def test_publish_build_artifacts_copies_map_and_writes_discovery(tmp_path: Path):

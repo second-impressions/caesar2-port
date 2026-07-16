@@ -1,4 +1,3 @@
-// D:\C2\CODE\action.c
 
 #include "c2_data.h"
 #include "c2_types.h"
@@ -6,23 +5,10 @@
 /* File-local supplements (not in c2_data.h) */
 /* army_list provided as `struct army_rec army_list[]` via c2_types.h */
 
-/* ---------------------------------------------------------------------
- * Implicit-int callees made VISIBLE (NOT the original PS source shape).
- *
- * PS's .c did not declare these helpers: the calls below were K&R
- * implicit-int, so wcc386 assumed `int f()`.  Declaring them `extern
- * int f()` here is BYTE-NEUTRAL -- identical codegen to the implicit
- * declaration the compiler already synthesised -- and exists only to
- * surface the real cross-TU contract.  The real definitions return a
- * narrower type (noted per line); the caller intentionally reads EAX
- * as int, exactly as PS.EXE does.  Do NOT "correct" these to the real
- * return type -- a typed (char / enum) decl CHANGES the bytes.
- * ------------------------------------------------------------------- */
-#ifndef _MSC_VER   /* MSVC win-oracle build force-includes c2_funcs.h (typed) */
+#ifndef _MSC_VER
 extern int affected_by_cover1();   /* really char -- map.c */
 extern int colour_cycle_delay1();  /* really char -- lib32.c */
 #endif
-
 
 
 /* Internal callees and shared helpers (forward decls). */
@@ -68,330 +54,10 @@ void general_reform(int kind);
 void select_all_figures(void);
 void goto_flag_marker_mode(void);
 
-// FUNCTION: C2 0x2EDE2
-// WIN: 0x004b0630
-// Lines 131–445
-//
-// Main per-frame action dispatcher.  Snapshots `scrolling`, dispatches
-// based on `pointer_mode` and the various mouse-button flags, then
-// triggers sounds and the scrolling-stop hook on exit.
-//
-// RESIDUE (updated 2026-07-07): the dominant byte diff is still the
-// Rule 135 mid-function epilogue: PS anchors the 6-byte pops+ret at
-// +0x4a (fall-through from the L142 clear_mouse call; every later
-// return funnels BACKWARD to it, incl. the closing-brace `jmp 0x4a`),
-// while our compile funnels every return FORWARD to an end epilogue.
-// This is the ONLY function in all of PS.EXE with this void-fn shape
-// (corpus scan 2026-07-05).  The turbo-mode guard is now written as
-// the single-return form `if (left != 0 || right != 0) {calls} return;`
-// (byte-neutral vs the old two-return form; matches PS's exact L141
-// (single je/jne guard) + L142 (calls, fallthrough-ret) line shape).
-//
-// 2026-07-07: the Rule 135 MECHANISM was found (e27e4717, evolver.c
-// evolve_a_building/devolve_a_building) -- a DEPENDENT function
-// compiled immediately after, written arms-first with its own
-// call+return as the LAST statements, ComTail-shares enough of its
-// epilogue tail with the donor's END-of-RetList copy to trigger
-// TransformJumps, which physically moves the donor's trailing
-// epilogue block up to the earlier return's position.  Does NOT
-// apply here: the next function in this TU, flag_mode_action, saves
-// only 4 regs (ebx edx esi ebp) vs action's 5 (ebp esi edx ecx ebx) --
-// the common epilogue suffix is just `pop ebx; ret` (2b), below
-// ComTail's `max.save > OptInsSize(OC_JMP, OC_DEST_NEAR)` threshold.
-// No other function in the corpus emits a matching 5-save frameless
-// epilogue immediately after action() in file order.  Probed and NOT
-// source-reachable at OptSize=50 by any single-function rewrite
-// (Rule-137 restructure, goto-into-if labeled return, `int action` +
-// Rule 77 uninit-rc returns, `return int_clear_mouse();` -- all still
-// funnel forward; see docs/comtail-cascade-analysis.md).
-//
-// Site-1 `last_icon_over`-guard Rule 132 (copy-then-shl, PS keeps EAX
-// live past the `shl edx,2` because -- per the site-2 guard chain a
-// few lines later -- the value is read again): tried embedding the
-// guard into the existing `idx` local (`if ((idx = last_icon_over) !=
-// 0) { ...[idx]... }`).  This DOES close the Rule-132 island locally,
-// but `idx` has an unrelated later live range (L366-397, saves
-// reg_placing_type around control_selection) and the extended
-// lifetime cascades a NEW divergence at site 2 (PS caches map_mode in
-// CH across the `||` chain at L337; the idx-reuse edit loses that
-// cache) -- net regression, 1179bd -> 1675bd.  Do not retry this
-// lever without a dedicated (non-reused) local, or without also
-// re-deriving site 2's CH-cache under the same edit.
-//
-// 2026-07-07 (win-oracle session): the DEDICATED-local retry was run
-// (`else if ((icon = last_icon_over) != 0) { ...[icon]... }` + `int
-// icon;`) -- BYTE-NEUTRAL: a local that dies at the index read is
-// coalesced into the shifted temp, no copy emitted.  So the L200
-// copy+shl is NOT a named local; it is the unscaled cross-block CSE
-// temp's SEAT (PS EAX / RC EDX -- when the unscaled and scaled temps
-// seat apart, the copy materializes) -- same inconclusive whole-fn
-// tie family as the rest.  The dedicated-local lever is CLOSED both
-// ways.  Win oracle (unblocked this session): win-decompile shows
-// literal `pointer_mode = '\0'` in BOTH L337 arms, refuting a
-// `pointer_mode = map_mode` reading of the CH-store; win-census
-// Delta=+1 (a 2-use eax slot) is Q=0.82 caution and does not map to
-// any PS-demanded local.
-//
-// Remaining islands (const-1-in-bh L183/187 share, zero-in-ecx
-// L180/184 share already correct, map_mode-in-ch L337 site-2 cache,
-// copy+shl L200 site-1 Rule 132) are seat/materialization collateral
-// of the same inconclusive whole-fn reg-swap cascade (regtrace:
-// EAX<->EDX, ECX<->ESI ties; Cascade replay INCONCLUSIVE -- big
-// routine).
-//
-// 2026-07-09: the L337 site-2 "CH cache" is NOT a compiler cache --
-// it is an EMBEDDED-ASSIGN LOCAL (`(mm = map_mode) == 0`), proven by
-// PS's arm-2 asm RE-READING the global with a fresh zext
-// (`xor eax,eax; mov al,[map_mode]; cmp eax,1`) where any cache or
-// plain local would reuse the register: only embedded-assign in arm 1
-// + inline read in arm 2 produces byte-reg load+test THEN a memory
-// re-read.  The `pointer_mode = 0;` store then reuses the known-zero
-// CH (condition-derived, same mechanism as build_city_item's
-// `ok = 0` -> `mov [esp],eax`); source stays the literal 0 (win
-// oracle's '\0' confirmed).  This also matches win-census Delta=+1
-// (the unmapped 2-use slot = mm).  Fixing L337 re-rolled the cascade:
-// the zoom_in_decay_count compiler-cache at L431/L433 broke (RC went
-// cmp-mem + re-read), recovered with a second embedded-assign local
-// (`zz`); net ir 7 -> 5.  Residue after the two locals: the epilogue
-// pair (structurally blocked, see above), the L175 arm-merge (RC's
-// two strip-arm `redraw_icons=1;update_map=1` blocks seat the same
-// byte reg -> ComCode merges them; PS seats bh/ch -> both inline;
-// pure cascade), an RC-only xor-esi zero re-materialization, the
-// set_sound eax literal (fixup-masked in the byte oracle; ledger
-// artifact), and zz seated AL (PS BL -> and-inplace vs zext_clr_reg,
-// 1b; zz sits in a 34-wide anonymous sav=3 ConfBefore tie group with
-// no source handle; Byte-seat CASE D).  Raw bd rose (1179 -> 1768,
-// cascade seat/encoding noise downstream of the epilogue size flip);
-// judged by shape_distance per Hard Rule #3.
-// 2026-07-11 (certified-chain session): the "whole-fn INCONCLUSIVE
-// reg-swap cascade" is now LOCALIZED.  c2 regtrace --explain: seat
-// diff CLEAN over 501 reg-operands except ONE dword value (6c150f7c,
-// sav=31, RC EAX / PS ECX, the L160 pointer_mode zero temp's parent);
-// GB row shows all-scores-0 list-order pick, so PS's ECX needs
-// EAX/EDX/EBX masked at its seat = the MASKED (live-range) family,
-// P5 boundary -- NOT reorderable (savings --flip has no order/credit
-// lever for an all-zero-scores pick).  Byte-seat CASE D certified
-// [trace] on all 12 byte pairs (ch/bh/bl const-temp rotation).  The
-// causal chain: byte const-temp seats -> ComCode keeps/merges the
-// L161/L175 twin arms (PS bh/ch = both inline; RC same-reg = merged,
-// island 2) -> refs-chain/IL stream -> ComTail picks the OPPOSITE
-// epilogue canonical (islands 1+6: PS early-inline + L445 jmp back;
-// RC forward-funnel) -> 38/105 diff rows are pure alignment cascade
-// (near/short Jcc flips).  Fresh probes this session, all inert on
-// the post-mm/zz IL: goto-family re-run (labeled return in turbo arm
-// + end goto backward; label outside arm; explicit trailing return)
-// all 1768bd -- FE canonicalizes to the same gen-order-end RetList;
-// c2 sweep full battery exhausted (composed stmt/decl space, no
-// improvement, plateau 1768bd/shape5).  Open lever: P5 masked-family
-// tooling (the 6c150f7c mask) or a byte-temp-SET parity change that
-// does not regress ir (none found; every candidate regresses).
-// 2026-07-11b (divide-and-conquer session): remaining probes run to
-// ground.  (1) Island-3 MECHANISM pinned: PS's L184
-// `mov [flag_for_workhouse_request],ecx` is NOT a CSE'd zero spanning
-// L180-L184 -- a `rz` local probe (`had_clear_sound = rz = 0; ...
-// flag_for_workhouse_request = rz;`) compiled BYTE-IDENTICAL (1768bd):
-// the FE const-propagates the local away and the allocator still
-// rematerializes per site.  PS's form is the redundant-def scorer
-// deleting z2's `xor ecx,ecx` because z2 SEATED ECX, which provably
-// still holds 0 there (PS's L183 1-temp sits in BH; watcall preserves
-// ECX across the two calls); RC's z2 seats ESI because RC's L183
-// 1-temp took CH (aliases ECX, breaks the known-zero).  So island 3 =
-// pure collateral of the L183 byte seat (CASE D); no independent
-// source lever.  (2) Island-2 likewise: RC's three
-// `redraw_icons=1;update_map=1;goto end` arms all seat CH ->
-// byte-identical post-regalloc -> ComCode merges; PS seats them
-// BH/AH/CH -> all inline.  Merge direction is deterministic given
-// seats (docs/comtail-cascade-analysis.md); no arm-spelling lever
-// changes the bytes without breaking the -d1-witnessed store order.
-// (3) `c2 spell --suggest` battery (absent from the 07-11a ledger):
-// 0 fold + 0 unfold + 3 tail-dup + 1 tail-hoist, all screened LIVE
-// and byte-compiled: L485/k1 neutral (1768bd); L536/k1 1540bd but
-// ir 4->6, isl 5->7 (shape regress, rejected per Hard Rule #3);
-// L536/k2 ir 7; L520-hoist ir 5, isl 7.  The A2-style certification
-// condition (suggest battery empty-or-regressing) is now met.  All 5
-// islands + the 1 seat are ONE residue family rooted in the anon
-// byte-temp exclusion rotation (first divergent pick: L160's zero
-// temp, PS CH / RC AH); nothing upstream of it is source-visible.
-// Win-oracle caveat kept in mind throughout: CAESAR2.EXE's source
-// lineage is unconfirmed, so its literal-0 witnesses were treated as
-// hints only; every verdict above rests on the DOS byte oracle.
-// 2026-07-11c (frx ground-truth session) -- THE 07-11a/b FRAMING IS
-// OVERTURNED.  The "anonymous byte-temp picks" are NOT GiveBestReg
-// conflicts at all (none of the 116 chain conflicts seats AH/CH/BH at
-// the swap sites): they are BYTE-CLASS ROVER picks (FindRegister,
-// post-RegAlloc), so the Byte-seat CASE D "inert byte tie, IRREDUCIBLE"
-// certification does not apply to this function -- rover picks are
-// advance-count-steerable (Rule 121 / load-fold class), NOT Rule 133.
-// Chasing this exposed and fixed a PAIRWISE-SWAPPED byte NAME table
-// (bl<->bh, cl<->ch, dl<->dh) in rover_divergence/rover_fit/reglists
-// (watcom repo) and rover_hints._NAME (the c2 Rover hint engine) --
-// every prior byte-class k/lever on this function was name-inverted;
-// audited clean post-fix (frx-emitted-name-audit.py: 46/46 byte-exact
-// action.c fns).  New instrumentation (image 2026-07-11, trace v55):
-// frx ground-truth picks paired into fr['truth'] + fr result/op0 name
-// identity (sym handle, offset) join every advance -- even Score-
-// coalesced ones -- to its global.  Measured k trajectory (walk order,
-// correct names): k=0 through the whole dispatch prefix (b0-b19: L228
-// zero, zoom pair, pm dispatch, both map_mode loads, all four
-// control/overmap arms L251/L253 + strip arms L261/L263, mouse tests);
-// k=-2 family covering the right-click update_map (fr#115, PS bh/RC
-// ch), L248's redraw+update pair (blk156, PS bh/RC ch+al), and the
-// L247/L249 city arms (fr#129 PS ch/RC ah, fr#126 PS bl/RC cl); one
-// localized +3 at the pm>=1 arm (fr#123, PS cl/RC dh) whose window
-// coincides with the binir "+3 unnamed" diverging lines (the pm-arm
-// island).  So the residue = TWO rover advance-count deltas: RC has ~2
-// extra byte advances somewhere in walk b19..b50 (the left-click/army
-// stretch, fr#38..#113), plus the pm-arm disturbance.  Next session:
-// anchor rover_fit --cls byte with ONLY visible form-matched anchors
-// (fr#0=ah, #23=ah, #34=bl pins; #115=bh, #123=cl, #126=bl, #129=ch
-// wants; note #124/#125 pm=5/gen_refresh1 picks are COMPRESSED-INVISIBLE
-// -- c6-imm / Score-reuse -- and must NOT be anchored), then census the
-// b19..b50 window for the 2-advance IL delta (zz/update_landfill
-// region, lines 536-572 + 378-398).
-// 2026-07-11d (mm/zz DE-INVENTED, 1768bd -> 1179bd): the 11a locals are
-// register-IMPOSSIBLE and are removed with a mechanism proof.  A GB
-// byte conflict at sav=2/3 rank can NEVER seat CH/BL: given-subset
-// passes ALL byte candidates by then (every parent dword granted), so
-// list order forces AL -- `c2 seats --want mm=CH / zz=BL` both verdict
-// tie-order over an empty mask, i.e. unreachable.  PS's actual shapes:
-// zz-site = ROVER pick BL + Score redundant-load reuse (`mov bl,[zoom];
-// test bl,bl; ... mov al,bl` -- the arm-2 re-read is the COALESCE, not
-// a local); mm-site = rover pick CH on a KEPT-SPLIT cmp load (`mov ch,
-// [map_mode]; test ch,ch` -- compression blocked), NOT a GB local.  The
-// 11a embedded-assign forms matched the SHAPE but could never match the
-// registers; their islands were fake-closed.  Post-de-invention k-map
-// (frx ground truth, corrected names): k=0 through fr#19 (whole
-// dispatch prefix + all six arm stores byte-EXACT-registered), then
-// k=+2 UNIFORM from fr#35 (mm site) through fr#88 -- verified by
-// sim_with: a single +2 byte inject anywhere in fr#20..#35 lands every
-// anchor up to #88 (#35=ch, #40=ah, #85=dl, #88=bh all fit).  So PS has
-// exactly TWO extra byte-class rover advances in walk window fr#20..#35
-// (statements: L299 right-click guard, L350/351 mouse_left+update, L447,
-// L461 + the track_army maze blocks) -- likely a GB grant/deny or
-// operand-kind difference (a value PS reads from MEMORY where our GB
-// grants a register, or vice versa), NOT a missing statement.  The tail
-// (fr#117..#131: right-click arms + city arms) does NOT close under the
-// +2 alone: the #122 funnel (except 0x48fff8c0, dl/dh masked) re-syncs
-// RC to base while PS lands elsewhere -- PS's excepts differ there,
-// rooted in GB dword seats; the chain names 6c1b2f4c EBX->ECX masked
-// (live-range lever, contributors ins 6c1b322c(result)/6c1b2ef4(live),
-// emitted ~offset 337 = the map_mode==1 zext region).  Downstream
-// collateral of the cursor parity (NOT independent islands): the
-// [const-realize] pair (update_map=1/gen_refresh1=1: PS picks BH ->
-// survives the pointer_mode zext (A-family clobber) -> Score reuses at
-// gen_refresh1 -> compression BLOCKED -> mov bh,1 + reuse; RC picks
-// A-family -> clobbered -> no reuse -> both compress to c6-imm), the
-// kept-split mm cmp, and the known-zero pointer_mode=0 reuse (island 6:
-// PS stores from the just-tested CH).  Fix the +2 window and the tail
-// masks and these collapse together.  Byte-exact needs: (1) the +2
-// construct in fr#20..#35, (2) the 6c1b2f4c live-range lever, (3) the
-// Rule 135 epilogue pair (unchanged), (4) the L200 Rule 132 copy.
-// 2026-07-11e (ComTail ctm probe session): THE ROOT IS NAMED.  New
-// instrumentation (watcom ab36d67, trace v56): `ctm` records every
-// ComTail max decision (ins -> winner + save).  action's stream: 60
-// decisions -- incremental RetList chaining while returns are created,
-// then TWO full re-canonicalization sweeps once the end-of-function
-// epilogue node (created LAST, gen-order end) appears: every goto-end
-// arm re-points to the END copy (all save=5 ties, ping-pong to a
-// fixpoint at the end).  PS's fixpoint = the EARLY (L142) copy.  The
-// flipped fixpoint owns BOTH remaining structural islands: the
-// mid-epilogue (islands 1+7) AND -- because ComTail/TransformJumps
-// surgery reorders the block chain, which IS the LdStAlloc walk
-// order -- the byte-rover +2/tail rotation (PS walks the zoom-arm /
-// finish_route blocks inline where ours cluster at chain tail
-// blk136-138; the 'Rover-blocked: BLOCK-ORDER divergence' hint says
-// exactly this).  So the +2 'advance window' of 11d is NOT missing
-// ops -- it is the same blocks walked at different chain positions.
-// Next lever: recover WHY PS's fixpoint is the early copy -- the
-// re-sweep is tie-driven (strict >, save=5 everywhere = first-in-
-// refs-chain wins), so the refs-chain ORDER at sweep time decides;
-// candidates: reclaim cave space and re-add the ct/ctc probes (per-
-// candidate saves + list identity), then probe source forms that
-// change the RetList insertion order (the turbo-arm return's position
-// in the FE gen order).  The 07-07/07-11a goto-family probes were
-// byte-judged under the mm/zz IL; re-run them reading the ctm stream
-// (1 s trace) instead of bytes -- the fixpoint flip may be reachable
-// where byte-neutral probes looked inert.
-// 2026-07-12b (bbcb03ec + this commit): THE RULE 135 EPILOGUE PAIR IS
-// CLOSED -- the fixpoint was never intra-action.  PS scan: this_region
-// +0xc5, act_query+0xf, act_query_do_help+0xfd all jump INTO action+0x4a,
-// and act_query's tail jmp targets action+0x45 (= call clear_mouse + the
-// pops), proving act_query's source ended `clear_mouse(); }` -- OUR
-// act_query WAS MISSING THAT CALL (invisible: tail-merge splicing +
-// rel32 masking kept it 'byte-exact').  With it restored, act_query's
-// OC_RET ComTail splices save=6 into action's end epilogue, the OptPush
-// retry Untangles act_query's end label away (UnTangle2 jump-to-jump
-// Redirect), ComTail re-runs and finds the 10-byte [call clear_mouse +
-// jmp] common tail with action's TURBO return-jmp, and TransformJumps
-// SWAPS action's [label+pops+ret] up to +0x4a (turbo jmp goes to the
-// end, Untangle kills it as jmp-to-next): je/jne/jmp 0x4a all match PS.
-// LOAD-BEARING SET (each verified by ablation 2026-07-12):
-//   1. act_query ends `pointer_mode = saved_pm; clear_mouse();` (PS-
-//      witnessed by its own +0x45 jmp target);
-//   2. the turbo arm keeps the TWO-RETURN form below (855e92c3, Mac/Win
-//      witnessed) -- the single-return `if(l||r){..} return;` form puts
-//      the arm-merge LABEL before the return-jmp and FindCommon stops at
-//      5 (labels only skip on the CANDIDATE side; optcom.c FindCommon);
-//   3. NO zoom-arm duplication of `pointer_mode = 0` (Rule 121 inverse
-//      probe): it kills the dance (1178bd, L142/L445 back) AND is
-//      counter-witnessed by Mac+Win (assignment shared after if/else).
-// Remaining residue after this: L183/187 const-realize, L200 copy+shl,
-// L337 kept-split + xor-ah, the byte-rover swaps + 6c1b2f4c EBX->ECX
-// masked seat, and a 5b tail length-drift artifact from the above.
-// 2026-07-12c (667bd / ir3 / isl4 -- the current floor-of-record):
-// * The (unsigned char) base_kind cast (L~424) is RE-VALIDATED post-
-//   epilogue-fix: 667bd with it, 1447bd without (the 855e92c3 rejection
-//   was measured under the pre-dance IL and is superseded); PS's
-//   `and eax,0xff` realization at the 0xd2 compare still reproduces.
-// * The zoom block MUST stay the shared form (`do_act_zoom_in(1/0)` in
-//   arms, ONE `pointer_mode = 0` after) -- asm-witnessed: PS's single
-//   call with the eax bool materialization (cmp/jle/mov 1/jmp/xor) is
-//   ComTail's merge of the two arm calls; the plain bool-arg spelling
-//   `do_act_zoom_in(zoom>3)` compiles DIFFERENTLY (1442bd, ir6).  The
-//   L699-dup sweep/suggest candidates trade this shape for rover bytes
-//   (649/645bd but ir2->4, un-witnessed) -- rover crutch, rejected.
-// * WIN-oracle witnessed, Watcom-neutral (kept): the prologue stores
-//   are SEPARATE statements (`scrolling = 0; stopped_scrolling = 0;`,
-//   not chained) and the zoom increment is `zoom_in_decay_count++`.
-// * The byte-rover picture (measured via the frx k-map + full-disasm
-//   pick lists): RC's byte pick stream in the dispatch is perfectly
-//   sequential (no mask skips); PS is +2 ONLY at the city-arm stores
-//   (+00dc/+00f2/+0112) while the region twins match -- with a -1
-//   window at +029e and +2/+4 windows further down.  rover_hints
-//   _search finds NO single-inject fit over the const-store positions;
-//   the L382-384 city blocks are 'chained-late' (Rule 125) in RC's
-//   chain (walked AFTER the region arms).  The zoom-dup experiments
-//   prove chain restructuring MOVES these early picks (a late-walk dup
-//   fixed early sites) -- the lever class is BLOCK-CHAIN structure,
-//   not advance count.  Blocked pending fr<->em ins-level join tooling
-//   (to read which blocks PS walks between the region and city picks);
-//   every statement-level respelling probed this session was inert
-//   (explicit goto right_click_dispatch in the city block, chain
-//   split, ++ form) or shape-regressing (bool-arg, dup family, L683
-//   hoist 1827bd).
-// 2026-07-12: the initial Rule 121 inverse (duplicating
-// `pointer_mode = 0` into both do_act_zoom_in arms) improved the allocator
-// but was rejected after both Mac and Win showed the assignment shared
-// after the if/else.  Both oracles instead expose the missing turbo-arm
-// shape: `if (!left && !right) return;`, then the two calls and a second
-// return.  Once the wrong cast candidates are removed this correction is
-// byte/shape-neutral (ir 6/196, 1179bd), but it is retained because both
-// cross-build witnesses and PS's L141/L142 control flow agree.  `forge`
-// also proposed changing the L228 `& 0xff` to a cast; rejected because PS
-// explicitly has the mask
-// realization and that cast caused a large byte/shape regression.
-// 2026-07-13 BYTE-EXACT (Watcom sa/gi/br/bre/bk/frx instrumentation): the
-// remaining cascade was MakeFlowGraph DFS/RPO + ReturnsToBottom block order,
-// not a missing zoom local or a GiveBestReg tie.  Restoring the source-oracle
-// direct map tests, then spelling the two load-bearing pointer tests as
-// `!(pointer_mode != 3)` and `!(pointer_mode == 4)`, preserves their emitted
-// comparisons but changes the pre-LdStAlloc block walk.  The first change
-// collapses 1364bd / four islands to one two-byte rover seat; the second moves
-// the hauled exit blocks across that zero store, seating it in PS's CL and
-// closing 2bd -> 0.  Raw frx confirms all later byte picks self-heal; all
-// 640/640 instructions match register-blind before the final seat correction.
-// Packing the L187 pointer_mode/gen_refresh1/goto trio on one physical line
-// is byte-neutral but matches PS's single -d1 line (boundary mismatches 58->56).
+// Main per-frame action dispatcher. Snapshots `scrolling`, dispatches based on `pointer_mode` and
+// the various mouse-button flags, then triggers sounds and the scrolling-stop hook on exit.
+// FUNCTION: C2 0x2ede2
+// FUNCTION: C2WIN 0x004b0630
 void action(void)
 {
     int icons_helped;       /* index into city/region_icons_to_help */
@@ -761,14 +427,11 @@ end_of_action:
 
 }
 
-// FUNCTION: C2 0x2F902
-// WIN: 0x004b1951
-// Lines 448–485
-//
-// Per-frame dispatcher used while the player is in flag-marker
-// (banner) placement mode.  Mostly delegates to the city/region
-// strip-action helpers and lets the user toggle a flag at the cell
+// Per-frame dispatcher used while the player is in flag-marker (banner) placement mode. Mostly
+// delegates to the city/region strip-action helpers and lets the user toggle a flag at the cell
 // under the cursor on left click.
+// FUNCTION: C2 0x2f902
+// FUNCTION: C2WIN 0x004b1951
 void flag_mode_action(void)
 {
     old_scrolling = scrolling;
@@ -844,13 +507,10 @@ flag_done:
     }
 }
 
-// FUNCTION: C2 0x2FA7D
-// WIN: 0x004b1b8f
-// Lines 487–556
-//
-// Per-frame dispatcher used during a tactical battle.  Updates the
-// hover / drag highlights, kicks off select/move/aim actions on left
-// click, and exits to the city map on right click.
+// Per-frame dispatcher used during a tactical battle. Updates the hover / drag highlights, kicks
+// off select/move/aim actions on left click, and exits to the city map on right click.
+// FUNCTION: C2 0x2fa7d
+// FUNCTION: C2WIN 0x004b1b8f
 void battle_action(void)
 {
     old_scrolling = scrolling;
@@ -923,15 +583,10 @@ end_battle_action:
     if (old_scrolling != scrolling && old_scrolling == 1) stopped_scrolling = 1;
 }
 
-// FUNCTION: C2 0x2FC9B
-// WIN: 0x004b1df5
-// Lines 560–590
-//
-// Edge-of-screen panning.  When the mouse is at one of the screen
-// edges, advances `pm_x`/`pm_y` by `scroll_amount` (or twice that for
-// the top/bottom rows).  After moving, asks `scroll_speed()` whether
-// scrolling is allowed this frame; if not, restores the saved
-// coordinates and clears the `scrolling` flag.
+// Edge-of-screen panning. When the mouse is at one of the screen edges, advances `pm_x`/`pm_y` by
+// `scroll_amount` (or twice that for the top/bottom rows).
+// FUNCTION: C2 0x2fc9b
+// FUNCTION: C2WIN 0x004b1df5
 void scroll(void)
 {
     int saved_pm_x = pm_x;
@@ -965,21 +620,12 @@ void scroll(void)
     }
 }
 
-// FUNCTION: C2 0x2FDF5
-// WIN: 0x004b1f7d
-// Lines 592–619
-//
-// On the region map (map_mode == 1) and only while the player is in
-// pointer_mode 2 or 3 (over-army or tracking-army), keep the mouse
-// pulled toward the army's screen coordinates.  Drops back to
-// pointer_mode 2 if the cursor wanders too far.
-//
-// cohort_tick_gate is a small "tick gate" so the mouse only nudges every
-// other frame.
+// On the region map (map_mode == 1) and only while the player is in pointer_mode 2 or 3 (over-army
+// or tracking-army), keep the mouse pulled toward the army's screen coordinates.
+// FUNCTION: C2 0x2fdf5
+// FUNCTION: C2WIN 0x004b1f7d
 void mouse_follow_cohort(void)
 {
-    /* PS: unnamed function-local static (data 0x87c60, no -d1 symbol) --
-       the every-other-frame nudge gate. */
     static int cohort_tick_gate;
     int dist;
     int ax;
@@ -1008,18 +654,13 @@ void mouse_follow_cohort(void)
     set_mouse();
 }
 
-// FUNCTION: C2 0x2FF3C
-// WIN: 0x004b2194
-// Lines 621–646
-//
-// Twin of `mouse_follow_cohort` for hostile armies.  Active when the
-// player is in pointer_mode 6..8 (the attack-target modes); pulls the
-// mouse toward the hovered enemy army's screen coordinates so the
-// cursor "snaps" onto the unit it last selected.
+// Twin of `mouse_follow_cohort` for hostile armies. Active when the player is in pointer_mode 6..8
+// (the attack-target modes); pulls the mouse toward the hovered enemy army's screen coordinates so
+// the cursor "snaps" onto the unit it last selected.
+// FUNCTION: C2 0x2ff3c
+// FUNCTION: C2WIN 0x004b2194
 void mouse_hunt_enemies(void)
 {
-    /* PS: unnamed function-local static (data 0x87c64, no -d1 symbol) --
-       the every-other-frame nudge gate (twin of mouse_follow_cohort's). */
     static int enemy_tick_gate;
     int dist;
     int ax;
@@ -1076,14 +717,11 @@ void mouse_hunt_enemies(void)
     set_mouse();
 }
 
+// While drawing an attack/move route across the region map (pointer modes 6..8), trace and
+// highlight the elastic path from the source to the cell under the cursor. Switches to
+// pointer_mode 7 when a route segment lands on a destination tile, or 6 otherwise.
 // FUNCTION: C2 0x30071
-// WIN: 0x004b2362
-// Lines 648–676
-//
-// While drawing an attack/move route across the region map (pointer
-// modes 6..8), trace and highlight the elastic path from the source
-// to the cell under the cursor.  Switches to pointer_mode 7 when a
-// route segment lands on a destination tile, or 6 otherwise.
+// FUNCTION: C2WIN 0x004b2362
 void show_latest_route(void)
 {
     unsigned char terrain;
@@ -1130,15 +768,10 @@ void show_latest_route(void)
     setup_refresh_area(mouse_x - 0x40, mouse_y - 0x40, 9, 9, 2);
 }
 
+// Snapshot the current cursor position and current denarii at the instant the player presses LMB
+// to start a build, then dispatch to the per-tool "elastic preview" helper for road/wall/aqueduct.
 // FUNCTION: C2 0x30173
-// WIN: 0x004b24d7
-// Lines 679–693
-//
-// Snapshot the current cursor position and current denarii at the
-// instant the player presses LMB to start a build, then dispatch to
-// the per-tool "elastic preview" helper for road/wall/aqueduct.  The
-// landscape clears the c0..0xDF flag bits used by the pseudo cursor
-// trail so the next preview starts from a clean slate.
+// FUNCTION: C2WIN 0x004b24d7
 void prebuild_city_item(void)
 {
     act_start_pm_ptr = pm_over_cm_ptr;
@@ -1159,29 +792,10 @@ void prebuild_city_item(void)
     }
 }
 
-// FUNCTION: C2 0x3020C
-// WIN: 0x004b2585
-// Lines 695–1007
-//
-// Per-frame "build the placing_type item" handler.  Called from
-// `action()` when LMB is held and the cursor is over the city map.
-// One huge dispatch on `placing_type`; each branch first restores
-// the city-map snapshot taken by `prebuild_city_item`, then drops
-// the appropriate building footprint via put_xN_area / build_*_from
-// helpers.  Costs are settled at the bottom against `placing_cost`
-// and the per-tile clear cost.
-//
-// Source-shape evidence retained after the byte-exact cleanup:
-//   * PS -d1 marks and both the raw Mac PPC and Windows /Od builds show the
-//     warning guard reading the global directly and passing literal zero.
-//   * The Bath call result and its test are distinct PS statements; the Mac
-//     and Windows builds agree, hence the semantic `has_cover` local.
-//   * PS gives each `building_type` load its own line mark and keeps the value
-//     live through the guarded call; scoped per-arm declarations produce a
-//     different front-end value set, so this is source state rather than a
-//     rover-only carrier.
-// The declaration order is Watcom-load-bearing.  No dead stores, chained
-// assignments, comma identities, or one-use rover compensators remain.
+// Per-frame "build the placing_type item" handler. Called from `action()` when LMB is held and the
+// cursor is over the city map.
+// FUNCTION: C2 0x3020c
+// FUNCTION: C2WIN 0x004b2585
 void build_city_item(void)
 {
     int gfx_b_idx;
@@ -1475,13 +1089,10 @@ after_clear:
     return;
 }
 
-// FUNCTION: C2 0x30EBF
-// WIN: 0x004b3568
-// Lines 1010–1022
-//
-// Region-map twin of `prebuild_city_item`.  Snapshots cursor and
-// denarii, then dispatches to the appropriate elastic-preview helper
-// for the active reg_placing_type.
+// Region-map twin of `prebuild_city_item`. Snapshots cursor and denarii, then dispatches to the
+// appropriate elastic-preview helper for the active reg_placing_type.
+// FUNCTION: C2 0x30ebf
+// FUNCTION: C2WIN 0x004b3568
 void prebuild_region_item(void)
 {
     act_start_pm_ptr = pm_over_cm_ptr;
@@ -1499,17 +1110,10 @@ void prebuild_region_item(void)
     }
 }
 
-// FUNCTION: C2 0x30F3A
-// WIN: 0x004b35f0
-// Lines 1024–1233
-//
-// Region-map twin of `build_city_item`.  Long if-chain on
-// `reg_placing_type` for road/wall/clear and the various industry
-// (farm, mine, quarry, port, …) and fortress placements.  After a
-// successful fortress placement (type 0x22) it calls `create_army`
-// to spawn a 2-cohort fortress garrison.  Costs are accumulated
-// into `total_build_cost` from `region_costs[+0x4]` per particle
-// cleared and `placing_cost` per particle built.
+// Region-map twin of `build_city_item`. Long if-chain on `reg_placing_type` for road/wall/clear
+// and the various industry (farm, mine, quarry, port, …) and fortress placements.
+// FUNCTION: C2 0x30f3a
+// FUNCTION: C2WIN 0x004b35f0
 void build_region_item(void)
 {
 
@@ -1748,13 +1352,11 @@ void build_region_item(void)
     denarii -= total_build_cost;
 }
 
-// FUNCTION: C2 0x31645
-// WIN: 0x004b3fd6
-// Lines 1235–1242
-//
-// Used by the farm-type-selection box: stamp `para1<<4` into the
-// upper nibble of the cell's `(*(struct region_cell *)((unsigned char *)region_map + (+7))).base_kind` byte at the start of
+// Used by the farm-type-selection box: stamp `para1<<4` into the upper nibble of the cell's
+// `(*(struct region_cell *)((unsigned char *)region_map + (+7))).base_kind` byte at the start of
 // the selected 2x2 farm.
+// FUNCTION: C2 0x31645
+// FUNCTION: C2WIN 0x004b3fd6
 void act_select_farm(void)
 {
     int off = get_region_2x2_start(pm_over_cm_ptr);
@@ -1763,18 +1365,11 @@ void act_select_farm(void)
     (*(struct region_cell *)((unsigned char *)region_map + (off))).occupant |= (unsigned char)para1;
 }
 
-// FUNCTION: C2 0x3166C
-// WIN: 0x004b402d
-// Lines 1244–1251
-//
-// Given a cm-byte pointer somewhere inside a 2x2 farm/mine/etc., walk
-// back to the byte pointer of its top-left cell.  The 2x2 origin
-// index is stored in the low 2 bits of (*(struct region_cell *)((unsigned char *)region_map + (+7))).base_kind of the cell.
-//
-// Special case: if the cell is region terrain 0xd4 ("port quay"),
-// the offsets are zero so the call is a no-op.
-//
-// Returns the new cm-byte pointer (offset from region_map base).
+// Given a cm-byte pointer somewhere inside a 2x2 farm/mine/etc., walk back to the byte pointer of
+// its top-left cell. The 2x2 origin index is stored in the low 2 bits of (*(struct region_cell
+// *)((unsigned char *)region_map + (+7))).base_kind of the cell.
+// FUNCTION: C2 0x3166c
+// FUNCTION: C2WIN 0x004b402d
 int get_region_2x2_start(int cm_ptr)
 {
     int row;
@@ -1797,20 +1392,9 @@ int get_region_2x2_start(int cm_ptr)
     return cm_ptr;
 }
 
-// FUNCTION: C2 0x316CD
-// WIN: 0x004b40c5
-// Lines 1256–1298
-//
-// Determine which icon (if any) is under the mouse pointer.  Sets
-// `last_icon_over` to:
-//   0      — none
-//   1      — mouse is in the top status bar
-//   2      — mouse is over the command/menu strip
-//   4..27  — index into city or region icon header
-//
-// City icons are int_city_header[i*16 .. i*16 + 5] (4 shorts):
-//   +8  x, +0xA y, +0x10 width, +0x12 height
-// Region icons use int_region_header with the same layout.
+// Determine which icon (if any) is under the mouse pointer.
+// FUNCTION: C2 0x316cd
+// FUNCTION: C2WIN 0x004b40c5
 void get_icon_over(void)
 {
     int bot;
@@ -1877,13 +1461,10 @@ void get_icon_over(void)
     }
 }
 
+// "Is the cursor over icon `idx`?". Returns 1 if the mouse is in the icon's box (or if `idx==2`,
+// which always returns 1 — the command-strip area is special-cased by the caller).
 // FUNCTION: C2 0x31850
-// WIN: 0x004b437f
-// Lines 1300–1323
-//
-// "Is the cursor over icon `idx`?".  Returns 1 if the mouse is in
-// the icon's box (or if `idx==2`, which always returns 1 — the
-// command-strip area is special-cased by the caller).  Otherwise 0.
+// FUNCTION: C2WIN 0x004b437f
 int is_icon_over(int idx)
 {
     short x;
@@ -1917,15 +1498,11 @@ int is_icon_over(int idx)
     return 0;
 }
 
-// FUNCTION: C2 0x318ED
-// WIN: 0x004b44b1
-// Lines 1325–1342
-//
-// On a left-click while the cursor is on the overview-map strip,
-// either pop the legend / select-map dialogue or — if the click is
-// on the map proper — re-centre the city view on that point.
-// Returns 1 if the click was consumed (and the view jumped), 0
-// otherwise.
+// On a left-click while the cursor is on the overview-map strip, either pop the legend /
+// select-map dialogue or — if the click is on the map proper — re-centre the city view on that
+// point.
+// FUNCTION: C2 0x318ed
+// FUNCTION: C2WIN 0x004b44b1
 int use_city_overmap_to_move(void)
 {
     int dx;
@@ -1957,13 +1534,10 @@ int use_city_overmap_to_move(void)
     return 0;
 }
 
+// Region-map twin of `use_city_overmap_to_move`: convert mouse coordinates over the command strip
+// into a region cell pointer and call `jump_to_regionmap_ptr`. Returns 1 on consumed click.
 // FUNCTION: C2 0x31997
-// WIN: 0x004b459d
-// Lines 1344–1355
-//
-// Region-map twin of `use_city_overmap_to_move`: convert mouse
-// coordinates over the command strip into a region cell pointer
-// and call `jump_to_regionmap_ptr`.  Returns 1 on consumed click.
+// FUNCTION: C2WIN 0x004b459d
 int use_region_overmap_to_move(void)
 {
     int dx;
@@ -1986,17 +1560,11 @@ int use_region_overmap_to_move(void)
     return 0;
 }
 
-// FUNCTION: C2 0x31A0A
-// WIN: 0x004b463e
-// Lines 1357–1384
-//
-// Re-centre the city view on the cell whose pseudo_map[] entry
-// matches `target_ptr`.  If we're currently on the region map
-// (map_mode==1), first restore the saved city rotation/zoom and
-// switch back to the city map (map_mode=0).  Sets pm_x/pm_y to the
-// 161x81 grid square that contains the target cell, kicks off a
-// rescroll, and returns 1 if a switch happened, 2 on a normal jump,
-// or 0 if no matching cell was found.
+// Re-centre the city view on the cell whose pseudo_map[] entry matches `target_ptr`. If we're
+// currently on the region map (map_mode==1), first restore the saved city rotation/zoom and switch
+// back to the city map (map_mode=0).
+// FUNCTION: C2 0x31a0a
+// FUNCTION: C2WIN 0x004b463e
 int jump_to_citymap_ptr(int target_ptr)
 {
     int y;
@@ -2044,14 +1612,10 @@ found:
     return 2;
 }
 
-// FUNCTION: C2 0x31B1B
-// WIN: 0x004b47ba
-// Lines 1386–1406
-//
-// Region-map twin of `jump_to_citymap_ptr`.  If we're on the city
-// map, save city rotation/zoom and switch to the region view; then
-// linear-search pseudo_map for `target_ptr` and jump to it.
-// Returns 1 on switch, 2 on plain jump, 0 if not found.
+// Region-map twin of `jump_to_citymap_ptr`. If we're on the city map, save city rotation/zoom and
+// switch to the region view; then linear-search pseudo_map for `target_ptr` and jump to it.
+// FUNCTION: C2 0x31b1b
+// FUNCTION: C2WIN 0x004b47ba
 int jump_to_regionmap_ptr(int target_ptr)
 {
     int x;
@@ -2098,15 +1662,9 @@ found:
     return 2;
 }
 
-// FUNCTION: C2 0x31BD9
-// WIN: 0x004b4937
-// Lines 1415–1428
-//
-// Dispatch a click on icon `last_icon_over` (in city mode).  Each
-// non-trivial icon (>=4) calls into `rome2_buttons[icon_idx]`, a
-// table of function pointers (offset 0x3A in rome2_buttons array,
-// i.e. starts at icon 4).  Resets the strip toggle to 0x1f and
-// remembers the icon used (except for icons 0xe..0x11).
+// Dispatches a city-screen command-strip click to the selected icon action.
+// FUNCTION: C2 0x31bd9
+// FUNCTION: C2WIN 0x004b4937
 int perform_city_strip_action(void)
 {
     int zero;
@@ -2132,14 +1690,10 @@ int perform_city_strip_action(void)
     return 1;
 }
 
-// FUNCTION: C2 0x31C3C
-// WIN: 0x004b49d3
-// Lines 1430–1443
-//
-// Region-mode dispatch for icon-strip clicks.  Mirrors
-// `perform_city_strip_action` but indexes into `city_actions+0x50`
-// instead.  (The dispatch table is shared between city and region
-// modes; the +0x50 offset selects the region-mode entry.)
+// Region-mode dispatch for icon-strip clicks. Mirrors `perform_city_strip_action` but indexes into
+// `city_actions+0x50` instead.
+// FUNCTION: C2 0x31c3c
+// FUNCTION: C2WIN 0x004b49d3
 int perform_region_strip_action(void)
 {
     int zero;
@@ -2165,21 +1719,17 @@ int perform_region_strip_action(void)
     return 1;
 }
 
-// FUNCTION: C2 0x31C9E
-//
 // No-op slot used as a placeholder in the icon-action dispatch tables.
+// FUNCTION: C2 0x31c9e
+// FUNCTION: C2WIN 0x004b4cab
 void act_null(void)
 {
 }
 
-// FUNCTION: C2 0x31C9F
-// WIN: 0x004b4a6f
-// Lines 1445–1470
-//
-// Find which battle-screen icon (4..0x14) the cursor is in and, on
-// a left-click, dispatch via `region_actions+0x3C`.  Sets
-// `last_icon_over` to the matched icon and `last_icon_used` if
-// idx>=9.  Returns 1 on consumed click, 0 otherwise.
+// Find which battle-screen icon (4..0x14) the cursor is in and, on a left-click, dispatch via
+// `region_actions+0x3C`. Sets `last_icon_over` to the matched icon and `last_icon_used` if idx>=9.
+// FUNCTION: C2 0x31c9f
+// FUNCTION: C2WIN 0x004b4a6f REORDERED
 int perform_battle_strip_action(void)
 {
     int i;
@@ -2215,14 +1765,11 @@ int perform_battle_strip_action(void)
     return 0;
 }
 
-// FUNCTION: C2 0x31D46
-// WIN: 0x004b4b98
-// Lines 1472–1480
-//
-// Dispatch a click on the floating cohort-control box (patrol /
-// return-home / patrol-stop buttons) shown when an army is being
-// tracked.  Returns 1 if the click was consumed (and the box was
+// Dispatch a click on the floating cohort-control box (patrol / return-home / patrol-stop buttons)
+// shown when an army is being tracked. Returns 1 if the click was consumed (and the box was
 // dismissed), 0 otherwise.
+// FUNCTION: C2 0x31d46
+// FUNCTION: C2WIN 0x004b4b98
 int perform_cohort_box_action(void)
 {
     int idx;
@@ -2261,11 +1808,9 @@ int perform_cohort_box_action(void)
     return 0;
 }
 
-// FUNCTION: C2 0x31E1A
-// WIN: 0x004b4cb6
-// Lines 1488–1494
-//
-// Enter turbo mode (fast-forward).  Disabled on the battle screen.
+// Enter turbo mode (fast-forward). Disabled on the battle screen.
+// FUNCTION: C2 0x31e1a
+// FUNCTION: C2WIN 0x004b4cb6
 void act_init_turbo_mode(void)
 {
     if (map_mode != 2) {
@@ -2276,11 +1821,9 @@ void act_init_turbo_mode(void)
     }
 }
 
-// FUNCTION: C2 0x31E45
-// WIN: 0x004b4cee
-// Lines 1496–1501
-//
 // Leave turbo mode and request a full-screen repaint.
+// FUNCTION: C2 0x31e45
+// FUNCTION: C2WIN 0x004b4cee
 void act_exit_turbo_mode(void)
 {
     turbo_mode = 0;
@@ -2288,14 +1831,10 @@ void act_exit_turbo_mode(void)
     update_map = 1;
 }
 
-// FUNCTION: C2 0x31E5C
-// WIN: 0x004b4d0a
-// Lines 1503–1513
-//
-// "New Game" menu action.  In tutorial / demo mode just shows a
-// warning; otherwise asks the user to confirm and, if accepted,
-// sets `restart_flag` so the main loop tears the game down.
-// In battle mode (map_mode==2) it also sets `battle_state = 10`.
+// "New Game" menu action. In tutorial / demo mode just shows a warning; otherwise asks the user to
+// confirm and, if accepted, sets `restart_flag` so the main loop tears the game down.
+// FUNCTION: C2 0x31e5c
+// FUNCTION: C2WIN 0x004b4d0a
 void act_new_game(void)
 {
     if (tutorial_mode != 0) {
@@ -2316,14 +1855,10 @@ void act_new_game(void)
     }
 }
 
-// FUNCTION: C2 0x31EDD
-// WIN: 0x004b4da7
-// Lines 1514–1522
-//
-// "Load Game" menu action.  In tutorial / demo mode shows a
-// warning; otherwise calls `load_a_game()`.  Afterwards, if we
-// were in battle mode (the captured `map_mode == 2`), advance the
-// battle state machine to 10.
+// "Load Game" menu action. In tutorial / demo mode shows a warning; otherwise calls
+// `load_a_game()`.
+// FUNCTION: C2 0x31edd
+// FUNCTION: C2WIN 0x004b4da7
 void act_load_game(void)
 {
     int saved_map_mode = map_mode;
@@ -2341,13 +1876,9 @@ void act_load_game(void)
     }
 }
 
-// FUNCTION: C2 0x31F38
-// WIN: 0x004b4e1e
-// Lines 1523–1529
-//
-// "Save Game" menu action.  Tutorial/demo: warning only.  Otherwise
-// invoke `save_a_game()` and, if we're in battle mode, refresh the
-// battle screen on return (since the save UI overlapped it).
+// "Save Game" menu action. Tutorial/demo: warning only.
+// FUNCTION: C2 0x31f38
+// FUNCTION: C2WIN 0x004b4e1e
 void act_save_game(void)
 {
     if (tutorial_mode != 0) {
@@ -2364,15 +1895,9 @@ void act_save_game(void)
     }
 }
 
-// FUNCTION: C2 0x31F8F
-// WIN: 0x004b4e8e
-// Lines 1530–1542
-//
-// "Exit Game" menu action.  Tutorial mode: warning.  Otherwise pop
-// the exit-confirmation modal and, if accepted, set `exit_flag` so
-// the main loop unwinds.  Loops on `out1==0` because
-// `show_exit_box` returns 0 while the modal is still active —
-// each iteration calls `exit_game_loop` to pump messages.
+// "Exit Game" menu action. Tutorial mode: warning.
+// FUNCTION: C2 0x31f8f
+// FUNCTION: C2WIN 0x004b4e8e
 void act_exit_game(void)
 {
     if (tutorial_mode != 0) {
@@ -2396,46 +1921,37 @@ void act_exit_game(void)
     update_map = 1;
 }
 
-// FUNCTION: C2 0x3200D
-// WIN: 0x004b4f21
-// Lines 1544–1544
-//
 // Exit-confirmation modal: "yes" — commit the exit.
+// FUNCTION: C2 0x3200d
+// FUNCTION: C2WIN 0x004b4f21
 void act_do_exit(void)
 {
     decision = 1;
     out1     = 1;
 }
 
-// FUNCTION: C2 0x3201F
-// WIN: 0x004b4f3d
-// Lines 1545–1545
-//
 // Exit-confirmation modal: save the game and dismiss.
+// FUNCTION: C2 0x3201f
+// FUNCTION: C2WIN 0x004b4f3d
 void act_exit_and_save(void)
 {
     save_a_game();
     out1 = 1;
 }
 
-// FUNCTION: C2 0x32026
-// WIN: 0x004b4f57
-// Lines 1546–1546
-//
 // Exit-confirmation modal: "no" — cancel the exit.
+// FUNCTION: C2 0x32026
+// FUNCTION: C2WIN 0x004b4f57
 void act_dont_exit(void)
 {
     decision = 0;
     out1     = 1;
 }
 
+// Open the FX-options dialog (mode 0 = tunes), pumping `tune_game_loop` until the modal closes. On
+// exit refresh the whole screen and re-apply tune volume.
 // FUNCTION: C2 0x32030
-// WIN: 0x004b4f73
-// Lines 1548–1556
-//
-// Open the FX-options dialog (mode 0 = tunes), pumping
-// `tune_game_loop` until the modal closes.  On exit refresh the
-// whole screen and re-apply tune volume.
+// FUNCTION: C2WIN 0x004b4f73
 void act_toggle_tunes(void)
 {
     int t = tutorial_mode;
@@ -2452,13 +1968,10 @@ void act_toggle_tunes(void)
     set_sequences_volume();
 }
 
-// FUNCTION: C2 0x3207D
-// WIN: 0x004b4fd1
-// Lines 1557–1567
-//
-// Toggle the "tunes enabled" bit (c2inf[+0xD] xor 1) and either
-// stop the current tune (if now disabled) or start one of the
-// two scene tunes (battle vs. peaceful), based on map_mode.
+// Toggle the "tunes enabled" bit (c2inf[+0xD] xor 1) and either stop the current tune (if now
+// disabled) or start one of the two scene tunes (battle vs. peaceful), based on map_mode.
+// FUNCTION: C2 0x3207d
+// FUNCTION: C2WIN 0x004b4fd1
 void act_tog_tunes(void)
 {
     c2inf.tunes_on ^= 1;
@@ -2474,15 +1987,10 @@ void act_tog_tunes(void)
     }
 }
 
-// FUNCTION: C2 0x320C2
-// WIN: 0x004b5040
-// Lines 1568–1572
-//
-// Adjust the music-volume slider in the FX dialog.  Hands the
-// dialog back to `adjust()` (kind=3, target=&c2inf.tunes_level, step 1,
-// max 0x64, min 0, x=0x70, y=0x90, no callback).  Refreshes
-// volume and falls through to the screen-refresh tail-call shared
-// with `act_sound_fx_level`.
+// Adjust the music-volume slider in the FX dialog. Hands the dialog back to `adjust()` (kind=3,
+// target=&c2inf.tunes_level, step 1, max 0x64, min 0, x=0x70, y=0x90, no callback).
+// FUNCTION: C2 0x320c2
+// FUNCTION: C2WIN 0x004b5040
 void act_tunes_level(void)
 {
     adjust(3, &c2inf.tunes_level, 1, 0x64, 0, 0x70, 0x90, 0);
@@ -2491,12 +1999,10 @@ void act_tunes_level(void)
     show_fx_box(0);
 }
 
-// FUNCTION: C2 0x320FD
-// WIN: 0x004b5086
-// Lines 1575–1583
-//
-// FX-options dialog (mode 1 = sound effects), looping until
-// modal closes.  Refresh + reapply sample volume on exit.
+// FX-options dialog (mode 1 = sound effects), looping until modal closes. Refresh + reapply sample
+// volume on exit.
+// FUNCTION: C2 0x320fd
+// FUNCTION: C2WIN 0x004b5086
 void act_toggle_sound_fx(void)
 {
     int t = tutorial_mode;
@@ -2513,11 +2019,9 @@ void act_toggle_sound_fx(void)
     set_samples_volume();
 }
 
-// FUNCTION: C2 0x3214D
-// WIN: 0x004b50e4
-// Lines 1584–1587
-//
 // Toggle the SFX-enabled flag and re-render the FX dialog.
+// FUNCTION: C2 0x3214d
+// FUNCTION: C2WIN 0x004b50e4
 void act_tog_samples(void)
 {
     c2inf.samples_on ^= 1;
@@ -2525,11 +2029,9 @@ void act_tog_samples(void)
     if (c2inf.samples_on == 0) stop_samples();
 }
 
-// FUNCTION: C2 0x3216C
-// WIN: 0x004b511b
-// Lines 1589–1592
-//
 // Toggle the ambient-sound flag and re-render the FX dialog.
+// FUNCTION: C2 0x3216c
+// FUNCTION: C2WIN 0x004b511b
 void act_tog_ambients(void)
 {
     c2inf.ambients_on ^= 1;
@@ -2537,11 +2039,9 @@ void act_tog_ambients(void)
     if (c2inf.ambients_on == 0) stop_all_sounds();
 }
 
-// FUNCTION: C2 0x3218B
-// WIN: 0x004b5152
-// Lines 1594–1597
-//
 // Toggle the speech-enabled flag and re-render the FX dialog.
+// FUNCTION: C2 0x3218b
+// FUNCTION: C2WIN 0x004b5152
 void act_tog_speech(void)
 {
     c2inf.speech_on ^= 1;
@@ -2549,13 +2049,10 @@ void act_tog_speech(void)
     if (c2inf.speech_on == 0) stop_db();
 }
 
-// FUNCTION: C2 0x321AA
-// WIN: 0x004b5189
-// Lines 1599–1603
-//
-// Adjust the SFX volume slider; same template as
-// `act_tunes_level`, refreshes sample volume and re-shows the FX
-// box (mode 1) so the new value is rendered.
+// Adjust the SFX volume slider; same template as `act_tunes_level`, refreshes sample volume and
+// re-shows the FX box (mode 1) so the new value is rendered.
+// FUNCTION: C2 0x321aa
+// FUNCTION: C2WIN 0x004b5189
 void act_samples_level(void)
 {
     adjust(4, &c2inf.samples_level, 1, 0x64, 0, 0x70, 0x90, 0);
@@ -2564,12 +2061,10 @@ void act_samples_level(void)
     show_fx_box(1);
 }
 
-// FUNCTION: C2 0x321EC
-// WIN: 0x004b51cf
-// Lines 1606–1608
-//
-// Adjust the "number of simultaneous samples" slider in the FX
-// dialog (entry 5: c2inf[+0x3C], step 1, 1..4, x=0x70, y=0x90, flag 2).
+// Adjust the "number of simultaneous samples" slider in the FX dialog (entry 5: c2inf[+0x3C], step
+// 1, 1..4, x=0x70, y=0x90, flag 2).
+// FUNCTION: C2 0x321ec
+// FUNCTION: C2WIN 0x004b51cf
 void act_nof_samples(void)
 {
     adjust(5, &c2inf.max_samples, 1, 4, 1, 0x70, 0x90, 2);
@@ -2577,13 +2072,9 @@ void act_nof_samples(void)
     show_fx_box(1);
 }
 
+// Toggle-animations dialog (mode 2 = anims). Tutorial / demo blocked.
 // FUNCTION: C2 0x32215
-// WIN: 0x004b5210
-// Lines 1612–1620
-//
-// Toggle-animations dialog (mode 2 = anims).  Tutorial / demo
-// blocked.  Loops until modal closes (out1 != 0), pumping
-// `tog_anims_game_loop`.  Refresh whole screen on exit.
+// FUNCTION: C2WIN 0x004b5210
 void act_toggle_anims(void)
 {
     int t = tutorial_mode;
@@ -2603,24 +2094,18 @@ void act_toggle_anims(void)
     setup_whole_screen_refresh();
 }
 
-// FUNCTION: C2 0x3227A
-// WIN: 0x004b528c
-// Lines 1621–1621
-//
 // Toggle the animations flag and re-render the FX dialog (anims tab).
+// FUNCTION: C2 0x3227a
+// FUNCTION: C2WIN 0x004b528c
 void act_tog_anims(void)
 {
     c2inf.anims_on ^= 1;
     show_fx_box(2);
 }
 
-// FUNCTION: C2 0x3228B
-// WIN: 0x004b52af
-// Lines 1623–1630
-//
-// FX-options dialog (mode 3 = end-of-year summary toggle).
-// Tutorial blocked, no demo branch.  Loops on out1, pumping
-// `tog_yearend_game_loop`, and refreshes on exit.
+// FX-options dialog (mode 3 = end-of-year summary toggle). Tutorial blocked, no demo branch.
+// FUNCTION: C2 0x3228b
+// FUNCTION: C2WIN 0x004b52af
 void act_toggle_year_end(void)
 {
     int t = tutorial_mode;
@@ -2636,24 +2121,19 @@ void act_toggle_year_end(void)
     setup_whole_screen_refresh();
 }
 
-// FUNCTION: C2 0x322D6
-// WIN: 0x004b5308
-// Lines 1631–1631
-//
 // Toggle the end-of-year-summary flag and re-render the FX dialog.
+// FUNCTION: C2 0x322d6
+// FUNCTION: C2WIN 0x004b5308
 void act_tog_yearend(void)
 {
     c2inf.yearend_on ^= 1;
     show_fx_box(3);
 }
 
-// FUNCTION: C2 0x322E7
-// WIN: 0x004b532b
-// Lines 1632–1637
-//
-// Toggle the "auto-save on year-end" bit (c2inf[+0x3B]) and
-// re-render the year-end FX dialog (mode 3).  Tutorial / demo
-// blocked.
+// Toggle the "auto-save on year-end" bit (c2inf[+0x3B]) and re-render the year-end FX dialog (mode
+// 3). Tutorial / demo blocked.
+// FUNCTION: C2 0x322e7
+// FUNCTION: C2WIN 0x004b532b
 void act_tog_autosave(void)
 {
     if (tutorial_mode != 0) {
@@ -2668,13 +2148,10 @@ void act_tog_autosave(void)
     show_fx_box(3);
 }
 
+// Adjust the game-speed slider in the FX dialog: kind 1, target=&c2inf[+4], step 0xa, max 0x64,
+// min 0, (x,y)=(0xa0,0xa0), flag 1.
 // FUNCTION: C2 0x32337
-// WIN: 0x004b5394
-// Lines 1639–1643
-//
-// Adjust the game-speed slider in the FX dialog: kind 1,
-// target=&c2inf[+4], step 0xa, max 0x64, min 0, (x,y)=(0xa0,0xa0),
-// flag 1.
+// FUNCTION: C2WIN 0x004b5394
 void act_game_speed(void)
 {
     if (tutorial_mode != 0) {
@@ -2684,12 +2161,10 @@ void act_game_speed(void)
     adjust(1, &c2inf.game_speed, 0xa, 0x64, 0, 0xa0, 0xa0, 1);
 }
 
+// Adjust the scroll-speed slider: kind 2, target=&c2inf[+8], step 0xa, max 0x64, min 0,
+// (x,y)=(0xa0,0xa0), flag 1.
 // FUNCTION: C2 0x32386
-// WIN: 0x004b53e7
-// Lines 1644–1648
-//
-// Adjust the scroll-speed slider: kind 2, target=&c2inf[+8],
-// step 0xa, max 0x64, min 0, (x,y)=(0xa0,0xa0), flag 1.
+// FUNCTION: C2WIN 0x004b53e7
 void act_scroll_speed(void)
 {
     if (tutorial_mode != 0) {
@@ -2699,55 +2174,44 @@ void act_scroll_speed(void)
     adjust(2, &c2inf.scroll_speed, 0xa, 0x64, 0, 0xa0, 0xa0, 1);
 }
 
-// FUNCTION: C2 0x323D5
-// WIN: 0x004b543a
-// Lines 1650–1654
-//
-// Launch help topic 2 (tips).  Blocked in tutorial mode.
+// Launch help topic 2 (tips). Blocked in tutorial mode.
+// FUNCTION: C2 0x323d5
+// FUNCTION: C2WIN 0x004b543a
 void act_help_tips(void)
 {
     if (tutorial_mode) click_warning(2, 0x50, 0xA0);
     else               helping(2);
 }
 
-// FUNCTION: C2 0x32404
-// WIN: 0x004b5472  (unverified)
-// Lines 1655–1655
-//
 // In-game F1/help-button: pop the main help index modal.
+// FUNCTION: C2 0x32404
+// FUNCTION: C2WIN 0x004b5472
 void act_help_game(void)
 {
     helping(1);
 }
 
-// FUNCTION: C2 0x3243D
-// WIN: 0x004b5487
-// Lines 1659–1663
-//
-// Launch help topic 3 (history).  Blocked in tutorial mode.
+// Launch help topic 3 (history). Blocked in tutorial mode.
+// FUNCTION: C2 0x3243d
+// FUNCTION: C2WIN 0x004b5487
 void act_help_history(void)
 {
     if (tutorial_mode) click_warning(2, 0x50, 0xA0);
     else               helping(3);
 }
 
-// FUNCTION: C2 0x3246C
-// WIN: 0x004b54bf
-// Lines 1665–1665
-//
 // Launch help topic 0x5C (icon legend).
+// FUNCTION: C2 0x3246c
+// FUNCTION: C2WIN 0x004b54bf
 void act_help_icons(void)
 {
     helping(0x5c);
 }
 
+// Show the "About" / credits modal. Loops `just_idle_game_loop` while the user is reading;
+// right-click or any `exit_screen` hit closes the modal.
 // FUNCTION: C2 0x32473
-// WIN: 0x004b54d4
-// Lines 1670–1697
-//
-// Show the "About" / credits modal.  Loops `just_idle_game_loop`
-// while the user is reading; right-click or any `exit_screen`
-// hit closes the modal.  Cleans up mouse + refreshes screen.
+// FUNCTION: C2WIN 0x004b54d4
 void act_about(void)
 {
     show_about_box();
@@ -2765,12 +2229,10 @@ void act_about(void)
     setup_whole_screen_refresh();
 }
 
-// FUNCTION: C2 0x32409
-//
-// Pop the in-game help/topics modal for `msg_id`, then refresh
-// whichever main screen we came from (city / region / battle) so
-// the help overlay is wiped.  Saves and restores `pointer_mode`
-// across the call.
+// Pop the in-game help/topics modal for `msg_id`, then refresh whichever main screen we came from
+// (city / region / battle) so the help overlay is wiped. Saves and restores `pointer_mode` across
+// the call.
+// FUNCTION: C2 0x32409 REORDERED
 void helping(int msg_id)
 {
     int saved_mode = pointer_mode;
@@ -2787,137 +2249,111 @@ void helping(int msg_id)
     pointer_mode = saved_mode;
 }
 
-// FUNCTION: C2 0x324F1
-// WIN: 0x004b55f2
-// Lines 1699–1699
-//
 // Help modal: rewind history and signal the modal to redisplay (out2 = 10).
+// FUNCTION: C2 0x324f1
+// FUNCTION: C2WIN 0x004b55f2
 void act_rewind_help(void)
 {
     rewind_help_history();
     out2 = 10;
 }
 
-// FUNCTION: C2 0x32501
-// Lines 1700–1703
-//
 // Help modal: pause speech playback; ignored while the message queue is busy.
+// FUNCTION: C2 0x32501
 void act_pause_help(void)
 {
     if (pause_db() != 0) return;
     help_buttons[1].state = 0;   /* un-toggle the help play/pause button */
 }
 
-// FUNCTION: C2 0x32513
-// WIN: 0x004b562b
-// Lines 1704–1704
-//
 // Help modal: restart from the beginning of the help history (out2 = 10).
+// FUNCTION: C2 0x32513
+// FUNCTION: C2WIN 0x004b562b
 void act_start_help(void)
 {
     init_help_history();
     out2 = 10;
 }
 
-// FUNCTION: C2 0x3251A
-// WIN: 0x004b5645
-// Lines 1705–1705
-//
 // Help modal: exit (set out3 = 1, out2 = 10).
+// FUNCTION: C2 0x3251a
+// FUNCTION: C2WIN 0x004b5645
 void act_exit_help(void)
 {
     out3 = 1;
     out2 = 10;
 }
 
-// FUNCTION: C2 0x32526
-// WIN: 0x004b5664
-// Lines 1707–1711
-//
 // Generic "yes" button: decision = 1, out1 = 100 — dismiss the modal.
+// FUNCTION: C2 0x32526
+// FUNCTION: C2WIN 0x004b5664
 void act_yes(void)
 {
     decision = 1;
     out1     = 100;
 }
 
-// FUNCTION: C2 0x32538
-// WIN: 0x004b5680
-// Lines 1713–1713
-//
 // Generic "no" button: decision = 0, out1 = 100 — dismiss the modal.
+// FUNCTION: C2 0x32538
+// FUNCTION: C2WIN 0x004b5680
 void act_no(void)
 {
     decision = 0;
     out1     = 100;
 }
 
-// FUNCTION: C2 0x32542
-// WIN: 0x004b569c
-// Lines 1719–1722
-//
 // Toggle the global pause flag.
+// FUNCTION: C2 0x32542
+// FUNCTION: C2WIN 0x004b569c
 void act_pause(void)
 {
     c2inf.paused ^= 1;
 }
 
-// FUNCTION: C2 0x3254A
-// WIN: 0x004b56b5
-// Lines 1724–1727
-//
 // Generic "out" button: set out1 = 10 to break a modal loop.
+// FUNCTION: C2 0x3254a
+// FUNCTION: C2WIN 0x004b56b5
 void act_out(void)
 {
     out1 = 0xA;
 }
 
-// FUNCTION: C2 0x32555
-// WIN: 0x004b56ca
-// Lines 1729–1729
-//
 // Shared adjust-slider button: bump *adjust_var up by adjust_step (clamped at adjust_max).
+// FUNCTION: C2 0x32555
+// FUNCTION: C2WIN 0x004b56ca
 void act_adjust_up(void)
 {
     if (*adjust_var < adjust_max) *adjust_var += adjust_step;
 }
 
-// FUNCTION: C2 0x3256F
-// WIN: 0x004b56f5
-// Lines 1730–1730
-//
 // Shared adjust-slider button: drop *adjust_var down by adjust_step (clamped at adjust_min).
+// FUNCTION: C2 0x3256f
+// FUNCTION: C2WIN 0x004b56f5
 void act_adjust_down(void)
 {
     if (*adjust_var > adjust_min) *adjust_var -= adjust_step;
 }
 
-// FUNCTION: C2 0x32589
-// WIN: 0x004b5725
-// Lines 1734–1734
-//
 // Debug/test placement (placing_type 5) — cheat-only.
+// FUNCTION: C2 0x32589
+// FUNCTION: C2WIN 0x004b5725
 void act_test(void)
 {
     placing_type  = 5;
     placing_flags = 0;
 }
 
-// FUNCTION: C2 0x3259E
-// WIN: 0x004b5744  (unverified)
-// Lines 1736–1736
-//
 // Play the "exclaim" beep.
+// FUNCTION: C2 0x3259e
+// FUNCTION: C2WIN 0x004b5744
 void act_exclaim(void)
 {
     high_beep();
 }
 
-// FUNCTION: C2 0x325A3
-// WIN: 0x004b5754
-// Lines 1741–1747
-//
 // Undo the last city-map placement and clear the placing context.
+// FUNCTION: C2 0x325a3
+// FUNCTION: C2WIN 0x004b5754
 void act_undo_cm(void)
 {
     if (!sb_cm_undo_flushed) {
@@ -2929,11 +2365,9 @@ void act_undo_cm(void)
     }
 }
 
-// FUNCTION: C2 0x325D2
-// WIN: 0x004b5796
-// Lines 1751–1760
-//
 // Pop the houses selection list (or open act_house1 directly when the housing cheat is off).
+// FUNCTION: C2 0x325d2
+// FUNCTION: C2WIN 0x004b5796
 void act_houses(void)
 {
     flag_mode = 0;
@@ -2945,11 +2379,9 @@ void act_houses(void)
     }
 }
 
-// FUNCTION: C2 0x3261D
-// WIN: 0x004b57f3
-// Lines 1761–1767
-//
 // Pop the "water structures" selection list (wells / fountains / etc.).
+// FUNCTION: C2 0x3261d
+// FUNCTION: C2WIN 0x004b57f3
 void act_water(void)
 {
     flag_mode = 0;
@@ -2959,11 +2391,9 @@ void act_water(void)
     selected_icon_no = selection_is;
 }
 
-// FUNCTION: C2 0x3266F
-// WIN: 0x004b5848
-// Lines 1768–1773
-//
 // Pop the security-buildings selection list (prefecture etc.).
+// FUNCTION: C2 0x3266f
+// FUNCTION: C2WIN 0x004b5848
 void act_security(void)
 {
     flag_mode = 0;
@@ -2973,11 +2403,9 @@ void act_security(void)
     selected_icon_no = selection_is;
 }
 
-// FUNCTION: C2 0x326B3
-// WIN: 0x004b589d
-// Lines 1775–1780
-//
 // Pop the health-buildings selection list (hospital / baths).
+// FUNCTION: C2 0x326b3
+// FUNCTION: C2WIN 0x004b589d
 void act_health(void)
 {
     flag_mode = 0;
@@ -2987,11 +2415,9 @@ void act_health(void)
     selected_icon_no = selection_is;
 }
 
-// FUNCTION: C2 0x326FA
-// WIN: 0x004b58f2
-// Lines 1782–1787
-//
 // Pop the gardens/plaza selection list.
+// FUNCTION: C2 0x326fa
+// FUNCTION: C2WIN 0x004b58f2
 void act_gardens_plaza(void)
 {
     flag_mode = 0;
@@ -3001,74 +2427,54 @@ void act_gardens_plaza(void)
     selected_icon_no = selection_is;
 }
 
-// FUNCTION: C2 0x3273E
-// WIN: 0x004b5947
-// Lines 1790–1790
-//
 // Enter city-clear placement mode (cost from city_costs[1]).
+// FUNCTION: C2 0x3273e
+// FUNCTION: C2WIN 0x004b5947
 void act_clear(void) { placing_type = 1; placing_flags = 0; placing_cost = city_costs[1]; pm_build_shape = 0; flag_mode = 0; }
 
-// FUNCTION: C2 0x32769
-// WIN: 0x004b5984
-// Lines 1791–1791
-//
 // Enter city-road placement mode.
+// FUNCTION: C2 0x32769
+// FUNCTION: C2WIN 0x004b5984
 void act_road(void)  { placing_type = 2; placing_flags = 0x20; placing_cost = city_costs[2]; pm_build_shape = 0; flag_mode = 0; }
 
-// FUNCTION: C2 0x32798
-// WIN: 0x004b59c1
-// Lines 1792–1792
-//
 // Enter plaza placement mode.
+// FUNCTION: C2 0x32798
+// FUNCTION: C2WIN 0x004b59c1
 void act_plaza(void)   { placing_type = 7; placing_flags = 0;    placing_cost = city_costs[8];  pm_build_shape = 0; }
 
-// FUNCTION: C2 0x327BD
-// WIN: 0x004b59f4
-// Lines 1793–1793
-//
 // Enter gardens placement mode.
+// FUNCTION: C2 0x327bd
+// FUNCTION: C2WIN 0x004b59f4
 void act_gardens(void) { placing_type = 6; placing_flags = 0;    placing_cost = city_costs[7];  pm_build_shape = 0; }
 
-// FUNCTION: C2 0x327D7
-// WIN: 0x004b5a27
-// Lines 1794–1794
-//
 // Enter tier-1 house placement mode.
+// FUNCTION: C2 0x327d7
+// FUNCTION: C2WIN 0x004b5a27
 void act_house1(void) { placing_type = 0x82; placing_flags = 1; placing_cost = city_costs[30]; pm_build_shape = 0; }
 
-// FUNCTION: C2 0x32800
-// WIN: 0x004b5a5a
-// Lines 1795–1795
-//
 // Enter tier-2 house placement mode.
+// FUNCTION: C2 0x32800
+// FUNCTION: C2WIN 0x004b5a5a
 void act_house2(void) { placing_type = 0x88; placing_flags = 1; placing_cost = city_costs[36]; pm_build_shape = 0; }
 
-// FUNCTION: C2 0x3281C
-// WIN: 0x004b5a8d
-// Lines 1796–1796
-//
 // Enter tier-3 house placement mode.
+// FUNCTION: C2 0x3281c
+// FUNCTION: C2WIN 0x004b5a8d
 void act_house3(void) { placing_type = 0x8C; placing_flags = 1; placing_cost = city_costs[40]; pm_build_shape = 0; }
 
-// FUNCTION: C2 0x32838
-// WIN: 0x004b5ac0
-// Lines 1797–1797
-//
 // Enter tier-4 house placement mode.
+// FUNCTION: C2 0x32838
+// FUNCTION: C2WIN 0x004b5ac0
 void act_house4(void) { placing_type = 0x96; placing_flags = 1; placing_cost = city_costs[50]; pm_build_shape = 0; }
 
-// FUNCTION: C2 0x32854
-// WIN: 0x004b5af3
-// Lines 1798–1798
-//
 // Enter tier-5 house placement mode.
+// FUNCTION: C2 0x32854
+// FUNCTION: C2WIN 0x004b5af3
 void act_house5(void) { placing_type = 0xA1; placing_flags = 1; placing_cost = city_costs[56]; pm_build_shape = 2; }
 
-// FUNCTION: C2 0x3287D
-// WIN: 0x004b5b26
-// Lines 1800–1805
-//
 // Pop the forum-tier selection list (small/medium/large).
+// FUNCTION: C2 0x3287d
+// FUNCTION: C2WIN 0x004b5b26
 void act_forums(void)
 {
     flag_mode = 0;
@@ -3078,88 +2484,64 @@ void act_forums(void)
     selected_icon_no = selection_is;
 }
 
-// FUNCTION: C2 0x328C4
-// WIN: 0x004b5b7b
-// Lines 1808–1808
-//
 // Forum-selection: pick the small forum (pm_build_shape 1).
+// FUNCTION: C2 0x328c4
+// FUNCTION: C2WIN 0x004b5b7b
 void act_select_small_forum(void)  { placing_type = 0xAE; placing_flags = 1; placing_cost = city_costs[70 + para1]; pm_build_shape = 1; }
 
-// FUNCTION: C2 0x328EB
-// WIN: 0x004b5bb5
-// Lines 1809–1809
-//
 // Forum-selection: pick the medium forum (pm_build_shape 2).
+// FUNCTION: C2 0x328eb
+// FUNCTION: C2WIN 0x004b5bb5
 void act_select_medium_forum(void) { placing_type = 0xB2; placing_flags = 1; placing_cost = city_costs[70 + para1]; pm_build_shape = 2; }
 
-// FUNCTION: C2 0x32910
-// WIN: 0x004b5bef
-// Lines 1810–1810
-//
 // Forum-selection: pick the large forum (pm_build_shape 3).
+// FUNCTION: C2 0x32910
+// FUNCTION: C2WIN 0x004b5bef
 void act_select_large_forum(void)  { placing_type = 0xB6; placing_flags = 1; placing_cost = city_costs[70 + para1]; pm_build_shape = 3; }
 
-// FUNCTION: C2 0x32940
-// WIN: 0x004b5c29
-// Lines 1812–1812
-//
 // Enter watch-tower placement mode.
+// FUNCTION: C2 0x32940
+// FUNCTION: C2WIN 0x004b5c29
 void act_tower(void)      { placing_type = 0xBF; placing_flags = 4;    placing_cost = city_costs[5];  pm_build_shape = 0; }
 
-// FUNCTION: C2 0x3295F
-// WIN: 0x004b5c5c
-// Lines 1813–1813
-//
 // Enter city-wall placement mode.
+// FUNCTION: C2 0x3295f
+// FUNCTION: C2WIN 0x004b5c5c
 void act_wall(void)       { placing_type = 3;    placing_flags = 2;    placing_cost = city_costs[3];  pm_build_shape = 0; }
 
-// FUNCTION: C2 0x3297E
-// WIN: 0x004b5c8f
-// Lines 1814–1814
-//
 // Enter barracks placement mode.
+// FUNCTION: C2 0x3297e
+// FUNCTION: C2WIN 0x004b5c8f
 void act_barracks(void) { placing_type = 0xD; placing_flags = 1; placing_cost = city_costs[13]; pm_build_shape = 2; }
 
-// FUNCTION: C2 0x3299C
-// WIN: 0x004b5cc2
-// Lines 1815–1815
-//
 // Enter prefecture placement mode.
+// FUNCTION: C2 0x3299c
+// FUNCTION: C2WIN 0x004b5cc2
 void act_prefecture(void) { placing_type = 0xE;  placing_flags = 1;    placing_cost = city_costs[14]; pm_build_shape = 0; }
 
-// FUNCTION: C2 0x329BB
-// WIN: 0x004b5cf5
-// Lines 1816–1816
-//
 // Enter reservoir placement mode.
+// FUNCTION: C2 0x329bb
+// FUNCTION: C2WIN 0x004b5cf5
 void act_resevoir(void)   { placing_type = 0xBE; placing_flags = 0x80; placing_cost = city_costs[6];  pm_build_shape = 0; }
 
-// FUNCTION: C2 0x329DA
-// WIN: 0x004b5d28
-// Lines 1817–1817
-//
 // Enter aqueduct placement mode.
+// FUNCTION: C2 0x329da
+// FUNCTION: C2WIN 0x004b5d28
 void act_aquaduct(void)   { placing_type = 4;    placing_flags = 0x40; placing_cost = city_costs[4];  pm_build_shape = 0; }
 
-// FUNCTION: C2 0x329F9
-// WIN: 0x004b5d5b
-// Lines 1818–1818
-//
 // Enter fountain placement mode.
+// FUNCTION: C2 0x329f9
+// FUNCTION: C2WIN 0x004b5d5b
 void act_fountain(void)   { placing_type = 0xC;  placing_flags = 1;    placing_cost = city_costs[12]; pm_build_shape = 0; }
 
-// FUNCTION: C2 0x32A18
-// WIN: 0x004b5d8e
-// Lines 1819–1819
-//
 // Enter well placement mode.
+// FUNCTION: C2 0x32a18
+// FUNCTION: C2WIN 0x004b5d8e
 void act_well(void)       { placing_type = 8;    placing_flags = 1;    placing_cost = city_costs[9];  pm_build_shape = 0; }
 
-// FUNCTION: C2 0x32A37
-// WIN: 0x004b5dc1
-// Lines 1821–1827
-//
 // Pop the industry selection list.
+// FUNCTION: C2 0x32a37
+// FUNCTION: C2WIN 0x004b5dc1
 void act_industries(void)
 {
     flag_mode = 0;
@@ -3171,11 +2553,9 @@ void act_industries(void)
     }
 }
 
-// FUNCTION: C2 0x32A8E
-// WIN: 0x004b5e23
-// Lines 1828–1828
-//
 // Enter business placement mode using business_build_type from para1.
+// FUNCTION: C2 0x32a8e
+// FUNCTION: C2WIN 0x004b5e23
 void act_business(void)
 {
     business_build_type = para1;
@@ -3185,32 +2565,24 @@ void act_business(void)
     pm_build_shape = 2;
 }
 
-// FUNCTION: C2 0x32AB6
-// WIN: 0x004b5e60
-// Lines 1829–1829
-//
 // Enter market placement mode.
+// FUNCTION: C2 0x32ab6
+// FUNCTION: C2WIN 0x004b5e60
 void act_market(void)   { placing_type = 0xF; placing_flags = 1; placing_cost = city_costs[15]; pm_build_shape = 1; }
 
-// FUNCTION: C2 0x32AD6
-// WIN: 0x004b5e93
-// Lines 1830–1830
-//
 // Enter hospital placement mode.
+// FUNCTION: C2 0x32ad6
+// FUNCTION: C2WIN 0x004b5e93
 void act_hospital(void) { placing_type = 0xB; placing_flags = 1; placing_cost = city_costs[11]; pm_build_shape = 2; }
 
-// FUNCTION: C2 0x32AF4
-// WIN: 0x004b5ec6
-// Lines 1831–1831
-//
 // Enter baths placement mode.
+// FUNCTION: C2 0x32af4
+// FUNCTION: C2WIN 0x004b5ec6
 void act_baths(void)    { placing_type = 0xA; placing_flags = 1; placing_cost = city_costs[10]; pm_build_shape = 1; }
 
-// FUNCTION: C2 0x32B14
-// WIN: 0x004b5ef9
-// Lines 1833–1838
-//
 // Pop the temple-tier selection list.
+// FUNCTION: C2 0x32b14
+// FUNCTION: C2WIN 0x004b5ef9
 void act_temple(void)
 {
     flag_mode = 0;
@@ -3220,32 +2592,24 @@ void act_temple(void)
     selected_icon_no = selection_is;
 }
 
-// FUNCTION: C2 0x32B58
-// WIN: 0x004b5f4e
-// Lines 1840–1840
-//
 // Temple-selection: pick the small temple.
+// FUNCTION: C2 0x32b58
+// FUNCTION: C2WIN 0x004b5f4e
 void act_select_small_temple(void)  { placing_type = 0x14; placing_flags = 1; placing_cost = city_costs[20]; pm_build_shape = 0; }
 
-// FUNCTION: C2 0x32B77
-// WIN: 0x004b5f81
-// Lines 1841–1841
-//
 // Temple-selection: pick the medium temple.
+// FUNCTION: C2 0x32b77
+// FUNCTION: C2WIN 0x004b5f81
 void act_select_medium_temple(void) { placing_type = 0x15; placing_flags = 1; placing_cost = city_costs[21]; pm_build_shape = 1; }
 
-// FUNCTION: C2 0x32B97
-// WIN: 0x004b5fb4
-// Lines 1842–1842
-//
 // Temple-selection: pick the large temple.
+// FUNCTION: C2 0x32b97
+// FUNCTION: C2WIN 0x004b5fb4
 void act_select_large_temple(void)  { placing_type = 0x16; placing_flags = 1; placing_cost = city_costs[22]; pm_build_shape = 2; }
 
-// FUNCTION: C2 0x32BB5
-// WIN: 0x004b5fe7
-// Lines 1844–1849
-//
 // Pop the education-buildings selection list.
+// FUNCTION: C2 0x32bb5
+// FUNCTION: C2WIN 0x004b5fe7
 void act_education(void)
 {
     flag_mode = 0;
@@ -3255,32 +2619,24 @@ void act_education(void)
     selected_icon_no = selection_is;
 }
 
-// FUNCTION: C2 0x32BFC
-// WIN: 0x004b603c
-// Lines 1851–1851
-//
 // Education-selection: pick the grammaticus.
+// FUNCTION: C2 0x32bfc
+// FUNCTION: C2WIN 0x004b603c
 void act_select_grammaticus(void) { placing_type = 0x11; placing_flags = 1; placing_cost = city_costs[17]; pm_build_shape = 1; }
 
-// FUNCTION: C2 0x32C1C
-// WIN: 0x004b606f
-// Lines 1852–1852
-//
 // Education-selection: pick the rhetor school.
+// FUNCTION: C2 0x32c1c
+// FUNCTION: C2WIN 0x004b606f
 void act_select_rhetor(void)      { placing_type = 0x12; placing_flags = 1; placing_cost = city_costs[18]; pm_build_shape = 2; }
 
-// FUNCTION: C2 0x32C3A
-// WIN: 0x004b60a2
-// Lines 1853–1853
-//
 // Education-selection: pick the library.
+// FUNCTION: C2 0x32c3a
+// FUNCTION: C2WIN 0x004b60a2
 void act_select_library(void)     { placing_type = 0x13; placing_flags = 1; placing_cost = city_costs[19]; pm_build_shape = 2; }
 
-// FUNCTION: C2 0x32C58
-// WIN: 0x004b60d5
-// Lines 1855–1860
-//
 // Pop the entertainment-buildings selection list.
+// FUNCTION: C2 0x32c58
+// FUNCTION: C2WIN 0x004b60d5
 void act_entertainment(void)
 {
     flag_mode = 0;
@@ -3290,53 +2646,39 @@ void act_entertainment(void)
     selected_icon_no = selection_is;
 }
 
-// FUNCTION: C2 0x32C9F
-// WIN: 0x004b612a
-// Lines 1862–1862
-//
 // Entertainment-selection: pick the theatre.
+// FUNCTION: C2 0x32c9f
+// FUNCTION: C2WIN 0x004b612a
 void act_select_theatre(void)   { placing_type = 0x17; placing_flags = 1; placing_cost = city_costs[23]; pm_build_shape = 1; }
 
-// FUNCTION: C2 0x32CBF
-// WIN: 0x004b615d
-// Lines 1863–1863
-//
 // Entertainment-selection: pick the odium.
+// FUNCTION: C2 0x32cbf
+// FUNCTION: C2WIN 0x004b615d
 void act_select_odium(void)     { placing_type = 0x18; placing_flags = 1; placing_cost = city_costs[24]; pm_build_shape = 1; }
 
-// FUNCTION: C2 0x32CDF
-// WIN: 0x004b6190
-// Lines 1864–1864
-//
 // Entertainment-selection: pick the arena.
+// FUNCTION: C2 0x32cdf
+// FUNCTION: C2WIN 0x004b6190
 void act_select_arena(void)     { placing_type = 0x19; placing_flags = 1; placing_cost = city_costs[25]; pm_build_shape = 2; }
 
-// FUNCTION: C2 0x32CFD
-// WIN: 0x004b61c3
-// Lines 1865–1865
-//
 // Entertainment-selection: pick the colosseum.
+// FUNCTION: C2 0x32cfd
+// FUNCTION: C2WIN 0x004b61c3
 void act_select_colosseum(void) { placing_type = 0x1A; placing_flags = 1; placing_cost = city_costs[26]; pm_build_shape = 2; }
 
-// FUNCTION: C2 0x32D1B
-// WIN: 0x004b61f6
-// Lines 1866–1866
-//
 // Entertainment-selection: pick the circus.
+// FUNCTION: C2 0x32d1b
+// FUNCTION: C2WIN 0x004b61f6
 void act_select_circus(void)     { placing_type = 0x1B; placing_flags = 1; placing_cost = city_costs[27]; pm_build_shape = 4; }
 
-// FUNCTION: C2 0x32D44
-// WIN: 0x004b6229
-// Lines 1867–1867
-//
 // Entertainment-selection: pick the circus maximus.
+// FUNCTION: C2 0x32d44
+// FUNCTION: C2WIN 0x004b6229
 void act_select_circus_max(void) { placing_type = 0x1C; placing_flags = 1; placing_cost = city_costs[28]; pm_build_shape = 5; }
 
-// FUNCTION: C2 0x32D6D
-// WIN: 0x004b625c
-// Lines 1870–1870
-//
 // Selection modal: cancel — clear the placing context.
+// FUNCTION: C2 0x32d6d
+// FUNCTION: C2WIN 0x004b625c
 void act_select_cancel(void)
 {
     reg_placing_type = 0;
@@ -3345,14 +2687,10 @@ void act_select_cancel(void)
     placing_cost     = 0;
 }
 
-// FUNCTION: C2 0x32D8A
-// WIN: 0x004b628f
-// Lines 1872–1886
-//
-// Pop the overview-map legend panel.  Loads the legend overlay,
-// shows it, then idles in `read_mouse + colour_cycle_delay1` until
-// the user releases the mouse button.  On dismissal restores the
-// landfill/main overlay and refreshes the icon strip area.
+// Pop the overview-map legend panel. Loads the legend overlay, shows it, then idles in `read_mouse
+// + colour_cycle_delay1` until the user releases the mouse button.
+// FUNCTION: C2 0x32d8a
+// FUNCTION: C2WIN 0x004b628f
 void act_show_ov_legend(void)
 {
     get_landfill(1);
@@ -3373,14 +2711,10 @@ void act_show_ov_legend(void)
     setup_whole_screen_refresh();
 }
 
-// FUNCTION: C2 0x32E0E
-// WIN: 0x004b62d1
-// Lines 1888–1894
-//
-// Pop the overview-map "select map type" selection.
-// `get_selection_goods_list(0)` builds the option list, then
-// `control_selection` runs the modal at fixed coordinates.
-// Marks several update flags and reloads the landfill view.
+// Pop the overview-map "select map type" selection. `get_selection_goods_list(0)` builds the
+// option list, then `control_selection` runs the modal at fixed coordinates.
+// FUNCTION: C2 0x32e0e
+// FUNCTION: C2WIN 0x004b62d1
 void act_select_ov_map(void)
 {
     get_selection_goods_list(0);
@@ -3392,18 +2726,15 @@ void act_select_ov_map(void)
     update_landfill = 1;
 }
 
-// FUNCTION: C2 0x32E60
-//
-// Undo last region-map placement (empty placeholder in PS).
+// Empty hook for undoing the last region-map placement.
+// FUNCTION: C2 0x32e60
 void act_undo_rm(void)
 {
 }
 
-// FUNCTION: C2 0x32E61
-// WIN: 0x004b632e
-// Lines 1896–1896
-//
 // Switch the overview map to mode 0 (geography) and trigger a landfill rebuild.
+// FUNCTION: C2 0x32e61
+// FUNCTION: C2WIN 0x004b632e
 void act_ov_geography(void)
 {
     ov_map_mode = 0;
@@ -3411,11 +2742,9 @@ void act_ov_geography(void)
     clear_landfill();
 }
 
-// FUNCTION: C2 0x32E75
-// WIN: 0x004b634c
-// Lines 1897–1897
-//
 // Switch the overview map to mode 1 (land value) and trigger a landfill rebuild.
+// FUNCTION: C2 0x32e75
+// FUNCTION: C2WIN 0x004b634c
 void act_ov_landval(void)
 {
     ov_map_mode = 1;
@@ -3423,25 +2752,19 @@ void act_ov_landval(void)
     clear_landfill();
 }
 
-// FUNCTION: C2 0x32E88
-// WIN: 0x004b636a
-// Lines 1898–1898
-//
 // Switch the overview map to mode 2 (water coverage).
+// FUNCTION: C2 0x32e88
+// FUNCTION: C2WIN 0x004b636a
 void act_ov_water(void)    { ov_map_mode = 2; need_glf = 1; clear_landfill(); }
 
-// FUNCTION: C2 0x32E91
-// WIN: 0x004b6388
-// Lines 1899–1899
-//
 // Switch the overview map to mode 3 (security).
+// FUNCTION: C2 0x32e91
+// FUNCTION: C2WIN 0x004b6388
 void act_ov_security(void) { ov_map_mode = 3; need_glf = 1; clear_landfill(); }
 
-// FUNCTION: C2 0x32E9A
-// WIN: 0x004b63a6
-// Lines 1900–1900
-//
 // Switch the overview map to mode 4 (unrest).
+// FUNCTION: C2 0x32e9a
+// FUNCTION: C2WIN 0x004b63a6
 void act_ov_unrest(void)
 {
     ov_map_mode = 4;
@@ -3449,11 +2772,9 @@ void act_ov_unrest(void)
     clear_landfill();
 }
 
-// FUNCTION: C2 0x32EA3
-// WIN: 0x004b63c4
-// Lines 1901–1901
-//
 // Switch the overview map to mode 5 (administration).
+// FUNCTION: C2 0x32ea3
+// FUNCTION: C2WIN 0x004b63c4
 void act_ov_admin(void)
 {
     ov_map_mode = 5;
@@ -3461,11 +2782,9 @@ void act_ov_admin(void)
     clear_landfill();
 }
 
-// FUNCTION: C2 0x32EAC
-// WIN: 0x004b63e2
-// Lines 1902–1902
-//
 // Switch the overview map to mode 6 (entertainment).
+// FUNCTION: C2 0x32eac
+// FUNCTION: C2WIN 0x004b63e2
 void act_ov_entertainment(void)
 {
     ov_map_mode = 6;
@@ -3473,11 +2792,9 @@ void act_ov_entertainment(void)
     clear_landfill();
 }
 
-// FUNCTION: C2 0x32EB5
-// WIN: 0x004b6400
-// Lines 1903–1903
-//
 // Switch the overview map to mode 7 (education).
+// FUNCTION: C2 0x32eb5
+// FUNCTION: C2WIN 0x004b6400
 void act_ov_education(void)
 {
     ov_map_mode = 7;
@@ -3485,11 +2802,9 @@ void act_ov_education(void)
     clear_landfill();
 }
 
-// FUNCTION: C2 0x32EBE
-// WIN: 0x004b641e
-// Lines 1904–1904
-//
 // Switch the overview map to mode 8 (health).
+// FUNCTION: C2 0x32ebe
+// FUNCTION: C2WIN 0x004b641e
 void act_ov_health(void)
 {
     ov_map_mode = 8;
@@ -3497,20 +2812,14 @@ void act_ov_health(void)
     clear_landfill();
 }
 
-// FUNCTION: C2 0x32EC7
-// WIN: 0x004b643c
-// Lines 1905–1905
-//
 // Switch the overview map to mode 9 (industry).
+// FUNCTION: C2 0x32ec7
+// FUNCTION: C2WIN 0x004b643c
 void act_ov_industry(void) { ov_map_mode = 9; need_glf = 1; clear_landfill(); }
 
-// FUNCTION: C2 0x32ED0
-// WIN: 0x004b645a
-// Lines 1909–1915
-//
-// Pop the region-map "security" selection list (rm_security_selection,
-// 3 entries, width 0x36).  Falls through to the shared
-// `selected_icon_no = selection_is` epilogue.
+// Open the three-entry region security selection list and store the chosen icon.
+// FUNCTION: C2 0x32ed0
+// FUNCTION: C2WIN 0x004b645a
 void act_rm_security(void)
 {
     flag_mode = 0;
@@ -3522,13 +2831,9 @@ void act_rm_security(void)
     selected_icon_no = selection_is;
 }
 
-// FUNCTION: C2 0x32F1F
-// WIN: 0x004b64b6
-// Lines 1918–1924
-//
-// Pop the region-map "industry" selection list
-// (rm_industry_selection, 7 entries, width 0x37).  Falls through
-// to the shared selection-finalise epilogue.
+// Open the seven-entry region industry selection list and store the chosen icon.
+// FUNCTION: C2 0x32f1f
+// FUNCTION: C2WIN 0x004b64b6
 void act_rm_industry(void)
 {
     flag_mode = 0;
@@ -3540,46 +2845,34 @@ void act_rm_industry(void)
     selected_icon_no = selection_is;
 }
 
-// FUNCTION: C2 0x32F6E
-// WIN: 0x004b651d
-// Lines 1928–1928
-//
 // Enter region-map clear placement mode.
+// FUNCTION: C2 0x32f6e
+// FUNCTION: C2WIN 0x004b651d
 void act_clear_rm(void) { reg_placing_type = 0x21; reg_placing_flags = 0;    placing_cost = region_costs[1]; pm_build_shape = 0; flag_mode = 0; pointer_mode = 0; }
 
-// FUNCTION: C2 0x32F9C
-// WIN: 0x004b6561
-// Lines 1929–1929
-//
 // Enter region-map road placement mode.
+// FUNCTION: C2 0x32f9c
+// FUNCTION: C2WIN 0x004b6561
 void act_road_rm(void)  { reg_placing_type = 0x1E; reg_placing_flags = 0x20; placing_cost = region_costs[2]; pm_build_shape = 0; flag_mode = 0; pointer_mode = 0; }
 
-// FUNCTION: C2 0x32FCB
-// WIN: 0x004b65a5
-// Lines 1930–1930
-//
 // Enter region-map wall placement mode.
+// FUNCTION: C2 0x32fcb
+// FUNCTION: C2WIN 0x004b65a5
 void act_wall_rm(void)       { reg_placing_type = 0x1F; reg_placing_flags = 2; placing_cost = region_costs[3]; pm_build_shape = 0; pointer_mode = 0; }
 
-// FUNCTION: C2 0x32FFC
-// WIN: 0x004b65df
-// Lines 1931–1931
-//
 // Enter region-map warehouse placement mode.
+// FUNCTION: C2 0x32ffc
+// FUNCTION: C2WIN 0x004b65df
 void act_rm_warehouse(void)  { reg_placing_type = 0x24; reg_placing_flags = 1; placing_cost = region_costs[8]; pm_build_shape = 0; pointer_mode = 0; }
 
-// FUNCTION: C2 0x33018
-// WIN: 0x004b6619
-// Lines 1932–1932
-//
 // Enter region-map workhouse placement mode.
+// FUNCTION: C2 0x33018
+// FUNCTION: C2WIN 0x004b6619
 void act_rm_workhouse(void)  { reg_placing_type = 0x23; reg_placing_flags = 1; placing_cost = region_costs[5]; pm_build_shape = 0; pointer_mode = 0; }
 
-// FUNCTION: C2 0x33034
-// WIN: 0x004b6653
-// Lines 1933–1933
-//
 // Enter region-map port placement mode.
+// FUNCTION: C2 0x33034
+// FUNCTION: C2WIN 0x004b6653
 void act_rm_port(void)
 {
     reg_placing_type  = 0x28;
@@ -3590,11 +2883,9 @@ void act_rm_port(void)
     pointer_mode      = 0;
 }
 
-// FUNCTION: C2 0x3306E
-// WIN: 0x004b6697
-// Lines 1934–1939
-//
 // Enter region-map shipyard placement mode.
+// FUNCTION: C2 0x3306e
+// FUNCTION: C2WIN 0x004b6697
 void act_rm_shipyard(void)
 {
     pointer_mode      = 0;
@@ -3604,32 +2895,24 @@ void act_rm_shipyard(void)
     pm_build_shape    = 1;
 }
 
-// FUNCTION: C2 0x33096
-// WIN: 0x004b66d1
-// Lines 1942–1942
-//
 // Enter region-map farm placement mode.
+// FUNCTION: C2 0x33096
+// FUNCTION: C2WIN 0x004b66d1
 void act_rm_farm(void)   { reg_placing_type = 0x25; reg_placing_flags = 1; placing_cost = region_costs[6]; pm_build_shape = 1; pointer_mode = 0; }
 
-// FUNCTION: C2 0x330C6
-// WIN: 0x004b670b
-// Lines 1943–1943
-//
 // Enter region-map mine placement mode.
+// FUNCTION: C2 0x330c6
+// FUNCTION: C2WIN 0x004b670b
 void act_rm_mine(void)   { reg_placing_type = 0x26; reg_placing_flags = 1; placing_cost = region_costs[6]; pm_build_shape = 1; pointer_mode = 0; }
 
-// FUNCTION: C2 0x330D3
-// WIN: 0x004b6745
-// Lines 1944–1944
-//
 // Enter region-map quarry placement mode.
+// FUNCTION: C2 0x330d3
+// FUNCTION: C2WIN 0x004b6745
 void act_rm_quarry(void) { reg_placing_type = 0x27; reg_placing_flags = 1; placing_cost = region_costs[6]; pm_build_shape = 1; pointer_mode = 0; }
 
-// FUNCTION: C2 0x330E0
-// WIN: 0x004b677f
-// Lines 1945–1945
-//
 // Enter region-map trading-post placement mode.
+// FUNCTION: C2 0x330e0
+// FUNCTION: C2WIN 0x004b677f
 void act_rm_trading_post(void)
 {
     reg_placing_type  = 0x29;
@@ -3640,20 +2923,15 @@ void act_rm_trading_post(void)
     pointer_mode      = 0;
 }
 
-// FUNCTION: C2 0x33101
-// WIN: 0x004b67c3
-// Lines 1946–1946
-//
 // Enter region-map fortress placement mode.
+// FUNCTION: C2 0x33101
+// FUNCTION: C2WIN 0x004b67c3
 void act_rm_fort(void)   { reg_placing_type = 0x22; reg_placing_flags = 4; placing_cost = region_costs[4]; pm_build_shape = 0; pointer_mode = 0; }
 
+// "Order cohort" entry — clears the placing context, switches the pointer to selection-mode (2),
+// and snapshots `denarii` so any subsequent build can be priced.
 // FUNCTION: C2 0x33120
-// WIN: 0x004b67fd
-// Lines 1948–1954
-//
-// "Order cohort" entry — clears the placing context, switches the
-// pointer to selection-mode (2), and snapshots `denarii` so any
-// subsequent build can be priced.
+// FUNCTION: C2WIN 0x004b67fd
 void act_order_cohort(void)
 {
     flag_mode = 0;
@@ -3663,17 +2941,11 @@ void act_order_cohort(void)
     starting_denarii = denarii;
 }
 
+// "Set patrol markers" — initiates the patrol-route placement UI for the currently tracked cohort.
+// If the army is exhausted (total_troops==0 && morale_timer==0) or already in state 10, it instead
+// pops a "cannot patrol" warning.
 // FUNCTION: C2 0x33148
-// WIN: 0x004b6837
-// Lines 1956–1990
-//
-// "Set patrol markers" — initiates the patrol-route placement UI
-// for the currently tracked cohort.  If the army is exhausted
-// (total_troops==0 && morale_timer==0) or already in state 10, it
-// instead pops a "cannot patrol" warning.  Otherwise switches to
-// pointer_mode 6, clears the route slot, copies the cohort's home
-// position into over_x/over_y, sets order_progress based on
-// state, and primes the elastic route preview.
+// FUNCTION: C2WIN 0x004b6837
 void act_set_patrol_markers(void)
 {
     int seg;
@@ -3723,13 +2995,10 @@ void act_set_patrol_markers(void)
     clear_mouse();
 }
 
-// FUNCTION: C2 0x3329B
-// Lines 1992–2012
-//
-// "Return home" cohort order — resets the patrol-route slot,
-// restores the cohort's home tile (army_list[+0x2C] is the
-// home_ref), sets state_idx=5 (returning), clears the patrolling
-// flag bit and sets order_progress=1.
+// "Return home" cohort order — resets the patrol-route slot, restores the cohort's home tile
+// (army_list[+0x2C] is the home_ref), sets state_idx=5 (returning), clears the patrolling flag bit
+// and sets order_progress=1.
+// FUNCTION: C2 0x3329b
 void act_set_return_home(void)
 {
     int q;
@@ -3763,14 +3032,9 @@ void act_set_return_home(void)
     clear_mouse();
 }
 
+// Stop the selected cohort's patrol, return it to idle state, and refresh the map controls.
 // FUNCTION: C2 0x33360
-// WIN: 0x004b6ce8
-// Lines 2014–2031
-//
-// "Stop patrol" cohort order — clears the patrol slot, snaps the
-// cohort's target position back onto its grid square, sets state
-// 3 (idle), clears the patrolling flag bit and falls through to
-// the shared map-refresh / clear-mouse epilogue at 0x3328d.
+// FUNCTION: C2WIN 0x004b6ce8
 void act_set_patrol_stop(void)
 {
     int i;
@@ -3809,11 +3073,9 @@ void act_set_patrol_stop(void)
     clear_mouse();
 }
 
-// FUNCTION: C2 0x3342F
-// WIN: 0x004b6f46
-// Lines 2040–2048
-//
 // Rotate the map view clockwise by 90 degrees and refresh.
+// FUNCTION: C2 0x3342f
+// FUNCTION: C2WIN 0x004b6f46
 void act_rotate_clockwise(void)
 {
     rotate_pm_anticlockwise();
@@ -3829,11 +3091,9 @@ void act_rotate_clockwise(void)
     pointer_mode    = 0;
 }
 
-// FUNCTION: C2 0x3347A
-// WIN: 0x004b6f99
-// Lines 2055–2060
-//
 // Rotate the map view counter-clockwise by 90 degrees and refresh.
+// FUNCTION: C2 0x3347a
+// FUNCTION: C2WIN 0x004b6f99
 void act_rotate_anticlockwise(void)
 {
     rotate_pm_clockwise();
@@ -3849,24 +3109,17 @@ void act_rotate_anticlockwise(void)
     pointer_mode    = 0;
 }
 
-// FUNCTION: C2 0x33483
-// WIN: 0x004b6fec  (unverified)
-// Lines 2069–2069
-//
 // Zoom-out click handler — tail-calls do_act_zoom_out(0).
+// FUNCTION: C2 0x33483
+// FUNCTION: C2WIN 0x004b6fec
 void act_zoom_out(void)
 {
     do_act_zoom_out(0);
 }
 
+// Zoom out one step. At zoom 2 nothing happens.
 // FUNCTION: C2 0x33485
-// WIN: 0x004b7001
-// Lines 2074–2087
-//
-// Zoom out one step.  At zoom 2 nothing happens.  At zoom 1 we
-// always shift the pm_x/pm_y centre.  At zoom 0 we shift only if
-// `decayed` is non-zero.  Re-loads the map graphics for the new
-// zoom level on success.
+// FUNCTION: C2WIN 0x004b7001
 void do_act_zoom_out(int decayed)
 {
     if (zoom_level == 2) {
@@ -3891,15 +3144,9 @@ void do_act_zoom_out(int decayed)
     pointer_mode = 0;
 }
 
+// Zoom-in click handler. At zoom 0 it just sets `action_sound` (the click is filtered later).
 // FUNCTION: C2 0x33513
-// WIN: 0x004b7196
-// Lines 2089–2099
-//
-// Zoom-in click handler.  At zoom 0 it just sets `action_sound`
-// (the click is filtered later).  At zoom 1/2 it pre-positions
-// pm_x_coord/pm_y_coord and tail-calls `do_act_zoom_in(0)`.
-// At pointer_mode 0 the call enters drag-zoom mode (sets
-// pointer_mode 1) instead.
+// FUNCTION: C2WIN 0x004b7196
 void act_zoom_in(void)
 {
     if (zoom_level == 0) {
@@ -3922,13 +3169,9 @@ void act_zoom_in(void)
     }
 }
 
+// Zoom in one step. At zoom 1 we always shift; at zoom 0 we shift only if `decayed==1`.
 // FUNCTION: C2 0x33583
-// WIN: 0x004b72fc
-// Lines 2100–2122
-//
-// Zoom in one step.  At zoom 1 we always shift; at zoom 0 we
-// shift only if `decayed==1`.  Re-loads map graphics, refreshes,
-// and clears pointer_mode.
+// FUNCTION: C2WIN 0x004b72fc
 void do_act_zoom_in(int decayed)
 {
     if (zoom_level == 1 || decayed == 1) {
@@ -3950,27 +3193,20 @@ void do_act_zoom_in(int decayed)
     pointer_mode = 0;
 }
 
-// FUNCTION: C2 0x33640
-// WIN: 0x004b74bd
-// Lines 2124–2124
-//
 // Jump to the city map and dismiss the current modal.
+// FUNCTION: C2 0x33640
+// FUNCTION: C2WIN 0x004b74bd
 void act_goto_city(void)
 {
     act_goto_city_map();
     out3 = 1;
 }
 
+// Toggle between city and region maps. Saves the current view's rotation/zoom into its slot
+// (city_rotation/zoom or prov_rotation/zoom), restores the other side's, flips `map_mode`, then
+// calls `act_correct_map` to adjust pm_x/pm_y.
 // FUNCTION: C2 0x33650
-// WIN: 0x004b74e9
-// Lines 2126–2144
-//
-// Toggle between city and region maps.  Saves the current view's
-// rotation/zoom into its slot (city_rotation/zoom or
-// prov_rotation/zoom), restores the other side's, flips
-// `map_mode`, then calls `act_correct_map` to adjust pm_x/pm_y.
-// Blocked in tutorial / demo (c2inf[+0x35] is the
-// "tutorial-restrict-maps" flag).
+// FUNCTION: C2WIN 0x004b74e9
 void act_swap_maps(void)
 {
     if (c2inf.peace_mode != 0) {
@@ -3998,12 +3234,10 @@ void act_swap_maps(void)
     act_correct_map();
 }
 
-// FUNCTION: C2 0x336FC
-// WIN: 0x004b75b9
-// Lines 2146–2155
-//
-// Switch to the city map (no-op if already there).  Saves the
-// region pm_x/pm_y into region_pm_x/_y so they survive the swap.
+// Switch to the city map (no-op if already there). Saves the region pm_x/pm_y into region_pm_x/_y
+// so they survive the swap.
+// FUNCTION: C2 0x336fc
+// FUNCTION: C2WIN 0x004b75b9
 void act_goto_city_map(void)
 {
     if (map_mode == 0) {
@@ -4027,14 +3261,9 @@ void act_goto_city_map(void)
     act_correct_map();
 }
 
+// Switch to the region map. Tutorial-restricted via c2inf[+0x35].
 // FUNCTION: C2 0x33783
-// WIN: 0x004b7722
-// Lines 2156–2177
-//
-// Switch to the region map.  Tutorial-restricted via c2inf[+0x35].
-// First time around, region_pm_x is -1 and we initialise the
-// region view (rebuild pseudo_map, jump to the city's
-// reg_city_ptr cell).  Otherwise restore the saved pm_x/pm_y.
+// FUNCTION: C2WIN 0x004b7722
 void act_goto_prov_map(void)
 {
     if (c2inf.peace_mode != 0) {
@@ -4075,15 +3304,11 @@ void act_goto_prov_map(void)
     act_correct_map();
 }
 
+// After a map-mode change (city/region/battle), set the map_actual_* dimensions, command-strip
+// rectangle, reset placing state, rebuild the pseudo_map, refresh the zoom, reload the graphic
+// tiles, and finally show the destination screen.
 // FUNCTION: C2 0x33899
-// WIN: 0x004b78ff
-// Lines 2180–2261
-//
-// After a map-mode change (city/region/battle), set the
-// map_actual_* dimensions, command-strip rectangle, reset placing
-// state, rebuild the pseudo_map, refresh the zoom, reload the
-// graphic tiles, and finally show the destination screen.  Also
-// kicks off the appropriate ambient/tune for the new mode.
+// FUNCTION: C2WIN 0x004b78ff
 void act_correct_map(void)
 {
     if (map_mode == 1) {
@@ -4175,11 +3400,9 @@ void act_correct_map(void)
     pointer_mode = 0;
 }
 
-// FUNCTION: C2 0x33B1C
-// WIN: 0x004b7c74
-// Lines 2264–2269
-//
 // Enter flag-marker pointer mode and clear the placing context.
+// FUNCTION: C2 0x33b1c
+// FUNCTION: C2WIN 0x004b7c74
 void act_goto_flags(void)
 {
     pointer_mode   = 0;
@@ -4189,14 +3412,11 @@ void act_goto_flags(void)
     pm_build_shape = 0;
 }
 
-// FUNCTION: C2 0x33B40
-// WIN: 0x004b7ca9
-// Lines 2271–2279
-//
-// Cycle to the next "city flag" marker.  If `next_city_flag`
-// returns 0 the city has none and a "no markers" message (id 0x67)
-// pops up; otherwise enter flag-marker pointer mode (with a 10-tick
+// Cycle to the next "city flag" marker. If `next_city_flag` returns 0 the city has none and a "no
+// markers" message (id 0x67) pops up; otherwise enter flag-marker pointer mode (with a 10-tick
 // decay) and pan the city map to that flag.
+// FUNCTION: C2 0x33b40
+// FUNCTION: C2WIN 0x004b7ca9
 void act_set_marker1(void)
 {
     pointer_mode = 0;
@@ -4214,12 +3434,9 @@ void act_set_marker1(void)
     jump_to_citymap_ptr(city_flag_list[last_city_flag]);
 }
 
-// FUNCTION: C2 0x33BA2
-// WIN: 0x004b7d38
-// Lines 2280–2288
-//
-// Province-flag twin of `act_set_marker1`: cycle next_prov_flag
-// and pan the region map to it.
+// Province-flag twin of `act_set_marker1`: cycle next_prov_flag and pan the region map to it.
+// FUNCTION: C2 0x33ba2
+// FUNCTION: C2WIN 0x004b7d38
 void act_set_marker2(void)
 {
     pointer_mode = 0;
@@ -4237,12 +3454,10 @@ void act_set_marker2(void)
     jump_to_regionmap_ptr(prov_flag_list[last_prov_flag]);
 }
 
-// FUNCTION: C2 0x33C04
-// WIN: 0x004b7dc7
-// Lines 2289–2298
-//
-// Danger-flag cycle.  `danger_flag_map_mode` selects whether the
-// flag is on the city map (0) or region map (non-zero).
+// Danger-flag cycle. `danger_flag_map_mode` selects whether the flag is on the city map (0) or
+// region map (non-zero).
+// FUNCTION: C2 0x33c04
+// FUNCTION: C2WIN 0x004b7dc7
 void act_set_marker3(void)
 {
     int target;
@@ -4267,14 +3482,10 @@ void act_set_marker3(void)
     }
 }
 
-// FUNCTION: C2 0x33C77
-// Lines 2305–2352
-//
-// Open the forum (advisor) screen.  Picks an entry tune based on
-// `rand8`, resets `tracking_army`, primes the chosen department
-// (slave_warning forces dept 8), then loops on
-// `forum_game_loop` while the modal is up.  Mouse clicks change
-// dept; on exit re-show the previous map.
+// Open the forum (advisor) screen. Picks an entry tune based on `rand8`, resets `tracking_army`,
+// primes the chosen department (slave_warning forces dept 8), then loops on `forum_game_loop`
+// while the modal is up.
+// FUNCTION: C2 0x33c77
 void act_forum(void)
 {
     pointer_mode = 0;
@@ -4335,14 +3546,10 @@ void act_forum(void)
     in_the_forum = 0;
 }
 
-// FUNCTION: C2 0x33EA7
-// WIN: 0x004b7e89
-// Lines 2355–2364
-//
-// Tail-dispatch the per-department forum idle loop.  Each
-// `forum_*_game_loop` runs the modal until either it sets `out1`
-// or another department is chosen.  Falls through to the idle
-// loop for unknown values.
+// Tail-dispatch the per-department forum idle loop. Each `forum_*_game_loop` runs the modal until
+// either it sets `out1` or another department is chosen.
+// FUNCTION: C2 0x33ea7
+// FUNCTION: C2WIN 0x004b7e89
 void forum_game_loop(void)
 {
     int d = forum_dept;
@@ -4359,25 +3566,19 @@ void forum_game_loop(void)
     forum_idle_game_loop();
 }
 
-// FUNCTION: C2 0x33EF2
-// Lines 2365–2366
-//
-// Forum-internal "go to message" hook — sets out1 to 1 so the
-// outer modal cycles around and re-displays the message screen.
+// Forum-internal "go to message" hook — sets out1 to 1 so the outer modal cycles around and
+// re-displays the message screen.
+// FUNCTION: C2 0x33ef2
 void act_goto_message(void)
 {
     out1 = 1;
 }
 
-// FUNCTION: C2 0x33F14
-// WIN: 0x004b7fa2
-// Lines 2369–2383
-//
-// Render the active forum department's full-screen layout.  When
-// transitioning out of the temple (0xa) or empire (0xb) views
-// (the latter only outside tutorial mode) we first fade to black
-// to mask the screen-tearing the new department's repaint would
-// cause.  Each dept screen is a tail-call.
+// Render the active forum department's full-screen layout. When transitioning out of the temple
+// (0xa) or empire (0xb) views (the latter only outside tutorial mode) we first fade to black to
+// mask the screen-tearing the new department's repaint would cause.
+// FUNCTION: C2 0x33f14
+// FUNCTION: C2WIN 0x004b7fa2
 void show_forum_screen(void)
 {
     int d;
@@ -4403,15 +3604,11 @@ void show_forum_screen(void)
     forum_empty_screen();
 }
 
-// FUNCTION: C2 0x33FA5
-// WIN: 0x004b80ef
-// Lines 2387–2399
-//
-// Hit-test the bottom-of-screen forum menu strip (FORUM_DEPT_END
-// entries, 0..FORUM_DEPT_EMPIRE). Each is 0x18 wide x 0xa0 tall —
-// coordinates from forum_menu[i*2] for x and forum_menu[i*2+1] for y.
-// The natural one-past-last value is FORUM_DEPT_END; PS falls through
-// with the final mouse_in_area() return value (0) when no entry matches.
+// Hit-test the bottom-of-screen forum menu strip (FORUM_DEPT_END entries, 0..FORUM_DEPT_EMPIRE).
+// Each is 0x18 wide x 0xa0 tall — coordinates from forum_menu[i*2] for x and forum_menu[i*2+1] for
+// y.
+// FUNCTION: C2 0x33fa5
+// FUNCTION: C2WIN 0x004b80ef
 int over_forum_menu(void)
 {
     int i;
@@ -4425,19 +3622,9 @@ int over_forum_menu(void)
     return 0;
 }
 
-// FUNCTION: C2 0x33FDE
-// WIN: 0x004b8163
-// Lines 2402–2428
-//
-// Hit-test the empire-map regions.  The empire screen has 0x2c
-// region records, each 16 bytes packed in scratch_buffer at
-// `i * 16 + 8`:
-//     short width        (LE @ +0)
-//     short height       (LE @ +2)
-//     int24 bitmap_off   (LE @ +4..+6)
-// Region screen position is empire_positions[i*2 .. i*2+1] (shorts).
-// If the cursor is inside the box and the bitmap byte at the
-// (mx-x, my-y) offset is non-zero, region_over = i+1.
+// Updates the empire region under the mouse using each region's recorded screen bounds.
+// FUNCTION: C2 0x33fde
+// FUNCTION: C2WIN 0x004b8163
 void get_region_over(void)
 {
     int rx;
@@ -4472,14 +3659,10 @@ void get_region_over(void)
     }
 }
 
-// FUNCTION: C2 0x340C2
-// WIN: 0x004b82fa
-// Lines 2430–2441
-//
-// "Final bribe to Caesar" modal.  Loops gift_game_loop(0x10) until
-// the player commits or aborts; if accepted (decision==1) calls
-// `bribe_emperor`, otherwise sets `game_state = 1` (resignation).
-// Always sets out1=1 on exit so the surrounding loop terminates.
+// "Final bribe to Caesar" modal. Loops gift_game_loop(0x10) until the player commits or aborts; if
+// accepted (decision==1) calls `bribe_emperor`, otherwise sets `game_state = 1` (resignation).
+// FUNCTION: C2 0x340c2
+// FUNCTION: C2WIN 0x004b82fa
 void act_final_bribe(void)
 {
     final_bribe = 1;
@@ -4501,18 +3684,14 @@ void act_final_bribe(void)
     out1 = 1;
 }
 
-// FUNCTION: C2 0x34134
-// WIN: 0x004b838b
-// Lines 2442–2442
-//
 // Drop Caesar's requested-tribute slider by 1 (floored at 0).
+// FUNCTION: C2 0x34134
+// FUNCTION: C2WIN 0x004b838b
 void act_request_down(void) { if (imperial_send_amount > 0) imperial_send_amount--; gen_refresh1 = 1; }
 
-// FUNCTION: C2 0x34152
-// WIN: 0x004b83b0
-// Lines 2443–2443
-//
 // Raise Caesar's requested-tribute slider (clamped at the goods supply).
+// FUNCTION: C2 0x34152
+// FUNCTION: C2WIN 0x004b83b0
 void act_request_up(void)
 {
     if (imperial_send_amount < industry[imperial_req_goods].supply)
@@ -4520,56 +3699,40 @@ void act_request_up(void)
     gen_refresh1 = 1;
 }
 
-// FUNCTION: C2 0x34185
-// WIN: 0x004b83f8
-// Lines 2446–2446
-//
 // Raise the population-tax rate one step (clamped at 0x19).
+// FUNCTION: C2 0x34185
+// FUNCTION: C2WIN 0x004b83f8
 void act_pop_tax_up(void)   { if (pop_tax_rate < 0x19) pop_tax_rate++;   gen_refresh1 = 1; }
 
-// FUNCTION: C2 0x341A4
-// WIN: 0x004b841d
-// Lines 2447–2447
-//
 // Drop the population-tax rate one step (floored at 0).
+// FUNCTION: C2 0x341a4
+// FUNCTION: C2WIN 0x004b841d
 void act_pop_tax_down(void) { if (pop_tax_rate > 0)    pop_tax_rate--;   gen_refresh1 = 1; }
 
-// FUNCTION: C2 0x341B9
-// WIN: 0x004b8442
-// Lines 2448–2448
-//
 // Raise the industry-tax rate one step (clamped at 0x19).
+// FUNCTION: C2 0x341b9
+// FUNCTION: C2WIN 0x004b8442
 void act_ind_tax_up(void)   { if (ind_tax_rate < 0x19) ind_tax_rate++;   gen_refresh1 = 1; }
 
-// FUNCTION: C2 0x341D8
-// WIN: 0x004b8467
-// Lines 2449–2449
-//
 // Drop the industry-tax rate one step (floored at 0).
+// FUNCTION: C2 0x341d8
+// FUNCTION: C2WIN 0x004b8467
 void act_ind_tax_down(void) { if (ind_tax_rate > 0)    ind_tax_rate--;   gen_refresh1 = 1; }
 
-// FUNCTION: C2 0x341ED
-// WIN: 0x004b848c
-// Lines 2451–2451
-//
 // Raise the player salary slider by 1 (clamped at 0x3E8).
+// FUNCTION: C2 0x341ed
+// FUNCTION: C2WIN 0x004b848c
 void act_salary_up(void)    { if (players_salary < 0x3E8) players_salary++; gen_refresh1 = 1; }
 
-// FUNCTION: C2 0x3420F
-// WIN: 0x004b84b4
-// Lines 2452–2452
-//
 // Drop the player salary slider by 1 (floored at 0).
+// FUNCTION: C2 0x3420f
+// FUNCTION: C2WIN 0x004b84b4
 void act_salary_down(void)  { if (players_salary > 0)     players_salary--; gen_refresh1 = 1; }
 
+// Open the "make a donation to Rome" modal. Clamps the donation to the player's available denarii
+// first.
 // FUNCTION: C2 0x34224
-// WIN: 0x004b84d9
-// Lines 2453–2460
-//
-// Open the "make a donation to Rome" modal.  Clamps the donation
-// to the player's available denarii first.  Idles
-// `donation_game_loop` until the user accepts/cancels (out1!=0),
-// then re-renders the career advisor screen.
+// FUNCTION: C2WIN 0x004b84d9
 void act_donation(void)
 {
     if (donation_level > players_denarii) {
@@ -4585,12 +3748,10 @@ void act_donation(void)
     clear_mouse();
 }
 
-// FUNCTION: C2 0x3426F
-// WIN: 0x004b8539
-// Lines 2462–2467
-//
-// "Donation +" button: bump the slider by 0xa if there's enough
-// headroom (>= 10 below players_denarii), otherwise step by 1.
+// "Donation +" button: bump the slider by 0xa if there's enough headroom (>= 10 below
+// players_denarii), otherwise step by 1.
+// FUNCTION: C2 0x3426f
+// FUNCTION: C2WIN 0x004b8539
 void act_donation_up(void)
 {
     if ((players_denarii - 0xa) > donation_level) {
@@ -4601,12 +3762,10 @@ void act_donation_up(void)
     gen_refresh1 = 1;
 }
 
-// FUNCTION: C2 0x342AB
-// WIN: 0x004b8582
-// Lines 2468–2471
-//
-// "Donation –" button: drop by 0xa if >=10, by 1 otherwise.
-// Floors at 0 — clicks are ignored once we've hit it.
+// "Donation –" button: drop by 0xa if >=10, by 1 otherwise. Floors at 0 — clicks are ignored once
+// we've hit it.
+// FUNCTION: C2 0x342ab
+// FUNCTION: C2WIN 0x004b8582
 void act_donation_down(void)
 {
     if (donation_level > 0xa) {
@@ -4617,11 +3776,9 @@ void act_donation_down(void)
     gen_refresh1 = 1;
 }
 
-// FUNCTION: C2 0x342CD
-// WIN: 0x004b85c0
-// Lines 2474–2477
-//
 // Commit the chosen donation amount: transfer denarii from the player to Rome.
+// FUNCTION: C2 0x342cd
+// FUNCTION: C2WIN 0x004b85c0
 void act_send_donation(void)
 {
     denarii        += donation_level;
@@ -4629,26 +3786,20 @@ void act_send_donation(void)
     act_goto_message();
 }
 
-// FUNCTION: C2 0x342E3
-// WIN: 0x004b85f0
-// Lines 2481–2481
-//
 // Extend the income-history graph window by one bucket (up to 4).
+// FUNCTION: C2 0x342e3
+// FUNCTION: C2WIN 0x004b85f0
 void act_history_graph_longer(void)  { if (history_graph_length < 4) history_graph_length++; gen_refresh1 = 1; }
 
-// FUNCTION: C2 0x34302
-// WIN: 0x004b8615
-// Lines 2482–2482
-//
 // Shrink the income-history graph window by one bucket (floored at 0).
+// FUNCTION: C2 0x34302
+// FUNCTION: C2WIN 0x004b8615
 void act_history_graph_shorter(void) { if (history_graph_length > 0) history_graph_length--; gen_refresh1 = 1; }
 
+// "Help" inside the army-box: launch help topic 0xb, then return to the army (forum dept 6)
+// advisor view.
 // FUNCTION: C2 0x34317
-// WIN: 0x004b863a
-// Lines 2484–2492
-//
-// "Help" inside the army-box: launch help topic 0xb, then return
-// to the army (forum dept 6) advisor view.
+// FUNCTION: C2WIN 0x004b863a
 void act_army_box_help(void)
 {
     launch_help(0xb);
@@ -4660,39 +3811,29 @@ void act_army_box_help(void)
     clear_mouse();
 }
 
-// FUNCTION: C2 0x34349
-// WIN: 0x004b8676
-// Lines 2493–2493
-//
 // Raise the army-wage slider by 5 denarii (clamped at 0x3E8).
+// FUNCTION: C2 0x34349
+// FUNCTION: C2WIN 0x004b8676
 void act_army_wage_up(void)    { if (army_wage_level < 0x3E8) army_wage_level += 5; gen_refresh1 = 1; gen_refresh2 = 1; }
 
-// FUNCTION: C2 0x34364
-// WIN: 0x004b86a6
-// Lines 2494–2494
-//
 // Drop the army-wage slider by 5 denarii (floored at 0).
+// FUNCTION: C2 0x34364
+// FUNCTION: C2WIN 0x004b86a6
 void act_army_wage_down(void)  { if (army_wage_level > 0)     army_wage_level -= 5; gen_refresh1 = 1; gen_refresh2 = 1; }
 
-// FUNCTION: C2 0x34375
-// WIN: 0x004b86d3
-// Lines 2495–2495
-//
 // Raise the conscription rate by 1 (clamped at 0x32).
+// FUNCTION: C2 0x34375
+// FUNCTION: C2WIN 0x004b86d3
 void act_conscription_up(void)   { if (conscription_rate < 0x32) conscription_rate++; gen_refresh1 = 1; gen_refresh2 = 1; }
 
-// FUNCTION: C2 0x3439C
-// WIN: 0x004b86ff
-// Lines 2496–2496
-//
 // Drop the conscription rate by 1 (floored at 0).
+// FUNCTION: C2 0x3439c
+// FUNCTION: C2WIN 0x004b86ff
 void act_conscription_down(void) { if (conscription_rate > 0)    conscription_rate--; gen_refresh1 = 1; gen_refresh2 = 1; }
 
-// FUNCTION: C2 0x343AD
-// WIN: 0x004b872b
-// Lines 2497–2497
-//
 // Cycle the army-box view forward to the next cohort and request a refresh.
+// FUNCTION: C2 0x343ad
+// FUNCTION: C2WIN 0x004b872b
 void act_next_cohort(void)
 {
     get_next_viewed_cohort(0);
@@ -4700,11 +3841,9 @@ void act_next_cohort(void)
     gen_refresh1 = 1;
 }
 
-// FUNCTION: C2 0x343C3
-// WIN: 0x004b874e
-// Lines 2498–2498
-//
 // Cycle the army-box view back to the previous cohort and request a refresh.
+// FUNCTION: C2 0x343c3
+// FUNCTION: C2WIN 0x004b874e
 void act_prev_cohort(void)
 {
     get_next_viewed_cohort(1);
@@ -4712,16 +3851,11 @@ void act_prev_cohort(void)
     gen_refresh1 = 1;
 }
 
-// FUNCTION: C2 0x343CA
-// WIN: 0x004b8771
-// Lines 2499–2508
-//
-// 4-state demobilise toggle for the currently viewed army.
-// army_list[+0xA0] cycles 0→1→2→3→0:
-//   0   no demob queued
-//   1   demob next turn
-//   2   demob immediately (saves state_idx into +0x10, sets idle 0xa)
-//   3   reverts (restores +0x10 into state_idx)
+// 4-state demobilise toggle for the currently viewed army. army_list[+0xA0] cycles 0→1→2→3→0: 0 no
+// demob queued 1 demob next turn 2 demob immediately (saves state_idx into +0x10, sets idle 0xa) 3
+// reverts (restores +0x10 into state_idx).
+// FUNCTION: C2 0x343ca
+// FUNCTION: C2WIN 0x004b8771
 void act_demob_cohort(void)
 {
     short idx = (short)get_actual_viewed_army();
@@ -4746,12 +3880,9 @@ void act_demob_cohort(void)
     gen_refresh2 = 1;
 }
 
+// "Hire +50 mercs" button: bumps mercs_in_army by 0x32, clamped at max_mercs_allowed.
 // FUNCTION: C2 0x34448
-// WIN: 0x004b88e9
-// Lines 2510–2517
-//
-// "Hire +50 mercs" button: bumps mercs_in_army by 0x32, clamped
-// at max_mercs_allowed.
+// FUNCTION: C2WIN 0x004b88e9
 void act_more_mercs(void)
 {
     if (mercs_in_army < max_mercs_allowed) {
@@ -4765,13 +3896,10 @@ void act_more_mercs(void)
     }
 }
 
+// "Hire -50 mercs" button: rounds mercs_in_army down to the nearest multiple of 50, then subtracts
+// 50 if already aligned. Floors at 0.
 // FUNCTION: C2 0x34483
-// WIN: 0x004b8941
-// Lines 2518–2528
-//
-// "Hire -50 mercs" button: rounds mercs_in_army down to the
-// nearest multiple of 50, then subtracts 50 if already aligned.
-// Floors at 0.
+// FUNCTION: C2WIN 0x004b8941
 void act_less_mercs(void)
 {
     if (mercs_in_army > 0) {
@@ -4790,111 +3918,80 @@ void act_less_mercs(void)
     }
 }
 
-// FUNCTION: C2 0x344D8
-// WIN: 0x004b89c0
-// Lines 2530–2531
-//
 // Raise the slave welfare bill by 1 (clamped at 0x61A8).
+// FUNCTION: C2 0x344d8
+// FUNCTION: C2WIN 0x004b89c0
 void act_slave_welfare_up(void)   { if (slave_welfare_bill < 0x61A8) slave_welfare_bill++; gen_refresh1 = 1; }
 
-// FUNCTION: C2 0x344FB
-// WIN: 0x004b89e8
-// Lines 2532–2533
-//
 // Drop the slave welfare bill by 1 (floored at 0).
+// FUNCTION: C2 0x344fb
+// FUNCTION: C2WIN 0x004b89e8
 void act_slave_welfare_down(void) { if (slave_welfare_bill > 0)     slave_welfare_bill--; gen_refresh1 = 1; }
 
-// FUNCTION: C2 0x3450C
-// WIN: 0x004b8a0d
-// Lines 2535–2535
-//
 // Allocate one more slave to the fire-brigade category.
+// FUNCTION: C2 0x3450c
+// FUNCTION: C2WIN 0x004b8a0d
 void act_slave_fire_up(void)        { alter_slave_reqs(1,  1); gen_refresh2 = 1; }
 
-// FUNCTION: C2 0x34516
-// WIN: 0x004b8a2b
-// Lines 2536–2536
-//
 // Take one slave away from the fire-brigade category.
+// FUNCTION: C2 0x34516
+// FUNCTION: C2WIN 0x004b8a2b
 void act_slave_fire_down(void)      { alter_slave_reqs(1, -1); gen_refresh2 = 1; }
 
-// FUNCTION: C2 0x34523
-// WIN: 0x004b8a49
-// Lines 2537–2537
-//
 // Add one slave to the city-road upkeep category.
+// FUNCTION: C2 0x34523
+// FUNCTION: C2WIN 0x004b8a49
 void act_slave_city_road_up(void)   { alter_slave_reqs(2,  1); gen_refresh2 = 1; }
 
-// FUNCTION: C2 0x34530
-// WIN: 0x004b8a67
-// Lines 2538–2538
-//
 // Take one slave away from the city-road upkeep category.
+// FUNCTION: C2 0x34530
+// FUNCTION: C2WIN 0x004b8a67
 void act_slave_city_road_down(void) { alter_slave_reqs(2, -1); gen_refresh2 = 1; }
 
-// FUNCTION: C2 0x34538
-// WIN: 0x004b8a85
-// Lines 2539–2539
-//
 // Add one slave to the city-water upkeep category.
+// FUNCTION: C2 0x34538
+// FUNCTION: C2WIN 0x004b8a85
 void act_slave_city_water_up(void)  { alter_slave_reqs(3,  1); gen_refresh2 = 1; }
 
-// FUNCTION: C2 0x34545
-// WIN: 0x004b8aa3
-// Lines 2540–2540
-//
 // Take one slave away from the city-water upkeep category.
+// FUNCTION: C2 0x34545
+// FUNCTION: C2WIN 0x004b8aa3
 void act_slave_city_water_down(void){ alter_slave_reqs(3, -1); gen_refresh2 = 1; }
 
-// FUNCTION: C2 0x3454D
-// WIN: 0x004b8ac1
-// Lines 2541–2541
-//
 // Add one slave to the city-wall upkeep category.
+// FUNCTION: C2 0x3454d
+// FUNCTION: C2WIN 0x004b8ac1
 void act_slave_city_wall_up(void)   { alter_slave_reqs(4,  1); gen_refresh2 = 1; }
 
-// FUNCTION: C2 0x34566
-// WIN: 0x004b8adf
-// Lines 2542–2542
-//
 // Take one slave away from the city-wall upkeep category.
+// FUNCTION: C2 0x34566
+// FUNCTION: C2WIN 0x004b8adf
 void act_slave_city_wall_down(void) { alter_slave_reqs(4, -1); gen_refresh2 = 1; }
 
-// FUNCTION: C2 0x3456E
-// WIN: 0x004b8afd
-// Lines 2543–2547
-//
-// Add one slave to the regional-work category.  Gated on !c2inf.peace_mode.
+// Add one slave to the regional-work category. Gated on !c2inf.peace_mode.
+// FUNCTION: C2 0x3456e
+// FUNCTION: C2WIN 0x004b8afd
 void act_slave_reg_work_up(void)    { if (!c2inf.peace_mode) { alter_slave_reqs(5,  1); gen_refresh2 = 1; } }
 
+// Take one slave away from the regional-work category. Gated on !c2inf.peace_mode.
 // FUNCTION: C2 0x34590
-// WIN: 0x004b8b2f
-// Lines 2548–2552
-//
-// Take one slave away from the regional-work category.  Gated on !c2inf.peace_mode.
+// FUNCTION: C2WIN 0x004b8b2f
 void act_slave_reg_work_down(void)  { if (!c2inf.peace_mode) { alter_slave_reqs(5, -1); gen_refresh2 = 1; } }
 
-// FUNCTION: C2 0x345B2
-// WIN: 0x004b8b61
-// Lines 2553–2557
-//
-// Add one slave to the regional-upkeep category.  Gated on !c2inf.peace_mode.
+// Add one slave to the regional-upkeep category. Gated on !c2inf.peace_mode.
+// FUNCTION: C2 0x345b2
+// FUNCTION: C2WIN 0x004b8b61
 void act_slave_reg_upkeep_up(void)  { if (!c2inf.peace_mode) { alter_slave_reqs(6,  1); gen_refresh2 = 1; } }
 
-// FUNCTION: C2 0x345D4
-// WIN: 0x004b8b93
-// Lines 2558–2562
-//
-// Take one slave away from the regional-upkeep category.  Gated on !c2inf.peace_mode.
+// Take one slave away from the regional-upkeep category. Gated on !c2inf.peace_mode.
+// FUNCTION: C2 0x345d4
+// FUNCTION: C2WIN 0x004b8b93
 void act_slave_reg_upkeep_down(void){ if (!c2inf.peace_mode) { alter_slave_reqs(6, -1); gen_refresh2 = 1; } }
 
-// FUNCTION: C2 0x345F6
-// WIN: 0x004b8bc5
-// Lines 2564–2574
-//
-// Bring `slave_requirements[kind][0]` into agreement with the
-// "needed" target at slot `+0x4`, by repeatedly nudging via
-// `alter_slave_reqs` (which returns 0 once it can't move further).
+// Bring `slave_requirements[kind][0]` into agreement with the "needed" target at slot `+0x4`, by
+// repeatedly nudging via `alter_slave_reqs` (which returns 0 once it can't move further).
+// FUNCTION: C2 0x345f6
+// FUNCTION: C2WIN 0x004b8bc5
 void act_set_slaves_to_need_level(int kind)
 {
     int delta;
@@ -4915,15 +4012,10 @@ void act_set_slaves_to_need_level(int kind)
     gen_refresh2 = 1;
 }
 
-// FUNCTION: C2 0x3463A
-// WIN: 0x004b8c5d
-// Lines 2576–2608
-//
-// Adjust slave_requirements[kind][0] by delta (-1 or +1).  The
-// pool is conserved through `slave_requirements[+0x38]` (free
-// slaves remaining).  When `delta == +1` and the pool is empty we
-// scan kinds 6→0 to take a slave from any other allotment.
-// Returns 1 if a change was made, 0 if no slack was available.
+// Adjust slave_requirements[kind][0] by delta (-1 or +1). The pool is conserved through
+// `slave_requirements[+0x38]` (free slaves remaining).
+// FUNCTION: C2 0x3463a
+// FUNCTION: C2WIN 0x004b8c5d
 int alter_slave_reqs(int kind, int delta)
 {
     int k;
@@ -4957,13 +4049,10 @@ int alter_slave_reqs(int kind, int delta)
     return 0;
 }
 
-// FUNCTION: C2 0x346C7
-// WIN: 0x004b8d3b
-// Lines 2610–2620
-//
-// Open the "send a gift to Caesar" modal.  Loops gift_game_loop(4)
-// until the user accepts or cancels; if accepted commits the gift
-// via `bribe_emperor`.  Then re-renders the Rome advisor screen.
+// Open the "send a gift to Caesar" modal. Loops gift_game_loop(4) until the user accepts or
+// cancels; if accepted commits the gift via `bribe_emperor`.
+// FUNCTION: C2 0x346c7
+// FUNCTION: C2WIN 0x004b8d3b
 void act_send_gift(void)
 {
     show_gift_box();
@@ -4983,11 +4072,9 @@ void act_send_gift(void)
     out1 = 0;
 }
 
-// FUNCTION: C2 0x34728
-// WIN: 0x004b8db8
-// Lines 2622–2628
-//
 // Raise the imperial-gift slider by 1, clamped at the player's denarii.
+// FUNCTION: C2 0x34728
+// FUNCTION: C2WIN 0x004b8db8
 void act_gift_up(void)
 {
     if (players_denarii > 0) {
@@ -4997,11 +4084,9 @@ void act_gift_up(void)
     }
 }
 
-// FUNCTION: C2 0x34755
-// WIN: 0x004b8dfd
-// Lines 2629–2632
-//
 // Drop the imperial-gift slider by 1 (floored at 0).
+// FUNCTION: C2 0x34755
+// FUNCTION: C2WIN 0x004b8dfd
 void act_gift_down(void)
 {
     imperial_gift_level--;
@@ -5009,35 +4094,28 @@ void act_gift_down(void)
     gen_refresh1 = 1;
 }
 
-// FUNCTION: C2 0x34779
-// WIN: 0x004b8e25
-// Lines 2636–2641
-//
 // Commit the imperial gift (decision = (level != 0); dismiss modal).
+// FUNCTION: C2 0x34779
+// FUNCTION: C2WIN 0x004b8e25
 void act_gift_send(void)
 {
     decision = (imperial_gift_level != 0);
     out1     = 1;
 }
 
-// FUNCTION: C2 0x34796
-// WIN: 0x004b8e5a
-// Lines 2643–2647
-//
 // Refresh the temple-tips strip with the new tip_kind selection.
+// FUNCTION: C2 0x34796
+// FUNCTION: C2WIN 0x004b8e5a
 void act_set_temple_tips(int tip_kind)
 {
     get_temple_tip(tip_kind);
     gen_refresh1 = 1;
 }
 
-// FUNCTION: C2 0x347A3
-// WIN: 0x004b8e78
-// Lines 2651–2660
-//
-// Battle-screen zoom-level 1.  No-op when already at level 1;
-// otherwise re-centre on (0x1c, 0x38) and reload battle graphics.
-// Tail-calls clip_battle_zoom_level2 to validate pm_x/pm_y.
+// Battle-screen zoom-level 1. No-op when already at level 1; otherwise re-centre on (0x1c, 0x38)
+// and reload battle graphics.
+// FUNCTION: C2 0x347a3
+// FUNCTION: C2WIN 0x004b8e78
 void act_zoom_level1(void)
 {
     if (zoom_level == 1) {
@@ -5055,13 +4133,10 @@ void act_zoom_level1(void)
     clip_battle_zoom_level2();
 }
 
-// FUNCTION: C2 0x347FB
-// WIN: 0x004b8ee3
-// Lines 2662–2666
-//
-// Battle zoom-level 2.  No-op at level 2; otherwise centre on
-// (0xd, 0x18) and run the same refresh as act_zoom_level1
-// (refresh_battle_zoom_mode + load_battle_graphics + clip).
+// Battle zoom-level 2. No-op at level 2; otherwise centre on (0xd, 0x18) and run the same refresh
+// as act_zoom_level1 (refresh_battle_zoom_mode + load_battle_graphics + clip).
+// FUNCTION: C2 0x347fb
+// FUNCTION: C2WIN 0x004b8ee3
 void act_zoom_level2(void)
 {
     if (zoom_level == 2) {
@@ -5079,15 +4154,11 @@ void act_zoom_level2(void)
     clip_battle_zoom_level2();
 }
 
+// Click the "begin / pause battle" toggle. Marks icon-strip repaint, advances battle_state from
+// 0→1 if applicable, flips the c2inf[+0x18] bit, and resets the battle_setup_count and
+// battle_turbo flags.
 // FUNCTION: C2 0x34822
-// WIN: 0x004b8f4e
-// Lines 2673–2681
-//
-// Click the "begin / pause battle" toggle.  Marks icon-strip
-// repaint, advances battle_state from 0→1 if applicable, flips
-// the c2inf[+0x18] bit, and resets the battle_setup_count and
-// battle_turbo flags.  Always points nomansland_ptr at the
-// fixed 0x65900 buffer.
+// FUNCTION: C2WIN 0x004b8f4e
 void act_stop_go(void)
 {
     last_icon_used = 8;
@@ -5101,11 +4172,9 @@ void act_stop_go(void)
     battle_setup_count = 0;
 }
 
-// FUNCTION: C2 0x34868
-// WIN: 0x004b8fad
-// Lines 2682–2686
-//
 // Toggle battle-screen turbo mode (no-op while battle_state == 0).
+// FUNCTION: C2 0x34868
+// FUNCTION: C2WIN 0x004b8fad
 void act_turbo(void)
 {
     if (battle_state) {
@@ -5114,11 +4183,9 @@ void act_turbo(void)
     }
 }
 
-// FUNCTION: C2 0x34883
-// WIN: 0x004b8fdb
-// Lines 2687–2692
-//
 // Battle: enter "move" pointer mode (1) when stats-control is on; otherwise deselect.
+// FUNCTION: C2 0x34883
+// FUNCTION: C2WIN 0x004b8fdb
 void act_move_unit(void)
 {
     if (zoom_level == 2) return;
@@ -5126,11 +4193,9 @@ void act_move_unit(void)
     else pointer_mode = 1;
 }
 
-// FUNCTION: C2 0x348A4
-// WIN: 0x004b9019
-// Lines 2693–2698
-//
 // Battle: enter "target" pointer mode (2) when stats-control is on; otherwise deselect.
+// FUNCTION: C2 0x348a4
+// FUNCTION: C2WIN 0x004b9019
 void act_target_unit(void)
 {
     if (zoom_level == 2) return;
@@ -5138,32 +4203,24 @@ void act_target_unit(void)
     else pointer_mode = 2;
 }
 
-// FUNCTION: C2 0x348C5
-// WIN: 0x004b9057
-// Lines 2699–2704
-//
 // Battle "retreat" button: confirm and, on yes, advance battle_state to 6.
+// FUNCTION: C2 0x348c5
+// FUNCTION: C2WIN 0x004b9057
 void act_battle_retreat(void)    { confirm(5, 0xA0, 0xA0); if (decision == 1) battle_state = 6; pointer_mode = 0; }
 
-// FUNCTION: C2 0x348F9
-// WIN: 0x004b9097
-// Lines 2705–2708
-//
 // Battle "surrender" button: confirm and, on yes, advance battle_state to 7.
+// FUNCTION: C2 0x348f9
+// FUNCTION: C2WIN 0x004b9097
 void act_battle_surrender(void)  { confirm(6, 0xA0, 0xA0); if (decision == 1) battle_state = 7; pointer_mode = 0; }
 
-// FUNCTION: C2 0x34924
-// WIN: 0x004b90d7
-// Lines 2711–2714
-//
 // Battle "auto-calculate" button: confirm and, on yes, advance battle_state to 5.
+// FUNCTION: C2 0x34924
+// FUNCTION: C2WIN 0x004b90d7
 void act_battle_autocalc(void)   { confirm(7, 0xA0, 0xA0); if (decision == 1) battle_state = 5; pointer_mode = 0; }
 
-// FUNCTION: C2 0x3494F
-// WIN: 0x004b9117
-// Lines 2718–2724
-//
 // Battle: select every figure on the field (no-op at zoom 2).
+// FUNCTION: C2 0x3494f
+// FUNCTION: C2WIN 0x004b9117
 void act_battle_select_all(void)
 {
     if (zoom_level != 2) {
@@ -5173,21 +4230,17 @@ void act_battle_select_all(void)
     }
 }
 
-// FUNCTION: C2 0x3496D
-// WIN: 0x004b9143
-// Lines 2726–2726
-//
 // Battle: launch help topic 0x33.
+// FUNCTION: C2 0x3496d
+// FUNCTION: C2WIN 0x004b9143
 void act_battle_help(void)
 {
     helping(0x33);
 }
 
-// FUNCTION: C2 0x34977
-// WIN: 0x004b9162
-// Lines 2728–2735
-//
 // Battle: order selected units into a line formation (general_reform(0)).
+// FUNCTION: C2 0x34977
+// FUNCTION: C2WIN 0x004b9162
 void act_unit_line_formation(void)
 {
     if (zoom_level == 2) return;
@@ -5197,11 +4250,9 @@ void act_unit_line_formation(void)
     else pointer_mode = 1;
 }
 
-// FUNCTION: C2 0x349A8
-// WIN: 0x004b91bc
-// Lines 2736–2743
-//
 // Battle: order selected units into a column formation (general_reform(1)).
+// FUNCTION: C2 0x349a8
+// FUNCTION: C2WIN 0x004b91bc
 void act_unit_column_formation(void)
 {
     if (zoom_level == 2) return;
@@ -5211,11 +4262,9 @@ void act_unit_column_formation(void)
     else pointer_mode = 1;
 }
 
-// FUNCTION: C2 0x349DC
-// WIN: 0x004b9216
-// Lines 2744–2751
-//
 // Battle: order selected units into a testudo / tortoise formation (general_reform(2)).
+// FUNCTION: C2 0x349dc
+// FUNCTION: C2WIN 0x004b9216
 void act_unit_tortoise_formation(void)
 {
     if (zoom_level == 2) return;
@@ -5225,12 +4274,10 @@ void act_unit_tortoise_formation(void)
     else pointer_mode = 1;
 }
 
-// FUNCTION: C2 0x34A10
-// WIN: 0x004b9270
-// Lines 2752–2756
-//
-// mop_up tail-calls general_reform(3) — no battle_state guard,
-// just clears pointer_mode and lets reform run.
+// mop_up tail-calls general_reform(3) — no battle_state guard, just clears pointer_mode and lets
+// reform run.
+// FUNCTION: C2 0x34a10
+// FUNCTION: C2WIN 0x004b9270
 void act_unit_mop_up_formation(void)
 {
     if (zoom_level == 2) return;
@@ -5238,14 +4285,10 @@ void act_unit_mop_up_formation(void)
     general_reform(3);
 }
 
-// FUNCTION: C2 0x34A2E
-// WIN: 0x004b92a1
-// Lines 2768–2786
-//
-// "Choose skill levels" startup dialog.  Loops show_skill1_box +
-// skill1_game_loop until accepted, then show_skill2_box (unless
-// the user already exited / preloaded a save / continues a
-// tutorial).  If skill2 returns 0x42a we go back to skill1.
+// "Choose skill levels" startup dialog. Loops show_skill1_box + skill1_game_loop until accepted,
+// then show_skill2_box (unless the user already exited / preloaded a save / continues a tutorial).
+// FUNCTION: C2 0x34a2e
+// FUNCTION: C2WIN 0x004b92a1
 void act_set_skill_levels(void)
 {
     pre_loaded_status = 0;
@@ -5272,15 +4315,10 @@ void act_set_skill_levels(void)
     flush_sb_buffer();
 }
 
-// FUNCTION: C2 0x34AB0
-// WIN: 0x004b9357
-// Lines 2788–2824
-//
-// Province-selection on first promotion.  In tutorial mode this is
-// pre-canned: province_is = 0, province_difficulty derived from
-// c2inf[+0x34].  Otherwise pop the initial-region modals; on player
-// rank 0 the first run shows show_first_region_box; on no
-// provinces left the player must restart.
+// Province-selection on first promotion. In tutorial mode this is pre-canned: province_is = 0,
+// province_difficulty derived from c2inf[+0x34].
+// FUNCTION: C2 0x34ab0
+// FUNCTION: C2WIN 0x004b9357
 void act_choose_init_region(void)
 {
     if (tutorial_mode != 0) {
@@ -5330,15 +4368,10 @@ void act_choose_init_region(void)
     flush_sb_buffer();
 }
 
-// FUNCTION: C2 0x34BB1
-// WIN: 0x004b94a6
-// Lines 2826–2843
-//
-// Pop the "this region: <name>" confirmation modal during the
-// new-province flow.  Loops show_buttons + control_buttons (the
-// Yes / No pair `confirming_buttons`) until out1 == 1.  Translates
-// out1 down by 1 (the buttons array is 1-indexed) and stamps the
-// resulting decision into out2.
+// Pop the "this region: <name>" confirmation modal during the new-province flow. Loops
+// show_buttons + control_buttons (the Yes / No pair `confirming_buttons`) until out1 == 1.
+// FUNCTION: C2 0x34bb1
+// FUNCTION: C2WIN 0x004b94a6
 void this_region(void)
 {
     this_region_box(0);
@@ -5358,14 +4391,11 @@ void this_region(void)
     setup_whole_screen_refresh();
 }
 
-// FUNCTION: C2 0x34C7B
-// WIN: 0x004b9590
-// Lines 2846–2851
-//
-// Run a tutorial-mode game once (`do_tutorial`).  After it returns,
-// either go to the skill1 dialog (regular flow) or just set
-// out1=1 (`continue_tutorial_status` was set, meaning the player
-// chose "continue" and we should not reset).
+// Run a tutorial-mode game once (`do_tutorial`). After it returns, either go to the skill1 dialog
+// (regular flow) or just set out1=1 (`continue_tutorial_status` was set, meaning the player chose
+// "continue" and we should not reset).
+// FUNCTION: C2 0x34c7b
+// FUNCTION: C2WIN 0x004b9590
 void act_tutorial(void)
 {
     do_tutorial();
@@ -5377,22 +4407,18 @@ void act_tutorial(void)
     }
 }
 
-// FUNCTION: C2 0x34CA5
-// WIN: 0x004b9647
-// Lines 2852–2852
-//
 // New-game flow: "quit to DOS" — set exit_flag and dismiss the modal.
+// FUNCTION: C2 0x34ca5
+// FUNCTION: C2WIN 0x004b9647
 void act_dos(void)
 {
     exit_flag = 1;
     act_goto_message();
 }
 
-// FUNCTION: C2 0x34CB1
-// WIN: 0x004b9663
-// Lines 2854–2854
-//
 // Raise the difficulty slider by 1 (clamped at 4).
+// FUNCTION: C2 0x34cb1
+// FUNCTION: C2WIN 0x004b9663
 void act_skill_up(void)
 {
     if (c2inf.skill_level < 4) {
@@ -5401,11 +4427,9 @@ void act_skill_up(void)
     }
 }
 
-// FUNCTION: C2 0x34CCC
-// WIN: 0x004b968b
-// Lines 2855–2855
-//
 // Drop the difficulty slider by 1 (floored at 0).
+// FUNCTION: C2 0x34ccc
+// FUNCTION: C2WIN 0x004b968b
 void act_skill_down(void)
 {
     if (c2inf.skill_level > 0) {
@@ -5414,24 +4438,19 @@ void act_skill_down(void)
     }
 }
 
-// FUNCTION: C2 0x34CEB
-// WIN: 0x004b96b2
-// Lines 2856–2856
-//
 // Toggle the peaceful-mode (no-region) flag.
+// FUNCTION: C2 0x34ceb
+// FUNCTION: C2WIN 0x004b96b2
 void act_tog_peace(void)
 {
     c2inf.peace_mode ^= 1;
     gen_refresh2   = 1;
 }
 
-// FUNCTION: C2 0x34CFA
-// WIN: 0x004b96d2
-// Lines 2858–2864
-//
-// "Edit player name" modal during the new-game flow.  Idles
-// new_name_game_loop while the user types, then re-shows skill2
-// box.
+// "Edit player name" modal during the new-game flow. Idles new_name_game_loop while the user
+// types, then re-shows skill2 box.
+// FUNCTION: C2 0x34cfa
+// FUNCTION: C2WIN 0x004b96d2
 void act_choose_name(void)
 {
     insert_cursor = 0;
@@ -5446,23 +4465,18 @@ void act_choose_name(void)
     setup_whole_screen_refresh();
 }
 
-// FUNCTION: C2 0x34D4D
-// WIN: 0x004b9735
-// Lines 2868–2868
-//
 // Close the current modal back to the new-game front panel (out1 = 1066).
+// FUNCTION: C2 0x34d4d
+// FUNCTION: C2WIN 0x004b9735
 void act_back_to_front_panel(void)
 {
     out1 = 1066;
 }
 
-// FUNCTION: C2 0x34D58
-// WIN: 0x004b974a
-// Lines 2870–2877
-//
-// "Load saved game" entry from the new-game flow.  On success
-// (file_loaded_status set), close the new-game flow with
-// pre_loaded_status and out1=1; otherwise reopen the skill1 box.
+// "Load saved game" entry from the new-game flow. On success (file_loaded_status set), close the
+// new-game flow with pre_loaded_status and out1=1; otherwise reopen the skill1 box.
+// FUNCTION: C2 0x34d58
+// FUNCTION: C2WIN 0x004b974a
 void act_preload(void)
 {
     load_a_game();
@@ -5477,12 +4491,9 @@ void act_preload(void)
     hold_mouse_replace = 1;
 }
 
-// FUNCTION: C2 0x34D95
-// WIN: 0x004b9795
-// Lines 2879–2894
-//
-// Pop the census panel and idle until the user dismisses it.
-// Battle mode is silently ignored.
+// Pop the census panel and idle until the user dismisses it. Battle mode is silently ignored.
+// FUNCTION: C2 0x34d95
+// FUNCTION: C2WIN 0x004b9795
 void act_census(void)
 {
     if (map_mode == 2) {
@@ -5506,16 +4517,11 @@ void act_census(void)
     in_census_mode = 0;
 }
 
-// FUNCTION: C2 0x34E10
-// WIN: 0x004b97d7
-// Lines 2896–2937
-//
-// Show the query panel for the cell under the cursor.  Resolves
-// pm_over_cm_ptr → act_start_x/y, fetches city or region info,
-// pre-selects the proper view button (queery_buttons+0x54 / +0x6C
-// / +0x84) based on q_type/q_flag, then idles queery_game_loop
-// while the user clicks through it.  Restores pointer_mode on
-// exit.
+// Show the query panel for the cell under the cursor. Resolves pm_over_cm_ptr → act_start_x/y,
+// fetches city or region info, pre-selects the proper view button (queery_buttons+0x54 / +0x6C /
+// +0x84) based on q_type/q_flag, then idles queery_game_loop while the user clicks through it.
+// FUNCTION: C2 0x34e10
+// FUNCTION: C2WIN 0x004b97d7
 void act_query(void)
 {
     int saved_pm;
@@ -5585,13 +4591,10 @@ void act_query(void)
     clear_mouse();
 }
 
-// FUNCTION: C2 0x34FB3
-// WIN: 0x004b99d4
-// Lines 2941–2947
-//
-// Query-panel "General" tab.  Only acts when query_mode != 0:
-// resets the other two button dots, clears query_mode, and
-// re-renders the panel (city map first when in city view).
+// Query-panel "General" tab. Only acts when query_mode != 0: resets the other two button dots,
+// clears query_mode, and re-renders the panel (city map first when in city view).
+// FUNCTION: C2 0x34fb3
+// FUNCTION: C2WIN 0x004b99d4
 void act_general_query(void)
 {
     if (query_mode == 0) {
@@ -5607,13 +4610,9 @@ void act_general_query(void)
     show_query_panel();
 }
 
-// FUNCTION: C2 0x34FF1
-// WIN: 0x004b9a29
-// Lines 2948–2953
-//
-// Query-panel "People" tab.  Same shape as `act_general_query`
-// but selects mode 1.  Tail-jumps into act_general_query's
-// repaint helper.
+// Query-panel "People" tab. Same shape as `act_general_query` but selects mode 1.
+// FUNCTION: C2 0x34ff1
+// FUNCTION: C2WIN 0x004b9a29
 void act_people_query(void)
 {
     if (query_mode == 1) {
@@ -5629,12 +4628,9 @@ void act_people_query(void)
     show_query_panel();
 }
 
+// Select the detailed query tab and repaint the query panel.
 // FUNCTION: C2 0x35032
-// WIN: 0x004b9a7e
-// Lines 2955–2958
-//
-// Query-panel "Detailed" tab.  Selects mode 2 then runs the shared
-// repaint epilogue.
+// FUNCTION: C2WIN 0x004b9a7e
 void act_detailed_query(void)
 {
     if (query_mode == 2) {
@@ -5650,47 +4646,35 @@ void act_detailed_query(void)
     show_query_panel();
 }
 
-// FUNCTION: C2 0x3505E
-// WIN: 0x004b9ad3  (unverified)
-// Lines 2962–2962
-//
 // Query panel: navigate to the help page (delta 0).
+// FUNCTION: C2 0x3505e
+// FUNCTION: C2WIN 0x004b9ad3
 void act_query_help(void)
 {
     act_query_do_help(0);
 }
 
-// FUNCTION: C2 0x35062
-// WIN: 0x004b9ae8  (unverified)
-// Lines 2963–2963
-//
 // Query panel: navigate to the tips page (delta +1).
+// FUNCTION: C2 0x35062
+// FUNCTION: C2WIN 0x004b9ae8
 void act_query_tips(void)
 {
     act_query_do_help(1);
 }
 
-// FUNCTION: C2 0x35069
-// WIN: 0x004b9afd
-// Lines 2964–2964
-//
 // Query panel: navigate to the history page (delta +2).
+// FUNCTION: C2 0x35069
+// FUNCTION: C2WIN 0x004b9afd
 void act_query_history(void)
 {
     act_query_do_help(2);
 }
 
-// FUNCTION: C2 0x3506E
-// WIN: 0x004b9b12
-// Lines 2977–3005
-//
-// Pop a help-page modal for the current query.  Adds `delta` to
-// `this_help_page` (so help-cursor arrows page through topics),
-// then routes through three redirect tables (temple-tips,
+// Pop a help-page modal for the current query. Adds `delta` to `this_help_page` (so help-cursor
+// arrows page through topics), then routes through three redirect tables (temple-tips,
 // temple-history, ent-history) before checking the debar list.
-// If allowed, calls `launch_help` and re-renders the underlying
-// map screen and query panel.  Always clears mouse and resets
-// pointer_mode on exit.  Returns 0.
+// FUNCTION: C2 0x3506e
+// FUNCTION: C2WIN 0x004b9b12
 void act_query_do_help(int delta)
 {
     int debarred;
@@ -5745,27 +4729,18 @@ void act_query_do_help(int delta)
     out3 = 0;
 }
 
-// FUNCTION: C2 0x35170
-// WIN: 0x004b9c74
-// Lines 3008–3012
-//
 // Toggle query pointer mode (between 4 and 0).
+// FUNCTION: C2 0x35170
+// FUNCTION: C2WIN 0x004b9c74
 void act_query_mode(void)
 {
     if (pointer_mode == 4) pointer_mode = 0;
     else                   pointer_mode = 4;
 }
 
+// Final stub for the source file: end-of-year sequence. Tutorial games skip the modal entirely.
 // FUNCTION: C2 0x35190
-// WIN: 0x004b9ca2
-// Lines 3017–3055
-//
-// Final stub for the source file: end-of-year sequence.  Tutorial
-// games skip the modal entirely.  When the year-end summary is
-// disabled (c2inf[+0x39] == 0) we just do an autosave (if enabled)
-// and return.  Otherwise show the year-end review screen, idle on
-// just_idle_game_loop, then re-show the underlying map.  The
-// `turbo_mode` flag re-enters turbo on exit.
+// FUNCTION: C2WIN 0x004b9ca2
 void act_do_year_end(void)
 {
     int saved_pm;

@@ -1,4 +1,3 @@
-// D:\C2\CODE\pm_map3.c
 
 #include "c2_data.h"
 
@@ -10,15 +9,11 @@ extern void write_i_sprite(unsigned char *sprite_addr);
 extern void write_i_left_sprite(unsigned char *sprite_addr);
 extern void write_i_right_sprite(unsigned char *sprite_addr);
 
-// FUNCTION: C2 0x3BB88
-// WIN: 0x0041dc80
-// Lines 39–49
-//
-// Top-level battle-map render: clears the per-frame sprite error
-// flag, draws the battle-map base and top-half overlays, paints a
-// 2x8 grid of small clipping sprites along the top edge at zoom 1,
-// decrements the cell-update countdown, and pops the battle-setup
-// dialog if the setup phase is still active.
+// Top-level battle-map render: clears the per-frame sprite error flag, draws the battle-map base
+// and top-half overlays, paints a 2x8 grid of small clipping sprites along the top edge at zoom 1,
+// decrements the cell-update countdown, and pops the battle-setup dialog if the setup phase is.
+// FUNCTION: C2 0x3bb88
+// FUNCTION: C2WIN 0x0041dc80
 void show_battlemap(void)
 {
     int i;
@@ -36,123 +31,9 @@ void show_battlemap(void)
         show_battle_setup_box();
 }
 
-// FUNCTION: C2 0x3BBEB
-// WIN: 0x0041dd0b
-// Lines 51–169
-//
-// Paint the BASE (terrain) half of the battle map: top edge
-// scanline followed by ((pm_screen_height-2)/2) interior row pairs
-// (mid3_line_with_sides_base + mid3_line_no_sides_base) and the
-// bottom edge.  Per cell, ptr >= 0x0FFF0000 selects a virtual
-// background tile; otherwise battle_map[ptr] carries the kind byte
-// and the dirty flags.  When update_map is zero the full diamond is
-// drawn; otherwise only refresh_a_square() touches dirty cells.
-
-// RESIDUE 2026-07-09 late (296bd, ir 3/62, isl 3, seat 1/7,
-// register-blind 207/210): the WIN oracle (Hard Rule #7) overturned the
-// old shape -- CAESAR2.EXE /Od shows per-arm `sprite_x += w; continue;`
-// dups (loop-inc funnels x4), `.dirty &= 0xf0` re-read RMW (not
-// `= tile & 0xf0`), and the arm bodies now byte-recover PS's
-// mov esi,0xe + top guard EDI + row compute + const-audit clean.
-// sprite_default IS real (top else only; bottom else is literal 0xe --
-// PS L142 imm store witnesses it; both confirmed by bytes this
-// session).  Remaining 3 islands = ONE dword-rover cursor chain:
-//   #11 top-terrain guard L90: RC edi / PS ebp (+1 short in walk
-//      window T = between top update==0 guard pick and terrain guard;
-//      window has 4 advances -- tile0-add, 0xf, 0xd, dispatch-add --
-//      PS needs 5), the += then self-fixes (fused add eax, wrap
-//      absorbs at the eax-busy #14 pick so #15+ resync; verified by
-//      ring sim against the live fr trace);
-//   #25/#26 bottom-terrain guard/+=: RC ebp/eax / PS edx/ebx (+2
-//      short in the bottom mirror window; bottom has 3 const stores).
-// PROBED AND DEAD this session (trace-screened via rover_fit +
-// byte-compiled where live): `<`-form guard inversions (Rule 9 pins
-// then-arm = fall-through; PS jl layout REQUIRES `>=` -- 546bd),
-// literal-0xe top else (hoist does not survive CompressIns: RC imm
-// store, 505bd), tile&=0xc (108bd), switch / nested-else / commuted /
-// bare-block-temp spellings (all birth-identical, walk-inert),
-// goto-in-else at the (tile&0xc)==0 line (moves ONE advance across
-// the guard birth but in the -1 direction), while-loop form (PS
-// for-increment late-line marks are normal -- byte-exact sibling
-// show_citymap_base shows the same), sweep plateau at 296bd.
-// The missing +1/+2 advances have no source-visible host in the
-// saturated windows; else-arms walk FIRST so the virtual arm's add
-// (then-arm, Rule 9-pinned) cannot enter window T.  Class: IL-birth /
-// walk-order upstream of LdStAlloc.  Next lever: whatever births an
-// extra RISCified dword op inside the windows without changing bytes
-// (un-merging the identical add+continue tails would fit the counts
-// exactly: top 2->1 merged = +1, bottom 3->1 = +2).
-// 2026-07-10 probe: the unmerge lever is DEAD at the source level --
-// duplicating the terrain arm's tail add (+continue) AND the commuted
-// `sprite_x = pm_diamond_width + sprite_x` variant both screen
-// INERT@BURN (births diverge at L140-146, walk identical): a
-// post-emission pass re-merges identical tails BEFORE LdStAlloc, so
-// no add+continue spelling can enter the walk window.  spell --suggest
-// finds zero safe fold/unfold hosts.  Genuinely sub-source pending a
-// pass-level insight; this roots the pm_map3 donor chain
-// (show_battlemap_base -> mid3_no_sides -> mid3_with_sides).
-// 2026-07-10b REFINEMENT (from the mid3_no_sides win, 15cd1284): a
-// duplicated tail that INCLUDES the place_diamond CALL survives the
-// pre-walk re-merge -- per-arm `place_diamond(2); sprite_x += w;` in
-// the top-terrain sub-arms screens LIVE with dword advance +1, the
-// EXACT window-T count.  But it is NOT byte-safe here: ComTail
-// re-merges the copies into a fresh intra-terrain merge point instead
-// of PS's cross-arm goto-top_draw jmp (296->313bd, isl 3->5) -- PS's
-// layout witnesses the goto/shared form, so the +1 must be hosted
-// WITHOUT creating a new call-tail.  (Contrast mid3_no_sides, where
-// PS's layout IS the merged-dup form and the same lever closed the
-// 0xf knot.)  Arm-order flip `if (tile == 0)` first = INERT@TREE.
-// 2026-07-10c CLOSED (0bd, line-compare 62/62 clean): same-statement
-// duplicate constant stores supply the missing RISCify advances
-// without changing the emitted stores (top +1, bottom +3).  The last
-// anonymous row/index EAX<->EBX seat needed Rule 109's second index
-// use: `pseudo_map[y][x] = pseudo_map[y][x]` is DCE'd after allocation
-// but gives the scaled index its own conflict.  Keeping that self-store
-// in the lookup's comma expression preserves PS's single statement.
-// Finally, the one-line if bodies, terrain assignment+goto, and bottom
-// refresh+shared-add recover every original -d1 boundary; expanding
-// any of them adds an RC-only line mark despite byte-identical code.
-// 2026-07-14 CLEANUP (still 0bd, line-compare 62/62): three
-// Mac-PPC-asm-witnessed source forms recovered, and the Rule 109
-// comma self-store ELIMINATED:
-//   * the dispatches mask tile IN PLACE after the terrain test
-//     (`tile &= 0xc;` then bare == 4 / == 8 compares) -- CodeWarrior
-//     shows `rlwinm r29,r29,0,0x1c,0x1d` on the tile register itself
-//     at 0x17c/0x3fc, and PS's single `and al,0xc` (L77/L137) agrees.
-//     (The earlier "tile&=0xc = 108bd" probe placed the mask BEFORE
-//     the zero test; the Mac order -- test on a temp, THEN mask -- is
-//     the byte-neutral form.)
-//   * bottom-terrain uses the same RMW `dirty &= 0xf0` as the top
-//     (Mac reads+stores through ONE address register at 0x4b4; PS's
-//     two-reg split at L160 is the rover picking DL while the address
-//     lives in EDX -- codegen, not source).
-//   * the bottom lookup is the plain postincrement, same as the top
-//     (Mac 0x308 mirrors 0x88); with the witnessed dispatch form the
-//     scaled index seats correctly WITHOUT the self-store.
-// 2026-07-14b HACK-FREE (0bd, line-compare 62/62 clean): the four
-// duplicate const stores are GONE.  The retained source recovery is:
-//   * the POSITIVE terrain guard (the mid3 family discovery,
-//     7be7ea37/7c2ef6f3): `if ((tile & 0xc) != 0) { dispatch; draw;
-//     add; continue; }` with the zero case falling through NATURALLY
-//     to the terrain code at loop-body level (no goto/else) -- the
-//     early `goto *_terrain` spelling produced the same final CFG but
-//     a different pre-optimization block chain, and the dups had been
-//     compensating for its missing RISCify advances.  Both edges also
-//     take the early `if (tile == 0) { add; continue; }` arm.
-// 2026-07-15 SOURCE-FLOW CORRECTION (0bd): the backward jumps at PS
-// L92/L152 are compiler tail merges, not backward source gotos.  The
-// terrain-virtual arms duplicate the complete `place_diamond(N);`
-// + `sprite_x += pm_diamond_width;` + `continue;` tail.  Watcom ComTail
-// merges each copy backward into the earlier update-virtual tail,
-// producing PS's unusual jumps with entirely forward structured C.
-// Duplicating only the call over-merges with the terrain-real arm;
-// Forge proved that adding the increment+continue on BOTH edges moves
-// ir 7/62 (526bd) to exact.  The Windows /Od build independently has
-// these duplicated tails and only the i/j/tile locals; the Mac build
-// also materializes the two calls separately.  Consequently the old
-// `sprite_default` local was an invented explanation for Watcom's
-// loop-invariant `mov esi,0xe`; the original source uses literal 0xe.
-
+// Paint the terrain half of the battle pseudo-map, including clipped edges and virtual background tiles.
+// FUNCTION: C2 0x3bbeb
+// FUNCTION: C2WIN 0x0041dd0b
 void show_battlemap_base(void)
 {
     int i;
@@ -260,15 +141,10 @@ void show_battlemap_base(void)
     }
 }
 
-// FUNCTION: C2 0x3BF3C
-// WIN: 0x0041e1e0
-// Lines 171–214
-//
-// Top-half (figures, arrows, sprites) twin of
-// show_battlemap_base.  Same scanline layout but each cell
-// invokes place3_sprite() which draws the figure_a / arrow_a
-// stored in battle_map[+1] / [+3].  Top + bottom edges use
-// row_kind 0; interior alternates with_sides + no_sides.
+// Top-half (figures, arrows, sprites) twin of show_battlemap_base. Same scanline layout but each
+// cell invokes place3_sprite() which draws the figure_a / arrow_a stored in battle_map[+1] / [+3].
+// FUNCTION: C2 0x3bf3c
+// FUNCTION: C2WIN 0x0041e1e0
 void show_battlemap_top(void)
 {
     int i;
@@ -318,40 +194,10 @@ void show_battlemap_top(void)
     bottom3_line_no_sides();
 }
 
-// FUNCTION: C2 0x3C0AF
-// WIN: 0x0041e3ca
-// Lines 218–274
-//
-// Render one interior base scanline (no edge clipping).  All
-// pm_screen_width cells use the full-diamond style.
-// Increments pm_shown_y and pm_y_clip at end.
-//
-// BYTE-EXACT 2026-07-10 (line-compare 31/31 clean).  The closing
-// sequence, for the family record:
-//  * comma-init `for (i = 0, pm_shown_x = pm_x; ...)` -- PS -d1 packs
-//    both inits under one mark (L224).
-//  * `tile &= 0xc;` writeback before an UNMASKED equality dispatch --
-//    CAESAR2.EXE /Od witnesses the masked writeback + `cmp eax,4/8`
-//    with no re-AND; PS L240/L243 concur (single mask, widened reuse).
-//  * continue-form update arm -- win-census goto-topology witnessed a
-//    loop-inc funnel x4 (four continues), not nested-else fallthrough.
-//  * 2026-07-14 cleanup: the dispatch's positive terrain guard is the
-//    source construct: `if ((tile & 0xc) != 0) { ... continue; }`, with
-//    the zero case naturally falling through to `terrain:`.  The old
-//    early `if (...) goto terrain;` spelling produced the same final
-//    CFG but a different pre-optimization block chain; two duplicate
-//    constant stores had compensated for its missing RISCify advances.
-//    The structured guard deletes both stores and is byte-exact with
-//    shape 0 and line-compare 31/31 clean.
-//  * shared `sprite_x += pm_diamond_width;` hoisted after the terrain
-//    if/else (sweep tail_hoist) + direct `pm_diamond_half_height`
-//    reads in the tail (sweep de_invent; the mid2 `h` local traded a
-//    tail island for a loop-head H2 seat flip -- h is NOT PS source
-//    here).  Composed by `c2 sweep` (8 -> 4 -> 0 bd).
-//  * `sprite_x += pm_diamond_width; continue;` on ONE line in the
-//    sprite arm (PS's jmp is unmarked; a separate `continue;` line
-//    left an RC-only -d1 mark at +0x8B).
-// the continue/shared layout is byte-load-bearing.
+// Render one interior base scanline (no edge clipping). All pm_screen_width cells use the
+// full-diamond style.
+// FUNCTION: C2 0x3c0af
+// FUNCTION: C2WIN 0x0041e3ca
 void mid3_line_no_sides_base(void)
 {
     int i;
@@ -401,57 +247,11 @@ void mid3_line_no_sides_base(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x3C244
-// WIN: 0x0041e622
-// Lines 277–421
-//
-// Render one interior base scanline with edge clipping —
-// uses place_lefthalf_diamond() for the leftmost column,
-// place_righthalf_diamond() for the rightmost, and full
-// place_diamond() for the (pm_screen_width-2) middle cells.
-//
-// BYTE-EXACT 2026-07-11 (638bd -> 0).  The 2026-07-10 walk-order
-// diagnosis ("terrain_left must walk BETWEEN the update-left guard and
-// its dispatch stores") was closed by ONE structural edit: nest the
-// terrain_left body INSIDE the update arm as the ELSE of the
-// `(tile & 0xc) != 0` dispatch test (label on the else arm;
-// `else goto terrain_left;` on the update_map guard jumps into it --
-// same cross-scope goto class as terrain_mid).  Source block-birth
-// order then puts the terrain blocks between the guard and the
-// dispatch stores; c2 spell screened it LIVE(reorder) -- walk differs
-// with ZERO advance delta, exactly the diagnosed signature -- and the
-// byte compile landed 0.  The mirrored polarity (terrain in the
-// then-arm, dispatch in else) is INERT@BURN: the reverse-arm walk
-// rule decides which arm carries the label.  The old ebp push +
-// un-merged tail were downstream of this one knot, as predicted.
-// -d1 polish: mid sprite-arm and shared update tail pack
-// `sprite_x += pm_diamond_width; continue;` on ONE line; terrain_mid
-// place_diamond(0) duplicated per arm (byte-neutral, kills the +0x280
-// RC-only mark).  line-compare: 75/75 paired, no out-of-order; ONE
-// residual RC-only mark at +0x240 (the ComTail jmp from the refresh
-// path to the shared tail -- PS leaves it unmarked; tile==0-guard and
-// tail-dup respellings both REGRESS bytes, so the mark is inherent to
-// the byte-exact shared-tail form, same class as show_left_overlay's
-// +0xD1).  Rules 121/125; block-birth dictionary reverse-arm class.
-// 2026-07-14 CLEANUP (still 0bd): the three `dirty = tile & 0xf0`
-// spellings (unwitnessed -- Mac PPC re-reads the FIELD, not the tile
-// local, at 0xcc/0x28c/0x480) were replaced by the plain RMW
-// `dirty &= 0xf0`, with the LEFT-half site written as the self-form
-// re-read `dirty = dirty & 0xf0` (Mac cannot distinguish self-form
-// from &= -- both single-read on PPC -- and the c2 sweep proved ANY
-// ONE of the three sites in self-form is byte-exact; the extra
-// address/load IL op is the +1 host that seats the first lookup's
-// scaled-index temp, replacing the old `= tile &` triple).
-// 2026-07-14 cleanup: the middle section uses the same positive
-// terrain guard recovered in mid3_line_no_sides_base.  The zero case
-// naturally falls through to the terrain draw; the positive body draws
-// and continues.  This deletes both duplicate constants and moves the
-// no-dup result from 413bd / ir4 to 8bd / ir0 (all 238 instructions
-// register-blind-identical).  Forge's whole-function RMW grid then
-// located the remaining honest allocator host: the middle update path's
-// `dirty = dirty & 0xf0` self-read form.  That single tree spelling seats
-// the first lookup's anonymous scaled-index temp in EBX and restores
-// byte-exactness; line-compare is clean at all 75 marks.
+// Render one interior base scanline with edge clipping — uses place_lefthalf_diamond() for the
+// leftmost column, place_righthalf_diamond() for the rightmost, and full place_diamond() for the
+// (pm_screen_width-2) middle cells.
+// FUNCTION: C2 0x3c244
+// FUNCTION: C2WIN 0x0041e622
 void mid3_line_with_sides_base(void)
 {
     int i;
@@ -573,12 +373,10 @@ mid_done:
     pm_y_clip += pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x3C61E
-// WIN: 0x0041ebe0
-// Lines 428–457
-//
-// Top-half mid scanline, no edge half-cells.  Three render
-// passes (leading/main/trailing half-cells, styles 2/0/2).
+// Top-half mid scanline, no edge half-cells. Three render passes (leading/main/trailing
+// half-cells, styles 2/0/2).
+// FUNCTION: C2 0x3c61e
+// FUNCTION: C2WIN 0x0041ebe0
 void mid3_line_no_sides_top(void)
 {
     int i;
@@ -611,14 +409,10 @@ void mid3_line_no_sides_top(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x3C733
-// WIN: 0x0041ed78
-// Lines 459–491
-//
-// Top-half mid scanline, full edge cells.  Three render
-// passes: leading full cell (style=1), main row of
-// pm_screen_width - 1 cells (style=0), trailing full cell
-// (style=2).
+// Top-half mid scanline, full edge cells. Three render passes: leading full cell (style=1), main
+// row of pm_screen_width - 1 cells (style=0), trailing full cell (style=2).
+// FUNCTION: C2 0x3c733
+// FUNCTION: C2WIN 0x0041ed78
 void mid3_line_with_sides_top(void)
 {
     int i;
@@ -648,16 +442,9 @@ void mid3_line_with_sides_top(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x3C846
-// WIN: 0x0041ef08
-// Lines 495–528
-//
-// Bottom-edge with-sides scanline.  Three render passes:
-//   1. Leading full cell at (pm_x, pm_shown_y), style=1.
-//   2. Main row of pm_screen_width - 1 full cells, style=0.
-//   3. Trailing full cell, style=2.
-// Advances sprite_y / pm_shown_y / pm_y_clip by half-height
-// after the row.
+// Bottom-edge with-sides scanline. Three render passes: 1.
+// FUNCTION: C2 0x3c846
+// FUNCTION: C2WIN 0x0041ef08
 void bottom3_line_with_sides(void)
 {
     int i;
@@ -689,18 +476,9 @@ void bottom3_line_with_sides(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x3C960
-// WIN: 0x0041f098
-// Lines 530–562
-//
-// Bottom-edge no-sides scanline.  Three render passes:
-//   1. Leading half-cell at (pm_x - 1, pm_shown_y), style=2,
-//      only when pm_x > 0.
-//   2. Main row of pm_screen_width full cells, style=0.
-//   3. Trailing half-cell at (pm_shown_x, pm_shown_y),
-//      style=2, only when pm_shown_x < 80.
-// Advances sprite_y / pm_shown_y / pm_y_clip by half-height
-// after the row.
+// Bottom-edge no-sides scanline. Three render passes: 1.
+// FUNCTION: C2 0x3c960
+// FUNCTION: C2WIN 0x0041f098
 void bottom3_line_no_sides(void)
 {
     int i;
@@ -735,30 +513,10 @@ void bottom3_line_no_sides(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x3CA7F
-// WIN: 0x0041f231
-// Lines 771–948
-//
-// Composite figure-and-arrow sprite renderer for one battle-map
-// cell.  Reads figure_a from battle_map[+1] and arrow_a from
-// battle_map[+3] of the current pm_shown_ptr.  For each non-zero
-// slot:
-//
-//   * Compute the screen offset (xo, yo) by indexing
-//     fig_walking_x/y_ofsets_z1/z2 with (facing_dir - map_direction)
-//     mod 8 (z1 / z2 split is by zoom_level).  Apply the per-row
-//     style offset for full / left / right slot.
-//   * Read the 24-bit sprite_start, sprite_width, sprite_height and
-//     sprite_x/y_off bytes from the figure's animation frame table;
-//     sprite_start > 0x4baf0 marks an empty slot (bumps
-//     sprite_error and bails).
-//   * Apply zoom-2 x/y adjustments for special figure types
-//     (figure_list[+0x4] == 2), refresh the figure square, xclip /
-//     yclip and dispatch via write_i_*_sprite.
-//   * For elephant-class figures (fight_state == 2) draw a 2-step
-//     archer-rider loop after the body.
-//   * Arrow pass walks the arrow chain via arrow_list[+0x21]
-//     repeating the same pipeline on the arrow frame table.
+// Composite figure-and-arrow sprite renderer for one battle-map cell. Reads figure_a from
+// battle_map[+1] and arrow_a from battle_map[+3] of the current pm_shown_ptr.
+// FUNCTION: C2 0x3ca7f
+// FUNCTION: C2WIN 0x0041f231
 void place3_sprite(int style)
 {
     int xi;
@@ -922,13 +680,10 @@ void place3_sprite(int style)
     }
 }
 
-// FUNCTION: C2 0x3D2D5
-// WIN: 0x0041fe23
-// Lines 952–976
-//
-// Battle-map debug overlay.  test_mode1 prints the state_idx of the
-// figure stored in battle_map+1 (or zero for an empty cell); test_mode2
-// prints signed battle_map+3.  Restores sprite_x/y after font_no.
+// Battle-map debug overlay. test_mode1 prints the state_idx of the figure stored in battle_map+1
+// (or zero for an empty cell); test_mode2 prints signed battle_map+3.
+// FUNCTION: C2 0x3d2d5
+// FUNCTION: C2WIN 0x0041fe23
 void print3_test_info(void)
 {
     int v;

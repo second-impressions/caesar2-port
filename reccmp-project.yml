@@ -6,3 +6,10 @@ targets:
       - src
     hash:
       sha256: 4a41f68d0c322785d9a174d4728c3095ab5c6e0d24624af2d3ce67540d8eca5c
+  C2WIN:
+    filename: CAESAR2.EXE
+    compiler: msvc
+    source-root:
+      - src
+    hash:
+      sha256: caca2babb57d9450d8d500b51ffaa4c037b25c8fa0326d43002a281a7ba69f58

@@ -1,4 +1,3 @@
-// D:\C2\CODE\mmedia.c
 
 #include "mmedia.h"
 #include "c2_data.h"
@@ -11,16 +10,6 @@ extern void font_no(int value, char pad_char, char *suffix, int x, int y, unsign
 extern int  get_next_word_length(char *src, unsigned char *font);
 void media_text_place(int x, int y, int width, int line_count, int alt_x, int alt_width, unsigned char *font);
 
-/* The constant-bound fill loops in this file compile to
- * `call __STOSB` (count in ecx) via Watcom's fill-loop recognition;
- * the original source was plain loops, as the Mac PPC build shows.
- *
- * Confirmed via docs/codegen-experiments/memset_init_help.py:
- * 32-bit Watcom 10.0a never marks memset() as intrinsic
- * (string.h: `#ifndef __386__ #pragma intrinsic(memset)`), so
- * even `-oi` + explicit `#pragma intrinsic(memset)` produces a
- * call with the count in ebx (__watcall 3rd arg slot), not ecx —
- * the source was NOT memset(). */
 
 #include "c2_types.h"
 
@@ -102,9 +91,7 @@ struct tutorial_file_rec tut_palfiles[32] = {
     { "tut_16b.256" }
 };
 
-/* ── TU-owned file-scope variables (PS.EXE _BSS, original declaration
-   order).  Recovered so the functional rebuild (`c2 rebuild`) links
-   self-sustained -- no auto-stubbed storage.  Extern decls: c2_data.h. */
+/* File-local state. */
 char media_line_buffer[200];
 int greyed_out;
 int tutorial_correct_timer;
@@ -122,18 +109,9 @@ int linked_text_flag;
  * (conflicting fwd/def in action.c), so spell it explicitly here. */
 
 
-// FUNCTION: C2 0x57FA8
-// WIN: 0x004521a0
-// Lines 115–148
-//
-// Run the in-game help/media browser starting at `page`.  Valid pages
-// are 1..1999.  Pointer mode is suppressed for the duration and
-// restored on exit; linked pages and media voice playback are handled
-// inside the modal help loop.
-//
-// Faithful but not byte-exact (~130 b residue): the modal-loop structure
-// matches, but Watcom picks ecx/edi temporaries where PS uses edx/esi/ebp,
-// causing a register-allocation cascade through the loop.
+// Run the in-game help/media browser starting at `page`. Valid pages are 1..1999.
+// FUNCTION: C2 0x57fa8
+// FUNCTION: C2WIN 0x004521a0
 void launch_help(int page)
 {
     int old_pointer_mode;
@@ -178,12 +156,10 @@ void launch_help(int page)
     pointer_mode = old_pointer_mode;
 }
 
-// FUNCTION: C2 0x580A9
-// WIN: 0x00452332
-// Lines 150–158
-//
-// Load the current help/media table entry, then load its text block
-// into format_buffer and mark which optional assets are present.
+// Load the current help/media table entry, then load its text block into format_buffer and mark
+// which optional assets are present.
+// FUNCTION: C2 0x580a9
+// FUNCTION: C2WIN 0x00452332
 void load_media_entry(void)
 {
     media_voc = 0;
@@ -206,32 +182,9 @@ void load_media_entry(void)
     }
 }
 
+// Render the in-game F1 help dialog.
 // FUNCTION: C2 0x58162
-// WIN: 0x0045241f
-// Lines 160–220
-//
-// Render the in-game F1 help dialog.  Loads the help page's
-// palette over the current city_palette into temp_palette, paints
-// the modal mosaic frame, optionally loads / draws the left and
-// right illustration sprites flanking the text column, then
-// dispatches to media_text_place to wrap the help body into the
-// gap between them.  Buttons (prev / next / index) live along
-// the bottom edge and the exit button anchors the top-right.
-//
-// Layout constants (all in svga pixel coords):
-//   * frame:      cell (8,0x20) span (0x1d,0x1b) on the mosaic grid
-//   * blank pane: cell (0x18,0x30) span (0x1b,0x19)
-//   * exit btn:   (0x1a8, 0x1a0)
-//   * buttons:    base (0x168, 0x1a0), 2 buttons from help_buttons
-//   * title:      put_a_font_string(text_pointer, esi=0x28, 0x38, font2, 0x10)
-//   * body:       media_text_place(x=0x28, y=0x5a, width=ebp,
-//                                  line_count=edi, alt_x=0x28,
-//                                  alt_width=0x190, font=font1)
-//
-// The two images (when present) eat horizontal space; ebp
-// (width passed to media_text_place) shrinks by sprite_width+8
-// per side, and edi (line_count) is capped at
-// (sprite_height-0x18)/0x10.
+// FUNCTION: C2WIN 0x0045241f
 void show_help_page(void)
 {
     int  text_lines;
@@ -318,40 +271,10 @@ void show_help_page(void)
     hold_mouse_replace = 1;
 }
 
-// FUNCTION: C2 0x584A9
-// WIN: 0x0045296c
-// Lines 222–274
-//
-// Word-wrap a stream of help / tutorial text from format_buffer
-// (the global media-load scratch) into successive lines on the
-// sprite layer.  Walks one line at a time:
-//
-//   1. Clear media_line_buffer (200 bytes — the max width of a
-//      packed line).
-//   2. Pull whole words out of text_pointer via
-//      get_next_word_length() and accumulate their advance widths
-//      until the next word would push the line past `width`
-//      (less alt_x_offset, which is held at zero in PS — the
-//      escape-flag mechanism wires it but no caller exercises it).
-//   3. Copy each fitting word's bytes into media_line_buffer,
-//      skipping leading spaces and bailing on '$' (which sets
-//      escape_flag=1 to force the line to fill and break early).
-//   4. Call put_a_media_string(buffer, x, y) to render the line
-//      and bump y by 0x12.
-//
-// When line_index reaches line_count, the function swaps in
-// (alt_x, alt_width) — the caller-provided continuation
-// rectangle — and keeps wrapping the rest of the text into
-// that secondary area.  show_help_page uses this for the
-// double-column footer rendered below the main paragraph.
-//
-// The 20-entry help_page_hot_spots[] table is reset to zero at
-// entry so each call starts with a clean hotspot list, which is
-// then populated by put_a_media_string's '#'-tag handler.
-//
-// Calling convention (__watcall):
-//   eax = x         edx = y          ebx = width     ecx = line_count
-//   stack: alt_x,   alt_width,       font  (cleaned by callee, ret 0xC)
+// Word-wrap a stream of help / tutorial text from format_buffer (the global media-load scratch)
+// into successive lines on the sprite layer. Walks one line at a time: 1.
+// FUNCTION: C2 0x584a9
+// FUNCTION: C2WIN 0x0045296c
 void media_text_place(int x, int y, int width, int line_count,
                       int alt_x, int alt_width, unsigned char *font)
 {
@@ -444,63 +367,9 @@ void media_text_place(int x, int y, int width, int line_count,
     }
 }
 
-// FUNCTION: C2 0x58684
-// WIN: 0x00452c66
-// Lines 276–326
-//
 // Render one line of help / tutorial text into the sprite layer.
-//
-//   text = pointer to ASCIIZ string
-//   x    = pen x in pixels (also caches into sprite_x)
-//   y    = pen y in pixels (also caches into sprite_y)
-//
-// Walks the string a byte at a time:
-//
-//   * '#' — hotspot delimiter, alternating open/close.  When
-//     opening, allocate a new entry in help_page_hot_spots[],
-//     parse the immediately-following ASCII integer (1–4 digits)
-//     as the hotspot id via get_number_from_text(), and record
-//     the current pen position as the rectangle origin.  When
-//     closing, store the current pen x as the rectangle right
-//     edge.  Setting linked_text_flag colours subsequent glyphs
-//     in highlight colour 0x0D.
-//
-//     Each hotspot record is 7 shorts (14 bytes):
-//
-//        +0  id
-//        +2  x1 (rectangle left)
-//        +4  x2 (rectangle right, closes the spot)
-//        +6  y
-//        +8  x3 (continued line: second-row left)
-//        +A  x4 (continued line: second-row right)
-//        +C  (unused)
-//
-//   * 0x20–0xFF — printable, draws via one_letter(font1, c-' ').
-//     Glyphs absent from letter_table[] (width 0) fall back to a
-//     plain 4-pixel advance.
-//
-//   * < 0x20 — skipped, just consumes the byte.
-//
-// On NUL: if a hotspot is still open, close it with the current
-// pen x in the +4 slot; then advance x_is by 4 (line padding).
-//
-// BYTE-EXACT 2026-06-12 (was 298 b), first compile after re-reading
-// the Mac PPC oracle: (1) NO `hot` pointer cache and NO `num` local
-// — every hotspot access is a direct `help_page_hot_spots[this_spot]
-// .field` (Mac recomputes this_spot*0xe per access; Watcom CSEs the
-// offset at the loop head), and the digit-skip chain RE-READS the
-// just-stored .page field per compare (PS: movsx from the array,
-// L305-308, nested if/else-if — not the old `num > 9 && num <= 99`
-// flat chain); (2) the open-hotspot x3 stamp is PRE-LOOP only, and
-// on NUL the close goes to x2 — the old body re-stamped x3 every
-// iteration and never closed x2 (semantic fix); (3) `c` is a CHAR
-// living in AL (byte sub/test; compares zero-extend per use — an
-// int c forces wrong widening), with the `c = 1;` sentinel ending
-// the '#' arm so the SEPARATE `if (c >= 0x20)` render block skips
-// (PS: mov al,1 at L310 — the arms are NOT an else-if chain);
-// (4) source statement order text++/this_spot=/.../nof++/flag=1
-// follows the -d1 line records (L298→L304); Watcom's const-1 EBP
-// cache (Rule 110) and the colour if/else fall out for free.
+// FUNCTION: C2 0x58684
+// FUNCTION: C2WIN 0x00452c66
 void put_a_media_string(char *text, int x, int y)
 {
     char c;
@@ -568,39 +437,15 @@ void put_a_media_string(char *text, int x, int y)
     x_is += 4;
 }
 
+// Hit-test the current mouse position against the help-screen hot spots.
 // FUNCTION: C2 0x58828
-// WIN: 0x00452f00
-// Lines 329–358
-//
-// Hit-test the current mouse position against the help-screen hot
-// spots.  Each entry of help_page_hot_spots is 14 bytes (7 shorts):
-//   [0] = target page id
-//   [1]..[2] = primary x range (x_min, x_max)
-//   [3] = y top
-//   [4]..[5] = optional secondary-row x range (a second 18px-high
-//              hit-box stacked below the first; zero x_min means "no
-//              second row").
-// Returns 1 (with this_help_page latched and the history pushed) on
-// hit, 0 otherwise.  Tail-merges into the shared 6-register pop/ret
-// at 0x584a2.
+// FUNCTION: C2WIN 0x00452f00
 int get_linked_page(void)
 {
     int i;
     int x_w;
     int y_top;
 
-    /* BYTE-EXACT 2026-06-12 via Mac oracle + line skeleton + Cascade
-     * verdict.  The Mac PPC disasm is literal about the second row:
-     * subf r29 REUSES the x_w slot (x_w = x4 - x3, no separate sec_w),
-     * the x3 test is direct (one mark at orig line 346, no named
-     * sec_min), and addi r27,r27,0x12 updates y_top IN PLACE -- with no
-     * line mark at 348 the += must be EMBEDDED in the call argument
-     * (mouse_in_area(..., y_top += 0x12, ...)).  That extra def+use
-     * lifts sav(y_top) over sav(i) (40 -> >41 vs 41), exactly the
-     * SAVINGS relation the Cascade verdict demanded (i had sav 41 =
-     * 4 d1-refs + the d0 init; decl-order levers were provably dead).
-     * PS's `lea edx,[edi+0x12]` does not contradict the +=: y_top is
-     * dead after the call, so wcc386 elides the store-back. */
     for (i = 0; i < nof_hot_spots; i++) {
         x_w   = help_page_hot_spots[i].x2 - help_page_hot_spots[i].x1;
         y_top = help_page_hot_spots[i].y;
@@ -621,12 +466,10 @@ int get_linked_page(void)
     return 0;
 }
 
-// FUNCTION: C2 0x588B9
-// WIN: 0x0045307e
-// Lines 361–366
-//
-// Append the current help page to the history buffer at the
-// action cursor, then advance the cursor (capped at 0xC7).
+// Append the current help page to the history buffer at the action cursor, then advance the cursor
+// (capped at 0xC7).
+// FUNCTION: C2 0x588b9
+// FUNCTION: C2WIN 0x0045307e
 void push_forward_help_history(void)
 {
     help_history[this_help_action] = this_help_page;
@@ -634,12 +477,10 @@ void push_forward_help_history(void)
         this_help_action++;
 }
 
-// FUNCTION: C2 0x588E2
-// WIN: 0x004530b7
-// Lines 368–373
-//
-// Step the help history back one slot, loading the prior
-// page index.  No-op if already at the start.
+// Step the help history back one slot, loading the prior page index. No-op if already at the
+// start.
+// FUNCTION: C2 0x588e2
+// FUNCTION: C2WIN 0x004530b7
 void rewind_help_history(void)
 {
     if (this_help_action > 0) {
@@ -648,14 +489,10 @@ void rewind_help_history(void)
     }
 }
 
+// Reset the help history: jump to first page, zero the action cursor, and wipe the 200-entry
+// history buffer.
 // FUNCTION: C2 0x58907
-// WIN: 0x004530ec
-// Lines 375–381
-//
-// Reset the help history: jump to first page, zero the
-// action cursor, and wipe the 200-entry history buffer.
-// The fill loop lowers to `call __STOSB`; see file header for
-// why the source can't have been memset() in 32-bit Watcom 10.0a.
+// FUNCTION: C2WIN 0x004530ec
 void init_help_history(void)
 {
     int i;
@@ -666,18 +503,11 @@ void init_help_history(void)
         help_history[i] = 0;
 }
 
-// FUNCTION: C2 0x5892D
-// WIN: 0x0045313c
-// Lines 387–423
-//
-// Run the tutorial: stash the player's real skill_level / peace_mode,
-// force easiest-skill peace-mode, zero the calendar back to -200 BC,
-// clear the empire and seed the starting province, then loop
-// do_a_tutorial_page() until tutorial_page >= 0x20.  Restore the
-// original c2inf flags, ask the user whether to start a real game
-// (confirm 0xe), latch continue_tutorial_status on Yes, then
-// black_out + cover_mouse_droppings + clear_a_screen and tail-merge
-// into the shared 6-register pop epilogue at 0x584a2.
+// Run the tutorial: stash the player's real skill_level / peace_mode, force easiest-skill
+// peace-mode, zero the calendar back to -200 BC, clear the empire and seed the starting province,
+// then loop do_a_tutorial_page() until tutorial_page >= 0x20.
+// FUNCTION: C2 0x5892d
+// FUNCTION: C2WIN 0x0045313c
 void do_tutorial(void)
 {
     int saved_skill = c2inf.skill_level;
@@ -723,57 +553,9 @@ void do_tutorial(void)
     hold_mouse_replace = 1;
 }
 
-// FUNCTION: C2 0x58A24
-// WIN: 0x004532dc
-// Lines 427–505
-//
-// Render and run one page of the in-game tutorial.
-//
-// Per page:
-//   1. tut_files[page] holds the .pl8 image filename;
-//      tut_palfiles[page] is the matching .256 palette.
-//      Each table entry is 14 bytes (zero-padded ASCIIZ).  If the
-//      pl8 file is missing, skip the page (out4=0; ++page) — but
-//      FALL THROUGH to the challenge wrap-up (PS's skip jmp lands
-//      on L477, the active_tutorial_pages dispatch, NOT the
-//      epilogue), so a challenge attached to the next page still
-//      arms and stop_db() still runs.
-//   2. show_pl8file(image, 0x1E0) paints the page.
-//      readfile() pulls the palette into temp_palette.
-//   3. load_media_entry() loads the page's MED record (text +
-//      title + narration filename) into this_media_entry /
-//      format_buffer.
-//   4. put_a_font_string draws the title;
-//      media_text_place wraps the body into the page's text rect
-//      stored in this_media_entry[+4..+9] (x, y_top, width).
-//   5. Three navigation arrows (font_list idx 1/2/3) at fixed
-//      bottom-row positions + an exit button.
-//   6. Plays narration via set_db_sound when media_voc is set.
-//
-// Then loops just_idle_game_loop() until either:
-//   * exit_screen() returns true (user clicks X) — jumps page to
-//     0x20 and calls do_pos().
-//   * The user clicks one of the three nav rectangles
-//     (act_back/middle/forward_tutorial_page).
-//
-// Finally, if active_tutorial_pages[page] is non-zero, this page
-// has an interactive challenge attached: it sets tutorial_level
-// to that byte, arms the 0x13B9-tick timer, dispatches to either
-// the province or city map (depending on the challenge code 5/8
-// vs anything else), and enters main_game_loop() until
-// tutorial_timer expires or tutorial_correct fires for 100 ticks
-// (in which case show_please_wait/wait_click and out4=1).
-//
-// Byte-exact (was 219b parked).  Two load-bearing source facts:
-//   * the challenge-wrap-up reads the GLOBAL `tutorial_level` directly
-//     (no local `level`) at the guard and the ==5/==8 dispatch — Watcom
-//     CSEs the just-stored value, and the absence of the extra local
-//     seats the post-loop rover scratch (out4 -> ESI) the way PS does.
-//   * the out1 idle loop is written as an explicit top-tested goto loop
-//     (Rule 92 / §5b): a structured `while (out1 == 0)` lets Watcom
-//     rotate the loop and OptPull-hoist the exit-arm constants
-//     (out1=1 / tutorial_page=0x20) into preheader registers, which PS
-//     keeps as in-place `mov [m], imm` stores.
+// Render and run one page of the in-game tutorial. Per page: 1.
+// FUNCTION: C2 0x58a24
+// FUNCTION: C2WIN 0x004532dc
 void do_a_tutorial_page(void)
 {
     char *image_path;
@@ -785,9 +567,6 @@ void do_a_tutorial_page(void)
     image_path = tut_files[tutorial_page].name;
     pal_path   = tut_palfiles[tutorial_page].name;
 
-    /* `out4 = 0;` shares the if's source line: PS's -d1 stream keeps
-       the (eax-CSEd) store inside the L436 run, with L437 on the
-       increment alone. */
     if (!check_file_exists(image_path)) { out4 = 0;
         tutorial_page++;
     } else {
@@ -869,20 +648,11 @@ void do_a_tutorial_page(void)
     }
 
     stop_db();
-    /* Tail-merges with show_help_page's 6-pop epilogue at 0x584A2
-     * (Rule 15) — the C source ends here. */
 }
 
-// FUNCTION: C2 0x58D3B
-// WIN: 0x004537a1
-// Lines 508–526
-//
-// Periodic check (every 50 game ticks) during tutorial level 3:
-// scan the city map for at least one housing cell (kind 0x82..0xA1)
-// whose range_flag (+0xA) has bit 2 or bit 3 set — i.e. the cell
-// is currently within forum service range.  When found, arm the
-// "correct" countdown (tutorial_correct_timer = 50) and flip
-// tutorial_correct = 1 so the tutorial advances.
+// Checks whether tutorial level 3's housing forum-access objective has been met.
+// FUNCTION: C2 0x58d3b
+// FUNCTION: C2WIN 0x004537a1
 void tutorial_test_for_forum_access(void)
 {
     int y;
@@ -908,17 +678,9 @@ void tutorial_test_for_forum_access(void)
     }
 }
 
-// FUNCTION: C2 0x58DDC
-// WIN: 0x00453897
-// Lines 528–546
-//
-// Periodic check (every 50 ticks) during tutorial level 2: scan
-// the city map for at least one housing cell whose education
-// byte (+0xD) bit 0 is set — i.e. the cell is being supplied with
-// water.  When found, flip tutorial_correct = 1 so the tutorial
-// advances.  Note this variant does NOT arm the
-// tutorial_correct_timer (the forum test does); the difference is
-// preserved.
+// Checks whether tutorial level 2's housing water-distribution objective has been met.
+// FUNCTION: C2 0x58ddc
+// FUNCTION: C2WIN 0x00453897
 void tutorial_test_for_water_distribution(void)
 {
     int y;
@@ -943,13 +705,11 @@ void tutorial_test_for_water_distribution(void)
     }
 }
 
-// FUNCTION: C2 0x58E6F
-// WIN: 0x00453983
-// Lines 548–557
-//
-// Blocking "please wait" system panel.  Draws a fixed 20x8 window,
-// schedules a full refresh, prints the heading in font2 followed by
-// three explanatory lines in font1, then flushes to the SVGA screen.
+// Blocking "please wait" system panel. Draws a fixed 20x8 window, schedules a full refresh, prints
+// the heading in font2 followed by three explanatory lines in font1, then flushes to the SVGA
+// screen.
+// FUNCTION: C2 0x58e6f
+// FUNCTION: C2WIN 0x00453983
 void show_please_wait(void)
 {
     show_a_system_window(0x50, 0xc0, 0x14, 8);
@@ -961,17 +721,11 @@ void show_please_wait(void)
     refresh_svga_screen();
 }
 
-// FUNCTION: C2 0x58F16
-// WIN: 0x00453a1a
-// Lines 559–565
-//
-// Render the tutorial countdown HUD when `tutorial_mode`
-// is on.  Clears a 2-row mosaic at (0x1f4, 0x1b3), prints
-// `tutorial_timer / 50` (the timer is in 50-tick units —
-// 50 ticks/sec, so this is the seconds value) inside it,
-// and refreshes the area.
-//
-// 2 callers — mmedia.c donor.
+// Render the tutorial countdown HUD when `tutorial_mode` is on. Clears a 2-row mosaic at (0x1f4,
+// 0x1b3), prints `tutorial_timer / 50` (the timer is in 50-tick units — 50 ticks/sec, so this is
+// the seconds value) inside it, and refreshes the area.
+// FUNCTION: C2 0x58f16
+// FUNCTION: C2WIN 0x00453a1a
 void show_tutorial_timer(void)
 {
     if (tutorial_mode != 0) {
@@ -981,14 +735,10 @@ void show_tutorial_timer(void)
     }
 }
 
-// FUNCTION: C2 0x58F8B
-// WIN: 0x00453ad1
-// Lines 567–577
-//
-// Walk the tutorial-page index backwards to the previous
-// page whose .pl8 file actually exists on disk.  Filename
-// stride is 14 bytes per entry.  do_pos / do_neg flip the
-// fade-direction flags for the page transition.
+// Walk the tutorial-page index backwards to the previous page whose .pl8 file actually exists on
+// disk. Filename stride is 14 bytes per entry.
+// FUNCTION: C2 0x58f8b
+// FUNCTION: C2WIN 0x00453ad1
 void act_back_tutorial_page(void)
 {
     while (tutorial_page > 0) {
@@ -1003,9 +753,9 @@ void act_back_tutorial_page(void)
     do_neg();
 }
 
-// FUNCTION: C2 0x58FDB
-// WIN: 0x00453b44
-// Lines 579–579
+// Handles the middle tutorial page user-interface action.
+// FUNCTION: C2 0x58fdb
+// FUNCTION: C2WIN 0x00453b44
 void act_middle_tutorial_page(void)
 {
     tutorial_page = 7;
@@ -1013,9 +763,9 @@ void act_middle_tutorial_page(void)
     do_pos();
 }
 
-// FUNCTION: C2 0x58FF4
-// WIN: 0x00453b68
-// Lines 580–580
+// Handles the forward tutorial page user-interface action.
+// FUNCTION: C2 0x58ff4
+// FUNCTION: C2WIN 0x00453b68
 void act_forward_tutorial_page(void)
 {
     out1 = 1;
@@ -1023,34 +773,28 @@ void act_forward_tutorial_page(void)
     do_pos();
 }
 
-// FUNCTION: C2 0x5900D
-// WIN: 0x00453b88
-// Lines 584–584
-//
-// city_icon_allowed holds the merge target at +0x6 for
-// region_icon_allowed (which only differs in the lookup table).
+// Returns whether the current tutorial permits a city-screen icon.
+// FUNCTION: C2 0x5900d
+// FUNCTION: C2WIN 0x00453b88
 int city_icon_allowed(int idx)
 {
     return (unsigned char)city_tutorial_icons[idx] <= tutorial_level;
 }
 
+// Returns (unsigned char)region_tutorial_icons[idx] <= tutorial_level for the region icon allowed
+// query.
 // FUNCTION: C2 0x59027
-// WIN: 0x00453bbb
-// Lines 590–590
+// FUNCTION: C2WIN 0x00453bbb
 int region_icon_allowed(int idx)
 {
     return (unsigned char)region_tutorial_icons[idx] <= tutorial_level;
 }
 
-// FUNCTION: C2 0x5902F
-// WIN: 0x00453bee
-// Lines 594–609
-//
-// In tutorial mode, grey out city-view header icons whose tutorial
-// gate returns false.  Icon slots 4..27 are checked against
-// city_icon_allowed(slot-4); the rectangle geometry comes from
-// int_city_header's 16-byte records, with the X coordinate shifted
-// rightward by 0xee pixels.
+// In tutorial mode, grey out city-view header icons whose tutorial gate returns false. Icon slots
+// 4..27 are checked against city_icon_allowed(slot-4); the rectangle geometry comes from
+// int_city_header's 16-byte records, with the X coordinate shifted rightward by 0xee pixels.
+// FUNCTION: C2 0x5902f
+// FUNCTION: C2WIN 0x00453bee
 void grey_city_map_parts(void)
 {
     int i;
@@ -1073,12 +817,10 @@ void grey_city_map_parts(void)
     }
 }
 
-// FUNCTION: C2 0x5909F
-// WIN: 0x00453c56
-// Lines 611–626
-//
-// Region-view counterpart to grey_city_map_parts, using the region
-// header table and region_icon_allowed over icon slots 4..22.
+// Region-view counterpart to grey_city_map_parts, using the region header table and
+// region_icon_allowed over icon slots 4..22.
+// FUNCTION: C2 0x5909f
+// FUNCTION: C2WIN 0x00453c56
 void grey_region_map_parts(void)
 {
     int i;

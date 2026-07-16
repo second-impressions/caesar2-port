@@ -1,4 +1,3 @@
-// D:\C2\CODE\titles.c
 
 #include "c2_data.h"
 
@@ -10,13 +9,9 @@ extern void font_format_split(int idx, int word_skip, int x, int y_start, int ma
    (used as a small integer) — c2_data.h would otherwise default-type
    it as int.  Declare it as char here to get the right store width. */
 
-/* Local forward declarations for the file-internal call sites with
-   their proper Watcom register-call signatures.  The auto-generated
-   stubs.c keeps the same names with (void) bodies — that's fine at
-   link time since the stubs ignore their inputs. */
 
-// FUNCTION: C2 0x59F76
-// Lines 19–32
+// Performs lose game.
+// FUNCTION: C2 0x59f76
 void do_lose_game(void)
 {
     pointer_mode = 0;
@@ -34,9 +29,9 @@ void do_lose_game(void)
     do_vga_smacked_anim("losegame.smk");
 }
 
-// FUNCTION: C2 0x59FD2
-// WIN: 0x004ae99a
-// Lines 37–49
+// Displays the defeat screen and waits for the player to continue.
+// FUNCTION: C2 0x59fd2
+// FUNCTION: C2WIN 0x004ae99a
 void lose_game_screen(void)
 {
     black_out();
@@ -53,14 +48,11 @@ void lose_game_screen(void)
     set_palette(city_palette);
 }
 
-// FUNCTION: C2 0x5A067
-// WIN: 0x004aea34
-// Lines 52–82
-//
-// Display the promotion / win-game splash with a Smacker
-// preroll, mosaic window, font lines, and a 3-button row.
-// The ``rank`` argument selects between the win-game variant
-// (rank >= 10) and the regular promotion screen.
+// Display the promotion / win-game splash with a Smacker preroll, mosaic window, font lines, and a
+// 3-button row. The ``rank`` argument selects between the win-game variant (rank >= 10) and the
+// regular promotion screen.
+// FUNCTION: C2 0x5a067
+// FUNCTION: C2WIN 0x004aea34
 void show_want_promotion_box(int rank)
 {
     stop_tune();
@@ -94,31 +86,23 @@ void show_want_promotion_box(int rank)
     refresh_svga_screen();
 }
 
-// FUNCTION: C2 0x5A1E7
-// WIN: 0x004aeabe
-//
-// Empty in PS.EXE — just ``ret``.  Likely a hook for a demo /
-// teaser slideshow that was stubbed out before ship.  Called from
-// main()'s exit path (c2.c).  In PS.EXE this symbol and
-// demo_lead_out_slideshow share ONE 1-byte body at 0x5A1E7 (both
-// -d1 names land on the same address); CAESAR2.EXE keeps them as two
-// distinct empty functions (@0x004aeabe / @0x004aeac9), witnessing
-// that the source defined both, lead_in first.
+// No-op placeholder for the demo lead in slideshow hook.
+// FUNCTION: C2 0x5a1e7 FOLDED
+// FUNCTION: C2WIN 0x004aeac9
 void demo_lead_in_slideshow(void)
 {
 }
 
-// FUNCTION: C2 0x5A1E7
-// WIN: 0x004aeac9
-//
 // The lead-out twin — see demo_lead_in_slideshow above.
+// FUNCTION: C2 0x5a1e7 FOLDED
+// FUNCTION: C2WIN 0x004aeabe REORDERED
 void demo_lead_out_slideshow(void)
 {
 }
 
-// FUNCTION: C2 0x5A1E8
-// WIN: 0x004aead7
-// Lines 113–132
+// Plays the startup logo sequence.
+// FUNCTION: C2 0x5a1e8
+// FUNCTION: C2WIN 0x004aead7
 void lead_in_logos(void)
 {
     black_out();

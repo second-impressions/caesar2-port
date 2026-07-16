@@ -1,4 +1,3 @@
-// D:\C2\CODE\pm_map2.c
 
 #include "c2_data.h"
 
@@ -11,15 +10,12 @@ extern void write_i_sprite(unsigned char *sprite_addr);
 extern void write_i_left_sprite(unsigned char *sprite_addr);
 extern void write_i_right_sprite(unsigned char *sprite_addr);
 
-/* Hand-written sprite-diamond blitters in dia_*.asm.  See pm_map0.c
- * for the ground-truth signatures. */
+/* Assembly sprite-diamond blitters. */
 
+// Repaint the region map: clear sprite_error, set the ambient sprite slot, then redraw base + top
+// layers.
 // FUNCTION: C2 0x39411
-// WIN: 0x00445910
-// Lines 27–33
-//
-// Repaint the region map: clear sprite_error, set the
-// ambient sprite slot, then redraw base + top layers.
+// FUNCTION: C2WIN 0x00445910
 void show_regionmap(void)
 {
     sprite_error = 0;
@@ -28,18 +24,10 @@ void show_regionmap(void)
     show_regionmap_top();
 }
 
+// Region-map base layer. Reads the byte-sized region_map cells (tile = base_kind), rotates via
+// rotated2_map[tile].dir[map_dir/2] + 0x10, and stamps a diamond.
 // FUNCTION: C2 0x39430
-// WIN: 0x00445939
-// Lines 35–110
-//
-// Region-map base layer.  Reads the byte-sized region_map cells
-// (tile = base_kind), rotates via rotated2_map[tile].dir[map_dir/2]
-// + 0x10, and stamps a diamond.  Virtual background tiles (ptr >=
-// 0x0FFF0000) take their image directly from the encoded ptr; cells
-// with base_kind > 0x7c delegate to place2_a_building_base.  Per
-// cell, edge_bits bit 0 is a dirty flag that triggers
-// refresh_a_square; bit 1 is set to mark the cell as rendered.
-// Top edge uses style 2, bottom edge style 1.
+// FUNCTION: C2WIN 0x00445939
 void show_regionmap_base(void)
 {
     int i;
@@ -113,18 +101,9 @@ void show_regionmap_base(void)
     }
 }
 
-// FUNCTION: C2 0x396C5
-// WIN: 0x00445cb5
-// Lines 112–161
-//
-// Region-map top layer (building tops + army sprites).  Mirrors
-// show_battlemap_top.  When zoom_level == 1 the status bar is
-// cleared first via show_internal_4point.  Each cell calls
-// place2_a_building_top (when tile > 0x7c) AND place2_sprite
-// (always for non-virtual cells), so the building top draws before
-// the moving armies on top.  Bottom row of the visible area then
-// uses the bottom2 variants twice to walk past the bottom of the
-// displayed slice.
+// Region-map top layer (building tops + army sprites). Mirrors show_battlemap_top.
+// FUNCTION: C2 0x396c5
+// FUNCTION: C2WIN 0x00445cb5
 void show_regionmap_top(void)
 {
     int i;
@@ -190,13 +169,10 @@ void show_regionmap_top(void)
     bottom2_line_no_sides();
 }
 
-// FUNCTION: C2 0x398A6
-// WIN: 0x00445fa4
-// Lines 165–198
-//
-// Region-map base scanline (no edge clipping).  All
-// pm_screen_width cells use the full-diamond style.
-// Increments pm_shown_y and pm_y_clip at end.
+// Region-map base scanline (no edge clipping). All pm_screen_width cells use the full-diamond
+// style.
+// FUNCTION: C2 0x398a6
+// FUNCTION: C2WIN 0x00445fa4
 void mid2_line_no_sides_base(void)
 {
     int i;
@@ -236,18 +212,11 @@ void mid2_line_no_sides_base(void)
     pm_y_clip += h;
 }
 
-// FUNCTION: C2 0x399CC
-// WIN: 0x0044611a
-// Lines 200–280
-//
-// Region-map base scanline with edge clipping.  Leftmost
-// cell uses place_lefthalf_diamond(); rightmost uses
-// place_righthalf_diamond(); middle (pm_screen_width-2)
-// cells use full place_diamond().  Building cells delegate
-// to place2_a_building_base.  Dirty-flag refresh and
-// drawn-bit update happen exactly as in
-// show_regionmap_base.  Edge cells use styles 3 (left) and
-// 4 (right) when delegating to place2_a_building_base.
+// Region-map base scanline with edge clipping. Leftmost cell uses place_lefthalf_diamond();
+// rightmost uses place_righthalf_diamond(); middle (pm_screen_width-2) cells use full
+// place_diamond().
+// FUNCTION: C2 0x399cc
+// FUNCTION: C2WIN 0x0044611a
 void mid2_line_with_sides_base(void)
 {
     int i;
@@ -328,16 +297,10 @@ right_edge_done:
     pm_y_clip += h;
 }
 
-// FUNCTION: C2 0x39C9F
-// WIN: 0x004464de
-// Lines 282–311
-//
-// Region-map top-layer scanline (no edge clipping).  Walks
-// pm_screen_width cells calling place2_sprite(0) (or
-// place2_a_building_top(0) when tile > 0x7C).  Bracketed
-// by left/right one-cell spillover passes so figures on
-// columns just outside the visible range can still draw
-// their clipped tails into the visible area.
+// Region-map top-layer scanline (no edge clipping). Walks pm_screen_width cells calling
+// place2_sprite(0) (or place2_a_building_top(0) when tile > 0x7C).
+// FUNCTION: C2 0x39c9f
+// FUNCTION: C2WIN 0x004464de
 void mid2_line_no_sides_top(void)
 {
     int i;
@@ -374,15 +337,10 @@ void mid2_line_no_sides_top(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x39DD3
-// WIN: 0x004466a9
-// Lines 313–345
-//
-// Region-map top-layer scanline with edge clipping.  Left
-// edge uses place2_sprite(1) (and place2_a_building_top(3)
-// when a building); middle cells use 0; right uses 2 (4 for
-// buildings).  Increments pm_shown_y, sprite_y, and
-// pm_y_clip by half_height at end.
+// Region-map top-layer scanline with edge clipping. Left edge uses place2_sprite(1) (and
+// place2_a_building_top(3) when a building); middle cells use 0; right uses 2 (4 for buildings).
+// FUNCTION: C2 0x39dd3
+// FUNCTION: C2WIN 0x004466a9
 void mid2_line_with_sides_top(void)
 {
     int i;
@@ -425,15 +383,10 @@ void mid2_line_with_sides_top(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x39F31
-// WIN: 0x004468c6
-// Lines 349–382
-//
-// Twin of mid2_line_with_sides_top for the bottom edge of
-// the displayed slice.  Wrapped in `if (pm_shown_y <
-// 0xA1)` so it becomes a no-op once we’ve walked past the
-// bottom of the region map.  Uses place2_a_building_roof
-// instead of place2_a_building_top for the roof cap.
+// Twin of mid2_line_with_sides_top for the bottom edge of the displayed slice. Wrapped in `if
+// (pm_shown_y < 0xA1)` so it becomes a no-op once we’ve walked past the bottom of the region map.
+// FUNCTION: C2 0x39f31
+// FUNCTION: C2WIN 0x004468c6
 void bottom2_line_with_sides(void)
 {
     int i;
@@ -478,14 +431,10 @@ void bottom2_line_with_sides(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x3A096
-// WIN: 0x00446ae3
-// Lines 384–416
-//
-// Twin of mid2_line_no_sides_top for the bottom edge.
-// Same off-screen `if (pm_shown_y < 0xA1)` guard and
-// place2_a_building_roof substitution as
-// bottom2_line_with_sides.
+// Twin of mid2_line_no_sides_top for the bottom edge. Same off-screen `if (pm_shown_y < 0xA1)`
+// guard and place2_a_building_roof substitution as bottom2_line_with_sides.
+// FUNCTION: C2 0x3a096
+// FUNCTION: C2WIN 0x00446ae3
 void bottom2_line_no_sides(void)
 {
     int i;
@@ -527,24 +476,9 @@ void bottom2_line_no_sides(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// FUNCTION: C2 0x3A1CC
-// WIN: 0x00446caa
-// Lines 420–474
-//
-// Render the base diamond of a building cell on the region
-// map.  Image index lives in (*(struct region_cell *)((unsigned char *)region_map + (ptr))).gfx; bank is
-// selected by (*(struct region_cell *)((unsigned char *)region_map + (ptr))).edge_bits & 0x1C (0 = houses, 4 =
-// building1, 8 = building2, 0xC = building3, 0x10 = fixt).
-// Each bank has its own rotated2_* table giving the camera-
-// rotated sprite number.  Bank 4 (fixt) adds 0x10 to the
-// lookup result and uses rotated_bank4 instead.  After
-// resolving sprite_image_no the function reads sprite_start
-// (24-bit little-endian at data[+4..+6]) and y_length
-// (data[+13]) from data_base[data_ptr], bounds-checks them,
-// and dispatches to one of nine place_i_* blitters keyed on
-// (style, zoom_level).  Edge styles 3 / 4 use the lefthalf /
-// righthalf variants; middle styles advance sprite_x by
-// pm_diamond_width.
+// Render the base diamond of a building cell on the region map.
+// FUNCTION: C2 0x3a1cc
+// FUNCTION: C2WIN 0x00446caa
 void place2_a_building_base(int style)
 {
     char bank_kind;
@@ -595,50 +529,11 @@ void place2_a_building_base(int style)
     }
 }
 
-// FUNCTION: C2 0x3A402
-// WIN: 0x0044707e
-// Lines 477–636
-//
-// Region-map building-top ("hat") diamond.  Same five-bank image /
-// rotation lookup as place2_a_building_base over the region's
-// rotated2_bank0..3 tables; bank 0x10 routes through fixt_data via
-// rotated2_map.  Reads height_class at data[+0x0c].  Standard
-// write_*_diamond_*hat fan-out keyed on (zoom_level, style,
-// height_class); edge styles 3 / 4 use the lefthat / righthat /
-// lefthalfhat / righthalfhat variants; middle styles advance
-// sprite_x by pm_diamond_width.
-//
-// After the hat, two optional debug overlays fire:
-//
-//   * base_kind in 0x98..0x9f (region edge markers): pick a colour-
-//     class column (0/2/4/6 = N/E/S/W edge), look up the bordering
-//     province ID in region_borders[province_is*4 + class/2], and
-//     stamp the label via put_a_font_string + a font_list(0x1b, ...)
-//     drop-shadow at sprite_x + edi, sprite_y + esi.
-//   * base_kind == 0xd4 (captured-by-army) with edge_bits & 0x40
-//     set: extract the captor-army index from occupant >> 4, image
-//     is index + 9, drawn via the standard xclip/yclip +
-//     write_i_*_sprite fan-out.
-//
-// BYTE-EXACT 2026-07-11 postmortem (was an 89bd 2-site EAX<->EDX
-// seat residue certified "no lever" by two sessions): the missing
-// piece was the named 'int rot' index local (the base/roof template)
-// WITH the original mixed mask/cast spelling on the bank arms
-// ('bank0/1/2[rot] & 0xff', '(unsigned char)bank3[rot]', 0x10-arm
-// '& 0xff').  Both halves are load-bearing and had only ever been
-// probed SEPARATELY: rot+maskless = 235bd (top-region byte swaps +
-// a sprite_height spill island), inline+masks = the old 89bd
-// attractor, inline+maskless = 467bd.  Mechanism (trace-proven):
-// site 1 (L761 tile-load address temp) lost EAX to a +2 crm credit
-// that only exists because 'tile' commits DL first in the ConfBefore
-// sav=3 tie run; naming rot changes the FE name-record set, flipping
-// that named-vs-temp tie order (unreachable by ANY decl permutation
-// -- the temp is an InsToAddr-pass record), and site 2 (L769
-// shift-vs-province address tie) re-deals with it.  rot must be
-// fused on the bank_kind line (PS -d1: one mark at L488 covers both)
-// and declared third; -d1 line-compare clean (105/105, same offsets,
-// same order).  NOTE: win-census flagged rot as invented (delta -2)
-// -- misleading port drift; do not over-trust the win oracle here.
+// Region-map building-top ("hat") diamond. Same five-bank image / rotation lookup as
+// place2_a_building_base over the region's rotated2_bank0..3 tables; bank 0x10 routes through
+// fixt_data via rotated2_map.
+// FUNCTION: C2 0x3a402
+// FUNCTION: C2WIN 0x0044707e
 void place2_a_building_top(int style)
 {
     unsigned char bank_kind;
@@ -794,26 +689,11 @@ put_back: sprite_x = old_sprite_x; sprite_y = old_sprite_y;
     }
 }
 
-// FUNCTION: C2 0x3AB26
-// WIN: 0x00447bf3
-// Lines 639–749
-//
-// Region-map roof slice of a building.  Snapshot sprite_y, do the
-// same five-bank image lookup as place2_a_building_base, then:
-//
-//   * Early-out when y_length <= pm_y_clip (entire roof above the
-//     visible slice): middle styles bump sprite_x by
-//     pm_diamond_width, edge styles just exit.
-//   * Read sprite_start (24-bit LE); set sprite_hat_start =
-//     sprite_start + 0x384 / 0xc4 / 0x24 per zoom_level.
-//   * Re-stamp sprite_y = pm_screen_y_end - 1 so the roof renders at
-//     the bottom of the visible slice; refresh the bigger square
-//     when edge_bits bit 0 is set.
-//   * Subtract pm_y_clip from y_length, advance sprite_hat_start by
-//     pm_y_clip * K(zoom_level, height_class) (factors 0x3a / 30 /
-//     0x1a / 14 / 5 / 6, mirrored in pm_map1).
-//   * Fan out to one of nine write_*_diamond_*roof blitters by
-//     (zoom_level, style, height_class).
+// Region-map roof slice of a building. Snapshot sprite_y, do the same five-bank image lookup as
+// place2_a_building_base, then: * Early-out when y_length <= pm_y_clip (entire roof above the
+// visible slice): middle styles bump sprite_x by pm_diamond_width, edge styles just exit.
+// FUNCTION: C2 0x3ab26
+// FUNCTION: C2WIN 0x00447bf3
 void place2_a_building_roof(int style)
 {
     int rot;
@@ -929,35 +809,10 @@ void place2_a_building_roof(int style)
     }
 }
 
-// FUNCTION: C2 0x3AF6B
-// WIN: 0x004482d9
-// Lines 753–979
-//
-// Region-map army renderer.  Reads the cell's army index from
-// occupant and dispatches up to four sprite passes:
-//
-//   1. Main body (army_list[idx].sprite_image, +0x01).
-//   2. "Sprite2" auxiliary part (sprite_anim, +0x02) -- e.g. a
-//      cavalry rider, optional.
-//   3. "Sprite3" stacked above sprite2 (sprite_dir, +0x03) -- e.g.
-//      a mount or banner, optional.  Skipped when
-//      army_list[+0x93] is non-zero (figure already dead / hidden).
-//   4. Region overlay (mice table) when edge_bits & 0xc0 is
-//      non-zero AND tile is NOT 0xd4: bit 0x80 -> image 6 (banner),
-//      bit 0x40 -> image 8 (smoke).
-//
-// Bail conditions: army_idx <= 0 or >= 0x1a; army_list[idx].exists
-// in {0, 3}; terrain bit 0 (cell-occupied marker) already set.
-//
-// set_this_ambient by army.type: <= 1 -> 9 (foot), <= 4 -> 8
-// (horse), == 5 -> 0xa (elephant).  Walking-frame offsets:
-// (facing - map_direction) wraps to 0..7 and indexes
-// walking_x/y_ofsets_zoom{0,1,2}.  Each pass reads the sprite
-// header from people_data, bounds-checks (start <= 0x4baf0; w/h in
-// 1..0x12c), centres on the cell, and dispatches via xclip/yclip +
-// write_i_*_sprite (skipping when yclipped == 5).  After all three
-// body passes the final pixel position is cached back into
-// army_list[+0x36] / [+0x38] for next frame's redraw bbox.
+// Region-map army renderer. Reads the cell's army index from occupant and dispatches up to four
+// sprite passes: 1.
+// FUNCTION: C2 0x3af6b
+// FUNCTION: C2WIN 0x004482d9
 void place2_sprite(int style)
 {
     int extra_event;
@@ -1201,15 +1056,10 @@ restore_event:
     }
 }
 
-// FUNCTION: C2 0x3BA9D
-// WIN: 0x00449419
-// Lines 983–1013
-//
-// Region-map debug overlay.  test_mode1 compresses two region flags
-// into a tiny status value (bit 0x40 from +6 and bit 0x20 from +3),
-// while test_mode2 prints signed region_map+2.  Restores the global
-// sprite cursor after drawing.
-//
+// Region-map debug overlay. test_mode1 compresses two region flags into a tiny status value (bit
+// 0x40 from +6 and bit 0x20 from +3), while test_mode2 prints signed region_map+2.
+// FUNCTION: C2 0x3ba9d
+// FUNCTION: C2WIN 0x00449419
 void print2_test_info(void)
 {
     int v;
@@ -1241,4 +1091,3 @@ void print2_test_info(void)
         sprite_y = old_sprite_y;
     }
 }
-

@@ -1,4 +1,3 @@
-// D:\C2\CODE\hotkeys.c
 
 #include "c2_data.h"
 
@@ -6,12 +5,7 @@
 #include <fcntl.h>       /* O_BINARY / O_TRUNC / O_CREAT  */
 #include <sys/stat.h>    /* S_IRUSR, S_IWUSR              */
 
-// FUNCTION: backing buffer for the 8-key debug cheat ring.  PS keeps
-// `old_key_buffer` as a `char *` initialised to point at the CONST
-// string literal "        " (8 spaces + NUL), written in place through
-// the pointer -- the indirect-load pattern PS emits
-// (`mov eax, [old_key_buffer]; mov bl, [eax + edx - 1]`).  Pointing at
-// a bare literal (not a _DATA array) puts the 8-space run in CONST.
+// Backing buffer for the eight-key debug-cheat ring.
 char *old_key_buffer = "        ";
 
 int LBM_HEADER1[12] = { 1297239878, 817038336, 541934160, 1145589058, 335544320, -536772606, 0, 8, 16908032, -536772606, 1346456899, 196608 };
@@ -31,13 +25,8 @@ extern void __cdecl code_018738(void);
 extern void __cdecl code_0187A9(void);
 extern void __cdecl code_0187BF(void);
 
-// FUNCTION: C2 0x2881B
-// Lines 11–219
-//
 // Translate keyboard shortcuts into the same actions as mouse/UI input.
-// The original source used dense switch jump tables embedded after
-// stop_system(); this spelling keeps the control-flow faithful even
-// though Watcom will not necessarily reproduce the exact table layout.
+// FUNCTION: C2 0x2881b
 char sim_mouse(void)
 {
     int i;
@@ -282,8 +271,8 @@ char sim_mouse(void)
     return 1;
 }
 
-// FUNCTION: C2 0x28E13
-// Lines 235–247
+// Captures the current screen to an image file.
+// FUNCTION: C2 0x28e13
 void capture_shot(char *fname)
 {
     int fd;
