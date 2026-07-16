@@ -6,12 +6,13 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "reccmp",
-    "capstone>=5.0.7",
-    "pydantic>=2.12.5",
-    "typer>=0.24.1",
+    "capstone>=5.0.9",
+    "pydantic>=2.13.4",
+    "typer>=0.27.0",
     "pyyaml>=6.0.3",
-    "requests>=2.32",
-    "pycdlib>=1.14",
+    "requests>=2.34.2",
+    "pycdlib>=1.16.0",
+    "pytest>=9.1.1",
 ]
 
 [build-system]
@@ -21,12 +22,6 @@ build-backend = "hatchling.build"
 [tool.uv.sources]
 reccmp = { path = "../reccmp", editable = true }  # TEMP during formats migration; final pin below
 # reccmp = { git = "https://github.com/second-impressions/reccmp.git", rev = "e9bb551f4ce243f0d25f4d1639025b9ac1c9ea68" }
-
-[dependency-groups]
-dev = [
-    "capstone>=5.0.7",
-    "pytest>=8.0",
-]
 
 [project.scripts]
 c2 = "c2.app:app"
