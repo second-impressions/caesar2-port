@@ -22,7 +22,7 @@ void get_new_province_options(void)
 {
     int i;
     int j;
-    int idx;
+    int border_province_idx;
 
     provinces_on_offer    = 0;
     auto_conquered        = pompous_conquests[c2inf.skill_level];
@@ -36,9 +36,9 @@ void get_new_province_options(void)
         if (empire[i] == 6) continue;
         if (i >= 36 && player_rank < 10) continue;
         for (j = 0; j < 4; j++) {
-            idx = region_borders[i].u.dir[j];
-            if (idx >= 44) continue;
-            if (empire[idx] != 6) continue;
+            border_province_idx = region_borders[i].u.dir[j];
+            if (border_province_idx >= 44) continue;
+            if (empire[border_province_idx] != 6) continue;
             empire[i] = 2;
             provinces_on_offer++;
         }
@@ -48,15 +48,15 @@ void get_new_province_options(void)
 // Returns whether a province is controlled by Rome or borders a Roman province.
 // FUNCTION: C2 0x57c25
 // FUNCTION: C2WIN 0x004596d5
-int known_world(int prov)
+int known_world(int province_idx)
 {
     int i;
-    int idx;
-    if (empire[prov] == 6) return 1;
+    int border_province_idx;
+    if (empire[province_idx] == 6) return 1;
     for (i = 0; i < 4; i++) {
-        idx = region_borders[prov].u.dir[i];
-        if (idx >= 44) continue;
-        if (empire[idx] == 6) return 1;
+        border_province_idx = region_borders[province_idx].u.dir[i];
+        if (border_province_idx >= 44) continue;
+        if (empire[border_province_idx] == 6) return 1;
     }
     return 0;
 }
@@ -68,9 +68,9 @@ void auto_conquer(void)
 {
     int i;
     int j;
-    int pick;
-    int count;
-    int idx;
+    int conquest_pick;
+    int option_count;
+    int border_province_idx;
 
     if (c2inf.peace_mode != 0) return;
     if (player_rank >= 10) return;
@@ -78,15 +78,15 @@ void auto_conquer(void)
     if (auto_conquered_months < 30) return;
     if (auto_conquered <= 0) return;
 
-    pick  = rand128 & 7;
-    count = 0;
+    conquest_pick  = rand128 & 7;
+    option_count = 0;
     for (i = 0; i < 44; i++) {
         if (empire[i] == 6) continue;
         for (j = 0; j < 4; j++) {
-            idx = region_borders[i].u.dir[j];
-            if (idx >= 44) continue;
-            if (empire[idx] != 6) continue;
-            if (count == pick) {
+            border_province_idx = region_borders[i].u.dir[j];
+            if (border_province_idx >= 44) continue;
+            if (empire[border_province_idx] != 6) continue;
+            if (option_count == conquest_pick) {
                 put_message(100, 0, 11);
                 empire[i]     = 6;
                 empire_won[i] = 99999;
@@ -94,7 +94,7 @@ void auto_conquer(void)
                 auto_conquered_months = rand8;
                 return;
             }
-            count++;
+            option_count++;
         }
     }
 }
@@ -105,9 +105,9 @@ void auto_conquer(void)
 void set_new_province(void)
 {
     int i;
-    int dir;
-    int pick;
-    int v;
+    int direction_idx;
+    int source_choice_idx;
+    int industry_kind;
 
     empire[province_is] = 6;
 
@@ -125,30 +125,30 @@ void set_new_province(void)
     }
 
     /* Select four valid local industries from the province's source table. */
-    pick = 0; i = 0;
+    source_choice_idx = 0; i = 0;
     while (i < 4) {
-        if      (pick < 3) v = region_sources[province_is].choices[pick % 3];
-        else if (pick < 6) v = region_sources[province_is].choices[3 + (pick % 3)];
-        else               v = region_sources[province_is].choices[6 + (pick % 3)];
-        pick++;
-        if (v >= 16) continue;
-        province_industries[i].kind      = v;
+        if      (source_choice_idx < 3) industry_kind = region_sources[province_is].choices[source_choice_idx % 3];
+        else if (source_choice_idx < 6) industry_kind = region_sources[province_is].choices[3 + (source_choice_idx % 3)];
+        else               industry_kind = region_sources[province_is].choices[6 + (source_choice_idx % 3)];
+        source_choice_idx++;
+        if (industry_kind >= 16) continue;
+        province_industries[i].kind      = industry_kind;
         province_industries[i].is_trader = 0;
-        industry[v].status               = 1;
+        industry[industry_kind].status               = 1;
         i++;
     }
 
     /* Add each neighbour's primary industry and flag any missing trader route. */
-    for (dir = 0; dir < 4; dir++, i++) {
-        v = region_sources[region_borders[province_is].u.dir[dir]].primary;
-        province_industries[i].kind      = v;
+    for (direction_idx = 0; direction_idx < 4; direction_idx++, i++) {
+        industry_kind = region_sources[region_borders[province_is].u.dir[direction_idx]].primary;
+        province_industries[i].kind      = industry_kind;
         province_industries[i].is_trader = 2;
-        industry[v].status               = 1;
+        industry[industry_kind].status               = 1;
 
-        if (dir == 0 && north_trader_is == 0) province_industries[i].is_trader = 1;
-        if (dir == 1 && east_trader_is  == 0) province_industries[i].is_trader = 1;
-        if (dir == 2 && south_trader_is == 0) province_industries[i].is_trader = 1;
-        if (dir == 3 && west_trader_is  == 0) province_industries[i].is_trader = 1;
+        if (direction_idx == 0 && north_trader_is == 0) province_industries[i].is_trader = 1;
+        if (direction_idx == 1 && east_trader_is  == 0) province_industries[i].is_trader = 1;
+        if (direction_idx == 2 && south_trader_is == 0) province_industries[i].is_trader = 1;
+        if (direction_idx == 3 && west_trader_is  == 0) province_industries[i].is_trader = 1;
     }
 
     mercs_in_army = 0;
