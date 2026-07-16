@@ -14,11 +14,9 @@ extern void place_i_sprite(unsigned char *sprite_addr);  /* sprites.asm */
 extern void write_i_sprite(unsigned char *sprite_addr);   /* sprites.asm */
 extern void write_i_left_sprite(unsigned char *sprite_addr);
 extern void write_i_right_sprite(unsigned char *sprite_addr);
-/* request_message — struct defined in message.c; layout in entities.h. */
 
 
-// Read a raw PL8 image file straight into `internal_screen`. The image is `screen_width x rows`
-// pixels and skips the first 0x18 bytes (the PL8 header).
+// Load rows of PL8 pixels into the internal screen, skipping the file header.
 // FUNCTION: C2 0x5a25c
 // FUNCTION: C2WIN 0x0045f920
 void show_pl8file(const char *fname, int rows)
@@ -31,8 +29,7 @@ void show_pl8file(const char *fname, int rows)
     flush_sb_buffer();
 }
 
-// Load a full-screen PL8 image plus its companion palette, push to the SVGA buffer and fade in.
-// Returns 1 on success, 0 if either file fails to read.
+// Load a full-screen PL8 image and palette, display it, and fade the palette in.
 // FUNCTION: C2 0x5a28b
 // FUNCTION: C2WIN 0x0045f960
 int display_pl8file(char *pl8_fname, char *pal_fname)
@@ -47,9 +44,7 @@ int display_pl8file(char *pl8_fname, char *pal_fname)
     return 1;
 }
 
-// Read an LBM (Deluxe Paint) image into `scratch_buffer` then decode it into `internal_screen` via
-// `convert_lbm_file`. Used by tutorial mode; bails with a printf + exit(100) if the file is too
-// large for the scratch buffer.
+// Load and decode an LBM image into the internal screen.
 // FUNCTION: C2 0x5a2dd
 // FUNCTION: C2WIN 0x0045f9d6
 void show_lbm(const char *fname)
@@ -70,8 +65,7 @@ void show_lbm(const char *fname)
     flush_sb_buffer();
 }
 
-// Read a compressed `.PIC` image into the scratch buffer, run it through the evacuate + depress
-// decompression chain, and copy the result into `internal_screen` (without touching the palette).
+// Load a compressed PIC image into the internal screen without changing the palette.
 // FUNCTION: C2 0x5a345
 // FUNCTION: C2WIN 0x0045fa67
 void show_picfile(char *fname)
@@ -92,7 +86,7 @@ void show_picfile(char *fname)
     flush_sb_buffer();
 }
 
-// Like show_picfile but also installs the .PIC file's embedded palette via set_palette.
+// Load a compressed PIC image and install its embedded palette.
 // FUNCTION: C2 0x5a3bc
 // FUNCTION: C2WIN 0x0045fb16
 void display_picfile(char *fname)
@@ -114,8 +108,7 @@ void display_picfile(char *fname)
     flush_sb_buffer();
 }
 
-// Render a `cols × rows` window using the system_panel 9-slice sprite atlas (sprites 0..8: TL TM
-// TR / ML MM MR / BL BM BR). Each cell is 16×16 pixels.
+// Draw a tiled system window with corners, edges, and an interior.
 // FUNCTION: C2 0x5a43d
 // FUNCTION: C2WIN 0x0045fbd3
 void show_a_system_window(int x, int y, int cols, int rows)
@@ -144,8 +137,7 @@ void show_a_system_window(int x, int y, int cols, int rows)
     }
 }
 
-// Fill a `w x h` cell grid (16 px per cell) at (x, y) with the blank-interior tile of the
-// system_panel atlas (sprite 4). Counterpart to show_a_system_window's 9-slice border.
+// Fill a rectangular area with the system window's interior tile.
 // FUNCTION: C2 0x5a4cf
 // FUNCTION: C2WIN 0x0045fcb7
 void show_a_system_blank(int x, int y, int w, int h)
@@ -163,9 +155,7 @@ void show_a_system_blank(int x, int y, int w, int h)
 }
 
 
-// Composite "framed mosaic" window: outer 1-cell-wide stone border (frame) plus the interior tile
-// fill (blank) at (x+16, y+16) measured in pixels with a (w-2, h-2) cell extent. Reseeds the
-// stone-random counter so each window looks the same on every redraw.
+// Draw a deterministic stone mosaic window with a frame and tiled interior.
 // FUNCTION: C2 0x5a523
 // FUNCTION: C2WIN 0x0045fd38
 void show_a_mosaic_window(int x, int y, int w, int h)
@@ -175,9 +165,7 @@ void show_a_mosaic_window(int x, int y, int w, int h)
     show_a_mosaic_blank(x + 16, y + 16, w - 2, h - 2);
 }
 
-// Draw the 1-cell-thick decorative "stone" border of a w x h window at (x, y) using sprites 0..3
-// for the corners and stone_random_data / 2 + {4, 0xc, 0x14, 0x1c} for the top / bottom / left /
-// right edges.
+// Draw the corner and edge tiles of a stone mosaic frame.
 // FUNCTION: C2 0x5a559
 // FUNCTION: C2WIN 0x0045fd86
 void show_a_mosaic_frame(int x, int y, int w, int h)
@@ -220,9 +208,7 @@ void show_a_mosaic_frame(int x, int y, int w, int h)
     }
 }
 
-// Render a 1-row decorative "divider" of `w` 16-pixel stone cells at (x, y). The first cell uses
-// sprite 0x4d, the last uses 0x4e, and interior cells use a deterministic pick from
-// stone_random_data[] halved + 4.
+// Draw a horizontal stone divider with capped ends.
 // FUNCTION: C2 0x5a6d5
 // FUNCTION: C2WIN 0x0045ff6a
 void mosaic_frame_divider(int x, int y, int w, int unused)
@@ -246,8 +232,7 @@ void mosaic_frame_divider(int x, int y, int w, int unused)
     }
 }
 
-// Render a `cols x rows` interior fill using sprites game_panels[0x24..0x63] driven by a
-// precomputed pseudo- random walk through stone_random_data[].
+// Fill a mosaic interior with a deterministic sequence of stone tiles.
 // FUNCTION: C2 0x5a774
 // FUNCTION: C2WIN 0x0046002d
 void show_a_mosaic_blank(int x, int y, int cols, int rows)
@@ -267,8 +252,7 @@ void show_a_mosaic_blank(int x, int y, int cols, int rows)
     }
 }
 
-// Place a single 32x32 sprite from the game_panels atlas at (x, y) -- a thin wrapper that just
-// stamps the three sprite globals before dispatching to place_32x32_block.
+// Draw one 32-by-32 game-panel sprite at the requested position.
 // FUNCTION: C2 0x5a7f7
 // FUNCTION: C2WIN 0x004600de
 void show_a_32_block(int x, int y, int sprite_no)
@@ -279,9 +263,7 @@ void show_a_32_block(int x, int y, int sprite_no)
     place_32x32_block(game_panels);
 }
 
-// Read width/height from the 16-byte sprite header in `scratch_buffer`. The header for sprite `n`
-// lives at offset n*16 + 8; bytes [0..1] are the little-endian 16-bit width, bytes [2..3] the
-// height.
+// Read a sprite's dimensions from its header in the scratch buffer.
 // FUNCTION: C2 0x5a812
 // FUNCTION: C2WIN 0x0046010e
 void get_general_sprite_sizes(int sprite_index)
@@ -294,9 +276,7 @@ void get_general_sprite_sizes(int sprite_index)
     sprite_height = p[2] + (p[3] << 8);
 }
 
-// Generic sprite drawer: parse the 16-byte header at scratch_buffer + idx*16 + 8 (width / height /
-// start / x / y), validate width/height bounds, set up the global sprite state, and dispatch to
-// place_i_sprite.
+// Validate and draw an unclipped sprite from the scratch buffer.
 // FUNCTION: C2 0x5a858
 // FUNCTION: C2WIN 0x00460180
 void general_sprite(int idx, int x, int y)
@@ -322,8 +302,7 @@ void general_sprite(int idx, int x, int y)
     place_i_sprite(base);
 }
 
-// Like general_sprite, but additionally clips against the screen rectangle and dispatches to the
-// matching write_i_*_sprite variant based on the clip outcome.
+// Validate, clip, and draw a sprite from the scratch buffer.
 // FUNCTION: C2 0x5a915
 // FUNCTION: C2WIN 0x004602ce
 void write_general_sprite(int idx, int x, int y)
@@ -358,9 +337,7 @@ void write_general_sprite(int idx, int x, int y)
     write_i_sprite(scratch_buffer);
 }
 
-// Like write_general_sprite, but skips the top `front_offset` rows of the sprite (sprite_y +=
-// front_offset, sprite_height -= front_offset, sprite_start advanced by front_offset *
-// sprite_width) before clipping and dispatch.
+// Draw a clipped sprite after omitting the requested number of top rows.
 // FUNCTION: C2 0x5aa34
 // FUNCTION: C2WIN 0x0046049b
 void write_general_sprite_with_front_ofset(int idx, int x, int y, int front_offset)
@@ -398,9 +375,7 @@ void write_general_sprite_with_front_ofset(int idx, int x, int y, int front_offs
     write_i_sprite(scratch_buffer);
 }
 
-// Restore a previously-saved background sprite back into `sprite_addr`'s buffer. Like
-// general_sprite but takes the sprite-table base address as a parameter and reads (x, y) from
-// header bytes [8..11] instead of from caller args.
+// Restore a saved screen region using the position stored in its sprite header.
 // FUNCTION: C2 0x5ab70
 // FUNCTION: C2WIN 0x0046068e
 void restore_picture_part(unsigned char *sprite_addr, int sprite_idx)
@@ -420,8 +395,7 @@ void restore_picture_part(unsigned char *sprite_addr, int sprite_idx)
     place_i_sprite(sprite_addr);
 }
 
-// Load and place one rectangular city-screen component. Header entries are 8 shorts each in
-// int_city_header; entries >=4 are shifted right by 0xee pixels before drawing.
+// Load and draw one rectangular component of the city interface.
 // FUNCTION: C2 0x5ac44
 // FUNCTION: C2WIN 0x004607fb
 void draw_city_map_part(int n)
@@ -443,7 +417,7 @@ void draw_city_map_part(int n)
     place_i_sprite(scratch_buffer);
 }
 
-// Region-map screen sibling of draw_city_map_part.
+// Load and draw one rectangular component of the region interface.
 // FUNCTION: C2 0x5acf9
 // FUNCTION: C2WIN 0x004608f1
 void draw_region_map_part(int n)
@@ -465,8 +439,7 @@ void draw_region_map_part(int n)
     place_i_sprite(scratch_buffer);
 }
 
-// Load and place one rectangular battle-screen component. Header entries are 8 shorts each in
-// int_battle_header; entries >=4 are shifted down by 0xc8 pixels before drawing.
+// Load and draw one rectangular component of the battle interface.
 // FUNCTION: C2 0x5ad8d
 // FUNCTION: C2WIN 0x004609e7
 void draw_battle_part(int n)
@@ -488,7 +461,7 @@ void draw_battle_part(int n)
     place_i_sprite(scratch_buffer);
 }
 
-// Blink the text-entry caret.
+// Blink either the insertion bar or underline caret at the text cursor.
 // FUNCTION: C2 0x5ae3e
 // FUNCTION: C2WIN 0x00460add
 void show_cursor(unsigned char *font)
@@ -511,8 +484,7 @@ void show_cursor(unsigned char *font)
     }
 }
 
-// Switch to VGA mode 0x13, play a Smacker animation centred at (0x18, 0x18), and restore the SVGA
-// 640x480 game mode afterwards. The playback loop polls the mouse and bails out on either button.
+// Play a mouse-skippable Smacker animation in VGA mode, then restore the SVGA game display.
 // FUNCTION: C2 0x5af5d
 // FUNCTION: C2WIN 0x00460c28
 void do_vga_smacked_anim(char *fname)
@@ -562,9 +534,7 @@ void do_vga_smacked_anim(char *fname)
     init_battle_gfx_buffers();
 }
 
-// Stay in SVGA mode and play a Smacker animation centred at (0, 0) with the c2inf.anims_on flag
-// forced on for the duration; restored at exit. Mouse pre-clicks (rather than full clicks)
-// terminate.
+// Play a mouse-skippable Smacker animation in SVGA mode and restore the graphics buffers.
 // FUNCTION: C2 0x5b0a0
 // FUNCTION: C2WIN 0x00460db5
 void do_svga_smacked_anim(char *fname)
@@ -600,4 +570,3 @@ void do_svga_smacked_anim(char *fname)
     init_map_gfx_buffers();
     init_battle_gfx_buffers();
 }
-

@@ -1,5 +1,5 @@
 
-/* svga_refresh_table is a 30×40 grid of screen-tile redraw flags. */
+/* The refresh table stores redraw priorities for a 40×30 grid of 16-pixel tiles. */
 #include "refresh.h"
 #include "c2_data.h"
 
@@ -36,7 +36,7 @@ struct refresh_bank_row refresh_bank_switch_data[30] = {
     { 0, 4, 0, 0 }
 };
 
-/* File-local state. */
+/* Refresh-grid state and precomputed tile offsets. */
 struct svga_cell svga_refresh_data[1361];
 int ref_y;
 int ref_x;
@@ -44,12 +44,12 @@ int ref_ptr;
 int refresh_count;
 char svga_refresh_table[1364];
 
-/* External assembly entry points used by refresh_svga_screen. */
+/* Copies part of a 16×16 tile into the active SVGA bank. */
 extern void refresh_16x16_partblock(int screen_off, unsigned short bank_off,
                                     int width);
 
 
-// Sets up whole screen refresh.
+// Mark every clean screen tile for one redraw.
 // FUNCTION: C2 0x28e94
 // FUNCTION: C2WIN 0x0043a640
 void setup_whole_screen_refresh(void)
@@ -61,9 +61,7 @@ void setup_whole_screen_refresh(void)
     }
 }
 
-// Mark the cells under the mouse cursor as needing refresh. Two paths: * pointer_mode == 6 or 7
-// (special pointers): defer to setup_refresh_area(mouse_x, mouse_y, 3, 3, 2) to mark a 3×3 pixel
-// block centred on the cursor.
+// Mark the refresh tiles covered by the mouse pointer at priority 2.
 // FUNCTION: C2 0x28eb2
 // FUNCTION: C2WIN 0x0043a68c
 void set_mouse_refresh(void)
@@ -111,9 +109,7 @@ void refresh_sprite_square(int x, int y)
     }
 }
 
-// Mark a 4×4 cell square in the SVGA refresh table at priority 2. Like
-// refresh_a_bigger_square (and unlike refresh_sprite_square), the stamp is unconditional — no < 2
-// priority check.
+// Mark a 4×4 tile square at priority 2, replacing any existing priority.
 // FUNCTION: C2 0x29041
 // FUNCTION: C2WIN 0x0043a8ad
 void refresh_figure_square(int x, int y)
@@ -141,8 +137,7 @@ void refresh_figure_square(int x, int y)
     }
 }
 
-// Mark a 5×5 cell square in the SVGA refresh table at priority 2. Bigger version of
-// refresh_figure_square.
+// Mark a 5×5 tile square at priority 2.
 // FUNCTION: C2 0x290ce
 // FUNCTION: C2WIN 0x0043a9c0
 void refresh_figure2_square(int x, int y)
@@ -163,8 +158,7 @@ void refresh_figure2_square(int x, int y)
     }
 }
 
-// Mark a 6×6 cell square in the SVGA refresh table at priority 2. Same loop shape as
-// refresh_figure2_square, just one more cell per row and one more row.
+// Mark a 6×6 tile square at priority 2.
 // FUNCTION: C2 0x29131
 // FUNCTION: C2WIN 0x0043aa77
 void refresh_figure3_square(int x, int y)
@@ -186,8 +180,7 @@ void refresh_figure3_square(int x, int y)
     }
 }
 
-// Mark a 4×2 cell rectangle in the SVGA refresh table at priority 2 (only over cells whose current
-// priority is < 2). Wider cousin of refresh_sprite_square (2×2) for double-wide sprites.
+// Raise a 4×2 tile rectangle to at least priority 2.
 // FUNCTION: C2 0x2919a
 // FUNCTION: C2WIN 0x0043ab3a
 void refresh_sprite2w_square(int x, int y)
@@ -215,9 +208,7 @@ void refresh_sprite2w_square(int x, int y)
     }
 }
 
-// Mark a 5×6 cell rectangle in the SVGA refresh table at priority 2 (only over cells whose current
-// priority is < 2). Used by region/empire-map refresh paths where each region-sprite occupies more
-// screen cells than a regular city sprite.
+// Raise a 5×6 tile rectangle to at least priority 2.
 // FUNCTION: C2 0x2928e
 // FUNCTION: C2WIN 0x0043ac9d
 void refresh_region_sprite_square(int x, int y)
@@ -267,9 +258,7 @@ void refresh_a_square(int x, int y, char val)
     svga_refresh_table[ref_ptr + 0x54] = val;
 }
 
-// Mark a 5-cell-wide vertical strip in the SVGA refresh table at priority 2.
-// Unlike refresh_sprite_square, this version unconditionally stamps 2 (no "don't downgrade"
-// check).
+// Mark a five-tile-wide footprint at priority 2, clipping rows above the screen.
 // FUNCTION: C2 0x293d2
 // FUNCTION: C2WIN 0x0043aed4
 void refresh_a_bigger_square(int x, int y)
@@ -300,8 +289,7 @@ void refresh_a_bigger_square(int x, int y)
     }
 }
 
-// Mark a 14×12 cell rectangle in the SVGA refresh table at priority 2, but only over cells whose
-// current priority is < 2 (so a higher-priority refresh isn't downgraded).
+// Raise a 14×12 tile rectangle to priority 2, clipping at the top and left edges.
 // FUNCTION: C2 0x29458
 // FUNCTION: C2WIN 0x0043afc4
 void refresh_big_action_square(int x, int y)
@@ -333,7 +321,7 @@ void refresh_big_action_square(int x, int y)
     }
 }
 
-// Sets up map screen refresh.
+// Mark clean tiles in the 30×29 map viewport for one redraw.
 // FUNCTION: C2 0x294d0
 // FUNCTION: C2WIN 0x0043b0aa
 void setup_map_screen_refresh(void)
@@ -349,7 +337,7 @@ void setup_map_screen_refresh(void)
     }
 }
 
-// Sets up map screen long refresh.
+// Fill the 30×29 map viewport with the requested refresh priority.
 // FUNCTION: C2 0x29506
 // FUNCTION: C2WIN 0x0043b11f
 void setup_map_screen_long_refresh(int fill)
@@ -365,7 +353,7 @@ void setup_map_screen_long_refresh(int fill)
     }
 }
 
-// Sets up battle screen refresh.
+// Mark refresh-grid rows 1 through 22 for one battle-screen redraw.
 // FUNCTION: C2 0x29533
 // FUNCTION: C2WIN 0x0043b183
 void setup_battle_screen_refresh(void)
@@ -381,8 +369,7 @@ void setup_battle_screen_refresh(void)
     }
 }
 
-// Mark a rectangular region of the 40×30 SVGA refresh grid as dirty. The grid quantizes screen
-// pixels by 16 (so a 640×480 screen has a 40×30 cell grid).
+// Fill a tile rectangle whose origin is given in screen pixels.
 // FUNCTION: C2 0x2955b
 // FUNCTION: C2WIN 0x0043b1e1
 void setup_refresh_area(int x, int y, int w, int h, int value)
@@ -513,9 +500,7 @@ void refresh_battle_zoom_mode(int level)
                       + (pm_screen_height + 1) * pm_diamond_half_height;
 }
 
-// Per-frame SVGA bulk-refresh sweep. Walks the 40×30 `svga_refresh_table` priority grid; for every
-// dirty cell, dispatches to `refresh_16x16_block` (or two `refresh_16x16_partblock` calls when the
-// row crosses an SVGA bank boundary).
+// Redraw dirty tiles, splitting copies that cross an SVGA bank boundary.
 // FUNCTION: C2 0x2992d
 // FUNCTION: C2WIN 0x0043b6cd
 void refresh_svga_screen(void)
@@ -532,7 +517,7 @@ void refresh_svga_screen(void)
     for (row = 0; row < 30; row++) {
         if (refresh_bank_switch_data[row].split != 0) {
             saved_idx = idx;
-            /* First pass: lower bank, left half of split rows */
+            /* Copy each tile's portion held in the preceding bank. */
             for (col = 0; col < 40; col++, idx++) {
                 if (svga_refresh_table[idx] != 0) {
                     set_bank(refresh_bank_switch_data[row].bank - 1);
@@ -545,7 +530,7 @@ void refresh_svga_screen(void)
                         part_rows);
                 }
             }
-            /* Second pass: upper bank, right half of split rows */
+            /* Copy each tile's remaining portion from the selected bank. */
             idx = saved_idx;
             for (col = 0; col < 40; col++, idx++) {
                 if (svga_refresh_table[idx] != 0) {
@@ -563,7 +548,7 @@ void refresh_svga_screen(void)
                 }
             }
         } else {
-            /* Non-split rows: simple block refresh */
+            /* Rows contained in one bank can be copied as full tiles. */
             for (col = 0; col < 40; col++, idx++) {
                 if (svga_refresh_table[idx] != 0) {
                     refresh_count++;

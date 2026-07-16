@@ -20,15 +20,13 @@ int smk_ref_wi;
 
 #pragma aux high_beep modify exact [eax ebx ecx];
 
-/* temp_palette / vgawintab declared in c2_data.h as int[] */
-
-// No-op placeholder for the vgawinrout hook.
+// Empty display callback used by Smacker's direct-screen path.
 // FUNCTION: C2 0x135be
 void vgawinrout(void)
 {
 }
 
-// Allocates memory for the Smacker library.
+// Allocates memory on behalf of the Smacker library.
 // FUNCTION: C2 0x135bf
 void *__pascal radmalloc(unsigned int size)
 {
@@ -36,7 +34,7 @@ void *__pascal radmalloc(unsigned int size)
     return malloc(size);
 }
 
-// Releases memory allocated for the Smacker library.
+// Releases memory on behalf of the Smacker library.
 // FUNCTION: C2 0x135d2
 // FUNCTION: C2WIN 0x0044b56e
 void __pascal radfree(void *ptr)
@@ -44,8 +42,8 @@ void __pascal radfree(void *ptr)
     free(ptr);
 }
 
-// Open a Smacker movie path and play its first frame. ``mode`` selects the playback path: 1 =
-// full-screen with PL8 fallback, 2 = blit to back-buffer (no fallback).
+// Opens a Smacker movie and displays its first frame. Modes 0 and 1 decode to the internal
+// screen, with a still-image fallback for mode 1; mode 2 uses direct-screen playback.
 // FUNCTION: C2 0x135de
 void start_smacking(char *p, int left, int top, int mode)
 {
@@ -98,7 +96,7 @@ void start_smacking(char *p, int left, int top, int mode)
         return;
     }
 
-    /* Choose refresh dimensions from the movie height. */
+    /* Select the refresh region dimensions from the movie height. */
     smk_height = smk->Height;
     if (smk_height == 0xc8) {
         smk_ref_hi = 0x0d;
@@ -148,9 +146,8 @@ void start_smacking(char *p, int left, int top, int mode)
     if (smack_from_cd != 0) main_path();
 }
 
-// Per-tick smacker driver: if a movie is open and the next frame is ready (``SMACKWAIT`` returns
-// 0), updates the palette, draws the frame, and either schedules a screen refresh (mode 0/1) or
-// skips it (mode 2 — caller refreshes the back-buffer).
+// Advances a ready movie frame, applies palette changes, schedules any required refresh region,
+// and closes the movie after its final frame.
 // FUNCTION: C2 0x138bc
 int continue_smacking(int p1, int x, int mode)
 {
@@ -186,7 +183,7 @@ int continue_smacking(int p1, int x, int mode)
     return ret;
 }
 
-// Stops smacking.
+// Closes the active movie and restores the normal scratch-buffer and path state.
 // FUNCTION: C2 0x139ab
 void stop_smacking(void)
 {
@@ -199,14 +196,14 @@ void stop_smacking(void)
     }
 }
 
-// Returns smacker_on != 0 for the are smacking query.
+// Reports whether a Smacker movie is active.
 // FUNCTION: C2 0x139f7
 int are_smacking(void)
 {
     return smacker_on != 0;
 }
 
-// No-op placeholder for the show smksum screen hook.
+// Intentionally performs no work.
 // FUNCTION: C2 0x13a06
 void show_smksum_screen(void)
 {

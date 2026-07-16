@@ -1,17 +1,13 @@
 
-// Message queue: 16 slots, each holds a message id and a goto-screen param.
-// message_list is typed `struct msg_slot[]` at the definition level
-// (entities.h); accessors index it directly.
+// Queued modal messages, imperial requests, and their message panels.
 #include "c2_data.h"
-#include "c2_types.h"     /* struct industry_rec, etc. */
+#include "c2_types.h"
 
 
 extern void put_a_font_string(char *str, int x, int y, unsigned char *font, int color);
 extern void font_list(int idx, int word_count, int x, int y, unsigned char *font, int color);
 extern void font_no(int value, char pad_char, char *suffix, int x, int y, unsigned char *font, int color);
 extern void font_format_split(int idx, int word_skip, int x, int y_start, int max_width, int line_limit, int x_overflow, int max_width_overflow, unsigned char *font, int color);
-
-// c2inf.skill_level and c2inf.peace_mode are bytes inside the c2inf struct
 
 // Globals owned by this translation unit
 struct request_message  request_message;
@@ -32,7 +28,7 @@ char smacks[40][14] = {
 extern void region_map_screen(int flag);
 
 
-// Initializes messages.
+// Resets message and imperial-request state and queues the opening message.
 // FUNCTION: C2 0x5910f
 // FUNCTION: C2WIN 0x00459c40
 void init_messages(void) {
@@ -54,7 +50,7 @@ void init_messages(void) {
     }
 }
 
-// Clears messages.
+// Empties the message queue and resets its warning and cursor state.
 // FUNCTION: C2 0x5919f
 // FUNCTION: C2WIN 0x00459ce9
 void clear_messages(void) {
@@ -71,7 +67,7 @@ void clear_messages(void) {
     }
 }
 
-// Queues a message and optionally changes the music mood.
+// Adds a message to the ring buffer and optionally changes the music mood.
 // FUNCTION: C2 0x591e8
 // FUNCTION: C2WIN 0x00459d67
 void put_message(int msg, int param, int tune) {
@@ -85,7 +81,7 @@ void put_message(int msg, int param, int tune) {
         tune_mood = tune;
 }
 
-// Renders messages.
+// Removes and displays the next queued message when no blocking pointer mode is active.
 // FUNCTION: C2 0x59229
 // FUNCTION: C2WIN 0x00459dc8
 void show_messages(void) {
@@ -105,7 +101,7 @@ void show_messages(void) {
     }
 }
 
-// Displays and processes a queued game message.
+// Runs a modal message panel, then restores the map and handles any requested map jump.
 // FUNCTION: C2 0x59292
 // FUNCTION: C2WIN 0x00459e8d
 void message(int msg, int is_emperor, int param) {
@@ -211,7 +207,7 @@ void message(int msg, int is_emperor, int param) {
     }
 }
 
-// Renders basic message.
+// Draws a standard message panel with its text, animation, exit control, and optional map link.
 // FUNCTION: C2 0x595d1
 // FUNCTION: C2WIN 0x0045a701
 void show_basic_message(int msg, int param) {
@@ -248,7 +244,7 @@ void show_basic_message(int msg, int param) {
     hold_mouse_replace = 1;
 }
 
-// Renders emperor message.
+// Draws an emperor message, including request, favour, tribute, or tax details.
 // FUNCTION: C2 0x597dc
 // FUNCTION: C2WIN 0x0045a935
 void show_emperor_message(int msg, int is_emperor) {
@@ -322,7 +318,7 @@ void show_emperor_message(int msg, int is_emperor) {
     hold_mouse_replace = 1;
 }
 
-// Renders request amount.
+// Refreshes the amount selected for an imperial goods shipment.
 // FUNCTION: C2 0x59c55
 // FUNCTION: C2WIN 0x0045adce
 void show_request_amount(void) {
@@ -333,9 +329,7 @@ void show_request_amount(void) {
     setup_refresh_area(0x60, 0x188, 20, 2, 1);
 }
 
-// Note the nested `if (imperial_request <= -2)` block: when the outer `if` is false we have
-// `imperial_request >= -1 && pct < 75`, which already implies `imperial_request <= -2` is false,
-// so the inner block is dead in the !outer path.
+// Ships the selected goods and updates the request balance, favour, and final-bribe state.
 // FUNCTION: C2 0x59cdc
 // FUNCTION: C2WIN 0x0045ae33
 void request_outcome(void) {

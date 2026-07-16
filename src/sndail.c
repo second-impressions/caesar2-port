@@ -1,11 +1,11 @@
-
+/* State used by the Smacker-to-Miles digital-audio bridge. */
 int   fss;
 int   didaninit;
 int  *SmackAILDigDriver;
 int   setbyprog;
 int   count;
-int   sndinit[5];     // shared dia_*.asm scratch
+int   sndinit[5];     /* Scratch buffer shared with the DOS diamond renderers. */
 #ifdef __WATCOMC__
-/* Scratch storage used by the DOS sprite modules. */
+/* DOS-only timer state for the sound bridge. */
 int   timer;
 #endif

@@ -34,7 +34,7 @@ int prov_flag_list[20];
 struct msg_slot message_list[16];
 char region_palette[768];
 char city_palette[768];
-struct figure_rec figure_list[201];   /* 88b rec (entities.h), 17688/88=201 */
+struct figure_rec figure_list[201];
 int empire_won[50];
 unsigned char landfill_pool[6400];
 struct region_cell region_map[REGION_W * REGION_H];
@@ -684,14 +684,14 @@ int battle_state;
 int battle_setup_count;
 int ferret_run_length;
 int region_over;
-struct army_route_rec army_routes[10];   /* stride 0x15a=346 (sa03_army_move imul), 3460/346=10 */
+struct army_route_rec army_routes[10];
 signed char fire_zones[100];
 int pseudo_map[PM_H][PM_W];
 unsigned char q_people_list[10];
 char cohort_in_action[10];
-struct citizen_rec citizen_list[201];   /* 58b rec, 11658/58=201 */
+struct citizen_rec citizen_list[201];
 unsigned char empire[50];
-struct unit_rec unit_list[51];   /* 78b rec, 3978/78=51 */
+struct unit_rec unit_list[51];
 char ferret_run[22];
 struct army_rec army_list[26];
 short temp_arrow;
@@ -724,7 +724,7 @@ short created_arrow_no;
 short created_army_no;
 short temp_army;
 short army_no;
-struct arrow_rec arrow_list[201];   /* 45b rec, 9045/45=201 */
+struct arrow_rec arrow_list[201];
 unsigned char last_forum_dept;
 char need_glf;
 unsigned char ov_map_mode;

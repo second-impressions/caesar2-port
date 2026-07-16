@@ -3,8 +3,8 @@
 
 int mouse_styles[10] = { 0, 1, 2, 3, 9, 0, 2, 3, 4, 4 };
 
-extern int colour_cycle_delay1();  /* really char -- lib32.c */
-extern int colour_cycle_delay2();  /* really char -- lib32.c */
+extern int colour_cycle_delay1();
+extern int colour_cycle_delay2();
 
 
 extern void put_a_font_string(char *str, int x, int y, unsigned char *font, int color);
@@ -12,10 +12,11 @@ extern void font_list(int idx, int word_count, int x, int y, unsigned char *font
 extern int  get_fb_width(unsigned char *font);
 extern void show_cursor(unsigned char *font);
 
-extern void exit_screen_void(void);  /* unused; placeholder if needed */
+extern void exit_screen_void(void);
 
 
-// Begins one UI game-loop iteration by updating input and screen state.
+// Starts a UI frame by advancing the cycle count, restoring the mouse background, polling input,
+// and advancing the random-number generator.
 // FUNCTION: C2 0x3d399
 // FUNCTION: C2WIN 0x0040f7f0
 void gloop_start(void)
@@ -26,8 +27,8 @@ void gloop_start(void)
     random();
 }
 
-// Finish a UI loop iteration by refreshing the cursor and screen, advancing audio, and latching
-// the input-delay tick.
+// Finishes a UI frame by drawing the cursor, refreshing the screen, servicing audio, and updating
+// the elapsed input time.
 // FUNCTION: C2 0x3d9df FOLDED
 void gloop_end(void)
 {
@@ -39,7 +40,8 @@ void gloop_end(void)
     button_time_flag = running_delay1();
 }
 
-// Finishes a modal-loop iteration.
+// Finishes a modal UI frame by drawing the cursor, refreshing the screen, servicing audio, and
+// updating the elapsed input time.
 // FUNCTION: C2 0x3d9df FOLDED
 void mloop_end(void)
 {
@@ -51,8 +53,7 @@ void mloop_end(void)
     button_time_flag = running_delay1();
 }
 
-// Forum-loop end. Same as gloop_end but mouse cursor is forced to style 0x15 when a forum
-// department is hovered.
+// Finishes a forum frame, using the forum-hover cursor when a department is under the pointer.
 // FUNCTION: C2 0x3d3ae
 // FUNCTION: C2WIN 0x0040f844
 void floop_end(void)
@@ -68,7 +69,8 @@ void floop_end(void)
     button_time_flag = running_delay1();
 }
 
-// Runs the main game loop.
+// Advances the city simulation when due, renders the active map and interface, handles player
+// actions, and services animation and ambient audio for one frame.
 // FUNCTION: C2 0x3d3ca
 // FUNCTION: C2WIN 0x0040fb4a
 void main_game_loop(void)
@@ -158,7 +160,7 @@ void main_game_loop(void)
     if (pm_over != 0)
         refresh_a_square(pm_over_x >> 4, pm_over_y >> 4, 2);
 
-    /* Mouse pointer style selection (signed compare on flag_mode!=0) */
+    /* Select the cursor for the active tool and hovered map object. */
     if (flag_mode) {
         show_mouse(0xa);
     } else if (illegal_build == 1) {
@@ -223,7 +225,8 @@ void main_game_loop(void)
     continue_db();
 }
 
-// Runs the battle game loop.
+// Advances battle units when due, renders the battle map and panels, handles battle input, and
+// services screen and audio updates for one frame.
 // FUNCTION: C2 0x3d816
 // FUNCTION: C2WIN 0x004101e4
 void battle_game_loop(void)
@@ -308,13 +311,13 @@ void battle_game_loop(void)
     }
 }
 
-// No-op placeholder for the show mouse top hook.
+// Provides an empty hook for drawing content above the mouse cursor.
 // FUNCTION: C2 0x3d9d9
 void show_mouse_top(void)
 {
 }
 
-// Runs the just idle game loop.
+// Polls input and refreshes one otherwise idle UI frame.
 // FUNCTION: C2 0x3d9da FOLDED
 void just_idle_game_loop(void)
 {
@@ -322,7 +325,7 @@ void just_idle_game_loop(void)
     gloop_end();
 }
 
-// Runs the forum admin game loop.
+// Handles the administration forum controls and refreshes the tax-rate and estimate displays.
 // FUNCTION: C2 0x3da0a
 // FUNCTION: C2WIN 0x0041048d
 void forum_admin_game_loop(void)
@@ -343,7 +346,7 @@ void forum_admin_game_loop(void)
     }
 }
 
-// Runs the forum career game loop.
+// Handles the career forum controls and refreshes the personal-cash display.
 // FUNCTION: C2 0x3da8a
 // FUNCTION: C2WIN 0x00410515
 void forum_career_game_loop(void)
@@ -363,7 +366,7 @@ void forum_career_game_loop(void)
     }
 }
 
-// Runs the donation game loop.
+// Handles donation controls, refreshes the selected donation level, and closes on cancel or exit.
 // FUNCTION: C2 0x3db05
 // FUNCTION: C2WIN 0x00410598
 void donation_game_loop(void)
@@ -382,8 +385,7 @@ void donation_game_loop(void)
         out1 = 1;
 }
 
-// Show emperor-related buttons unless we've already warned the emperor this month (in which case
-// the panel is unclickable).
+// Handles the Rome forum panel, disabling its action after the emperor has been warned this month.
 // FUNCTION: C2 0x3db84
 // FUNCTION: C2WIN 0x00410624
 void forum_rome_game_loop(void)
@@ -401,7 +403,7 @@ void forum_rome_game_loop(void)
     }
 }
 
-// Run the gift forum loop, placing its controls at the row selected by `gift_index`.
+// Handles the emperor-gift controls and displays the gift amount selected by `gift_index`.
 // FUNCTION: C2 0x3dbfb
 // FUNCTION: C2WIN 0x004106aa
 void gift_game_loop(int gift_index)
@@ -418,7 +420,7 @@ void gift_game_loop(int gift_index)
         out1 = 1;
 }
 
-// Runs the forum temple game loop.
+// Displays temple advice and lets the player choose which temple receives the selected tip.
 // FUNCTION: C2 0x3dc73
 // FUNCTION: C2WIN 0x00410736
 void forum_temple_game_loop(void)
@@ -446,7 +448,7 @@ void forum_temple_game_loop(void)
     }
 }
 
-// Runs the forum clerks game loop.
+// Handles the clerks forum controls and refreshes the selected history graph.
 // FUNCTION: C2 0x3dd00
 // FUNCTION: C2WIN 0x004107f6
 void forum_clerks_game_loop(void)
@@ -467,7 +469,7 @@ void forum_clerks_game_loop(void)
     }
 }
 
-// Runs the forum advisor game loop.
+// Refreshes the advisor forum and returns to the forum overview on a right-click.
 // FUNCTION: C2 0x3dd80
 // FUNCTION: C2WIN 0x00410878
 void forum_advisor_game_loop(void)
@@ -481,7 +483,8 @@ void forum_advisor_game_loop(void)
     }
 }
 
-// Runs the forum empire game loop.
+// Handles the empire map forum, including region details, known-world labels, and returning to the
+// forum overview.
 // FUNCTION: C2 0x3ddaf
 // FUNCTION: C2WIN 0x004108b4
 void forum_empire_game_loop(void)
@@ -531,7 +534,7 @@ void forum_empire_game_loop(void)
     }
 }
 
-// Runs the forum army game loop.
+// Handles army recruitment, tribune, and mercenary controls in the forum.
 // FUNCTION: C2 0x3df63
 // FUNCTION: C2WIN 0x00410a8d
 void forum_army_game_loop(void)
@@ -577,7 +580,7 @@ void forum_army_game_loop(void)
     }
 }
 
-// Runs the forum industry game loop.
+// Refreshes the industry forum and returns to the forum overview on a right-click.
 // FUNCTION: C2 0x3e09e
 // FUNCTION: C2WIN 0x00410be8
 void forum_industry_game_loop(void)
@@ -591,7 +594,8 @@ void forum_industry_game_loop(void)
     }
 }
 
-// Runs the forum slaves game loop.
+// Handles slave welfare and allocation controls, including assigning a workforce to its need
+// level.
 // FUNCTION: C2 0x3e0cd
 // FUNCTION: C2WIN 0x00410c24
 void forum_slaves_game_loop(void)
@@ -627,7 +631,7 @@ void forum_slaves_game_loop(void)
     }
 }
 
-// Runs the forum idle game loop.
+// Refreshes an otherwise idle forum frame and displays contextual department help.
 // FUNCTION: C2 0x3e1d3
 // FUNCTION: C2WIN 0x00410d4f
 void forum_idle_game_loop(void)
@@ -639,7 +643,7 @@ void forum_idle_game_loop(void)
         out1 = 1;
 }
 
-// Shows contextual help for the active forum department.
+// Updates each forum department label, highlighting the department under the pointer.
 // FUNCTION: C2 0x3e1f6
 // FUNCTION: C2WIN 0x00410d82
 void explain_forum(void)
@@ -655,9 +659,7 @@ void explain_forum(void)
     }
 }
 
-// Render one of the 12 forum-department info panels: a 9x1 mosaic background plus the dept name in
-// font1. `forum_menu[idx*2]` / `forum_menu[idx*2+1]` are the panel x/y; the +8/+5 offsets position
-// the inner content area.
+// Draws one forum-department label at its menu position, using the highlighted color when selected.
 // FUNCTION: C2 0x3e227
 // FUNCTION: C2WIN 0x00410df1
 void forum_explanations(int idx, int hilite)
@@ -676,7 +678,7 @@ void forum_explanations(int idx, int hilite)
     setup_refresh_area(x, y, 0xa, 2, 1);
 }
 
-// Runs the year end game loop.
+// Polls input and refreshes one otherwise idle year-end frame.
 // FUNCTION: C2 0x3d9da FOLDED
 void year_end_game_loop(void)
 {
@@ -684,7 +686,7 @@ void year_end_game_loop(void)
     gloop_end();
 }
 
-// Runs the battle intro game loop.
+// Displays and handles the battle-introduction confirmation controls.
 // FUNCTION: C2 0x3e2a3
 // FUNCTION: C2WIN 0x00410ea4
 void battle_intro_game_loop(void)
@@ -695,7 +697,7 @@ void battle_intro_game_loop(void)
     control_buttons(0x100, 0x104, confirming_buttons, 2);
 }
 
-// Runs the tune game loop.
+// Displays and handles music-selection controls, closing on a right-click.
 // FUNCTION: C2 0x3e2e2
 // FUNCTION: C2WIN 0x00410eeb
 void tune_game_loop(void)
@@ -708,7 +710,7 @@ void tune_game_loop(void)
         out1 = 1;
 }
 
-// Runs the samples game loop.
+// Displays and handles sound-sample controls, closing on a right-click.
 // FUNCTION: C2 0x3e338
 // FUNCTION: C2WIN 0x00410f45
 void samples_game_loop(void)
@@ -721,7 +723,7 @@ void samples_game_loop(void)
         out1 = 1;
 }
 
-// Runs the tog anims game loop.
+// Displays and handles the animation toggle, closing on a right-click.
 // FUNCTION: C2 0x3e38e
 // FUNCTION: C2WIN 0x00410f9f
 void tog_anims_game_loop(void)
@@ -734,7 +736,7 @@ void tog_anims_game_loop(void)
         out1 = 1;
 }
 
-// Runs the tog yearend game loop.
+// Displays and handles year-end option toggles, closing on a right-click.
 // FUNCTION: C2 0x3e3e4
 // FUNCTION: C2WIN 0x00410ff9
 void tog_yearend_game_loop(void)
@@ -747,7 +749,7 @@ void tog_yearend_game_loop(void)
         out1 = 1;
 }
 
-// Runs the exit game loop.
+// Displays and handles the exit-game confirmation controls.
 // FUNCTION: C2 0x3e43a
 // FUNCTION: C2WIN 0x00411053
 void exit_game_loop(void)
@@ -758,7 +760,7 @@ void exit_game_loop(void)
     control_buttons(0, 0, exit_buttons, 3);
 }
 
-// Run the skill-selection loop and process its four buttons.
+// Displays and handles the initial skill-selection controls.
 // FUNCTION: C2 0x3e46a
 // FUNCTION: C2WIN 0x0041108e
 void skill1_game_loop(void)
@@ -769,7 +771,8 @@ void skill1_game_loop(void)
     control_buttons(0x50, 0x50, skill1_buttons, 4);
 }
 
-// Run the second skill-selection loop and refresh the displayed skill level when needed.
+// Handles the detailed skill and peace-level controls, refreshing their displayed values as
+// needed.
 // FUNCTION: C2 0x3e4a7
 // FUNCTION: C2WIN 0x004110c9
 void skill2_game_loop(void)
@@ -788,7 +791,8 @@ void skill2_game_loop(void)
     control_buttons(0x50, 0x50, skill2_buttons, 6);
 }
 
-// Runs the initreg game loop.
+// Handles initial province selection on the empire map and records the chosen province and
+// difficulty.
 // FUNCTION: C2 0x3e502
 // FUNCTION: C2WIN 0x0041113a
 void initreg_game_loop(void)
@@ -837,8 +841,7 @@ void initreg_game_loop(void)
 end:;
 }
 
-// Province-naming text-entry game loop. Edits format_buffer (the running line of typed text) on
-// every frame, repaints the entry region, and exits (`out2 = 1`) on Escape, Enter, or right-click.
+// Edits and redraws the province name, closing the entry field on Escape, Enter, or a right-click.
 // FUNCTION: C2 0x3e673
 // FUNCTION: C2WIN 0x004112b7
 void new_name_game_loop(void)
@@ -874,8 +877,7 @@ void new_name_game_loop(void)
     gloop_end();
 }
 
-// Note the order: show_buttons → control_buttons → gloop_end (different from sibling loops which
-// do show → gloop_end → control).
+// Displays and handles the help-screen controls for one frame.
 // FUNCTION: C2 0x3e7b1
 // FUNCTION: C2WIN 0x00411428
 void help_game_loop(void)
@@ -886,8 +888,8 @@ void help_game_loop(void)
     gloop_end();
 }
 
-// Tooltip/query loop. Shows queery_buttons always, plus an extra query_buttons2 panel when
-// (map_mode == regionmap) AND (q_type == 0x92).
+// Handles query controls and updates the queried person, adding the region-specific control when
+// required.
 // FUNCTION: C2 0x3e7f4
 // FUNCTION: C2WIN 0x0041146f
 void queery_game_loop(void)
@@ -903,7 +905,7 @@ void queery_game_loop(void)
     get_queried_person();
 }
 
-// Runs the promotion game loop.
+// Displays and handles the promotion-decision controls.
 // FUNCTION: C2 0x3e8aa
 // FUNCTION: C2WIN 0x00411521
 void promotion_game_loop(void)
@@ -914,8 +916,7 @@ void promotion_game_loop(void)
     control_buttons(0x80, 0x70, promotion_buttons, 3);
 }
 
-// Decide whether the game-tick should advance this frame. Returns 1 if the cumulative button-time
-// tick passed the speed threshold, 0 otherwise.
+// Returns whether enough unpaused, non-scrolling input time has elapsed to advance the simulation.
 // FUNCTION: C2 0x3e8e9
 // FUNCTION: C2WIN 0x00411562
 int game_speed(void)
@@ -946,7 +947,7 @@ int game_speed(void)
     return 0;
 }
 
-// Decide whether the map should auto-scroll this frame.
+// Returns whether enough input time has elapsed for another automatic map-scroll step.
 // FUNCTION: C2 0x3e972
 // FUNCTION: C2WIN 0x00411657
 int scroll_speed(void)

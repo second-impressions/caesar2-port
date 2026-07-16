@@ -2,7 +2,6 @@
 #include "web.h"
 #include "c2_data.h"
 
-/* File-local state. */
 struct web_node web[120];
 int web_nof_dircs;
 int web_node_count;
@@ -19,10 +18,7 @@ char web_from;
 char web_dirc;
 char web_directions;
 
-/* web / web_dirc / web_directions: types in c2_data.h */
-/* web_from: type char in c2_data.h */
-
-// Returns regroad start node.
+// Starts a regional-road traversal and marks the source cell as visited.
 // FUNCTION: C2 0x29a68
 // FUNCTION: C2WIN 0x00450c50
 int get_regroad_start_node(int x, int y)
@@ -50,9 +46,7 @@ int get_regroad_start_node(int x, int y)
     return 1;
 }
 
-// Grow the regional-road web from (x, y) by repeatedly picking an incomplete node and extending it
-// in one of the four compass directions. Returns 1 if the web closed cleanly, 0 if the node table
-// overflowed (>= 120 entries).
+// Traces every connected regional-road branch from the source cell.
 // FUNCTION: C2 0x29b0b
 // FUNCTION: C2WIN 0x00450d3b
 int get_regroad_web(int x, int y)
@@ -77,9 +71,7 @@ int get_regroad_web(int x, int y)
     return 1;
 }
 
-// Step the regional-road walker along web_dirc until it reaches a junction (>2 available dirs),
-// where a new web node is appended and the current out-of-walls state is copied into
-// web[web_node].out_of_walls.
+// Follows one regional-road branch to a junction, dead end, or the starting cell.
 // FUNCTION: C2 0x29c0a
 // FUNCTION: C2WIN 0x00450e8c
 int run_to_new_regroad_node(void)
@@ -121,7 +113,7 @@ int run_to_new_regroad_node(void)
     return 0;
 }
 
-// Returns web regroad dircs.
+// Collects the compass directions of regional roads adjoining the current cell.
 // FUNCTION: C2 0x29ddc
 // FUNCTION: C2WIN 0x004510fc
 int get_web_regroad_dircs(void)
@@ -143,8 +135,7 @@ int get_web_regroad_dircs(void)
     return count;
 }
 
-// Seed the aqueduct-flow web at (x, y). Returns 0 if the source cell has no aqueduct/structure
-// bits set (cm[+1] & 0xC0 == 0).
+// Starts a water-network traversal from an aqueduct or reservoir cell.
 // FUNCTION: C2 0x29e8d
 // FUNCTION: C2WIN 0x004511f2
 int get_aqua_start_node(int x, int y)
@@ -169,9 +160,7 @@ int get_aqua_start_node(int x, int y)
     return 1;
 }
 
-// Grow the aqueduct web from (x, y), then commit the result: each committed node gets its
-// building-class mask stamped into cm[+0x0A], and three propagation passes flood the surrounding
-// cells with diminishing pressure (3 inside walls, 3 across terrain, 2 over coverage).
+// Traces the connected water network and propagates pressure from river-fed reservoirs.
 // FUNCTION: C2 0x29f4e
 // FUNCTION: C2WIN 0x00451323
 int get_aqua_web(int x, int y)
@@ -198,9 +187,7 @@ int get_aqua_web(int x, int y)
     return 1;
 }
 
-// Step the aqueduct walker one cell at a time along web_dirc until it hits a water-using building
-// (cm[+1] & 0x80) — put_new_node() and return 1 — or runs out of directions / loops back to the
-// start cell / trips the 1000-iter watchdog (return 0).
+// Follows one aqueduct branch until it reaches a reservoir, dead end, or the starting cell.
 // FUNCTION: C2 0x2a05a
 // FUNCTION: C2WIN 0x0045147a
 int run_to_new_aqua_node(void)
@@ -239,9 +226,7 @@ int run_to_new_aqua_node(void)
     return 0;
 }
 
-// The 4 neighbour cells of the current `web_ptr` cell: row stride is sizeof(struct city_cell) * 80
-// = 0x640, column stride is sizeof(struct city_cell) = 0x14. Each access reads the +1 byte
-// (terrain field) of one neighbour.
+// Collects the compass directions of aqueducts or reservoirs adjoining the current cell.
 // FUNCTION: C2 0x2a1f3
 // FUNCTION: C2WIN 0x004516cb
 int get_web_aqua_dircs(void)
@@ -271,7 +256,7 @@ int get_web_aqua_dircs(void)
     return count;
 }
 
-// Tests next to river and returns the result.
+// Tests whether the current water-network node borders a river cell.
 // FUNCTION: C2 0x2a2a4
 // FUNCTION: C2WIN 0x004517c1
 int test_next_to_river(void)
@@ -291,7 +276,7 @@ int test_next_to_river(void)
     return 0;
 }
 
-// Initializes web.
+// Clears the temporary nodes used to trace a road or water network.
 // FUNCTION: C2 0x2a321
 // FUNCTION: C2WIN 0x00451887
 void init_web(void)
@@ -304,8 +289,7 @@ void init_web(void)
     }
 }
 
-// Add (web_x, web_y) to the active web. If an existing slot already holds those coordinates, just
-// OR `web_from` into its from_dir mask and return.
+// Adds the current junction to the web, or records another incoming branch for an existing node.
 // FUNCTION: C2 0x2a368
 // FUNCTION: C2WIN 0x00451938
 void put_new_node(void)
@@ -328,8 +312,7 @@ void put_new_node(void)
     web[web_node].from_dir += web_from;
 }
 
-// Find the first web node (0..web_node_count-1) whose `dirs` mask still has unexplored bits (dirs
-// != from_dir).
+// Selects the first web node with an unexplored outgoing branch.
 // FUNCTION: C2 0x2a418
 // FUNCTION: C2WIN 0x00451a53
 int get_incomplete_node(int row_stride, int cell_stride)
@@ -352,9 +335,7 @@ int get_incomplete_node(int row_stride, int cell_stride)
     return 0;
 }
 
-// Commit every initial web node from web_first_actual_node up to web_node_count. For nodes next to
-// a river, OR `mask` into the city-map byte at +0x0A, mark the web node kind as committed (5), and
-// bump the city-map byte at +0x04 by 3.
+// Marks river-adjacent network nodes as water sources and assigns their initial pressure.
 // FUNCTION: C2 0x2a51f
 // FUNCTION: C2WIN 0x00451bb9
 void set_first_nodes_values(int mask)
@@ -375,8 +356,7 @@ void set_first_nodes_values(int mask)
     }
 }
 
-// For every active web node with class `mask`, fan out into the four compass directions and call
-// push_node_value() on each unexplored neighbour.
+// Propagates a pressure value outward along every eligible branch of the water network.
 // FUNCTION: C2 0x2a5b0
 // FUNCTION: C2WIN 0x00451c83
 void push_nodes_values(char mask, int flag)
@@ -422,7 +402,7 @@ void push_nodes_values(char mask, int flag)
     }
 }
 
-// Propagate a water-network mask and pressure adjustments outward from the current web node.
+// Propagates pressure along one water-network branch until it reaches a reservoir or stronger flow.
 // FUNCTION: C2 0x2a74d
 // FUNCTION: C2WIN 0x00451ebf
 void push_node_value(char mask)

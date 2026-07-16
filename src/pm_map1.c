@@ -39,7 +39,6 @@ struct int_delta_rec colos_top_data[3][4] = {
     { { -2, -2 },  { 11, -9 },  { 0, -14 },  { -11, -9 } }
 };
 
-/* File-local state. */
 int city_anim64;
 int city_anim128;
 int city_anim32;
@@ -54,9 +53,7 @@ extern void write_i_sprite(unsigned char *sprite_addr);
 extern void write_i_left_sprite(unsigned char *sprite_addr);
 extern void write_i_right_sprite(unsigned char *sprite_addr);
 
-// Per-frame city-map renderer: advances animation counters, chooses overlay empty-mode,
-// invalidates map updates requested by landfill, then draws base/sprites/top layers and counts
-// down update_map.
+// Render the city map for the current frame, updating animation and dirty-map state.
 // FUNCTION: C2 0x364f5
 // FUNCTION: C2WIN 0x0045b1e0
 void show_citymap(void)
@@ -96,9 +93,7 @@ void show_citymap(void)
     }
 }
 
-// City-map base layer. Reads the base tile from the city_cell at pm_shown_ptr and dispatches
-// buildings (tile >= 0x78) to place_a_building_base; otherwise looks up the rotated base sprite
-// via rotated_map and stamps a diamond.
+// Draw the terrain and building-base layer across the visible pseudo-map.
 // FUNCTION: C2 0x365da
 // FUNCTION: C2WIN 0x0045b314
 void show_citymap_base(void)
@@ -178,7 +173,7 @@ void show_citymap_base(void)
     }
 }
 
-// City-map sprite layer. Top edge: place_sprite for each non-virtual cell.
+// Draw citizens and other cell sprites across the visible pseudo-map.
 // FUNCTION: C2 0x3689e
 // FUNCTION: C2WIN 0x0045b6bc
 void show_citymap_sprites(void)
@@ -218,8 +213,7 @@ void show_citymap_sprites(void)
     }
 }
 
-// City-map top layer: building tops via place_a_building_top and road / bridge overhead via
-// top_it. Status-bar clear when zoom_level == 1.
+// Draw building tops and overhead effects above the city-map base and sprite layers.
 // FUNCTION: C2 0x369ca
 // FUNCTION: C2WIN 0x0045b874
 void show_citymap_top(void)
@@ -283,8 +277,7 @@ void show_citymap_top(void)
     bottom_line_no_sides();
 }
 
-// Sprite-layer scanline (no edge clipping). Left/right one-cell spillovers so figures on columns
-// just outside the visible range still get their clipped tails drawn into the visible area.
+// Draw an interior sprite row, including neighboring cells whose sprites spill into view.
 // FUNCTION: C2 0x36bfe
 // FUNCTION: C2WIN 0x0045bb2b
 void sprites_no_sides(void)
@@ -321,8 +314,7 @@ void sprites_no_sides(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// Draw one pseudo-map sprite row including the left/right side caps. The first tile is drawn as
-// side=1, middle tiles as side=0, and the rightmost cap as side=0.
+// Draw a sprite row with clipped cells along the visible side edges.
 // FUNCTION: C2 0x36cfc
 // FUNCTION: C2WIN 0x0045bcb4
 void sprites_with_sides(void)
@@ -347,8 +339,7 @@ void sprites_with_sides(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// City-map base interior scanline (no edge clipping). Mirrors mid2_line_no_sides_base over
-// city_map + rotated_map + the >= 0x78 building threshold.
+// Draw an unclipped interior row of terrain and building bases.
 // FUNCTION: C2 0x36dfb
 // FUNCTION: C2WIN 0x0045be2a
 void mid_line_no_sides_base(void)
@@ -389,9 +380,7 @@ void mid_line_no_sides_base(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// City-map base scanline with edge clipping. Leftmost cell uses place_lefthalf_diamond +
-// show_left_overlay; rightmost uses place_righthalf_diamond + show_right_overlay; middle cells use
-// place_diamond + show_overlay.
+// Draw a base-layer row with half-diamonds clipped at the visible side edges.
 // FUNCTION: C2 0x36f49
 // FUNCTION: C2WIN 0x0045bfd3
 void mid_line_with_sides_base(void)
@@ -480,9 +469,7 @@ void mid_line_with_sides_base(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// City-map top-layer scanline (no edge clipping). For each cell: are_overlays_on bails (just
-// advance sprite_x); else for tile >= 0x78 call place_a_building_top(0); if (*(struct city_cell
-// *)((unsigned char *)city_map + (ptr))).edge_bits & 0x80 set, call top_it(0).
+// Draw building tops and overhead effects across an unclipped interior row.
 // FUNCTION: C2 0x372a9
 // FUNCTION: C2WIN 0x0045c430
 void mid_line_no_sides_top(void)
@@ -514,8 +501,7 @@ void mid_line_no_sides_top(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// City-map top-layer scanline with edge clipping. Left edge uses style 3 (building) / 1 (top_it);
-// right edge uses style 4 / 2.
+// Draw a top-layer row with building and effect sprites clipped at the side edges.
 // FUNCTION: C2 0x3738b
 // FUNCTION: C2WIN 0x0045c558
 void mid_line_with_sides_top(void)
@@ -568,9 +554,7 @@ void mid_line_with_sides_top(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// Twin of mid_line_with_sides_top for the bottom edge of the displayed slice. Wrapped in `if
-// (pm_shown_y < 0xA1)` so it no-ops past the map bottom and uses place_a_building_roof instead of
-// place_a_building_top.
+// Draw building roof slices along the lower viewport edge, including clipped side cells.
 // FUNCTION: C2 0x37556
 // FUNCTION: C2WIN 0x0045c7bc
 void bottom_line_with_sides(void)
@@ -618,9 +602,7 @@ void bottom_line_with_sides(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// Draw one bottom clipped pseudo-map line when there are no side tiles. For each screen column,
-// fetch the pseudo_map city pointer; sentinel entries only advance sprite_x, while normal city
-// tiles draw a roof for building kinds >= 0x78 when overlays are not active.
+// Draw building roof slices along an unclipped lower viewport row.
 // FUNCTION: C2 0x376cf
 // FUNCTION: C2WIN 0x0045c9c9
 void bottom_line_no_sides(void)
@@ -651,7 +633,7 @@ void bottom_line_no_sides(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// Draw a city building's base diamond from the appropriate sprite bank, zoom, and half-edge style.
+// Select the current building's rotated sprite and draw its base at the requested edge style.
 // FUNCTION: C2 0x3779d
 // FUNCTION: C2WIN 0x0045cac7
 void place_a_building_base(int style)
@@ -730,7 +712,7 @@ void place_a_building_base(int style)
     }
 }
 
-// City-map building-top ("hat") diamond. Same six-bank lookup as place_a_building_base (incl.
+// Draw the visible upper portion of the current building at the requested zoom and edge style.
 // FUNCTION: C2 0x379eb
 // FUNCTION: C2WIN 0x0045cec9
 void place_a_building_top(int style)
@@ -805,9 +787,7 @@ void place_a_building_top(int style)
     }
 }
 
-// City-map roof slice of a building. Snapshot sprite_y, do the same bank / image / rotation lookup
-// as place_a_building_top, then: * Re-stamp sprite_y = pm_screen_y_end - 1 so the roof renders at
-// the bottom of the visible slice.
+// Draw the portion of the current building roof exposed at the lower viewport boundary.
 // FUNCTION: C2 0x37dc4
 // FUNCTION: C2WIN 0x0045d530
 void place_a_building_roof(int mode)
@@ -926,7 +906,7 @@ void place_a_building_roof(int mode)
     }
 }
 
-// Per-cell overhead sprite renderer. Triggered when edge_bits bit 0x80 is set.
+// Draw the current cell's animated fire, unrest, smoke, decoration, or landmark effect.
 // FUNCTION: C2 0x3820d
 // FUNCTION: C2WIN 0x0045dc3f
 void top_it(int side)
@@ -981,9 +961,7 @@ void top_it(int side)
         if (tile == 0xfa) {
             b = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).activity_a & 0xf;
             if (b != 0) {
-                /* Jars-with-flowers (b non-zero): look up
-                   sub-kind at the parallel byte 0xB cells
-                   back in the same row; abort when zero. */
+                /* Flower jars use the neighboring cell's variant. */
                 kind = (*(struct city_cell *)((unsigned char *)city_map + ((pm_shown_ptr) - 0x14))).building & 0xf0;
                 kind >>= 4;
                 if (kind == 0)
@@ -992,7 +970,7 @@ void top_it(int side)
                 img_off_x       = city_jars_x_off[zoom_level][(map_direction / 2)];
                 img_off_y       = city_jars_y_off[zoom_level][(map_direction / 2)];
             } else {
-                /* Jars-without-flowers */
+                /* Plain jars */
                 sprite_image_no = ((*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).business & 0xf) + 9;
                 img_off_x       = city_type_x_off[zoom_level][(map_direction / 2)];
                 img_off_y       = city_type_y_off[zoom_level][(map_direction / 2)];
@@ -1107,7 +1085,7 @@ void top_it(int side)
     sprite_y = old_sprite_y;
 }
 
-// City-map sprite layer.
+// Draw the current cell's citizens and optional flag-mode marker with movement and clipping.
 // FUNCTION: C2 0x386f9
 // FUNCTION: C2WIN 0x0045e38c
 void place_sprite(int side)
@@ -1332,9 +1310,7 @@ void place_sprite(int side)
     sprite_y = old_sprite_y;
 }
 
-// Debug/test overlay for city-map cells. test_mode1 prints city_map+1 (negative values shown
-// positive in colour 3, otherwise colour 0x3f), while test_mode2 prints city_map+2 with the same
-// sign colouring.
+// Display the active diagnostic value over the current city-map cell.
 // FUNCTION: C2 0x38e80
 // FUNCTION: C2WIN 0x0045ef7d
 void print_test_info(void)
@@ -1369,8 +1345,7 @@ void print_test_info(void)
     }
 }
 
-// Per-cell overlay dispatcher. Returns 0 when no overlay drew the cell (caller falls back to the
-// normal draw) and 1 when the overlay handled it.
+// Draw the current cell's full-diamond overlay and report whether it replaces the base layer.
 // FUNCTION: C2 0x38f5b
 // FUNCTION: C2WIN 0x0045f0f8
 int show_overlay(int style)
@@ -1422,9 +1397,7 @@ int show_overlay(int style)
     return 1;
 }
 
-// Left-edge half-diamond overlay. Same image-selection logic as show_overlay; routes through
-// place_lefthalf_overlay and does NOT advance sprite_x (the caller bumps it by
-// pm_diamond_half_width after returning).
+// Draw the current cell's overlay clipped to the left edge.
 // FUNCTION: C2 0x390c3
 // FUNCTION: C2WIN 0x0045f34e
 int show_left_overlay(int style)
@@ -1474,8 +1447,7 @@ int show_left_overlay(int style)
     return 1;
 }
 
-// Right-edge half-diamond overlay. Same image-selection logic; routes through
-// place_righthalf_overlay.
+// Draw the current cell's overlay clipped to the right edge.
 // FUNCTION: C2 0x3921d
 // FUNCTION: C2WIN 0x0045f599
 int show_right_overlay(int style)
@@ -1525,8 +1497,7 @@ int show_right_overlay(int style)
     return 1;
 }
 
-// Predicate used by the top / sprite passes: returns 1 when the cell at pm_shown_ptr is currently
-// covered by an overlay sprite (so the caller should skip the normal draw).
+// Report whether an overlay on the current cell suppresses its normal rendering.
 // FUNCTION: C2 0x39377
 // FUNCTION: C2WIN 0x0045f7e4
 int are_overlays_on(void)

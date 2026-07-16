@@ -2,10 +2,10 @@
 #include "c2_data.h"
 #include "c2_types.h"
 
-/* File-local state. */
+/* Per-industry demand counts accumulated during a census sweep. */
 int temp_demand_count[16];
 
-// Forum-screen census refresher.
+// Refresh census, coverage, regional, and rating data without triggering accidents.
 // FUNCTION: C2 0x441c9
 // FUNCTION: C2WIN 0x004304c0
 void forum_update_census(void)
@@ -48,9 +48,7 @@ void forum_update_census(void)
     plague_accident = saved_plague;
 }
 
-// Reset every per-game census counter: accident timers seeded to 0xf423f (999_999, "never"), all
-// rate/account/totals fields zeroed, last-years stats cleared, this_years_denarii latched from
-// denarii, and the 16-slot industry[] table emptied.
+// Reset census, economy, accident, settlement, and industry state for a new game.
 // FUNCTION: C2 0x442b9
 // FUNCTION: C2WIN 0x004305eb
 void init_census(void)
@@ -123,8 +121,7 @@ void init_census(void)
     }
 }
 
-// Roll the freshly-accumulated *_pass_count tallies (built up during the monthly map sweep) into
-// their published _count / _running_count counterparts that the rest of the engine reads.
+// Publish census tallies and update population, services, employment, trouble, and tax state.
 // FUNCTION: C2 0x4446d
 // FUNCTION: C2WIN 0x00430923
 void get_census(int quiet)
@@ -133,7 +130,7 @@ void get_census(int quiet)
 
     if (quiet == 0) no_of_census_passes++;
 
-    /* --- Bulk pass_count → _count / _running_count copy ------------ */
+    /* Publish the counts accumulated by take_census. */
     population_running_count       = population_pass_count;
     structure_running_count        = structure_pass_count;
     road_running_count             = road_pass_count;
@@ -183,12 +180,12 @@ void get_census(int quiet)
     plaza_culture_count            = plaza_culture_pass_count;
     gardens_culture_count          = gardens_culture_pass_count;
 
-    /* Derived totals */
+    /* Derive combined service totals. */
     water_running_count = supplied_fountains_count + supplied_baths_count;
     temples_count       = large_temples_count + med_temples_count + small_temples_count;
     robbery_count       = large_robbery_count  + med_robbery_count  + small_robbery_count;
 
-    /* --- Publish population + maintain high-water + warnings ------- */
+    /* Publish population and issue milestone messages. */
     population = population_running_count;
     if (population > max_population) max_population = population;
 
@@ -201,7 +198,7 @@ void get_census(int quiet)
     else if (population >= 20000 && warned_city_size == 6)  { put_message(0x6e, 0, 10); warned_city_size++; }
     else if (population >= 30000 && warned_city_size == 7)  { put_message(0x6f, 0, 10); warned_city_size++; }
     else if (population >= 40000 && warned_city_size == 8)  { put_message(0x70, 0, 10); warned_city_size++; }
-    /* New-structure-available chain */
+    /* Unlock structures at population milestones. */
     if      (population >= 400   && warned_new_struct == 0) { put_message(0x73, 0, 10); new_structure_is = 0xb2; warned_new_struct++; }
     else if (population >= 800   && warned_new_struct == 1) { put_message(0x73, 0, 10); new_structure_is = 0xe6; warned_new_struct++; }
     else if (population >= 1200  && warned_new_struct == 2) { put_message(0x73, 0, 10); new_structure_is = 0xf5; warned_new_struct++; }
@@ -209,7 +206,7 @@ void get_census(int quiet)
     else if (population >= 2400  && warned_new_struct == 4) { put_message(0x73, 0, 10); new_structure_is = 0xe8; warned_new_struct++; }
     else if (population >= 4800  && warned_new_struct == 5) { put_message(0x73, 0, 10); new_structure_is = 0xed; warned_new_struct++; }
 
-    /* --- slave_requirements demand --------------------------------- */
+    /* Calculate service staffing requirements. */
     slave_requirements[1].max = fire_running_count      / 8;
     slave_requirements[2].max = road_running_count      / 8;
     slave_requirements[3].max = water_running_count     * 2;
@@ -217,13 +214,13 @@ void get_census(int quiet)
     slave_requirements[5].max = no_of_workcamps         * 30;
     slave_requirements[6].max = 0;
 
-    /* --- Pre-loop: industry[i].has_supply = temp_demand_count[i] --- */
+    /* Publish per-industry demand. */
     for (i = 0; i < 16; i++) {
         industry[i].has_supply = temp_demand_count[i];
     }
 
     if (quiet == 0) {
-        /* Full per-industry refresh + shift the supply window. */
+        /* Refresh industry demand and advance its supply history. */
         for (i = 0; i < 16; i++) {
             industry[i].has_supply = temp_demand_count[i];
             industry[i].unit_size  = temp_demand_count[i];
@@ -249,9 +246,7 @@ void get_census(int quiet)
     running_ind_tax();
 }
 
-// Monthly map sweep that builds up the *_pass_count tally for the get_census follow-up; `rows` is
-// the number of 20-byte-per-cell rows to scan this slice. When evolve_row == 0 (first slice of the
-// month) also zeroes temp_demand_count[] and every *_pass_count global before sweeping.
+// Scan city-map rows, accumulating population, income, service, and accident census data.
 // FUNCTION: C2 0x44a94
 // FUNCTION: C2WIN 0x0043107a
 void take_census(int rows)
@@ -331,7 +326,7 @@ void take_census(int rows)
             flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain & 0x27;
             kind  = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
 
-            /* Plaza / gardens overlay -------------------------- */
+            /* Count plaza and garden culture coverage. */
             if (kind >= 0x7c && kind <= 0x7e) {
                 cul = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x0c;
                 if (cul) plaza_culture_pass_count++;
@@ -342,16 +337,16 @@ void take_census(int rows)
 
             if (flags == 0) continue;
 
-            /* Event-trigger branches --------------------------- */
+            /* Process road, wall, and fort cells. */
             if (flags & 0x20) {
-                /* Road wear-out trigger */
+                /* Trigger a road failure at the selected census position. */
                 if (road_pass_count != road_accident) road_pass_count++;
                 else {
                     destroy_an_atom(cm_sptr, 0); road_accident = 0xf423f;
                 }
             }
             else if (flags & 0x02) {
-                /* Wall collapse trigger */
+                /* Trigger a wall collapse at the selected census position. */
                 if (structure_pass_count != wall_accident) structure_pass_count++;
                 else {
                     saved_sptr = cm_sptr;
@@ -370,7 +365,7 @@ void take_census(int rows)
             }
             else {
 
-            /* Fire (anything OUTSIDE kind 0xBC..0xE2) ---------- */
+            /* Process fire risk outside the exempt kind range. */
             if (kind < 0xbc || kind > 0xe2) {
                 if (fire_pass_count != fire_accident) fire_pass_count++;
                 else {
@@ -381,7 +376,7 @@ void take_census(int rows)
                 }
             }
 
-            /* Plague (housing kinds only) ---------------------- */
+            /* Process plague risk for housing. */
             if (kind >= 0x82 && kind <= 0xa1) {
                 if (plague_accident == plague_pass_count) {
                     plague_an_atom(cm_sptr);
@@ -393,12 +388,11 @@ void take_census(int rows)
                 if (sick == 0x30) plague_pass_count++;
             }
 
-            /* If the cell is busy / under construction, skip the
-             * service-side bookkeeping. */
+            /* Busy or unfinished buildings do not provide services. */
             busy = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).activity_a & 0x0f;
             if (busy != 0) continue;
 
-            /* ---------------- Per-kind dispatch ---------------- */
+            /* Accumulate census totals for the building kind. */
             if (kind >= 0x82 && kind <= 0xa1) {
                 kind -= 0x82;
                 population_pass_count += houses_to_people[kind];
@@ -477,12 +471,11 @@ void take_census(int rows)
                     ind_income_pass_count += tier * 0x46;
                 }
             }
-            } /* event-trigger else (fire/plague/dispatch) */
+            }
         } }
 }
 
-// Test the perimeter around the current cm_sptr square footprint for a road/forum access tile.
-// `x`,`y` are the footprint's top-left city-map coordinates and `size` is its width/height.
+// Test whether a square footprint borders a qualifying road and, if required, forum coverage.
 // FUNCTION: C2 0x452d0
 // FUNCTION: C2WIN 0x00431c26
 int test_perimeter_for_road_and_forum(int x, int y, int size, int road_only)
@@ -529,8 +522,7 @@ int test_perimeter_for_road_and_forum(int x, int y, int size, int road_only)
     return 0;
 }
 
-// Tests an n×n cell square starting at byte-offset `cm_ptr` into city_map for any cell whose
-// `range_flag` (+0x0A) has bits 2 or 3 set (mask 0x0C — "any admin building present").
+// Test whether any cell in a square has administrative range coverage.
 // FUNCTION: C2 0x45422
 // FUNCTION: C2WIN 0x00431e5e
 int test_for_any_admin(int cm_ptr, int n)
@@ -550,7 +542,7 @@ int test_for_any_admin(int cm_ptr, int n)
     return 0;
 }
 
-// Accumulate fire risk from missing coverage and select a new accident site whenever it overflows.
+// Accumulate fire risk from staffing shortfalls and select an accident site at the threshold.
 // FUNCTION: C2 0x4546c
 // FUNCTION: C2WIN 0x00431ef8
 void fire_trouble(void)
@@ -565,9 +557,7 @@ void fire_trouble(void)
     fire_accident = get_rand_max(fire_pass_count);
 }
 
-// Sister of fire_trouble for the road network. Reads slave_requirements[2].max as the gate,
-// road_cover/road_rate as the per-tick deltas, and pulls road_accident from
-// get_rand_max(road_pass_count) when rate overflows 100.
+// Accumulate road-failure risk from staffing shortfalls and select a site at the threshold.
 // FUNCTION: C2 0x454dd
 // FUNCTION: C2WIN 0x00431f7f
 void road_trouble(void)
@@ -582,8 +572,7 @@ void road_trouble(void)
     road_accident = get_rand_max(road_pass_count);
 }
 
-// Map water_cover (per get_water_cover) onto a 0..0x10 water_trouble rating using a 14-band
-// ladder.
+// Convert the current water coverage into the 0–16 water-trouble rating.
 // FUNCTION: C2 0x4554e
 // FUNCTION: C2WIN 0x00432006
 void water_trouble(void)
@@ -607,9 +596,7 @@ void water_trouble(void)
     water_trouble_rate = 0x10;
 }
 
-// Sister of fire_trouble for walls. Reads slave_requirements[4].max as the gate,
-// wall_cover/wall_rate as the per-tick deltas, and pulls wall_accident from
-// get_rand_max(structure_pass_count) when rate overflows 100.
+// Accumulate wall-collapse risk from staffing shortfalls and select a site at the threshold.
 // FUNCTION: C2 0x45674
 // FUNCTION: C2WIN 0x004321c4
 void wall_trouble(void)
@@ -624,8 +611,7 @@ void wall_trouble(void)
     wall_accident = get_rand_max(structure_pass_count);
 }
 
-// Compute firefighter staffing coverage, granting full coverage early in the tutorial and warning
-// when the assigned workforce is insufficient.
+// Compute firefighter staffing coverage and flag an insufficient workforce.
 // FUNCTION: C2 0x456e5
 // FUNCTION: C2WIN 0x0043224b
 void get_fire_cover(void)
@@ -651,8 +637,7 @@ void get_fire_cover(void)
     if (fire_cover < 0) fire_cover = 0;
 }
 
-// Sister of get_fire_cover indexed at slave_requirements[2]: sets road_cover to the current/max
-// permille (clamped to [0, 100]), pinned at 100 while tutorial_page < 22.
+// Compute road-maintenance staffing coverage and flag an insufficient workforce.
 // FUNCTION: C2 0x4574b
 // FUNCTION: C2WIN 0x004322ed
 void get_road_cover(void)
@@ -678,8 +663,7 @@ void get_road_cover(void)
     if (road_cover < 0) road_cover = 0;
 }
 
-// Sister of get_fire_cover indexed at slave_requirements[4]: sets wall_cover to the current/max
-// permille (clamped to [0, 100]), pinned at 100 while tutorial_page < 22.
+// Compute wall-maintenance staffing coverage and flag an insufficient workforce.
 // FUNCTION: C2 0x457b1
 // FUNCTION: C2WIN 0x0043238f
 void get_wall_cover(void)
@@ -705,8 +689,7 @@ void get_wall_cover(void)
     if (wall_cover < 0) wall_cover = 0;
 }
 
-// Sister of get_fire_cover indexed at slave_requirements[3]: sets water_cover to the current/max
-// permille (clamped to [0, 100]), pinned at 100 while tutorial_page < 22.
+// Compute water-service staffing coverage and flag an insufficient workforce.
 // FUNCTION: C2 0x45817
 // FUNCTION: C2WIN 0x00432431
 void get_water_cover(void)
@@ -732,8 +715,7 @@ void get_water_cover(void)
     if (water_cover < 0) water_cover = 0;
 }
 
-// Hospital-coverage indicator. Computes: hospital_cover = (accessed_hospitals_count * 1000) /
-// population (a permille “how many hospital-slots per resident” metric).
+// Compute hospital capacity coverage, allowing 1,000 residents per accessible hospital.
 // FUNCTION: C2 0x4587d
 // FUNCTION: C2WIN 0x004324d3
 void hospital_coverage(void)
@@ -749,8 +731,7 @@ void hospital_coverage(void)
     }
 }
 
-// Library-coverage indicator. Same shape as hospital_coverage but with multiplier 1200 (one
-// library per 1200 residents is the target).
+// Compute library capacity coverage, allowing 1,200 residents per accessible library.
 // FUNCTION: C2 0x458ca
 // FUNCTION: C2WIN 0x0043253b
 void library_coverage(void)
@@ -766,9 +747,7 @@ void library_coverage(void)
     }
 }
 
-// Recompute the city's employment rate from the per-building pass counters that take_census
-// populated. Each building type contributes a fixed number of jobs per active instance (10..120,
-// see the body); the totals are summed into `employees`.
+// Recompute employees and the employment rate from service buildings and conscription.
 // FUNCTION: C2 0x45919
 // FUNCTION: C2WIN 0x004325a3
 void employment(void)
@@ -803,8 +782,7 @@ void employment(void)
     if (employment_rate > 100) employment_rate = 100;
 }
 
-// Accumulate this turn's pop tax into the running total. Multiplies the per-cohort income by the
-// income multiple, scales by the tax rate, and bumps the cohort count.
+// Accumulate population tax from the current census income and tax rate.
 // FUNCTION: C2 0x45b7b
 // FUNCTION: C2WIN 0x00432787
 void running_pop_tax(void)
@@ -815,8 +793,7 @@ void running_pop_tax(void)
     pop_tax_counts++;
 }
 
-// Mirror of running_pop_tax for industry tax: accumulates this turn's industry tax into
-// ind_tax_running_total and bumps the cohort count.
+// Accumulate industry tax from the current census income and tax rate.
 // FUNCTION: C2 0x45bab
 // FUNCTION: C2WIN 0x004327cc
 void running_ind_tax(void)
@@ -827,8 +804,7 @@ void running_ind_tax(void)
     ind_tax_counts++;
 }
 
-// Walk the 60×60 region map once per month and tally building counts per category (workcamps,
-// mines, ports, etc.) plus the four cardinal empire connections.
+// Tally regional buildings, connected towns, and empire links across the region map.
 // FUNCTION: C2 0x45bdb
 // FUNCTION: C2WIN 0x00432811
 void region_census(void)

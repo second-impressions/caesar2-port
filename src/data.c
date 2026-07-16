@@ -1,6 +1,4 @@
-//
-// Initialized game data.
-// Data-only translation unit.
+// Static lookup tables for graphics, map data, progression, economy, and difficulty.
 
 #include "c2_data.h"
 

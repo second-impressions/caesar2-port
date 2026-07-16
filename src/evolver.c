@@ -73,8 +73,7 @@ struct int_delta_rec putouts4[16] = {
     { -1, 0 }
 };
 
-// Reset every per-tick evolution counter to 0 and prime the region-warehouse inventory at game
-// start / load.
+// Reset the city-evolution cycle and refresh the goods available from regional warehouses.
 // FUNCTION: C2 0x3fa14
 // FUNCTION: C2WIN 0x00461b10
 void initiate_evolution(void)
@@ -87,7 +86,7 @@ void initiate_evolution(void)
     check_goods_in_region_warehouses();
 }
 
-// Master tick dispatcher driven by `evolve_clock`.
+// Run the next phase of city and region evolution, then advance the calendar after a full cycle.
 // FUNCTION: C2 0x3fa3c
 // FUNCTION: C2WIN 0x00461b52
 void citymap_evolution(void)
@@ -109,7 +108,7 @@ void citymap_evolution(void)
     else if (evolve_clock == 0x52)    { clear_all_cm(0xf); }
     else if (evolve_clock == 0x53)    { clear_all_cm(0xe); }
     else if (evolve_clock == 0x54)    { clear_all_cm(0xc); }
-    else if (evolve_clock == 0x55)    { /* nop */ }
+    else if (evolve_clock == 0x55)    { }
     else if (evolve_clock < 0x5e)     { evolve_row = (evolve_clock - 0x56) * 10;
                                          evolve_water_supply_baths_industry(10); }
     else if (evolve_clock < 0x66)     { evolve_row = (evolve_clock - 0x5e) * 10;
@@ -181,8 +180,8 @@ void citymap_evolution(void)
     setup_map_screen_refresh();
 }
 
-// Run every per-row pass once across the whole 80x80 map so the city's coverage flags reflect the
-// current building layout (used after a load or a screen swap).
+// Recompute city-wide service coverage and land values while preserving the current evolution
+// phase.
 // FUNCTION: C2 0x3ff68
 // FUNCTION: C2WIN 0x00462296
 void evolve_to_current_fabric(void)
@@ -208,8 +207,7 @@ void evolve_to_current_fabric(void)
     }
 }
 
-// Advance the in-game clock by one tick: bumps week/month/year counters, calls `monthly_update` /
-// `yearly_update` / `act_do_year_end` at the appropriate boundaries.
+// Advance the calendar, run monthly and yearly bookkeeping, and check whether the game has ended.
 // FUNCTION: C2 0x3ffff
 // FUNCTION: C2WIN 0x00462355
 void update_time(void)
@@ -245,8 +243,7 @@ void update_time(void)
     act_do_year_end();
 }
 
-// Once-per-month bookkeeping: random event, slave welfare/costs, salary, region/city trouble,
-// auto-conquest, plus the emperor-reply and emperor-warning reminder messages.
+// Run monthly events, labor and military upkeep, salary, trouble, conquest, and emperor messages.
 // FUNCTION: C2 0x400d0
 // FUNCTION: C2WIN 0x00462456
 void monthly_update(void)
@@ -275,8 +272,7 @@ void monthly_update(void)
     }
 }
 
-// Once-per-year bookkeeping: end-of-year accounts, new tribute target, push the year's
-// population/denarii/tax totals into the history graph and roll the "this year" snapshots.
+// Close the year's accounts, set the next tribute, record history, and roll annual statistics.
 // FUNCTION: C2 0x4016e
 // FUNCTION: C2WIN 0x0046250c
 void yearly_update(void)
@@ -299,8 +295,7 @@ void yearly_update(void)
     this_years_ind_tax = account_ind_tax;
 }
 
-// Per-row coverage pass for reservoirs (kind 0xbe), industries (0xfc..0xff) and businesses (0xfa):
-// write the appropriate water-supply / industry / baths flag bits via `flag_range`.
+// Stamp water, industry, and bath-service coverage around reservoirs, markets, and businesses.
 // FUNCTION: C2 0x40200
 // FUNCTION: C2WIN 0x004625a8
 void evolve_water_supply_baths_industry(int rows)
@@ -330,9 +325,7 @@ void evolve_water_supply_baths_industry(int rows)
     }
 }
 
-// Per-row water-table pass: stamp water-coverage flags around reservoirs / wells / fountains and
-// tick the supply cooldown on baths/fountains, swapping their sprites between supplied and
-// unsupplied variants as the trouble rate dictates.
+// Stamp water coverage and update the supplied state and appearance of fountains and baths.
 // FUNCTION: C2 0x40327
 // FUNCTION: C2WIN 0x0046277b
 void evolve_water_table(int rows)
@@ -415,8 +408,7 @@ void evolve_water_table(int rows)
         }
 }
 
-// Per-row security-coverage pass: stamp prefecture / fort / wall / forum coverage flag bits around
-// their source buildings via `flag_range`.
+// Stamp security and administrative coverage around patrol buildings, forts, and forums.
 // FUNCTION: C2 0x40617
 // FUNCTION: C2WIN 0x00462bda
 void evolve_security_cover(int rows)
@@ -455,8 +447,7 @@ void evolve_security_cover(int rows)
     }
 }
 
-// Per-row amenity-coverage pass: stamp temple / school / hospital / theatre / arena radius flags
-// via `flag_range3` (the variant that also writes the per-tier rank bits).
+// Stamp health, education, and entertainment coverage around active amenity buildings.
 // FUNCTION: C2 0x4077b
 // FUNCTION: C2WIN 0x00462e70
 void evolve_amenity_cover(int rows)
@@ -507,9 +498,7 @@ void evolve_amenity_cover(int rows)
     }
 }
 
-// Per-row land-value pass. Walks each cell, looks up its base land-value delta + radius from
-// `house_lv_effect` / `buildings_lv_effect` / `forum_lv_effect` / `temple_lv_effect`, stamps the
-// contribution via `change_lv`, and remembers the city-wide top spot.
+// Apply each cell's local land-value effects and track the highest-valued point in the city.
 // FUNCTION: C2 0x40ac5
 // FUNCTION: C2WIN 0x004632ce
 void evolve_land_value(int rows)
@@ -724,9 +713,7 @@ void evolve_land_value(int rows)
     }
 }
 
-// Per-row land-value cap: for every cell, derive an upper-bound rank `cl` from the surrounding
-// amenity / water / security / hospital / library coverage and clamp the cell's `+0xf` land-value
-// rank to it.
+// Cap each cell's land value according to its water, services, security, health, and education.
 // FUNCTION: C2 0x41138
 // FUNCTION: C2WIN 0x00463f66
 void cap_land_value(int rows)
@@ -901,8 +888,7 @@ void cap_land_value(int rows)
     }
 }
 
-// Per-row pass for forum cells (0xae..0xb9): tick the shopper-spawn cooldown and emit citizens via
-// `put_out_a` once the population allows it.
+// Update forum activity and periodically send citizens from occupied forum buildings.
 // FUNCTION: C2 0x415bb
 // FUNCTION: C2WIN 0x004647a0
 void evolve_forum_activity(int rows)
@@ -958,8 +944,7 @@ void evolve_forum_activity(int rows)
     }
 }
 
-// Per-row pass for fort cells (0xbf): tick the soldier-spawn cooldown, find a nearby enemy citizen
-// and dispatch a soldier to engage it.
+// Dispatch soldiers from forts to engage nearby enemy citizens.
 // FUNCTION: C2 0x4176e
 // FUNCTION: C2WIN 0x00464a1f
 void evolve_fort_activity(int rows)
@@ -1003,8 +988,7 @@ void evolve_fort_activity(int rows)
     }
 }
 
-// Per-row pass for prefecture (0xe3) and watch-tower (0xe4) cells: tick the patrol cooldown and
-// spawn the next patrol citizen via `put_out_a`.
+// Update prefecture and watchtower cooldowns and dispatch their next patrol citizens.
 // FUNCTION: C2 0x418d9
 // FUNCTION: C2WIN 0x00464c75
 void evolve_security_activity(int rows)
@@ -1077,9 +1061,7 @@ void evolve_security_activity(int rows)
 }
 
 
-// Per-row pass for markets (0xfc..0xff) and businesses (0xfa): refresh the market sprite via
-// `market_image`, recompute business supply via `business_output`, then spawn the next shopper /
-// trader citizen and record its envoy slot in the cell.
+// Update markets and businesses, refresh their output, and dispatch shopper or trader citizens.
 // FUNCTION: C2 0x41b49
 // FUNCTION: C2WIN 0x0046503e
 void evolve_industrial_activity(int rows)
@@ -1166,8 +1148,7 @@ void evolve_industrial_activity(int rows)
     }
 }
 
-// Detach the previous envoy citizen from the cell at `cm_sptr` so a new one can take its slot:
-// drives the old envoy's state to 2 (go-home) if it is still pointing back here.
+// Send a cell's previous envoy home when it is still assigned to that cell.
 // FUNCTION: C2 0x41e3a
 // FUNCTION: C2WIN 0x004654b5
 void remove_envoy(void)
@@ -1179,8 +1160,7 @@ void remove_envoy(void)
     }
 }
 
-// Pick the market-tier sprite for the cell at `cm_sptr` based on its current shopper-count state,
-// and slowly drain the two state nibbles toward 0 on every second tick.
+// Select a market's sprite from its activity state and gradually decay both activity counters.
 // FUNCTION: C2 0x41e7e
 // FUNCTION: C2WIN 0x0046553b
 void market_image(void)
@@ -1215,9 +1195,7 @@ void market_image(void)
     }
 }
 
-// Recompute a business cell's production tier for the current month from the surrounding
-// population, supply pipeline, empire connections and city stockpile. Writes the new tier back
-// into the cell's `building` byte.
+// Recompute a business's production tier from nearby population, goods supply, and trade links.
 // FUNCTION: C2 0x41f63
 // FUNCTION: C2WIN 0x004656e6
 void business_output(int col, int y)
@@ -1368,9 +1346,8 @@ void business_output(int col, int y)
   }
 }
 
-// Per-row pass that ticks down fire / plague timers, spreads them to a neighbour in the rolling
-// random direction, and re-evaluates unrest on housing cells (spawning a riot citizen and
-// destroying the house once unrest tips over 0xf).
+// Advance fires and plagues, spread them to neighboring cells, and turn severe housing unrest
+// into destruction and rioters.
 // FUNCTION: C2 0x42204
 // FUNCTION: C2WIN 0x00465bbb
 void spread_fire_and_plague_and_unrest(int rows)
@@ -1498,9 +1475,7 @@ next:
     }
 }
 
-// Helper used by every "spawn a citizen" call site: pick a starting offset from one of the
-// `putoutsN[]` slot tables, find the first free direction that succeeds, and create the citizen
-// there.
+// Create a citizen at the requested cell or at the first usable perimeter position.
 // FUNCTION: C2 0x42666
 // FUNCTION: C2WIN 0x00466232
 int put_out_a(char type, char x, char y, int unused, char start_idx,
@@ -1565,7 +1540,8 @@ int put_out_a(char type, char x, char y, int unused, char start_idx,
   return 0;
 }
 
-// Update one city-map row's services, fire risk, and building evolution state.
+// Decay service coverage, update fire risk, and evolve houses, civic buildings, and plazas in one
+// city-map row.
 // FUNCTION: C2 0x42790
 // FUNCTION: C2WIN 0x0046640d
 void evolve_a_cm_row(void)
@@ -1734,8 +1710,7 @@ void evolve_a_cm_row(void)
     }
 }
 
-// Step a multi-tier building (well / fountain / baths / forum / temple) down one tier and re-stamp
-// its sprite via `change_sized`.
+// Move a multi-tier civic building down one level and update its map graphics.
 // FUNCTION: C2 0x42eac
 // FUNCTION: C2WIN 0x0046707d
 void devolve_a_building(
@@ -1763,8 +1738,7 @@ void devolve_a_building(
                  city_ptr + evolve_col * 20);
 }
 
-// Step a multi-tier building (well / fountain / baths / forum / temple) up one tier and re-stamp
-// its sprite via `change_sized`.
+// Move a multi-tier civic building up one level and update its map graphics.
 // FUNCTION: C2 0x42f46
 // FUNCTION: C2WIN 0x0046716d
 void evolve_a_building(
@@ -1796,8 +1770,7 @@ void evolve_a_building(
     return;
 }
 
-// Drop a house from tier `n` to tier `n-1`, pulling the size down to the previous tier's footprint
-// (and padding the freed cells with domus stubs) or removing the house entirely at tier 0.
+// Demote a house, shrinking its footprint when necessary or removing the lowest tier.
 // FUNCTION: C2 0x42f5d
 // FUNCTION: C2WIN 0x0046725d
 int devolve_a_house(int n)
@@ -1819,8 +1792,7 @@ int devolve_a_house(int n)
     return 1;
 }
 
-// Promote a house from tier `n` to tier `n+1`. If the next tier is larger, first checks
-// `stretch_house` can grow into the neighbouring cells; bails out otherwise.
+// Promote a house when the next tier's footprint can fit on the surrounding cells.
 // FUNCTION: C2 0x42fa5
 // FUNCTION: C2WIN 0x004672d2
 int evolve_a_house(int n)
@@ -1843,8 +1815,7 @@ int evolve_a_house(int n)
     return 1;
 }
 
-// Look for a free 2x2 or 3x3 footprint adjacent to the current cell so a house can grow into the
-// larger tier. Returns the winning orientation (1..4) or 0 if no footprint fits.
+// Find an orientation in which a house can expand to the requested 2x2 or 3x3 footprint.
 // FUNCTION: C2 0x42ff4
 // FUNCTION: C2WIN 0x0046736a
 int stretch_house(int n, int variant)
@@ -1863,8 +1834,7 @@ int stretch_house(int n, int variant)
     return 0;
 }
 
-// Test whether the current house can grow into a specific 2x2 orientation: every neighbour in
-// `stretch_ofsets_2x2[orient]` must be empty or a same-tier house belonging to us.
+// Check whether the cells needed for a 2x2 house expansion are clear or compatible housing.
 // FUNCTION: C2 0x430af
 // FUNCTION: C2WIN 0x004674b5
 int stretch_to_2x2_house(int p1, int unused, int orient)
@@ -1896,8 +1866,7 @@ int stretch_to_2x2_house(int p1, int unused, int orient)
     return 1;
 }
 
-// Test whether the current house can grow into a specific 3x3 orientation, and reduce any villa
-// cells found in that footprint back to domus stubs.
+// Check a 3x3 house expansion and reduce overlapping villas to individual domus cells.
 // FUNCTION: C2 0x4313d
 // FUNCTION: C2WIN 0x004675ef
 int stretch_to_3x3_house(int p1, int unused, int orient)
@@ -1943,8 +1912,7 @@ int stretch_to_3x3_house(int p1, int unused, int orient)
     return 1;
 }
 
-// Stamp a `size`x`size` house of tier `n` onto the map starting from a chosen corner cell. Writes
-// the kind / edge / index / sprite bytes for every cell in the footprint.
+// Stamp a house tier and its graphics across a selected map footprint.
 // FUNCTION: C2 0x43255
 // FUNCTION: C2WIN 0x00467804
 void change_house(int n, int size, int variant)
@@ -1984,8 +1952,7 @@ void change_house(int n, int size, int variant)
     }
 }
 
-// After shrinking a house from a `prev`x`prev` footprint, fill the freed L-shaped strip with domus
-// (kind 0x9b) stubs so the cells aren't left empty.
+// Fill the row and column freed by a house shrink with individual domus cells.
 // FUNCTION: C2 0x4332a
 // FUNCTION: C2WIN 0x004679ae
 void pad_house_with_domus(int prev)
@@ -2037,8 +2004,7 @@ void reduce_villa_to_domus(unsigned char *cm)
     }
 }
 
-// Demolish the house at `city_qptr` back to dirt: clears all per-house flag bytes and resets the
-// cell's kind to plain ground (0x1a).
+// Clear a house cell's state and return it to undeveloped ground.
 // FUNCTION: C2 0x433d4
 // FUNCTION: C2WIN 0x00467b19
 void remove_house(void)
@@ -2056,8 +2022,7 @@ void remove_house(void)
     city_qptr[0x05] = 0;
 }
 
-// Promote a plaza cell (kinds 0x7c..0x7e) to a higher tier based on its land-value rank `value`,
-// only on the even cells of the diamond pattern.
+// Select a plaza tier from land value and update its surrounding coverage when the tier changes.
 // FUNCTION: C2 0x43437
 // FUNCTION: C2WIN 0x00467be6
 void evolve_a_plaza(signed char value, signed char old_kind, int x)
@@ -2081,7 +2046,7 @@ void evolve_a_plaza(signed char value, signed char old_kind, int x)
     }
 }
 
-// Decay every entry in the 10x10 `fire_zones` heatmap one step toward 0 (capped at 2).
+// Decay and clamp every entry in the city's 10x10 fire-risk grid.
 // FUNCTION: C2 0x434bb
 // FUNCTION: C2WIN 0x00467cc7
 void clear_fire_zones(void)
@@ -2100,9 +2065,7 @@ void clear_fire_zones(void)
     }
 }
 
-// Per-row pass that propagates the wall-shadow / security value outward from walls (terrain &
-// 0x1e) in the rolling `shell_push_direction`. Re-evaluates every cell's `security` byte as it
-// sweeps a single axis per call.
+// Propagate wall security values across the city map in one rotating sweep direction.
 // FUNCTION: C2 0x4350a
 // FUNCTION: C2WIN 0x00467d9c
 void push_shell(int rows)
@@ -2179,9 +2142,8 @@ void push_shell(int rows)
     }
 }
 
-// Per-row pass over the region map: evolves city tier sprites (kind 0x92, 0x97, 0x98..0x9b, 0xd3),
-// ticks down warehouse delivery flags, and pushes new goods deliveries into the industry pipelines
-// based on trader source and difficulty.
+// Evolve regional settlements and industries, process warehouse deliveries, and add produced goods
+// to city supply pipelines.
 // FUNCTION: C2 0x436ab
 // FUNCTION: C2WIN 0x00468079
 void evolve_region(int rows)
@@ -2363,7 +2325,7 @@ void evolve_region(int rows)
         }
 }
 
-// Return the city population bracket (0..7) used to gate region-map growth.
+// Return the population bracket used to determine regional settlement growth.
 // FUNCTION: C2 0x43f9f
 // FUNCTION: C2WIN 0x00468d77
 int get_pop_level(void)
@@ -2378,8 +2340,7 @@ int get_pop_level(void)
     return 0;
 }
 
-// Walk the whole region map once and sum each industry's warehouse counts/supplies/deliveries.
-// Refreshes per-good sprites for warehouses still being unloaded.
+// Recompute each industry's city supply from regional warehouses and update unloading warehouses.
 // FUNCTION: C2 0x44013
 // FUNCTION: C2WIN 0x00468e5d
 void check_goods_in_region_warehouses(void)

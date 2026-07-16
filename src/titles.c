@@ -5,12 +5,7 @@
 extern void font_list(int idx, int word_count, int x, int y, unsigned char *font, int color);
 extern void font_format_split(int idx, int word_skip, int x, int y_start, int max_width, int line_limit, int x_overflow, int max_width_overflow, unsigned char *font, int color);
 
-/* Per-file extern supplements: stone_random_count is a single byte
-   (used as a small integer) — c2_data.h would otherwise default-type
-   it as int.  Declare it as char here to get the right store width. */
-
-
-// Performs lose game.
+// Shows the defeat screen, waits for a right click, then plays the defeat animation.
 // FUNCTION: C2 0x59f76
 void do_lose_game(void)
 {
@@ -48,9 +43,8 @@ void lose_game_screen(void)
     set_palette(city_palette);
 }
 
-// Display the promotion / win-game splash with a Smacker preroll, mosaic window, font lines, and a
-// 3-button row. The ``rank`` argument selects between the win-game variant (rank >= 10) and the
-// regular promotion screen.
+// Shows the promotion or victory dialog with its video, text, speech, and response buttons.
+// Ranks of 10 or higher select the victory variant.
 // FUNCTION: C2 0x5a067
 // FUNCTION: C2WIN 0x004aea34
 void show_want_promotion_box(int rank)
@@ -86,21 +80,21 @@ void show_want_promotion_box(int rank)
     refresh_svga_screen();
 }
 
-// No-op placeholder for the demo lead in slideshow hook.
+// Does nothing; reserved for the demo lead-in slideshow.
 // FUNCTION: C2 0x5a1e7 FOLDED
 // FUNCTION: C2WIN 0x004aeac9
 void demo_lead_in_slideshow(void)
 {
 }
 
-// The lead-out twin — see demo_lead_in_slideshow above.
+// Does nothing; reserved for the demo lead-out slideshow.
 // FUNCTION: C2 0x5a1e7 FOLDED
 // FUNCTION: C2WIN 0x004aeabe REORDERED
 void demo_lead_out_slideshow(void)
 {
 }
 
-// Plays the startup logo sequence.
+// Shows the startup logos, allowing a mouse press to skip the remaining sequence.
 // FUNCTION: C2 0x5a1e8
 // FUNCTION: C2WIN 0x004aead7
 void lead_in_logos(void)

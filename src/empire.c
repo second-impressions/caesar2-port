@@ -3,7 +3,7 @@
 #include "c2_types.h"     /* struct province_industry / mercs_class */
 
 
-// Clears empire.
+// Resets province ownership and initializes Rome as the sole controlled province.
 // FUNCTION: C2 0x57b49
 // FUNCTION: C2WIN 0x00459540
 void clear_empire(void)
@@ -15,7 +15,7 @@ void clear_empire(void)
     empire_won[0] = 99998;
 }
 
-// Returns new province options.
+// Marks uncontrolled provinces bordering Rome as available conquest options.
 // FUNCTION: C2 0x57b81
 // FUNCTION: C2WIN 0x004595b3
 void get_new_province_options(void)
@@ -99,7 +99,7 @@ void auto_conquer(void)
     }
 }
 
-// Sets new province.
+// Claims the selected province and initializes its industries, traders, and mercenaries.
 // FUNCTION: C2 0x57d45
 // FUNCTION: C2WIN 0x0045989f
 void set_new_province(void)
@@ -124,8 +124,7 @@ void set_new_province(void)
         return;
     }
 
-    /* Pick four industry kinds for the new province, retrying until
-       a valid (<16) kind comes back. */
+    /* Select four valid local industries from the province's source table. */
     pick = 0; i = 0;
     while (i < 4) {
         if      (pick < 3) v = region_sources[province_is].choices[pick % 3];
@@ -139,9 +138,7 @@ void set_new_province(void)
         i++;
     }
 
-    /* For each of the four neighbours, copy the region's primary
-       source into province_industries and trip the trader column to
-       1 if the corresponding direction has no trader yet. */
+    /* Add each neighbour's primary industry and flag any missing trader route. */
     for (dir = 0; dir < 4; dir++, i++) {
         v = region_sources[region_borders[province_is].u.dir[dir]].primary;
         province_industries[i].kind      = v;

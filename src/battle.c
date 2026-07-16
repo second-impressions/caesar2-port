@@ -37,7 +37,7 @@ int yrear;
 int xright_back;
 int yback;
 
-extern int get_heading();  /* really heading_t (enum, int-wide) -- common.c */
+extern int get_heading();
 
 void elephant_fire(void);
 // Enter or resume a battle, preparing its map, graphics, units, audio, and main battle screen.
@@ -175,8 +175,7 @@ void deselect_all_figures(void)
     }
 }
 
-// Walk the figure_list and clear the .selected flag on every enemy unit (owner == 0). Used by the
-// battle UI when switching selection modes so a leftover marquee can't keep enemies highlighted.
+// Clear selection from every enemy figure.
 // FUNCTION: C2 0x4b31c
 // FUNCTION: C2WIN 0x004730fc
 void deselect_enemy_figures(void)
@@ -188,8 +187,7 @@ void deselect_enemy_figures(void)
     }
 }
 
-// Mark every populated, owned figure as selected. Companion to deselect_enemy_figures — enemies
-// (owner == 0) and empty slots (kind == 0) are skipped.
+// Select every active player-controlled figure.
 // FUNCTION: C2 0x4b352
 // FUNCTION: C2WIN 0x00473169
 void select_all_figures(void)
@@ -202,9 +200,7 @@ void select_all_figures(void)
     }
 }
 
-// Drag-rectangle selection on the battle map. The player has held the mouse over
-// (battle_drag_start_x/y) -> (act_start_x/y); this walks every battlemap cell inside that
-// axis-aligned rectangle (battle_map is a stride-4 0x34-wide grid).
+// Select units inside the current battle-map drag rectangle.
 // FUNCTION: C2 0x4b38f
 // FUNCTION: C2WIN 0x004731f5
 void select_drag_figures(void)
@@ -251,8 +247,7 @@ void select_drag_figures(void)
     }
 }
 
-// Two-pass redraw of the moving-unit highlight on the battle map, called from battle_action while
-// the mouse is being dragged.
+// Validate and draw the destination preview for selected moving units.
 // FUNCTION: C2 0x4b438
 // FUNCTION: C2WIN 0x00473345
 int show_move_highlight(void)
@@ -311,9 +306,7 @@ int show_move_highlight(void)
 }
 
 
-// While the mouse is held down inside the battle-map (pm_over != 0) and we have at least one
-// aim-eligible figure selected, paint an 11x11 (10-cell radius) cell-mask rectangle around
-// (act_start_x, act_start_y).
+// Highlight the target area for selected missile units.
 // FUNCTION: C2 0x4b69f
 // FUNCTION: C2WIN 0x0047388d
 void show_aim_highlight(void)
@@ -364,9 +357,7 @@ void show_aim_highlight(void)
     }
 }
 
-// Commit the highlighted move previewed by show_move_highlight. First scans the selected figures:
-// bails if nothing is highlighted, if the parent unit can't move, or if none of the figures have
-// morale left.
+// Commit the highlighted destination for the selected units.
 // FUNCTION: C2 0x4b7b2
 // FUNCTION: C2WIN 0x00473acd
 void start_move(void)
@@ -379,7 +370,7 @@ void start_move(void)
         pointer_mode = 0;
         redraw_icons = 1;
     } else {
-        /* Pass 1: locate a movable selected figure. */
+        /* Check whether any selected unit is already engaged. */
         for (figure_no = 1; figure_no < 0xc9; ++figure_no) {
             if (figure_list[figure_no].exists != 0
                 && figure_list[figure_no].selected != 0) {
@@ -400,7 +391,7 @@ void start_move(void)
                 return;
         }
 
-        /* Pass 3: clear battle_map under selected figs (battle_state == 0). */
+        /* Clear the selected figures' current map cells during setup. */
         for (figure_no = 1; figure_no < 0xc9; ++figure_no) {
             if (figure_list[figure_no].exists != 0
                 && figure_list[figure_no].selected != 0
@@ -409,7 +400,7 @@ void start_move(void)
             }
         }
 
-        /* Pass 4: re-anchor + apply state to each selected fig. */
+        /* Apply the new destination and movement state. */
         for (figure_no = 1; figure_no < 0xc9; ++figure_no) {
             if (figure_list[figure_no].exists != 0
                 && figure_list[figure_no].selected != 0) {
@@ -493,8 +484,7 @@ void start_aim(void)
     }
 }
 
-// Compute the highlight bounding box and centre offset of the selected figures. Used by
-// show_move_highlight before drawing the drag-marker frame.
+// Compute the selected figures' bounding box and its offset from the cursor.
 // FUNCTION: C2 0x4bb23
 // FUNCTION: C2WIN 0x00474311
 void get_highlight_position(void)
@@ -538,15 +528,11 @@ void get_highlight_position(void)
     hlite_off_ptr += hlite_off_y * 208;
 }
 
-// Walk every cell in the 52x52 battle_map grid and clear the highlight bits (0x0C) in `dirty`.
+// Clear all highlight flags from the battle map.
 // FUNCTION: C2 0x4bcbf
 // FUNCTION: C2WIN 0x00474593
 void clear_all_highlights_from_battlemap(void)
 {
-    /* Walk every cell in the 52×52 battle_map grid and
-       clear the highlight bits (0x0C) in ((unsigned char *)battle_map)[+2].
-       Each cell is 4 bytes; cm_sptr is the running byte
-       offset into battle_map. */
     gmn_y   = 0;
     cm_sptr = 0;
     for ( ; gmn_y < 0x34; gmn_y++) {
@@ -624,7 +610,7 @@ void setup_battle(void)
 
     get_battle_odds();
 
-    /* re-read after odds tables ran */
+    /* Re-read the troop totals after the odds calculation. */
     our_men   = army_list[our_battle_army].total_troops;
     their_men = army_list[their_battle_army].total_troops;
 
@@ -668,9 +654,7 @@ void get_battle_men(void)
     their_battle_auxs     = army_list[their_battle_army].num_auxillaries;
 }
 
-// Set up the Roman side of the battle (called once from setup_battle). Resets the bat_* globals
-// (which=0, spacing=1, side=-1, control=1), then runs find_attack_spot or find_defensive_spot per
-// our_battle_stance.
+// Create and deploy the Roman units for the battle.
 // FUNCTION: C2 0x4c016
 // FUNCTION: C2WIN 0x00474a86
 void setup_roman_units(void)
@@ -946,8 +930,7 @@ void get_battle_odds(void)
     else                     tune_mood = 1;
 }
 
-// Place one unit's worth of figures on the battle map. Called from setup_roman_units (4 stages)
-// and setup_enemy_units (5 stages); both pre-compute the men chunk and slot context.
+// Create a battle unit and place its figures in the current deployment slot.
 // FUNCTION: C2 0x4cd76
 // FUNCTION: C2WIN 0x0047605c
 void build_units_figures(int made, int kind, int sub_kind, int sub_kind2,
@@ -998,7 +981,7 @@ void build_units_figures(int made, int kind, int sub_kind, int sub_kind2,
     unit_list[created_unit_no].ai_tick = 0;
     unit_list[created_unit_no].unit_rank = slot;
 
-    /* Enemy flank/fan dispatch (only when bat_control == 0 and slot == 1). */
+    /* Assign eligible enemy units to flank or fan manoeuvres. */
     if (bat_control == 0 && slot == 1) {
         if (bat_enemy_left_flank_unit == 0 && x <= 0x1a) {
             unit_list[created_unit_no].flank_pending = 1; bat_enemy_left_flank_unit = slot;
@@ -1015,7 +998,7 @@ void build_units_figures(int made, int kind, int sub_kind, int sub_kind2,
         }
     }
 
-    /* Process each figure in the battle setup. */
+    /* Create and configure the unit's figures. */
     for (i = 0; i < bat_size; i++) {
         random();
         x_bit = get_x_spacing(row_count, cols, i);
@@ -1108,8 +1091,7 @@ void rebuild_figures_image_data(void)
     }
 }
 
-// Initialise the three Roman formation lanes for an attack order. Each lane starts unused (first_*
-// = 1) and centred at x=0x1a; the y lanes depend on bat_side.
+// Initialize the deployment lanes for an attacking army.
 // FUNCTION: C2 0x4d404
 // FUNCTION: C2WIN 0x00476d34
 void find_attack_spot(void)
@@ -1134,8 +1116,7 @@ void find_attack_spot(void)
     }
 }
 
-// Defensive formation initialiser: same x/first reset as attack, but y lanes are set one band
-// deeper/shallower depending on side.
+// Initialize the deployment lanes for a defending army.
 // FUNCTION: C2 0x4d491
 // FUNCTION: C2WIN 0x00476de7
 void find_defensive_spot(void)
@@ -1226,8 +1207,7 @@ void get_start_points(int idx)
     }
 }
 
-// Battle-grid x-spacing helper: given the troop count `p1`, the troop-rank order `p2`, and the
-// figure index `p3`, return the x-offset of figure `p3` within its rank.
+// Return a figure's horizontal offset within a formation.
 // FUNCTION: C2 0x4d7d3
 // FUNCTION: C2WIN 0x004771f6
 int get_x_spacing(int p1, int p2, int p3)
@@ -1241,9 +1221,7 @@ int get_x_spacing(int p1, int p2, int p3)
     return (p3 / 4) * p1;
 }
 
-// Battle-grid spacing helper: given the troop count `p1`, the troop-rank order `p2`, the figure
-// index `p3`, and the per-formation tier multiplier `p4`, return the y-offset of figure `p3`
-// within its rank.
+// Return a figure's vertical offset within a formation.
 // FUNCTION: C2 0x4d821
 // FUNCTION: C2WIN 0x0047726b
 int get_y_spacing(int p1, int p2, int p3, int p4)
@@ -1265,9 +1243,7 @@ int get_y_spacing(int p1, int p2, int p3, int p4)
     return q;
 }
 
-// Per-tick map-refresh pass over every figure in figure_list. Counts the live figures into
-// no_of_figures, then for each stamps its battle_map footprint via set_figure_map_refresh so
-// subsequent renderers know which cells changed.
+// Count active figures and mark their map footprints for redraw.
 // FUNCTION: C2 0x4d861
 // FUNCTION: C2WIN 0x004772f2
 void figure_update(void)
@@ -1323,9 +1299,7 @@ void figure_update(void)
     }
 }
 
-// Per-tick arrow cleanup pass: for every live arrow (arrow_no 1..0xc8 with exists != 0), clear the
-// +3 byte of its map_ref'd battle_map cell ("arrow occupancy" flag) and queue a 3x3 figure-map
-// refresh around the arrow's last grid_(x,y).
+// Clear projectile occupancy and mark active projectiles' map areas for redraw.
 // FUNCTION: C2 0x4da05
 // FUNCTION: C2WIN 0x0047763d
 void arrow_update(void)
@@ -1373,8 +1347,7 @@ void figure_intelligence(void)
     }
 }
 
-// Refresh the still-frame sprite for every populated figure. Same loop shape as select_all_figures
-// / deselect_enemy_figures.
+// Refresh the still-frame sprite for every active figure.
 // FUNCTION: C2 0x4db5e
 // FUNCTION: C2WIN 0x004778bf
 void figure_images(void)
@@ -1386,16 +1359,14 @@ void figure_images(void)
     }
 }
 
-// Battle-frame slot 00: no-op. Some battle frame handlers are explicitly empty placeholders.
+// Provide the unused figure-type handler.
 // FUNCTION: C2 0x4db8f
 // FUNCTION: C2WIN 0x0047791a
 void f00_null(void)
 {
 }
 
-// Per-figure-type init: sets the figure's `anim_kind` / `sub_state` pair and immediately
-// tail-calls the current state handler in `figure_states[]`. Every f0?_* / f1?_* variant follows
-// this shape, differing only in the two byte constants.
+// Initialize a regular soldier's animation and run its current state handler.
 // FUNCTION: C2 0x4db90
 // FUNCTION: C2WIN 0x00477925
 void f01_regular(void)
@@ -1415,9 +1386,7 @@ void f02_irregular(void)
     figure_states[figure_list[figure_no].state_idx]();
 }
 
-// Auxiliary-troop figure-state init (anim_kind = 4, sub_state = 1). f09_barb_javalin,
-// f10_barb_sling and f17_barb_knife share this body verbatim and are defined below at their own
-// numeric slots.
+// Initialize an auxiliary soldier's animation and run its current state handler.
 // FUNCTION: C2 0x4dbc4 FOLDED
 void f03_auxillary(void)
 {
@@ -1472,7 +1441,7 @@ void f08_barb_pike(void)
     figure_states[figure_list[figure_no].state_idx]();
 }
 
-// Barbarian-javelin figure-state init. Body identical to f03_auxillary.
+// Initialize a barbarian javelin soldier and run its current state handler.
 // FUNCTION: C2 0x4dbc4 FOLDED
 void f09_barb_javalin(void)
 {
@@ -1481,7 +1450,7 @@ void f09_barb_javalin(void)
     figure_states[figure_list[figure_no].state_idx]();
 }
 
-// Barbarian-sling figure-state init. Body identical to f03_auxillary.
+// Initialize a barbarian slinger and run its current state handler.
 // FUNCTION: C2 0x4dbc4 FOLDED
 void f10_barb_sling(void)
 {
@@ -1500,9 +1469,7 @@ void f11_barb_horse_heavy(void)
     figure_states[figure_list[figure_no].state_idx]();
 }
 
-// Light barbarian-cavalry figure-state init (anim_kind = 0xe, sub_state = 4).
-// f13_barb_horse_archer and f14_barb_camel share this body verbatim and are defined below at their
-// own numeric slots.
+// Initialize light barbarian cavalry and run its current state handler.
 // FUNCTION: C2 0x4dc51 FOLDED
 // FUNCTION: C2WIN 0x00477c8b
 void f12_barb_horse_light(void)
@@ -1512,7 +1479,7 @@ void f12_barb_horse_light(void)
     figure_states[figure_list[figure_no].state_idx]();
 }
 
-// Mounted-archer figure-state init. Body identical to f12_barb_horse_light.
+// Initialize a mounted archer and run its current state handler.
 // FUNCTION: C2 0x4dc51 FOLDED
 // FUNCTION: C2WIN 0x00477ce2
 void f13_barb_horse_archer(void)
@@ -1522,7 +1489,7 @@ void f13_barb_horse_archer(void)
     figure_states[figure_list[figure_no].state_idx]();
 }
 
-// Camel-rider figure-state init. Body identical to f12_barb_horse_light.
+// Initialize a camel rider and run its current state handler.
 // FUNCTION: C2 0x4dc51 FOLDED
 // FUNCTION: C2WIN 0x00477d39
 void f14_barb_camel(void)
@@ -1554,7 +1521,7 @@ void f16_barb_bow(void)
     figure_states[figure_list[figure_no].state_idx]();
 }
 
-// Barbarian-knife figure-state init. Body identical to f03_auxillary.
+// Initialize a barbarian knife fighter and run its current state handler.
 // FUNCTION: C2 0x4dbc4 FOLDED
 void f17_barb_knife(void)
 {
@@ -1563,8 +1530,7 @@ void f17_barb_knife(void)
     figure_states[figure_list[figure_no].state_idx]();
 }
 
-// Hold an idle (state-1) figure on its current frame. While cnt4 (the animation gate) is still
-// ticking, just freeze the sprite via get_fig_still_image.
+// Hold a waiting figure still, then advance it to its queued state.
 // FUNCTION: C2 0x4dce0
 // FUNCTION: C2WIN 0x00477ea5
 void sf01_wait(void)
@@ -1582,9 +1548,7 @@ void sf01_wait(void)
     figure_list[figure_no].is_visible  |= 1;
 }
 
-// Death state (state == 2). Elephants (kind 0xF) get stampede handling: stamp fl[+0x44]/+0x33 = 1
-// and re-aim toward an entry in the 8-pair `elephant_stampede` table (chosen via figure_no & 7),
-// then sf12_rout() takes over the movement.
+// Animate and remove a dead figure, or send a dying elephant into a stampede.
 // FUNCTION: C2 0x4dd4a
 // FUNCTION: C2WIN 0x00477fe7
 void sf02_death(void)
@@ -1987,9 +1951,7 @@ void sf12_rout(void)
     }
 }
 
-// Auto-fire missile state (state == 13). Same two-phase structure as sf11_fire_missile but the
-// acquisition path skips get_fire_target entirely: every fl[+0x38] ticks (= 0x20) call
-// find_nearest_target(5).
+// Hold position and automatically fire at nearby enemies.
 // FUNCTION: C2 0x4e6e4
 // FUNCTION: C2WIN 0x004795f0
 void sf13_autofire_missile(void)
@@ -2036,8 +1998,7 @@ tail:
         get_fig_missile_image();
 }
 
-// Opportunist-fire state (state == 14): walk toward the firing stand; once standing, every 0x30
-// ticks scan for a target in range 0xF via find_nearest_target.
+// Move into firing position and periodically attack nearby enemies.
 // FUNCTION: C2 0x4e895
 // FUNCTION: C2WIN 0x0047995d
 void sf14_opertunist_fire(void)
@@ -2048,7 +2009,6 @@ void sf14_opertunist_fire(void)
         return;
     }
 
-    /* ---- Phase A: opportunist range 0xF ---- */
     get_fig_still_image();
     figure_list[figure_no].missile_max = 0x30;
     figure_list[figure_no].missile_timer += 1;
@@ -2155,8 +2115,7 @@ void elephant_fire(void)
         else if (map_direction == 4) figure_list[figure_no].archer_image_a += (((figure_list[figure_no].archer_heading_a + 4) % 8) * 4);
         else if (map_direction == 6) figure_list[figure_no].archer_image_a += (((figure_list[figure_no].archer_heading_a + 2) % 8) * 4);
 
-        /* Sprite slot 2: elephant_archer_images[0] when archer_tick_b
-           < 0xA, otherwise the tick-10 elephant frame.  Same rotation. */
+        /* Animate the elephant's second archer once its firing cycle begins. */
         if (figure_list[figure_no].archer_tick_b < 0xa) figure_list[figure_no].archer_image_b = elephant_archer_images[0];
         else figure_list[figure_no].archer_image_b = elephant_archer_images[figure_list[figure_no].archer_tick_b - 10];
 
@@ -2167,9 +2126,7 @@ void elephant_fire(void)
     }
 }
 
-// Set the base sprite type for the newly-created arrow tracked by created_arrow_no, indexed by the
-// firing figure's sprite_type (figure_list+0x5). Bow/javelin classes 3/9/10/16/17 use sprite base
-// 0xaa, ballista bolts (13) use 0x28, onager rocks (15) use 0x50, everything else clears it to 0.
+// Set a newly created projectile's sprite from the firing figure's type.
 // FUNCTION: C2 0x4f096
 // FUNCTION: C2WIN 0x0047a4ba
 void get_arrow_base_image(void)
@@ -2197,7 +2154,7 @@ void get_arrow_base_image(void)
         figure_list[figure_no].sprite_kind;
 }
 
-// Per-tick AI for active arrows (arrow_no 1..0xc8).
+// Advance and animate every active projectile.
 // FUNCTION: C2 0x4f174
 // FUNCTION: C2WIN 0x0047a67f
 void arrow_intelligence(void)
@@ -2229,9 +2186,7 @@ void arrow_intelligence(void)
 // FUNCTION: C2WIN 0x0047a7db
 void general_reform(int p1)
 {
-    /* Per-unit dedup: skip figures whose unit_ref matches the previous
-       iteration so consecutive figures from the same unit don't re-trigger
-       the reform.  Initial value 0 acts as "no unit yet". */
+    /* Process each selected unit once. */
     int prev_unit = 0;
 
     for (figure_no = 1; figure_no < 201; figure_no++) {
@@ -2254,8 +2209,7 @@ void general_reform(int p1)
     }
 }
 
-// Re-form the figures of `unit_ref` into formation mode `mode`. Stores mode in unit+0x36, then
-// walks the unit's figure range.
+// Assign a formation and destination slots to every figure in a unit.
 // FUNCTION: C2 0x4f33d
 // FUNCTION: C2WIN 0x0047a94b
 void reform(int unit_ref, int mode, int force)
@@ -2296,8 +2250,7 @@ void reform(int unit_ref, int mode, int force)
 }
 
 
-// Re-snap every figure in unit `unit_no` into a fresh formation of kind `formation`. formation ==
-// 3 is the "disband" no-op shortcut that only stores the formation byte and returns.
+// Immediately place a unit's figures into the requested formation.
 // FUNCTION: C2 0x4f44d
 // FUNCTION: C2WIN 0x0047ab55
 void instant_reform(int unit_no, int formation)
@@ -2494,9 +2447,7 @@ void get_fig_fight_image(void)
 }
 
 
-// Walk-pose sprite frame picker for figure_no. Mirrors get_fig_still_image's base-step +
-// map-direction-relative rotation, then adds the figure's running animation counter (>>1) and
-// advances that counter (different cycle length per fight_state).
+// Select and advance the current figure's walking animation frame.
 // FUNCTION: C2 0x4f902
 // FUNCTION: C2WIN 0x0047b600
 void get_fig_walk_image(void)
@@ -2512,8 +2463,6 @@ void get_fig_walk_image(void)
     } else {
         base = 0x14;
     }
-    /* map_direction is always 0/2/4/6 in practice; the unmatched
-       default leaves sprite_val undefined but never executes. */
     if (map_direction == 0)      sprite_val = (figure_list[figure_no].direction % 8) * base;
     else if (map_direction == 2) sprite_val = ((figure_list[figure_no].direction + 6) % 8) * base;
     else if (map_direction == 4) sprite_val = ((figure_list[figure_no].direction + 4) % 8) * base;
@@ -2535,9 +2484,7 @@ void get_fig_walk_image(void)
     figure_list[figure_no].sprite_anim = sprite_val;
 }
 
-// Pick the still-image sprite frame for figure_no. Selects a per-state base step (6 for
-// still-state 2, 5 for non-zero active states, 0x14 for idle state 0); if idle and the figure is
-// defending with shield_class==2, delegates to the tortoise-shape pose-picker instead.
+// Select the current figure's still frame, including tortoise-formation poses.
 // FUNCTION: C2 0x4fa48
 // FUNCTION: C2WIN 0x0047b8e5
 void get_fig_still_image(void)
@@ -2558,8 +2505,6 @@ void get_fig_still_image(void)
         }
         base = 0x14;
     }
-    /* map_direction is always 0/2/4/6 in practice; the unmatched
-       default leaves anim undefined but never executes. */
     if (map_direction == 0)      anim = (figure_list[figure_no].direction % 8) * base;
     else if (map_direction == 2) anim = ((figure_list[figure_no].direction + 6) % 8) * base;
     else if (map_direction == 4) anim = ((figure_list[figure_no].direction + 4) % 8) * base;
@@ -2593,8 +2538,6 @@ void get_fig_tortoise_image(void)
         }
     }
 
-    /* map_direction is always 0/2/4/6 in practice; the +0x10 is applied
-       at the join. */
     if (map_direction == 0)      img = (figure_list[figure_no].direction % 8) * 20;
     else if (map_direction == 2) img = ((figure_list[figure_no].direction + 6) % 8) * 20;
     else if (map_direction == 4) img = ((figure_list[figure_no].direction + 4) % 8) * 20;
@@ -2750,7 +2693,7 @@ void set_missile_fire_range(int n)
     }
 }
 
-// Per-tick dispatcher for Roman unit AI.
+// Update the AI-controlled enemy units for the current battle tick.
 // FUNCTION: C2 0x4ffd0
 // FUNCTION: C2WIN 0x0047c3b9
 void update_units_ai(void)
@@ -2787,9 +2730,7 @@ void elephant_ai(void)
     }
 }
 
-// Per-tick AI driver for “light” (skirmisher / archer) units indexed by `temp_unit`. Bumps the
-// unit's AI tick counter; when it crosses the per-unit `ai_period`, resets to 0 and decides
-// between charging (berserk) and holding to auto-fire based on overall battle pressure.
+// Choose movement or firing orders for the current light enemy unit.
 // FUNCTION: C2 0x5009b
 // FUNCTION: C2WIN 0x0047c57e
 void do_light_ai(void)
@@ -2812,9 +2753,7 @@ void do_light_ai(void)
     }
 }
 
-// Heavy-AI dispatch for the current battle unit (temp_unit), called once per AI tick from
-// update_units_ai. Reads five per-tribe AI thresholds out of tribe_ai_data, gated by a per-unit
-// ai_period cooldown.
+// Choose manoeuvre, attack, or withdrawal orders for the current heavy enemy unit.
 // FUNCTION: C2 0x500fc
 // FUNCTION: C2WIN 0x0047c653
 void do_heavy_ai(void)
@@ -2833,7 +2772,7 @@ void do_heavy_ai(void)
     thresh_3 = tribe_ai_data[bat_tribe].wedge_move;
     thresh_4 = tribe_ai_data[bat_tribe].forward_move;
 
-    /* Bump the cooldown counter and bail if not yet ready. */
+    /* Wait until the unit's next AI decision tick. */
     unit_list[temp_unit].ai_tick = (unit_list[temp_unit].ai_tick + 1);
     if (unit_list[temp_unit].ai_tick < unit_list[temp_unit].ai_period)
         return;
@@ -2992,8 +2931,7 @@ void set_ai_unit_withdraw(int dx, int dy)
     }
 }
 
-// Switch the unit indexed by the global `temp_unit` into the berserk combat order, and propagate
-// the order to every active figure in that unit. 1.
+// Order every eligible figure in the current unit to attack berserk.
 // FUNCTION: C2 0x50646
 // FUNCTION: C2WIN 0x0047d1b6
 void set_ai_unit_beserk(void)
@@ -3014,8 +2952,7 @@ void set_ai_unit_beserk(void)
     }
 }
 
-// Sister of `set_ai_unit_beserk` that QUEUES a berserk transition rather than applying it
-// immediately.
+// Queue a staggered berserk attack for every eligible figure in the current unit.
 // FUNCTION: C2 0x506c5
 // FUNCTION: C2WIN 0x0047d2f0
 void set_ai_unit_delayed_beserk(void)
@@ -3069,8 +3006,7 @@ void set_ai_unit_auto_fire(void)
     }
 }
 
-// Once-per-tick morale + fatigue refresh over every battle unit, called from battle_game_loop.
-// Skips dead or routed units, then runs four steps: A.
+// Update unit morale, fatigue, recovery, and routing decisions.
 // FUNCTION: C2 0x50806
 // FUNCTION: C2WIN 0x0047d64e
 void update_units_morale(void)
@@ -3119,9 +3055,7 @@ void update_units_morale(void)
     }
 }
 
-// Mirror of raise_all_units_morale: walk unit_list[1..0x32] processing units of .type ==
-// match_type, dropping morale_a / morale_b by delta_a / delta_b. Rank-2 (elite cohorts) take an
-// additional 10 points off morale_a.
+// Lower morale for active units of the specified type.
 // FUNCTION: C2 0x509c4
 // FUNCTION: C2WIN 0x0047da3d
 void drop_all_units_morale(int match_type, int delta_a, int delta_b)
@@ -3186,8 +3120,7 @@ void set_unit_to_rout(int unit_no)
     battle_tune_mood_from_type(unit_no);
 }
 
-// Recompute the per-side and per-unit battle statistics shown in the unit-info panel and used to
-// drive AI decisions. Called from setup_battle (once) and battle_game_loop (every tick).
+// Recompute unit membership, army totals, morale, selection statistics, and Roman map bounds.
 // FUNCTION: C2 0x50b57
 // FUNCTION: C2WIN 0x0047de58
 void get_units_status(void)
@@ -3338,9 +3271,7 @@ void battle_tune_mood_from_type(int unit_no)
     tune_mood_hold = 1;
 }
 
-// Re-bind every figure of the unit owning `start_fig` into the fight state: "backtrack" any figure
-// that was already engaged, copy the trigger figure's facing into it, and pick a fight state_idx
-// of 9 (defending) or 0xa (attacking).
+// Prepare every eligible figure in a unit to seek or enter combat.
 // FUNCTION: C2 0x5105b
 // FUNCTION: C2WIN 0x0047e8ea
 void set_unit_to_fight(int start_fig)
@@ -3379,8 +3310,7 @@ void set_unit_to_fight(int start_fig)
     }
 }
 
-// Drive figure_no one tick toward its current move / fight target. Called from the sf03_move /
-// sf04_fight / sf07_reform dispatchers after they have set up the target and heading.
+// Advance the current figure toward its destination and handle obstacles or combat.
 // FUNCTION: C2 0x51189
 // FUNCTION: C2WIN 0x0047eb78
 int figure_go_to_target(void)
@@ -3414,7 +3344,7 @@ movement_ready:
         ;
     }
 
-    /* ---- Phase 2: heading. ---- */
+    /* Choose a heading toward the destination. */
     if (figure_list[figure_no].is_routing == 0)
         return 1;
 
@@ -3435,7 +3365,7 @@ movement_ready:
         return 1;
     }
 
-    /* ---- Phase 3: try to step. ---- */
+    /* Test the next step and resolve any obstruction. */
     dir_out = try_a_battlemap_square(w_dirc);
     if (dir_out == 0) {
         if (figure_list[enemy_figure].state_idx == 2) {
@@ -3488,7 +3418,7 @@ cap_wander:
     }
 
     if (dir_out == 0x3e7) {
-        /* ---- Combat resolution. ---- */
+        /* Engage the blocking enemy. */
         if (figure_list[figure_no].state_idx == 2)
             return 0;
         if (figure_list[figure_no].state_idx == 7) {
@@ -3527,7 +3457,7 @@ cap_wander:
     if (dir_out == 0x3e7)
         return 0;
 
-    /* ---- Move step. ---- */
+    /* Commit the movement step. */
     figure_list[figure_no].is_visible &= 0xfe;
     figure_list[figure_no].backtrack_dirc = figure_list[figure_no].direction;
     figure_list[figure_no].direction = w_dirc;
@@ -3537,9 +3467,7 @@ cap_wander:
     return 1;
 }
 
-// If figure_no and enemy_figure belong to the same unit and the enemy is in state 6 (the
-// post-charge rotation state), swap their (grid_x, grid_y, map_ref) tuples and re-stamp the
-// battle_map occupancy bytes so the two figures trade places.
+// Swap positions when two compatible figures from the same unit block each other.
 // FUNCTION: C2 0x515e0
 // FUNCTION: C2WIN 0x0047f57d
 int swap_2_figures(void)
@@ -3662,9 +3590,7 @@ int try_a_battlemap_square(int dir)
     return r;
 }
 
-// Test what figure (if any) occupies a battlemap cell relative to the active figure_no, and apply
-// on-contact bookkeeping when meeting an enemy. `cell_off` is the byte offset within battle_map
-// (caller has already turned (x,y) into y * 0x34 + x scaled by 4).
+// Test whether a battle-map cell is free, friendly, or occupied by an enemy.
 // FUNCTION: C2 0x5185c
 // FUNCTION: C2WIN 0x0047fb65
 int try_this_battlemap_square(int cell_off)
@@ -3820,16 +3746,11 @@ void backtrack_figure(int fig)
     ((unsigned char *)battle_map)[(new_cell) + 1] = fig;
 }
 
-// Translate an 8-way heading into the adjacent battle_map cell and stamp it as the figure's next
-// target slot (prev_grid_x / prev_grid_y). Directions outside 0..7 leave the slot unchanged.
+// Set the current figure's destination to the adjacent cell in an eight-way direction.
 // FUNCTION: C2 0x51b58
 // FUNCTION: C2WIN 0x00480277
 void target_from_figure_dirc(int dir)
 {
-    /* Translate an 8-way heading into the adjacent
-       battle_map cell and stamp it as the figure’s next
-       target slot (fl[+0x18], fl[+0x19]).  Directions
-       outside 0..7 leave the slot unchanged. */
     if (dir == 0) {
         figure_list[figure_no].prev_grid_x = figure_list[figure_no].grid_x;
         figure_list[figure_no].prev_grid_y = (figure_list[figure_no].grid_y - 1);
@@ -3857,9 +3778,7 @@ void target_from_figure_dirc(int dir)
     }
 }
 
-// Walking-fighter direction picker. First tries the heading straight toward the target (current
-// grid → prev grid) via try_a_battlemap_square; on a free square commits it to wf_dirc and clears
-// the search state.
+// Choose a passable direction toward the current figure's destination.
 // FUNCTION: C2 0x51c64
 // FUNCTION: C2WIN 0x004805cd
 int get_wf_dirc(int mode)
@@ -3948,9 +3867,7 @@ int get_wf_dirc(int mode)
 }
 
 
-// Step an in-flight arrow toward its target and resolve any collision; called per tick from
-// arrow_intelligence for the current arrow_no. Ticks the per-arrow fuse first and clears the arrow
-// on expiry.
+// Advance the current projectile and resolve expiry or impact.
 // FUNCTION: C2 0x51e5a
 // FUNCTION: C2WIN 0x004809d7
 void fly_to_target(void)
@@ -4037,7 +3954,7 @@ void fly_to_target(void)
     }
 }
 
-// One Bresenham step for the current arrow_no, used by fly_to_target.
+// Update the current projectile's Bresenham error term.
 // FUNCTION: C2 0x521ab
 // FUNCTION: C2WIN 0x00480f19
 void bd(int axis)
@@ -4151,9 +4068,7 @@ void move_arrow_horiz(void)
         arrow_list[arrow_no].start_x--;
 }
 
-// Move arrow_no one battle-map step according to its heading: headings 1/2/3 advance X, 5/6/7
-// retreat X, 3/4/5 advance Y, and 0/1/7 retreat Y. Heading 0 performs only the Y decrement;
-// unrecognised headings are ignored.
+// Move the current projectile one grid step along its heading.
 // FUNCTION: C2 0x524f0
 // FUNCTION: C2WIN 0x00481592
 void loose_arrow_move(void)
@@ -4258,8 +4173,7 @@ void set_attack_count(int n)
     }
 }
 
-// Apply per-figure defense bonuses on a battle round: 1. Stash unit_ref into the global temp_unit
-// (zero-extended).
+// Refresh a figure's defense value from its type and formation.
 // FUNCTION: C2 0x5278e
 // FUNCTION: C2WIN 0x00481d29
 void set_defense_shield(int n)
@@ -4272,16 +4186,11 @@ void set_defense_shield(int n)
     }
 }
 
-// Scan the eight neighbour cells around the current figure (figure_no) on battle_map and return a
-// direction code pointing at the first one that contains an enemy figure (different side at
-// bf[+1], and bf[+0x1C] != 2 = dead).
+// Return the direction of the first living enemy adjacent to the current figure.
 // FUNCTION: C2 0x527cc
 // FUNCTION: C2WIN 0x00481dea
 int nearest_formation_enemy(void)
 {
-    /* Eight sequential gated probes — each block re-derives the
-       neighbour id inline.  The last three probes nest under one
-       row < 0x33 gate. */
     if (figure_list[figure_no].grid_y > 0) {
         enemy_figure = ((unsigned char *)battle_map)[figure_list[figure_no].map_ref - 0xcf];   /* N */
         if (enemy_figure != 0

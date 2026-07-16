@@ -105,11 +105,7 @@ int media_left_image;
 int tutorial_correct;
 int linked_text_flag;
 
-/* act_goto_city_map's signature is ambiguous in c2_funcs.h
- * (conflicting fwd/def in action.c), so spell it explicitly here. */
-
-
-// Run the in-game help/media browser starting at `page`. Valid pages are 1..1999.
+// Run the in-game help browser from the requested page until the user exits.
 // FUNCTION: C2 0x57fa8
 // FUNCTION: C2WIN 0x004521a0
 void launch_help(int page)
@@ -156,8 +152,7 @@ void launch_help(int page)
     pointer_mode = old_pointer_mode;
 }
 
-// Load the current help/media table entry, then load its text block into format_buffer and mark
-// which optional assets are present.
+// Load the current help entry, its text, and the availability of its optional media.
 // FUNCTION: C2 0x580a9
 // FUNCTION: C2WIN 0x00452332
 void load_media_entry(void)
@@ -193,8 +188,7 @@ void show_help_page(void)
     int  left_ok;
     int  right_ok;
 
-    /* extension := "256" so subsequent put_filename_extension()
-     * calls stamp the palette suffix on the page's image names. */
+    /* Use each illustration's matching .256 palette file. */
     my_strcpy("256", extension, 4);
     my_strcpy(city_palette, temp_palette, 0x300);
 
@@ -271,8 +265,7 @@ void show_help_page(void)
     hold_mouse_replace = 1;
 }
 
-// Word-wrap a stream of help / tutorial text from format_buffer (the global media-load scratch)
-// into successive lines on the sprite layer. Walks one line at a time: 1.
+// Word-wrap the loaded help or tutorial text and render it across the supplied text regions.
 // FUNCTION: C2 0x584a9
 // FUNCTION: C2WIN 0x0045296c
 void media_text_place(int x, int y, int width, int line_count,
@@ -300,11 +293,7 @@ void media_text_place(int x, int y, int width, int line_count,
         help_page_hot_spots[i].y  = help_page_hot_spots[i].unused = 0;
     }
 
-    /* Walk text_pointer forward through the format_buffer header
-     * (loading code wrote some prelude bytes ahead of the actual
-     * paragraph text).  Loop terminates one past the first NUL,
-     * leaving text_pointer pointing at the start of the real
-     * wrappable content. */
+    /* Skip the entry heading and start at the paragraph text. */
     text_pointer = format_buffer;
     while (*text_pointer > 0) text_pointer++;
     text_pointer++;
@@ -367,7 +356,7 @@ void media_text_place(int x, int y, int width, int line_count,
     }
 }
 
-// Render one line of help / tutorial text into the sprite layer.
+// Render a help-text line and record the clickable regions delimited by link tags.
 // FUNCTION: C2 0x58684
 // FUNCTION: C2WIN 0x00452c66
 void put_a_media_string(char *text, int x, int y)
@@ -402,9 +391,7 @@ void put_a_media_string(char *text, int x, int y)
                 help_page_hot_spots[this_spot].y = sprite_y - 2;
                 nof_hot_spots++;
                 linked_text_flag = 1;
-                /* get_number_from_text consumed one digit; if the
-                 * id was multi-digit, skip the remainder so the
-                 * loop doesn't try to render the digits as text. */
+                /* Skip the remaining page-number digits. */
                 if (help_page_hot_spots[this_spot].page > 9) {
                     if (help_page_hot_spots[this_spot].page <= 99)
                         text += 1;
@@ -466,8 +453,7 @@ int get_linked_page(void)
     return 0;
 }
 
-// Append the current help page to the history buffer at the action cursor, then advance the cursor
-// (capped at 0xC7).
+// Append the current page to the help-history buffer and advance its cursor.
 // FUNCTION: C2 0x588b9
 // FUNCTION: C2WIN 0x0045307e
 void push_forward_help_history(void)
@@ -477,8 +463,7 @@ void push_forward_help_history(void)
         this_help_action++;
 }
 
-// Step the help history back one slot, loading the prior page index. No-op if already at the
-// start.
+// Move back one help-history entry and restore that page.
 // FUNCTION: C2 0x588e2
 // FUNCTION: C2WIN 0x004530b7
 void rewind_help_history(void)
@@ -489,8 +474,7 @@ void rewind_help_history(void)
     }
 }
 
-// Reset the help history: jump to first page, zero the action cursor, and wipe the 200-entry
-// history buffer.
+// Reset help navigation to the first page and clear its history.
 // FUNCTION: C2 0x58907
 // FUNCTION: C2WIN 0x004530ec
 void init_help_history(void)
@@ -503,9 +487,7 @@ void init_help_history(void)
         help_history[i] = 0;
 }
 
-// Run the tutorial: stash the player's real skill_level / peace_mode, force easiest-skill
-// peace-mode, zero the calendar back to -200 BC, clear the empire and seed the starting province,
-// then loop do_a_tutorial_page() until tutorial_page >= 0x20.
+// Run the tutorial campaign with beginner settings, then restore skill and peace mode.
 // FUNCTION: C2 0x5892d
 // FUNCTION: C2WIN 0x0045313c
 void do_tutorial(void)
@@ -553,7 +535,7 @@ void do_tutorial(void)
     hold_mouse_replace = 1;
 }
 
-// Render and run one page of the in-game tutorial. Per page: 1.
+// Display the current tutorial page, handle navigation, and run its interactive objective.
 // FUNCTION: C2 0x58a24
 // FUNCTION: C2WIN 0x004532dc
 void do_a_tutorial_page(void)
@@ -619,7 +601,7 @@ void do_a_tutorial_page(void)
 
     }
 
-    /* Interactive-challenge wrap-up */
+    /* Run the interactive challenge associated with this page. */
     tutorial_level = active_tutorial_pages[tutorial_page] & 0xff;
     if (tutorial_level != 0 && out4 == 0) {
         tutorial_timer         = 0x13b9;
@@ -650,7 +632,7 @@ void do_a_tutorial_page(void)
     stop_db();
 }
 
-// Checks whether tutorial level 3's housing forum-access objective has been met.
+// Complete tutorial level 3 when housing gains forum access.
 // FUNCTION: C2 0x58d3b
 // FUNCTION: C2WIN 0x004537a1
 void tutorial_test_for_forum_access(void)
@@ -678,7 +660,7 @@ void tutorial_test_for_forum_access(void)
     }
 }
 
-// Checks whether tutorial level 2's housing water-distribution objective has been met.
+// Complete tutorial level 2 when housing receives water.
 // FUNCTION: C2 0x58ddc
 // FUNCTION: C2WIN 0x00453897
 void tutorial_test_for_water_distribution(void)
@@ -705,9 +687,7 @@ void tutorial_test_for_water_distribution(void)
     }
 }
 
-// Blocking "please wait" system panel. Draws a fixed 20x8 window, schedules a full refresh, prints
-// the heading in font2 followed by three explanatory lines in font1, then flushes to the SVGA
-// screen.
+// Draw and refresh the tutorial's "please wait" panel.
 // FUNCTION: C2 0x58e6f
 // FUNCTION: C2WIN 0x00453983
 void show_please_wait(void)
@@ -721,9 +701,7 @@ void show_please_wait(void)
     refresh_svga_screen();
 }
 
-// Render the tutorial countdown HUD when `tutorial_mode` is on. Clears a 2-row mosaic at (0x1f4,
-// 0x1b3), prints `tutorial_timer / 50` (the timer is in 50-tick units — 50 ticks/sec, so this is
-// the seconds value) inside it, and refreshes the area.
+// Update the visible tutorial countdown while tutorial mode is active.
 // FUNCTION: C2 0x58f16
 // FUNCTION: C2WIN 0x00453a1a
 void show_tutorial_timer(void)
@@ -735,8 +713,7 @@ void show_tutorial_timer(void)
     }
 }
 
-// Walk the tutorial-page index backwards to the previous page whose .pl8 file actually exists on
-// disk. Filename stride is 14 bytes per entry.
+// Navigate to the preceding available tutorial page.
 // FUNCTION: C2 0x58f8b
 // FUNCTION: C2WIN 0x00453ad1
 void act_back_tutorial_page(void)
@@ -753,7 +730,7 @@ void act_back_tutorial_page(void)
     do_neg();
 }
 
-// Handles the middle tutorial page user-interface action.
+// Jump to the tutorial's middle page.
 // FUNCTION: C2 0x58fdb
 // FUNCTION: C2WIN 0x00453b44
 void act_middle_tutorial_page(void)
@@ -763,7 +740,7 @@ void act_middle_tutorial_page(void)
     do_pos();
 }
 
-// Handles the forward tutorial page user-interface action.
+// Advance to the next tutorial page.
 // FUNCTION: C2 0x58ff4
 // FUNCTION: C2WIN 0x00453b68
 void act_forward_tutorial_page(void)
@@ -773,7 +750,7 @@ void act_forward_tutorial_page(void)
     do_pos();
 }
 
-// Returns whether the current tutorial permits a city-screen icon.
+// Return whether the current tutorial stage permits a city-map icon.
 // FUNCTION: C2 0x5900d
 // FUNCTION: C2WIN 0x00453b88
 int city_icon_allowed(int idx)
@@ -781,8 +758,7 @@ int city_icon_allowed(int idx)
     return (unsigned char)city_tutorial_icons[idx] <= tutorial_level;
 }
 
-// Returns (unsigned char)region_tutorial_icons[idx] <= tutorial_level for the region icon allowed
-// query.
+// Return whether the current tutorial stage permits a region-map icon.
 // FUNCTION: C2 0x59027
 // FUNCTION: C2WIN 0x00453bbb
 int region_icon_allowed(int idx)
@@ -790,9 +766,7 @@ int region_icon_allowed(int idx)
     return (unsigned char)region_tutorial_icons[idx] <= tutorial_level;
 }
 
-// In tutorial mode, grey out city-view header icons whose tutorial gate returns false. Icon slots
-// 4..27 are checked against city_icon_allowed(slot-4); the rectangle geometry comes from
-// int_city_header's 16-byte records, with the X coordinate shifted rightward by 0xee pixels.
+// Grey out city-map controls that the current tutorial stage has not unlocked.
 // FUNCTION: C2 0x5902f
 // FUNCTION: C2WIN 0x00453bee
 void grey_city_map_parts(void)
@@ -817,8 +791,7 @@ void grey_city_map_parts(void)
     }
 }
 
-// Region-view counterpart to grey_city_map_parts, using the region header table and
-// region_icon_allowed over icon slots 4..22.
+// Grey out region-map controls that the current tutorial stage has not unlocked.
 // FUNCTION: C2 0x5909f
 // FUNCTION: C2WIN 0x00453c56
 void grey_region_map_parts(void)

@@ -46,9 +46,7 @@ extern void  memmove(void *dst, const void *src, unsigned int n);
 extern void *calloc(unsigned int nmemb, unsigned int size);
 extern void free(void *);
 
-// LHARC LZSS sliding-window match-tree initialization. Resets the right-son table (`rson`) for
-// indices N+1..N+256 and the dad-table (`dad`) for indices 0..N-1, both pointing to NIL (= N =
-// 4096).
+// Initialize the LZSS match tree with every node detached.
 // FUNCTION: C2 0x6f535
 // FUNCTION: C2WIN 0x0043b720
 void InitTree(void)
@@ -66,9 +64,7 @@ void InitTree(void)
     }
 }
 
-// LZSS binary-search-tree insert with longest-match search. Inserts the substring at
-// sliding-window position `r` into the match-finding tree, indexed by text_buf[r], and along the
-// way records the longest matching previous substring as (match_position, match_length).
+// Insert a window position into the LZSS search tree and record its best match.
 // FUNCTION: C2 0x6f575
 // FUNCTION: C2WIN 0x0043b794
 void InsertNode(short r)
@@ -129,8 +125,7 @@ void InsertNode(short r)
     dad[p] = 0x1000;
 }
 
-// LZSS binary search tree node deletion (Knuth Vol.3 BST delete). Removes the substring rooted at
-// sliding-window position `p` from the match-finding tree before its window slot is overwritten.
+// Remove a window position from the LZSS search tree before reusing its slot.
 // FUNCTION: C2 0x6f75a
 // FUNCTION: C2WIN 0x0043bab6
 void DeleteNode(short p)
@@ -166,8 +161,7 @@ void DeleteNode(short p)
     dad[p] = NIL;
 }
 
-// Read one bit from the LZSS input bit-buffer. When fewer than 9 bits remain (getlen <= 8), pull a
-// fresh input byte from pmp_inbuff[pmp_iptr++] and shift it into getbuf's high half.
+// Read one bit from the compressed input stream.
 // FUNCTION: C2 0x6f8b5
 // FUNCTION: C2WIN 0x0043bce1
 short GetBit(void)
@@ -190,8 +184,7 @@ short GetBit(void)
     return (i < 0);
 }
 
-// Read 8 bits from the LZSS input bit-buffer. Same refill loop as GetBit; the consume step shifts
-// getbuf left by 8 (instead of 1) and returns the byte that just rotated out of the top.
+// Read one byte from the compressed input stream.
 // FUNCTION: C2 0x6f923
 // FUNCTION: C2WIN 0x0043bd95
 int GetByte(void)
@@ -214,9 +207,7 @@ int GetByte(void)
     return i >> 8;
 }
 
-// Output `l` bits of `c` to the bit-packed pmp_outbuff. `c` holds the bit pattern in the HIGH
-// half-word (top `l` bits); putbuf is the 16-bit accumulator and putlen the count of bits already
-// in it.
+// Append the high `l` bits of `c` to the compressed output stream.
 // FUNCTION: C2 0x6f993
 // FUNCTION: C2WIN 0x0043be48
 void Putcode(short l, unsigned short c)
@@ -236,8 +227,7 @@ void Putcode(short l, unsigned short c)
     }
 }
 
-// Initialize the adaptive-Huffman frequency tree. First loop seeds N_CHAR (= 0x13a) leaves:
-// freq[i]=1, son[i]=i+T, prnt[i+T]=i.
+// Initialize the adaptive Huffman tree with equal symbol frequencies.
 // FUNCTION: C2 0x6fa66
 // FUNCTION: C2WIN 0x0043bf35
 void StartHuff(void)
@@ -263,8 +253,7 @@ void StartHuff(void)
     prnt[R] = 0;
 }
 
-// Adaptive-Huffman tree rebuild: halves every leaf weight (rounding up), re-sorts, then re-links
-// son/prnt pointers. Called by update when freq[R] hits 0x8000 to prevent overflow.
+// Rebuild the adaptive Huffman tree with halved frequencies.
 // FUNCTION: C2 0x6fb1e
 // FUNCTION: C2WIN 0x0043c061
 void reconst(void)
@@ -304,8 +293,7 @@ void reconst(void)
     }
 }
 
-// Adaptive-Huffman tree update after a single symbol encode/decode. Increments freq[c+T]'s leaf
-// weight, then walks up to the root re-sorting nodes whose weight now exceeds the next sibling's.
+// Update and reorder the adaptive Huffman tree after processing a symbol.
 // FUNCTION: C2 0x6fc6e
 // FUNCTION: C2WIN 0x0043c2d1
 void update(short c)
@@ -342,9 +330,7 @@ void update(short c)
     } while (c);
 }
 
-// Adaptive-Huffman encode of one character/length-pair token `c`. Walks from leaf prnt[c+T] up to
-// the root R = 0x272, accumulating a code by shifting right one bit per step and OR-ing 0x8000
-// when the parent's address has bit 0 set (right-child marker).
+// Encode one literal or match-length token with the adaptive Huffman tree.
 // FUNCTION: C2 0x6fdb3
 // FUNCTION: C2WIN 0x0043c486
 void EncodeChar(unsigned short c)
@@ -370,9 +356,7 @@ void EncodeChar(unsigned short c)
     update((short)c);
 }
 
-// Encode an LZSS match position via Putcode. Top 6 bits index into the static p_code/p_len tables
-// (Tanaka-style adaptive position prefix); bottom 6 bits go out raw, left-shifted by 10 so they
-// pack into the high half of Putcode's `code` arg.
+// Encode an LZSS match distance using a table-coded prefix and six raw bits.
 // FUNCTION: C2 0x6fe17
 // FUNCTION: C2WIN 0x0043c51f
 void EncodePosition(unsigned short c)
@@ -385,8 +369,7 @@ void EncodePosition(unsigned short c)
     Putcode(6, (unsigned short)(c << 10));
 }
 
-// Flush the LZSS bit-buffer's last partial byte to the output buffer. In canonical LHARC this
-// calls putc(putbuf>>8); Caesar II uses an in-memory output buffer (pmp_outbuff[pmp_optr++]).
+// Flush the final partial byte from the compressed output bit buffer.
 // FUNCTION: C2 0x6fe63
 // FUNCTION: C2WIN 0x0043c57d
 void EncodeEnd(void)
@@ -403,8 +386,7 @@ void EncodeEnd(void)
     }
 }
 
-// Adaptive-Huffman decode of one character/length-pair token. Walks the `son[]` tree from the root
-// (index 0x272) downward, reading one bit per step and following son[c+bit].
+// Decode one literal or match-length token with the adaptive Huffman tree.
 // FUNCTION: C2 0x6fe9d
 // FUNCTION: C2WIN 0x0043c5ba
 short DecodeChar(void)
@@ -421,8 +403,7 @@ short DecodeChar(void)
     return (short)c;
 }
 
-// Decode an LZSS match-position offset. Reads one byte for the 6-bit position prefix, then reads
-// d_len[byte]-1 raw bits to recover the original 12-bit position.
+// Decode an LZSS match distance from its prefix and trailing bits.
 // FUNCTION: C2 0x6fee1
 // FUNCTION: C2WIN 0x0043c643
 short DecodePosition(void)
@@ -441,8 +422,7 @@ short DecodePosition(void)
     return (short)(c | i & 0x3f);
 }
 
-// Allocate the seven LHARC working tables (text_buf, lson, rson, dad, freq, prnt, son). If any
-// allocation fails, free everything already allocated and return 0; otherwise return 1.
+// Allocate the LZSS and Huffman work tables, rolling back on failure.
 // FUNCTION: C2 0x6ff25
 // FUNCTION: C2WIN 0x0043c6e0
 int get_pumping_memory(void)
@@ -463,8 +443,7 @@ int get_pumping_memory(void)
     return 1;
 }
 
-// Free the seven LHARC working tables allocated by get_pumping_memory. Each is `if (ptr)
-// free(ptr);` -- skipped for null.
+// Free the LZSS and Huffman work tables.
 // FUNCTION: C2 0x6fffc
 // FUNCTION: C2WIN 0x0043c7e8
 void free_pumping_memory(void)
@@ -478,9 +457,8 @@ void free_pumping_memory(void)
     if (son)      free(son);
 }
 
-// LHARC LZSS encoder. Reads `len` bytes from `src`, compresses to `dst` with the canonical
-// LZSS-with-adaptive-Huffman scheme, and writes a 8-byte header (compressed size, uncompressed
-// size) at the start of dst.
+// Compress a buffer with LZSS and adaptive Huffman coding.
+// The output header stores compressed and uncompressed sizes.
 // FUNCTION: C2 0x7007f
 // FUNCTION: C2WIN 0x0043c8f6
 int pump(unsigned char *src, unsigned char *dst, int length)
@@ -574,8 +552,8 @@ int pump(unsigned char *src, unsigned char *dst, int length)
     return pmp_optr;
 }
 
-// LHARC LZSS decoder. Reads packed bytes from `src` (after a 4-byte file signature + 4-byte
-// uncompressed-length header) and writes the decoded stream to `dst`.
+// Expand an LZSS/adaptive-Huffman buffer into `dst`.
+// The input header stores compressed and uncompressed sizes.
 // FUNCTION: C2 0x702df
 // FUNCTION: C2WIN 0x0043cc5b
 int evacuate(unsigned char *src, unsigned char *dst)

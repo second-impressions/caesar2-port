@@ -5,7 +5,7 @@
 /* File-local state. */
 int age_count;
 
-extern int get_heading();  /* really heading_t (enum, int-wide) -- common.c */
+extern int get_heading();
 
 
 int city_test_for_road(int x, int y, int map_ref, signed char world_dir);
@@ -63,21 +63,7 @@ void i00_null(void)
 {
 }
 
-/* ----------------------------------------------------------------
- *  i##_*_man family — per-citizen-type "intelligence" tick.
- *
- *  All share the same body:
- *    citizen_states[citizen_list[citizen_no].state_idx]();   // dispatch
- *    get_movement_image(IMG);                                // sprite
- *    if (!age_count) {                                       // 1 tick
- *        if (++citizen_list[citizen_no].state_timer >= LIMIT)
- *            citizen_list[citizen_no].state_idx = 2;         // expired
- *    }
- *  i03 + i07 also raise emergency mood and bump a global counter.
- *  i07 picks rioter_image when the active state is 12.
- * ---------------------------------------------------------------- */
-
-// Tax-collector tick: sprite base 0x36, 18-tick lifetime.
+// Dispatch the tax collector's state, update its sprite, and expire it after 18 age cycles.
 // FUNCTION: C2 0x45fe3
 // FUNCTION: C2WIN 0x00404343
 void i01_tax_man(void)
@@ -89,7 +75,7 @@ void i01_tax_man(void)
             citizen_list[citizen_no].state_idx = 2;
 }
 
-// Market-trader tick: sprite base 0x1B, 30-tick lifetime.
+// Dispatch the market trader's state, update its sprite, and expire it after 30 age cycles.
 // FUNCTION: C2 0x46038
 // FUNCTION: C2WIN 0x004043d8
 void i02_market_man(void)
@@ -101,8 +87,7 @@ void i02_market_man(void)
             citizen_list[citizen_no].state_idx = 2;
 }
 
-// Barbarian citizen tick: sprite base 0xA6, 72-tick lifetime, raises emergency_mood and flags
-// `no_of_barbarians`.
+// Dispatch a barbarian's state, update its sprite, flag the emergency, and age it toward expiry.
 // FUNCTION: C2 0x4608d
 // FUNCTION: C2WIN 0x0040446d
 void i03_barbarian_man(void)
@@ -116,7 +101,7 @@ void i03_barbarian_man(void)
             citizen_list[citizen_no].state_idx = 2;
 }
 
-// Centurian (mounted patrol) tick: sprite base 0x6E, 35-tick lifetime.
+// Dispatch the centurion's state, update its sprite, and expire it after 35 age cycles.
 // FUNCTION: C2 0x460f3
 // FUNCTION: C2WIN 0x00404519
 void i04_centurian_man(void)
@@ -128,7 +113,7 @@ void i04_centurian_man(void)
             citizen_list[citizen_no].state_idx = 2;
 }
 
-// Vigile (firefighter / patrolman) tick: sprite base 0x51, 20-tick lifetime.
+// Dispatch the vigile's state, update its sprite, and expire it after 20 age cycles.
 // FUNCTION: C2 0x46148
 // FUNCTION: C2WIN 0x004045ae
 void i05_vigile_man(void)
@@ -140,7 +125,7 @@ void i05_vigile_man(void)
             citizen_list[citizen_no].state_idx = 2;
 }
 
-// Businessman tick: sprite base 0, 30-tick lifetime.
+// Dispatch the businessman's state, update its sprite, and expire it after 30 age cycles.
 // FUNCTION: C2 0x4619d
 // FUNCTION: C2WIN 0x00404643
 void i06_business_man(void)
@@ -152,8 +137,7 @@ void i06_business_man(void)
             citizen_list[citizen_no].state_idx = 2;
 }
 
-// Rioter tick: raises emergency_mood and flags `no_of_rioters`. In state 12 (in-riot) uses normal
-// movement sprite 0, otherwise uses the rioter-mob sprite at base 0x89.
+// Dispatch a rioter's state, flag the emergency, select its normal or mob sprite, and age it.
 // FUNCTION: C2 0x461ef
 // FUNCTION: C2WIN 0x004046d8
 void i07_rioter_man(void)
@@ -204,7 +188,7 @@ void a02_enemy(void)
     army_states[army_list[army_no].state_idx]();
 }
 
-// Raider-army intelligence tick. Body identical to a03_horde.
+// Raise the threat mood, update the raider sprite, and dispatch its army-state handler.
 // FUNCTION: C2 0x46349
 // FUNCTION: C2WIN 0x004049b0
 void a04_raider(void)
@@ -238,8 +222,7 @@ void a06_roman_ship(void)
     army_states[army_list[army_no].state_idx]();
 }
 
-// Raider-ship intelligence tick: marks the global threat mood as 2 and lets the caller's sprite
-// update run. Body identical to a07_enemy_ship.
+// Raise the threat mood for an active raider ship.
 // FUNCTION: C2 0x463b7
 // FUNCTION: C2WIN 0x00404aac
 void a08_raider_ship(void)
@@ -278,9 +261,7 @@ void s02_death(void)
     remove_citizen(citizen_no);
 }
 
-// Citizen state-3 (administrator) tick. Walks toward the queued admin target via
-// citizen_go_to_target(0); on arrival, requires the citizen to be on a road (flag_bits & 1) and
-// tries to set path-find flags + step in the current world direction.
+// Move an administrator along roads while marking the surrounding administration coverage.
 // FUNCTION: C2 0x4641d
 // FUNCTION: C2WIN 0x00404bf7
 void s03_map_admin(void)
@@ -464,8 +445,7 @@ void s07_army_patrol(void)
     citizen_list[citizen_no].action_kind = 1;
 }
 
-// Citizen state-8 (vigile patrol) tick. Walks toward the queued patrol target via
-// citizen_go_to_target(0).
+// Patrol and mark vigile coverage, diverting to nearby fires, rioters, or barbarians.
 // FUNCTION: C2 0x46988
 // FUNCTION: C2WIN 0x00405711
 void s08_vigile_patrol(void)
@@ -551,7 +531,7 @@ void s09_fire_fight(void)
     citizen_list[citizen_no].state_idx = 2;
 }
 
-// Citizen state-10 (market trader) tick.
+// Update local market demand at a business destination, then choose the trader's next road tile.
 // FUNCTION: C2 0x46c41
 // FUNCTION: C2WIN 0x00405c88
 void s10_get_business(void)
@@ -658,8 +638,7 @@ void sa02_death(void)
     remove_army(army_no);
 }
 
-// Region-map army state-3: walk the patrol route. Walks the army one tick toward (target_x,
-// target_y) via region_go_to_target; returns early if path-find fails or the army is off-road.
+// Advance a cohort along its patrol route, engaging enemies and cycling through route rows.
 // FUNCTION: C2 0x46ec5
 // FUNCTION: C2WIN 0x00406264
 void sa03_army_move(void)
@@ -812,9 +791,7 @@ void sa04_army_attack(void)
         army_list[army_no].return_flag = 1;
 }
 
-// Region-map army state-5 (return to home / waypoint): set return_flag, walk one tick via
-// region_go_to_target; on arrival (flags bit 1 set) drop to state 1 (wait) and clear the pending
-// move order.
+// Return an army to its waypoint, then enter the wait state and clear its pending order.
 // FUNCTION: C2 0x47332
 // FUNCTION: C2WIN 0x00406db1
 void sa05_army_return(void)
@@ -917,8 +894,8 @@ post_loop:
     army_list[army_no].state_idx = army_list[army_no].saved_state_idx;
 }
 
-// Region-map army state-9: army is sieging an enemy stronghold. Each tick: * Force sprite_anim =
-// 0x66 (siege-stance frame).
+// Run a siege countdown based on troop strength, then clear the stronghold area and resume
+// invasion.
 // FUNCTION: C2 0x475d2
 // FUNCTION: C2WIN 0x0040735d
 void sa09_army_siege(void)
@@ -951,7 +928,7 @@ void sa09_army_siege(void)
     put_message(0x60, army_list[army_no].map_ref, 0x13);
 }
 
-// Region-map army state-A0 — demobilised: snap the army to its home fort tile.
+// Demobilise the army at its home fort and reset its movement and targeting state.
 // FUNCTION: C2 0x476cf
 // FUNCTION: C2WIN 0x004075e1
 void sa10_army_demobed(void)
@@ -1281,7 +1258,7 @@ void get_rioter_image(int img)
     citizen_list[citizen_no].image_id = (img + 0x1C);
 }
 
-// Sprite-frame helper for a barbarian army. Sister of get_enemy_image / get_cohort_image.
+// Select the barbarian army's sprite and animation from its heading, tribe, and state.
 // FUNCTION: C2 0x47fc7
 // FUNCTION: C2WIN 0x00408aa0
 void get_barbarian_image(void)
@@ -1330,9 +1307,7 @@ void get_enemy_image(void)
     }
 }
 
-// Sprite-frame helper for a cohort army. Computes the walk-direction (mod 8 with sign-extension),
-// copies army.cohort_id (+0x28) into sprite_image, and picks the per-tick animation: a fixed
-// `+0x12` frame when state_idx == 10 (resting?) or `cnt8 + 0x12` otherwise.
+// Select the cohort army's sprite direction and animation from its heading, cohort, and state.
 // FUNCTION: C2 0x48130
 // FUNCTION: C2WIN 0x00408d56
 void get_cohort_image(void)
@@ -1352,8 +1327,7 @@ void get_cohort_image(void)
         army_list[army_no].target_kind) + 0x36);
 }
 
-// Map a base heading (`dir`, 0..7) and a rotation hint (`rot`, low 2 bits used) to a sprite-frame
-// direction code.
+// Convert a screen-relative heading and animation phase into a directional sprite offset.
 // FUNCTION: C2 0x481ce
 // FUNCTION: C2WIN 0x00408e82
 int get_army_walk_dirc(int dir, int rot)
@@ -1400,9 +1374,7 @@ int find_enemy(int cx, int cy, int r)
     return best_idx;
 }
 
-// Region-map twin of find_enemy — scan armies (indices 0..0x19, 25 slots) for the nearest invading
-// army within Chebyshev radius of (cx, cy). Filter: army.exists != 0 AND type in [2..5] AND
-// state_idx < 14.
+// Find the nearest active invading army of type 2 through 5 within the requested radius.
 // FUNCTION: C2 0x482f1
 // FUNCTION: C2WIN 0x0040910e
 int find_invading_army(int cx, int cy, int r)
@@ -1442,8 +1414,7 @@ int find_invading_army(int cx, int cy, int r)
     return best_idx;
 }
 
-// Citizen "advance toward target" tick. Sister of citizen_maraude_to_target but for straight-line
-// walks with no ferret-run fallback.
+// Advance the current citizen directly toward its destination, respecting its movement speed.
 // FUNCTION: C2 0x483df
 // FUNCTION: C2WIN 0x00409336
 int citizen_go_to_target(int kind)
@@ -1490,9 +1461,7 @@ int citizen_go_to_target(int kind)
     return 1;
 }
 
-// Citizen state-handler tail used by s05_maraude_to_top_spot, s06_quell_trouble, s09_fire_fight,
-// s12_goto_riot. Drives a citizen toward (dest_x, dest_y) one tile at a time, with a per-class
-// speed gate and an optional ferret-run path.
+// Advance the current citizen toward its destination, using a calculated route when blocked.
 // FUNCTION: C2 0x48569
 // FUNCTION: C2WIN 0x00409815
 int citizen_maraude_to_target(int kind)
@@ -1500,7 +1469,6 @@ int citizen_maraude_to_target(int kind)
     int result;
 
     if ((citizen_list[citizen_no].flag_bits & 1) == 0) {
-        /* Branch A — speed gate. */
         if (citizen_list[citizen_no].is_barbarian) result = citizen_speed_on_road[citizen_list[citizen_no].type];
         else result = citizen_speed_off_road[citizen_list[citizen_no].type];
         citizen_list[citizen_no].speed_phase = citizen_list[citizen_no].speed_phase + 1;
@@ -1510,7 +1478,6 @@ int citizen_maraude_to_target(int kind)
         return 1;
     }
 
-    /* Branch B — move step. */
     citizen_list[citizen_no].speed_count = 0; citizen_list[citizen_no].speed_phase = 0;
 
     if (citizen_list[citizen_no].action_kind == 0) return 1;
@@ -1529,7 +1496,6 @@ int citizen_maraude_to_target(int kind)
     result = try_a_citymap_square(w_dirc, kind, 0);
 
     if (result == 0x3e7 || (result == 0 && citizen_list[citizen_no].wf_active)) {
-        /* Blocked or in-wf-run sentinel. */
         citizen_list[citizen_no].world_dir = (char)((citizen_list[citizen_no].world_dir + 1) & 7);
         if (citizen_list[citizen_no].wf_active) citizen_list[citizen_no].wf_active = 0;
         else { citizen_list[citizen_no].state_idx = 1; citizen_list[citizen_no].wait_count = 0x10; }
@@ -1537,7 +1503,6 @@ int citizen_maraude_to_target(int kind)
     }
 
     if (result == 0) {
-        /* Open square, no wf_run yet — kick off a fresh ferret run. */
         citizen_list[citizen_no].wf_active = 0; citizen_list[citizen_no].speed = 0x14;
         clear_ferret_map(citizen_list[citizen_no].speed,
                          (unsigned char *)city_map,
@@ -1556,7 +1521,6 @@ int citizen_maraude_to_target(int kind)
                               citizen_list[citizen_no].dest_x,
                               citizen_list[citizen_no].dest_y)
             == 0) {
-            /* Run failed — re-target and bail. */
             change_citizen_targs(0x12);
             citizen_list[citizen_no].state_idx = 1; citizen_list[citizen_no].wait_count = 0x14; citizen_list[citizen_no].world_dir = (char)((citizen_list[citizen_no].world_dir + 1) & 7);
             return 0;
@@ -1565,7 +1529,6 @@ int citizen_maraude_to_target(int kind)
         return 1;
     }
 
-    /* result != 0 and != 0x3E7 — heading good. */
     if (result == 1) citizen_list[citizen_no].is_barbarian = 1;
     else citizen_list[citizen_no].is_barbarian = 0;
     citizen_list[citizen_no].flag_bits &= 0xfe;
@@ -1688,8 +1651,7 @@ int try_a_citymap_square(int dir, int kind, int unused)
     return r;
 }
 
-// Per-cell adjacency test used by try_a_citymap_square's path- stepper. `cm_ptr` is the candidate
-// destination cell's byte- offset; `kind` is 0 for a standard step or 1 for force-trample.
+// Test whether the current citizen can enter a city-map cell, resolving collisions and trampling.
 // FUNCTION: C2 0x48aeb
 // FUNCTION: C2WIN 0x0040a4c0
 int try_this_citymap_square(int cm_ptr, int kind, int third)
@@ -1717,8 +1679,6 @@ int try_this_citymap_square(int cm_ptr, int kind, int third)
         return 0;
     }
 
-    /* kind == 1: trample mode.  The return-2 arms funnel to a shared
-       tail; the return-0 arms are written self-contained. */
     if ((terrain & 4) != 0) return 0;
     if ((terrain & 0x18) != 0) return 0;
 
@@ -1738,7 +1698,6 @@ int try_this_citymap_square(int cm_ptr, int kind, int third)
             unflag_all_cm(3, 0xdf);
         }
 
-        /* cm_ptr (byte offset) / 20 = cell_idx; / 80 = y, %% 80 = x */
         cell_idx = cm_ptr / 20;
         x = cell_idx % 80;
         y = cell_idx / 80;
@@ -1816,8 +1775,7 @@ void handle_collision(int other_idx)
     }
 }
 
-// Resolve a vigile/centurian vs barbarian skirmish: a coin-flip against rand8 decides whether we
-// lose (state_idx = 2) or the barbarian loses; either way our XP counter ticks up by 1.
+// Resolve a centurion or vigile fighting a barbarian and award the patrol citizen experience.
 // FUNCTION: C2 0x48d32
 // FUNCTION: C2WIN 0x0040aa40
 void fight_centurian(int idx)
@@ -1827,8 +1785,7 @@ void fight_centurian(int idx)
     citizen_list[citizen_no].xp += 1;
 }
 
-// Mirror of fight_centurian from the barbarian side: the coin-flip against rand8 decides whether
-// the centurian (we lose) or the barbarian dies, and the barbarian's XP ticks up either way.
+// Resolve a barbarian's skirmish with a centurian and award the barbarian experience.
 // FUNCTION: C2 0x48d6f
 // FUNCTION: C2WIN 0x0040aac6
 void fight_barbarian(int idx)
@@ -1906,8 +1863,7 @@ void move_citizen(void)
     remove_citizen(citizen_no);
 }
 
-// Re-bound the current citizen's wander target so it sits within `delta` cells of the citizen on
-// each axis. Algorithm: 1.
+// Clamp the current citizen's wander target to a nearby valid city-map cell.
 // FUNCTION: C2 0x48f2e
 // FUNCTION: C2WIN 0x0040af92
 void change_citizen_targs(int delta)
@@ -1996,8 +1952,7 @@ void random_target(void)
             citizen_list[citizen_no].y + rand8 - 6;
 }
 
-// Citizen path-finder helper: pick a road direction off the current city_map cell, biased toward
-// roads with no other citizens. `map_ref` is the byte-offset form of the cell index.
+// Choose a neighbouring road, preferring an unoccupied direction that does not reverse course.
 // FUNCTION: C2 0x49184
 // FUNCTION: C2WIN 0x0040b607
 int city_test_for_road(int x, int y, int map_ref, signed char world_dir)
@@ -2029,7 +1984,6 @@ int city_test_for_road(int x, int y, int map_ref, signed char world_dir)
     if (y < 0x4f) {
         if ((*(struct city_cell *)((unsigned char *)city_map + ((map_ref + 1600)))).terrain & 0x20) {
             slots[4][0] = 1;
-            /* South cell reads citizen_a into both bytes (original source quirk). */
             slots[4][1] = (*(struct city_cell *)((unsigned char *)city_map + ((map_ref + 1600)))).citizen_a;
             slots[4][2] = (*(struct city_cell *)((unsigned char *)city_map + ((map_ref + 1600)))).citizen_a;
         }
@@ -2125,9 +2079,7 @@ int entering_new_square(void)
 }
 
 
-// Army analogue of citizen_maraude_to_target. Drives the current army one tile toward `(target_x,
-// target_y)` per call, gated by a per-type speed counter and with an optional region-ferret
-// pathing pass when the straight step is blocked.
+// Advance the current army toward its target, calculating a regional route when blocked.
 // FUNCTION: C2 0x494ac
 // FUNCTION: C2WIN 0x0040bd88
 int region_go_to_target(int kind)
@@ -2141,11 +2093,9 @@ int region_go_to_target(int kind)
     army_list[army_no].flags &= 0xf7;
     speed = gate;
     if (speed != 0) {
-        /* Branch B initial — clear the gate counters. */
         army_list[army_no].target_kind = 0;
         army_list[army_no].target_count = 0;
     } else {
-        /* Branch A — speed gate. */
         if (army_list[army_no].target_flag == 0) {
             if (army_list[army_no].type == 1)
                 speed = 2;
@@ -2164,10 +2114,8 @@ int region_go_to_target(int kind)
         }
         return 0;
     branch_b: ;
-        /* fall through to branch B */
     }
 
-    /* Branch B body. */
     if (army_list[army_no].return_flag == 0) {
         return 1;
     }
@@ -2221,9 +2169,7 @@ int region_go_to_target(int kind)
                               army_list[army_no].target_x,
                               army_list[army_no].target_y)
             == 0) {
-            /* Pathfind failed. */
             if (army_list[army_no].type == 1) {
-                /* Cohort: hand off to sa08_army_stuck. */
                 army_list[army_no].saved_state_idx =
                     army_list[army_no].state_idx;
                 army_list[army_no].state_idx = 8;
@@ -2237,7 +2183,6 @@ int region_go_to_target(int kind)
                 put_message(0x5f, army_list[army_no].map_ref, 0x12);
                 return 0;
             }
-            /* Retry with mode=1. */
             clear_region_ferret_map(1, 0x3c,
                                     (unsigned char *)region_map,
                                     0x3c, 0x3c, 8,
@@ -2263,13 +2208,11 @@ int region_go_to_target(int kind)
         return 0;
     }
 
-    /* result != 0 and != 0x3E7 — heading good. */
     if (result == 1)
         army_list[army_no].target_flag = 1;
     else
         army_list[army_no].target_flag = 0;
 
-    /* Move tail. */
     army_list[army_no].flags &= 0xfe;
     army_list[army_no].world_dir = w_dirc;
     army_list[army_no].target_kind = 1;
@@ -2277,8 +2220,7 @@ int region_go_to_target(int kind)
     return 1;
 }
 
-// Sea-army analogue of region_go_to_target. Drives the current sailing army one tile toward
-// (target_x, target_y) per call.
+// Advance the current ship toward its target, calculating a sea route when blocked.
 // FUNCTION: C2 0x4987b
 // FUNCTION: C2WIN 0x0040c603
 int sail_to_target(int kind)
@@ -2286,15 +2228,12 @@ int sail_to_target(int kind)
     int result;
     (void)kind;
 
-    /* Mask: clear flags & {2, 3} on every entry. */
     army_list[army_no].flags &= 0xf3;
 
     if ((army_list[army_no].flags & 1) != 0) {
-        /* Branch B initial — reset gate counters. */
         army_list[army_no].target_kind = 0;
         army_list[army_no].target_count = 0;
     } else {
-        /* Branch A — speed gate (threshold = 2). */
         army_list[army_no].target_count++;
         if (army_list[army_no].target_count > 2) {
             army_list[army_no].target_count = 0;
@@ -2304,13 +2243,11 @@ int sail_to_target(int kind)
             }
             army_list[army_no].flags |= 1;
             army_list[army_no].target_kind = 0;
-            /* fall through */
         } else {
             return 0;
         }
     }
 
-    /* Branch B body. */
     if (army_list[army_no].return_flag == 0) {
         return 1;
     }
@@ -2336,11 +2273,9 @@ int sail_to_target(int kind)
 
     if (result == 0x3e7) {
         army_list[army_no].flags |= 4;
-        /* fall through to ferret-run */
     }
 
     if (result != 1) {
-        /* result == 0 or 0x3E7 or other → ferret-run path. */
         army_list[army_no].wf_active = 0;
         clear_sea_ferret_map(0, 0x3c,
                              (unsigned char *)region_map,
@@ -2363,7 +2298,6 @@ int sail_to_target(int kind)
         return 0;
     }
 
-    /* Move tail (result == 1). */
     army_list[army_no].target_flag = 0;
     army_list[army_no].flags &= 0xfe;
     army_list[army_no].world_dir = w_dirc;
@@ -2372,9 +2306,7 @@ int sail_to_target(int kind)
     return 1;
 }
 
-// Pull the next walking-ferret-run direction for the current army. Identical structure to
-// `get_dirc_from_citizen_wf_run`: `wf_steps[]` packs two 4-bit headings per byte; when wf_step
-// reaches wf_length, clear wf_active and return without advancing.
+// Pull the next heading from the current army's nibble-packed walking route.
 // FUNCTION: C2 0x49a96
 // FUNCTION: C2WIN 0x0040cb2d
 void get_dirc_from_army_wf_run(void)
@@ -2393,9 +2325,7 @@ void get_dirc_from_army_wf_run(void)
     army_list[army_no].wf_step++;
 }
 
-// Re-pack `ferret_run[]` (one direction per byte) into the current army's `wf_steps[]` (4-bit
-// packed: low nibble for even steps, high nibble for odd steps). Twin of
-// `copy_ferret_run_to_citizen`.
+// Pack the calculated route into the current army's nibble-encoded walking steps and activate it.
 // FUNCTION: C2 0x49b10
 // FUNCTION: C2WIN 0x0040cc1f
 void copy_ferret_run_to_army(void)
@@ -2413,9 +2343,7 @@ void copy_ferret_run_to_army(void)
     }
 }
 
-// Region-map move primitive: given an absolute compass `dir` (0..7), check whether the army can
-// step into that neighbour of its current cell, and if so call try_this_regionmap_square with the
-// candidate cell offset.
+// Test the neighbouring region-map cell in compass direction `dir` for the current army.
 // FUNCTION: C2 0x49bb1
 // FUNCTION: C2WIN 0x0040cd36
 int try_a_regionmap_square(int dir, int kind, int third)
@@ -2489,8 +2417,7 @@ int try_a_regionmap_square(int dir, int kind, int third)
     return r;
 }
 
-// Per-cell admission test for a region-map step. Decides what happens if the current army moves
-// into the cell at byte-offset `target` in region_map; `kind` and `third` are unused.
+// Test whether the current army can enter a region-map cell and resolve battles or destruction.
 // FUNCTION: C2 0x49d62
 // FUNCTION: C2WIN 0x0040d132
 int try_this_regionmap_square(int target, int kind, int third)
@@ -2516,7 +2443,6 @@ int try_this_regionmap_square(int target, int kind, int third)
     terr_bit_1  = terrain & 1;
 
     if (type == 1) {
-        /* --- Branch A: Roman main army. --- */
         if ((terrain & 0x10) != 0) {
             if (army_a == 0) goto ret0;
             if (army_list[army_a].state_idx == 2) goto ret0;
@@ -2526,7 +2452,6 @@ int try_this_regionmap_square(int target, int kind, int third)
         if ((int)terr_bit_1) {
             base_kind = (*(struct region_cell *)((unsigned char *)region_map + (target))).base_kind;
             if (base_kind >= 0x93 && base_kind <= 0x96) {
-                /* Inline confirm() prompt for settlement battle. */
                 confirm(9, 0xa0, 0xa0);
                 if (decision == 1) {
                     battle_type   = 2;
@@ -2537,8 +2462,6 @@ int try_this_regionmap_square(int target, int kind, int third)
                     army_list[army_no].target_y = army_list[army_no].y;
                 }
                 else {
-                    /* Decline: reset army's per-route walk cursor (but keep
-                       cohort_id so the loop below clears the right route). */
                     army_list[army_no].dest_y = 0;
                     army_list[army_no].dest_x = 0;
                     for (i = 0; i < 10; i++) {
@@ -2561,7 +2484,6 @@ ret0:
             if ((int)terr_bit_2) return 0;
             return 2;
         }
-        /* army_a != 0: battle/contender check. */
         if (army_list[army_a].type != 1) {
             if (army_list[army_a].state_idx == 2) return 0;
             get_contenders(); game_state = 4; battle_type = 1;
@@ -2572,7 +2494,6 @@ ret999:
 
     if (type < 2 || type > 5) return 0;
 
-    /* --- Branch B: barbarian / raider (type 2..5). --- */
     if ((terrain & 0x10) != 0) return 0;
     if ((int)terr_bit_2) {
         army_list[army_no].flags |= 8;
@@ -2618,8 +2539,7 @@ ret999:
     goto ret999;
 }
 
-// Sea-army move primitive: identical structure to try_a_regionmap_square but for a sailing army.
-// Differences: * Out-of-bounds → return 2 (sentinel meaning "blocked / give up"), not 0.
+// Test the neighbouring sea-map cell in compass direction `dir` for the current ship.
 // FUNCTION: C2 0x4a1b5
 // FUNCTION: C2WIN 0x0040d869
 int try_a_seamap_square(int dir, int kind, int third)
@@ -2693,8 +2613,7 @@ int try_a_seamap_square(int dir, int kind, int third)
     return r;
 }
 
-// Inspect a region_map cell at `cell` from the perspective of the current army's sail-target
-// search.
+// Test a sea-route cell, handling coast destruction, landing, and blocked-water flags.
 // FUNCTION: C2 0x4a369
 // FUNCTION: C2WIN 0x0040dc89
 int try_this_seamap_square(int cell_off, int kind, int third)
@@ -2721,7 +2640,7 @@ int try_this_seamap_square(int cell_off, int kind, int third)
     return 0;
 }
 
-// Land a sailing army at the chosen port-adjacent shore tile.
+// Dock a trader ship at a port-adjacent tile and deliver its cargo to nearby warehouses.
 // FUNCTION: C2 0x4a3f5
 // FUNCTION: C2WIN 0x0040ddb0
 int dock_the_ship_in_good_port(int heading)
@@ -2745,13 +2664,11 @@ int dock_the_ship_in_good_port(int heading)
     else if (heading == 6) target = army_list[army_no].map_ref - 8;
     else if (heading == 7) target = army_list[army_no].map_ref - 0x1e8;
 
-    /* Both adjustments test the ORIGINAL cell's occupant. */
     occ = (*(struct region_cell *)((unsigned char *)region_map + (target))).occupant;
     adj = occ & 3;
     if (adj & 1) target -= 8;
     if (adj & 2) target -= 0x1e0;
 
-    /* Decode cell coords (signed div-by-8, then divmod 60). */
     idx = target / 8;
     cell_x = idx % 60;
     cell_y = idx / 60;
@@ -2829,9 +2746,7 @@ void move_army(void)
         (*(struct region_cell *)((unsigned char *)region_map + (army_list[army_no].map_ref))).occupant = army_no;
 }
 
-// Region-map twin of target_from_dirc — sets army.target_x / target_y to the cell adjacent to
-// (army.x, army.y) in compass direction `dir`. Same 0..7 mapping (0=N, 2=E, 4=S, 6=W and the four
-// diagonals).
+// Set the current army's target to the adjacent region-map cell in direction `dir`.
 // FUNCTION: C2 0x4a759
 // FUNCTION: C2WIN 0x0040e4f2
 void target_from_army_dirc(int dir)
@@ -2935,9 +2850,8 @@ int test_fire_zones(void)
     return 0;
 }
 
-// Find the most appealing fire in the 8×8 zone centred at (zone_x*8, zone_y*8) for the current
-// vigile (citizen). Two candidates are tracked: * uncovered fire — closest cell where bit 0x80 of
-// edge_bits is set AND is_fire_covered(cm_ptr) returns 0.
+// Choose a fire in the selected 8×8 zone, preferring uncovered fires unless a covered one is much
+// closer.
 // FUNCTION: C2 0x4aa68
 // FUNCTION: C2WIN 0x0040eb06
 int test_zone_for_closest_fire(void)
@@ -3028,9 +2942,7 @@ int test_zone_for_closest_fire(void)
 }
 
 
-// One fire-fight tick at the citizen's current cell: * return 0 if the cell is solid terrain
-// (base_kind >= 8) or no longer has the active-fire bit set (edge_bits & 0x80 == 0); * if the
-// cell's fire counter is at 1, clear the active-fire.
+// Reduce the fire at the current citizen's cell, clearing its active flag when extinguished.
 // FUNCTION: C2 0x4abff
 // FUNCTION: C2WIN 0x0040ed63
 int putting_out_fire(void)
@@ -3086,9 +2998,7 @@ int is_fire_covered(int ref)
     return 0;
 }
 
-// Sweep a (radius+1)x(radius+1) bounding box around the current citizen on city_map and update the
-// citizen's two market-demand fields. Three counters: count_industry (base_kind 0x82..0xA1),
-// count_pop (education & 0x80, +2 per hit), count_other (education & 0x40, +3 per hit).
+// Survey the square neighbourhood around a citizen and update its industry and population demand.
 // FUNCTION: C2 0x4ace8
 // FUNCTION: C2WIN 0x0040efad
 void get_population_and_industry_count(int radius, int mode)
@@ -3166,9 +3076,7 @@ void get_population_and_industry_count(int radius, int mode)
     }
 }
 
-// Scan the 60×60 region_map for the nearest "regional building" cell (per the type test t == 0x97
-// || t > 0xd2, gated by flags1 bit 0 and flags2 bits 0..1 clear), where distance is
-// get_longest_distance from the army's current position.
+// Find the nearest unoccupied regional building that the current raiding army can target.
 // FUNCTION: C2 0x4aedb
 // FUNCTION: C2WIN 0x0040f3c1
 int get_nearest_reg_building(void)

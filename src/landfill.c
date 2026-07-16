@@ -1,14 +1,13 @@
 
 #include "c2_data.h"
 
-/* Assembly blitters for landfill overlay blocks. */
+/* Blit encoded landfill sprites in the four supported footprint sizes. */
 extern void place_2x2_block(unsigned char *src, int screen_off);
 extern void place_4x4_block(unsigned char *src, int screen_off);
 extern void place_6x6_block(unsigned char *src, int screen_off);
 extern void place_8x8_block(unsigned char *src, int screen_off);
 
-// Zero the 6400-byte landfill_pool, walking the city-map grid via the cm_x/cm_y/cm_dptr global
-// cursor (one byte per cell).
+// Clear the city map's per-cell overlay sprite pool.
 // FUNCTION: C2 0x3e9c0
 // FUNCTION: C2WIN 0x0049d310
 void clear_landfill(void)
@@ -25,8 +24,7 @@ void clear_landfill(void)
     }
 }
 
-// Rebuild landfill_pool for the current overlay. Only runs in city-map mode (map_mode == 0); when
-// `evolve` is set, also runs evolve_to_current_fabric first to refresh derived cell state.
+// Rebuild the city map's overlay sprite pool, optionally evolving derived cell state first.
 // FUNCTION: C2 0x3ea13
 // FUNCTION: C2WIN 0x0049d385
 void get_landfill(int evolve)
@@ -77,7 +75,7 @@ void get_landval_ov_image(void)
     }
 }
 
-// Overlay routine for the water-supply view: 0x96 for water- blocking terrain (terrain bits 0xC0
+// Overlay routine for the water-supply view: 0x96 for water-blocking terrain (terrain bits 0xC0
 // set, or aqueduct kinds 0xD7..0xDE); 0x87 for tiles with both running water and a fountain; 0x84
 // for water-only; 0x8D for fountain-only.
 // FUNCTION: C2 0x3eaea
@@ -104,7 +102,7 @@ void get_water_ov_image(void)
     landfill_pool[cm_dptr] = 0;
 }
 
-// Overlay routine for the administration view: 0x96 for forum- class building footprints (kind
+// Overlay routine for the administration view: 0x96 for forum-class building footprints (kind
 // 0xAE..0xB9); otherwise reads the 2-bit admin coverage from cell.range_flag bits 2..3 -- level 1
 // (0x4) = 0x93, level 2 (0x8) = 0x90, level 3 = 0x8D.
 // FUNCTION: C2 0x3eb87
@@ -127,7 +125,7 @@ void get_admin_ov_image(void)
     }
 }
 
-// Choose a security-overlay tile from the cell's crime level, prefect coverage, and building kind.
+// Choose a security-overlay tile from crime, prefect coverage, terrain, and building kind.
 // FUNCTION: C2 0x3ec0b
 // FUNCTION: C2WIN 0x0049d6a9
 void get_security_ov_image(void)
@@ -264,9 +262,7 @@ void get_unrest_ov_image(void)
     }
 }
 
-// Compute sprite_image_no from the current region_map cell's base_kind, walking a long
-// range/equality cascade against the terrain alphabet (geography overlay variant for the region
-// view). Also clears the `cleared` bit (region_cell.gfx & 2) on read.
+// Select the geography-overlay sprite for the current region cell and clear bit 1 of its gfx flags.
 // FUNCTION: C2 0x3ef16
 // FUNCTION: C2WIN 0x0049dc0e
 int get_reg_geog_ov_image(void)
@@ -302,8 +298,7 @@ int get_reg_geog_ov_image(void)
     return 0;
 }
 
-// Two-way dispatcher: route to the city-map or region-map landfill renderer based on `map_mode`.
-// Mode 0 = city, mode 1 = region; any other mode is a no-op.
+// Draw the city or region overlay for the active map mode.
 // FUNCTION: C2 0x3f187
 void show_landfill(int p1, int p2)
 {
@@ -316,9 +311,7 @@ void show_landfill(int p1, int p2)
     }
 }
 
-// City-map landfill renderer. Walks the 80x80 city grid; for each cell, classifies the
-// kind/edge/overlay/in-range mix into one of four block sizes (2x2, 4x4, 6x6, 8x8) and blits the
-// matching landfill sprite to the screen.
+// Draw the 80x80 city overlay, selecting each cell's sprite and footprint-sized blitter.
 // FUNCTION: C2 0x3f1ac
 // FUNCTION: C2WIN 0x0049e068
 void show_city_landfill(int x_start, int y_start)
@@ -381,9 +374,7 @@ next_cell:
     write_image(misc, 4, x_start + 2, y_start + 2);
 }
 
-// Special-case fix-up for the 4x4 / 6x6 circus footprint, called from show_city_landfill while
-// painting kinds 0xE9..0xF0. When the cell's activity_b bit 5 is clear, the kind selects a per-
-// tile sprite from the 0x6D..0x75 ramp (skipping 0x71, which is the circus centre).
+// Select the individual circus-footprint sprite when activity_b bit 5 is clear.
 // FUNCTION: C2 0x3f3cb
 // FUNCTION: C2WIN 0x0049e741
 void get_circus_bodge(unsigned char kind)
@@ -400,9 +391,7 @@ void get_circus_bodge(unsigned char kind)
     if (kind == 0xf0) sprite_image_no = 0x75;
 }
 
-// Region-map landfill renderer. Walks the 60x60 region grid; for each cell, dispatches to
-// get_reg_geog_ov_image to compute the sprite_image_no from base_kind, then picks one of four
-// block sizes (2x2 / 4x4 / 6x6 / 8x8) and blits the landfill sprite.
+// Draw the 60x60 region overlay, skipping hidden footprint cells and coastal large sprites.
 // FUNCTION: C2 0x3f493
 // FUNCTION: C2WIN 0x0049e844
 void show_region_landfill(int x_start, int y_start)
@@ -449,8 +438,7 @@ reg_next:
     write_image(misc, 4, x_start + 2, y_start + 2);
 }
 
-// Battle-map landfill renderer. Walks a `row_count`-row strip of the battle grid starting at
-// `start_row`, blitting a 2x2 landfill sprite for every cell.
+// Draw a row range of the battle terrain overlay, including occupied-cell highlights.
 // FUNCTION: C2 0x3f6b6
 // FUNCTION: C2WIN 0x0049ef17
 void show_battle_landfill(int start_row, int row_count, int screen_x, int screen_y)
@@ -489,8 +477,7 @@ battle_next:
 }
 
 
-// 11-frame animation tick for the “battle landfill” (debris/dust effect that plays after a unit
-// lands).
+// Advance and draw the eleven-step battle terrain animation.
 // FUNCTION: C2 0x3f7f5
 // FUNCTION: C2WIN 0x0049f217
 void update_battle_landfill(void)
@@ -506,7 +493,7 @@ void update_battle_landfill(void)
     }
 }
 
-// Draw a false-colour region mini-map and crosshair around the selected cohort army.
+// Draw a terrain-coloured region mini-map and mark the selected cohort army.
 // FUNCTION: C2 0x3f854
 // FUNCTION: C2WIN 0x0049f284
 void show_cohort_landfill(int army_idx, int x_start, int y_start)
@@ -539,8 +526,6 @@ void show_cohort_landfill(int army_idx, int x_start, int y_start)
     draw_a_rect(x_start + army_list[army_idx].x - 1, y_start + army_list[army_idx].y - 1, 3, 3, 3);
 }
 
-/* Initializer-only callback declarations.  Kept after every function so
-   they cannot alter the K&R call visibility of landfill.c's code bodies. */
 extern void get_no_ov_image(void);
 extern void get_landval_ov_image(void);
 extern void get_water_ov_image(void);

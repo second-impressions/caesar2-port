@@ -109,11 +109,11 @@ struct speech_file_rec speech_files[104] = {
     { "c44.raw" }
 };
 
-/* File-local state. */
+/* Filename of the speech sample selected for playback. */
 char *speech_filaname;
 
 
-// Starts the requested speech sample when speech playback is enabled.
+// Selects an indexed speech sample and passes it to the streaming audio player.
 // FUNCTION: C2 0x135a4
 // FUNCTION: C2WIN 0x00482a90
 void play_speech(int param_1) {

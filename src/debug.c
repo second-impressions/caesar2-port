@@ -5,13 +5,7 @@
 extern void put_a_font_string(char *str, int x, int y, unsigned char *font, int color);
 extern void font_no(int value, char pad_char, char *suffix, int x, int y, unsigned char *font, int color);
 
-// Functions
-
-// Variables
-
-/* struct industry_rec and `industry[]` are declared in c2_types.h. */
-
-// Runs the debug-screen interaction loop.
+// Displays the debug screen until a key is pressed, then restores the active map.
 // FUNCTION: C2 0x713cf
 void debug_screen(void) {
     show_debug_screen();
@@ -22,7 +16,7 @@ void debug_screen(void) {
         region_map_screen(1);
 }
 
-// Renders debug screen.
+// Displays city services, growth, industry supply, population, military, and connection diagnostics.
 // FUNCTION: C2 0x713fd
 void show_debug_screen(void) {
     cover_mouse_droppings();

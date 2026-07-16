@@ -12,7 +12,6 @@
 #include <direct.h>            /* chdir */
 #include <sys/timeb.h>         /* ftime, struct timeb */
 
-/* Initialized library data. Keep declaration order stable for binary layout. */
 struct mouse_cbd cbd = { 0, 0, 0, 0, 0, 0, 0, 0 };
 int steves_security_false1[7] = {
     538976288, 2021138464, 2021161080, 1717986936,
@@ -25,7 +24,6 @@ char *chipset_names[32] = {
 };
 int multiples[8] = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000 };
 
-/* File-local library state. Keep declaration order stable for binary layout. */
 struct vbe_mode_info vesa_mode_info;
 char card_ids[32];
 unsigned char greying_data[256];
@@ -267,12 +265,12 @@ char mse_button;
 char key_ready;
 char key_ascii;
 
-extern void write_i_sprite(unsigned char *sprite_addr);       /* sprites.asm */
-extern void write_i_left_sprite(unsigned char *sprite_addr);  /* sprites.asm */
-extern void write_i_right_sprite(unsigned char *sprite_addr); /* sprites.asm */
-extern void write_i_font(unsigned char *font);                /* sprites.asm */
-extern void write_i_left_font(unsigned char *font);           /* sprites.asm */
-extern void write_i_right_font(unsigned char *font);          /* sprites.asm */
+extern void write_i_sprite(unsigned char *sprite_addr);
+extern void write_i_left_sprite(unsigned char *sprite_addr);
+extern void write_i_right_sprite(unsigned char *sprite_addr);
+extern void write_i_font(unsigned char *font);
+extern void write_i_left_font(unsigned char *font);
+extern void write_i_right_font(unsigned char *font);
 
 extern int _dx;
 #pragma aux _dx "*"
@@ -328,9 +326,7 @@ extern void __far click_handler(unsigned int ax,
                                 unsigned int di);
 #ifdef __WATCOMC__
 
-// Populate the global directory[] table with up to 100 filenames matching the given DOS wildcard
-// pattern. Each slot is 13 bytes (8.3 + NUL); the name is copied straight out of the
-// _dos_findfirst / _dos_findnext result buffer at offset +0x1E (the standard `find_t.name` field).
+// Populate directory[] with up to 100 DOS 8.3 filenames matching a wildcard pattern.
 // FUNCTION: C2 0x24212
 // FUNCTION: C2WIN 0x0044a7e0
 void get_directory(char *pattern)
@@ -354,8 +350,7 @@ void get_directory(char *pattern)
     first_entry = 0;
 }
 
-// Switches to a CD-resident search path so the next open() finds the file there instead of on the
-// hard drive. Looks at the extension in `fname` (PL8/RAW/XMI/etc.) to pick which CD subdir.
+// Switch to the CD drive and media subdirectory selected by the file extension.
 // FUNCTION: C2 0x2426e
 // FUNCTION: C2WIN 0x0044a8ae
 void cd_path(const char *fname)
@@ -546,8 +541,7 @@ int write_to_file(char *fname, char *buf, int size, int offset)
     return n;
 }
 
-// Parse a key=value config file looking for the "resaud" key. Reads up to 1000 bytes of the file
-// into 'buf', then byte-by-byte scans for the literal text "resaud" (6 chars).
+// Read the "resaud" value from a key-value configuration file.
 // FUNCTION: C2 0x245be
 char read_config(char *fname, char *buf)
 {
@@ -569,8 +563,7 @@ char read_config(char *fname, char *buf)
     return *p;
 }
 
-// Parse an IFF ILBM (.lbm) image already loaded into `src`. Locates the BMHD, CMAP, and BODY
-// chunks (each found by scanning up to `length` bytes for the chunk's 4-byte tag).
+// Decode an IFF ILBM image into a palette and raster buffer.
 // FUNCTION: C2 0x2460f
 int convert_lbm_file(unsigned char *src, unsigned char *dst, char *pal, int length)
 {
@@ -647,8 +640,7 @@ int convert_lbm_file(unsigned char *src, unsigned char *dst, char *pal, int leng
 
 #ifdef __WATCOMC__
 
-// Switch into a VESA SVGA mode (640×480 for `mode == 0`, 640×400 for `mode == 1`). Issues four
-// real-mode VESA calls via DPMI int 0x31: * Function 0x4F00 — fetch VbeInfoBlock into VesaInfo.
+// Query VESA information and enter 640×480 or 640×400 banked SVGA mode.
 // FUNCTION: C2 0x247b1
 int set_svga_640_480(int mode)
 {
@@ -772,7 +764,7 @@ void recognise_card(void)
 
 #ifdef __WATCOMC__
 
-// Checks for Trident and returns the result.
+// Detect a Trident VGA chipset and record its model.
 // FUNCTION: C2 0x24b69
 int check_for_Trident(void)
 {
@@ -803,7 +795,7 @@ int check_for_Trident(void)
 }
 #endif /* __WATCOMC__ */
 
-// Tseng VGA detection -- a stub returning 0 (no Tseng card found).
+// Report that no supported Tseng VGA chipset was detected.
 // FUNCTION: C2 0x24c2c
 int check_for_Tseng(void)
 {
@@ -826,9 +818,7 @@ void get_video_technique(void)
         vid_tech = vid_bank_tech;
 }
 
-// Diagnostic dump (stdout) of the VESA information collected by set_svga_640_480 / recognise_card
-// / get_video_technique. Skipped when vid_error != 0 (everything past the OEM string is
-// uninitialised in that case).
+// Print the detected VESA mode, chipset, memory, and banking information.
 // FUNCTION: C2 0x24c7f
 void print_vesa_info(void)
 {
@@ -937,8 +927,7 @@ void unset_vga_256x(void)
     outp(0x3d5, old3d5_17);
 }
 
-// Switch to text mode (BIOS int 10h, AX = 3). Uses the 16-bit `w.ax` slot in the REGS union so the
-// BIOS sees a word-sized argument.
+// Switch to BIOS text mode 3.
 // FUNCTION: C2 0x2509c
 void set_mode3(void)
 {
@@ -1100,9 +1089,7 @@ void go_64k_palette(char *p)
     }
 }
 
-// Expand a 256-entry VGA palette in-place from 6-bit channels to the 8-bit-ish form used by the
-// screenshot writer. after this function's ret (the donor for fade_to_palette et al.) and is not
-// part of this function's body — do not chase it.
+// Expand a 256-entry palette in place from 6-bit to 8-bit channel values.
 // FUNCTION: C2 0x253ab
 // FUNCTION: C2WIN 0x0044b8f7
 void go_16m_palette(char *p)
@@ -1210,7 +1197,7 @@ void fade_to_temp_palette(char *fname)
     fade_to_palette(temp_palette);
 }
 
-// Forwarder that pushes the all-zero palette via set_palette(black_out_data).
+// Replace the active palette with black.
 // FUNCTION: C2 0x2554f
 // FUNCTION: C2WIN 0x0044bc2e
 void black_out(void)
@@ -1237,7 +1224,7 @@ void set_palette(char *p)
     set_vga_palette(current_palette);
 }
 
-// Forwarder: fade the screen to the all-black palette.
+// Fade the active palette to black.
 // FUNCTION: C2 0x255ac
 // FUNCTION: C2WIN 0x0044bc46
 void fade_to_black_out(void)
@@ -1327,7 +1314,7 @@ void copy_to_physical_screen(int p1, int p2)
     copy_to_640_480_screen(p1);
 }
 
-// Clear all four 64K screen pages (mode-X). Falls through to clear_a_screen for the non-256x case.
+// Clear all mode-X pages, or the active linear framebuffer in an SVGA mode.
 // FUNCTION: C2 0x25714
 void clear_screens(void)
 {
@@ -1367,8 +1354,7 @@ void clear_a_screen(void)
     }
 }
 
-// Convert the live 320x240 internal_screen to greyscale. Only runs in screen_mode 2 (the 320x240
-// mode) and only when internal_screen is mapped.
+// Remap the 640×480 framebuffer through a lookup derived from the active palette.
 // FUNCTION: C2 0x257c9
 // FUNCTION: C2WIN 0x0044be4a
 void grey_a_screen(void)
@@ -1396,8 +1382,7 @@ void grey_a_screen(void)
     }
 }
 
-// Wipe all four 64K mode-X pages — same as clear_screens but uses the high-cleared-byte 0xa000
-// region as the fourth page.
+// Wipe all four 64K mode-X memory regions.
 // FUNCTION: C2 0x25845
 void clear_all_screens(void)
 {
@@ -1407,7 +1392,7 @@ void clear_all_screens(void)
     cls_256x(0xa000, 0x10000);
 }
 
-// No-op placeholder for the cbc end hook.
+// Handle CBC completion without performing any action.
 // FUNCTION: C2 0x25880
 void cbc_end(void)
 {
@@ -1449,14 +1434,7 @@ void __far click_handler(unsigned int ax, unsigned int bx,
         cbd.click_flag = 1;
 }
 
-/* Enable stack checks for the input and graphics half of this file. */
 #pragma on(check_stack);
-
-/* click_handler is an `__interrupt __far` callback installed via
- * DPMI int 0x33 fn 0x0C.  Excluded from c2_funcs.h (see
- * _IMPLICIT_INT_FUNCTIONS in c2/commands/c_source.py) because
- * pycparser drops the storage-class modifiers; forward-declare it
- * here so install_mouse can take its address. */
 
 #ifdef __WATCOMC__
 
@@ -1840,7 +1818,7 @@ int my_strcmp(char *s1, char *s2, int n)
     return 0;
 }
 
-// Bounded byte-copy of `n` bytes from src to dst.
+// Copy exactly `n` bytes from src to dst.
 // FUNCTION: C2 0x26118
 // FUNCTION: C2WIN 0x0044c8a5
 void my_strcpy(char *src, char *dst, int n)
@@ -1886,8 +1864,7 @@ void pull_string_left(char *p, char *end)
     *p = 0;
 }
 
-// Mirror of pull_string_left: shift bytes from `start..end-1` one position right, pad with NUL at
-// end+1.
+// Shift bytes from `start` through `end - 1` one position right and terminate after `end`.
 // FUNCTION: C2 0x261a5
 // FUNCTION: C2WIN 0x0044c9ab
 void push_string_right(char *start, char *end)
@@ -1932,8 +1909,7 @@ void strip_trailing_space(signed char *s)
     } while (1);
 }
 
-// Collapse runs of inner spaces in the NUL-terminated string `s`. The first loop finds `len =
-// strlen(s)` capped at 0xfa00.
+// Collapse repeated spaces in a NUL-terminated string.
 // FUNCTION: C2 0x2621e
 // FUNCTION: C2WIN 0x0044ca89
 void strip_spaces(char *s)
@@ -1963,9 +1939,7 @@ void strip_spaces(char *s)
     }
 }
 
-// Pixel-width measurement for a NUL-terminated string in one of the variable-width game fonts.
-// Walks the string char by char (capped at 10000 iterations as a runaway guard), and for each
-// codepoint: * ' ' -> 4 px (the standard inter-word gap, no glyph fetch).
+// Measure a NUL-terminated string in pixels using a variable-width game font.
 // FUNCTION: C2 0x26284
 // FUNCTION: C2WIN 0x0044cb61
 int get_string_width(char *src, unsigned char *font)
@@ -2076,8 +2050,7 @@ void load_to_text_buffer(char *src, int idx, int n, int copy_len)
         dst[i] = src[i];
 }
 
-// Mirror of load_to_text_buffer: copies `copy_len` bytes *out* of the idx-th slot into `dst`. Same
-// slot-offset lookup and same skip-past-existing-words preamble.
+// Copy bytes from a selected word position in a text-buffer entry into `dst`.
 // FUNCTION: C2 0x2641a
 // FUNCTION: C2WIN 0x0044ce30
 void load_from_text_buffer(char *dst, int idx, int n, int copy_len)
@@ -2245,20 +2218,14 @@ void to_fb(void)
     }
 
     if (insert_cursor || at_limit == 1) {
-        /* Insert path: shove tail right by one, drop new char,
-         * advance cursor.  No-op if we're width-capped or at
-         * the per-buffer character cap. */
+        /* Insert a character and shift the remaining text right. */
         if (fb_max_width_reached) return;
         if (fb_current_char_length >= fb_max_char_length) return;
         push_string_right(&format_buffer[this_letter],
                           &format_buffer[fb_current_char_length + 1]);
         p = this_letter; format_buffer[p] = key_ascii; this_letter = p + 1;
     } else {
-        /* Overwrite path: stamp the byte at the cursor first,
-         * then decide whether to advance.  At the end-of-text
-         * boundary we either hold or step depending on whether
-         * the buffer has room AND fb_limit allows the extra
-         * step. */
+        /* Overwrite the current character and advance when space permits. */
         int next;
         p = this_letter; format_buffer[p] = key_ascii;
         if (fb_max_width_reached) return; next = p + 1;
@@ -2650,9 +2617,7 @@ char get_insert_letter(void)
     return c;
 }
 
-// Same scan-and-skip as get_text_pointer / font_list, then horizontally centre the resulting
-// substring inside `total_width` and render via put_a_font_string. `ret 0xc` pops the three
-// trailing stack args.
+// Select a text-buffer substring, center it within `total_width`, and render it.
 // FUNCTION: C2 0x26f2e
 // FUNCTION: C2WIN 0x0044df23
 void font_centre(int idx, int word_count, int x_left, int arg4,
@@ -2683,8 +2648,7 @@ void font_centre(int idx, int word_count, int x_left, int arg4,
     font_screen_limit = 0;
 }
 
-// Same scan-and-skip as get_text_pointer, then render the resulting substring via
-// put_a_font_string with two stack-passed parameters. `ret 8` pops the two trailing args.
+// Select a text-buffer substring and render it at the requested position.
 // FUNCTION: C2 0x26fcf
 // FUNCTION: C2WIN 0x0044e018
 void font_list(int idx, int word_count, int x, int y, unsigned char *font, int color)
@@ -2715,7 +2679,7 @@ void font_list(int idx, int word_count, int x, int y, unsigned char *font, int c
 void font_no(int value, char pad_char, char *suffix, int x,
              int y, unsigned char *font, int color)
 {
-    char *buf = "                ";  /* 16 spaces + NUL, PS pools in CONST */
+    char *buf = "                ";  /* 16 spaces plus NUL */
     char *bufp;
     int i;
     char had_zero;
@@ -2972,8 +2936,7 @@ int running_delay1(void)
     return dt;
 }
 
-// Sub-second elapsed-time gate, used by the palette colour cycler to throttle hue rotations. Each
-// call: 1.
+// Report when `delay_ms` has elapsed since this palette-cycle gate last fired.
 // FUNCTION: C2 0x27483
 char colour_cycle_delay1(int delay_ms)
 {
@@ -3000,9 +2963,7 @@ char colour_cycle_delay1(int delay_ms)
     return 0;
 }
 
-// Second sub-second elapsed-time gate -- bit-identical algorithm to colour_cycle_delay1, but
-// persists its high-water mark into last_cycle_ms2 (a separate 16-bit slot at 0x3ccd7) so the two
-// gates can run independently for two different palette layers.
+// Independently report when `delay_ms` has elapsed for a second palette-cycle gate.
 // FUNCTION: C2 0x274d8
 char colour_cycle_delay2(int delay_ms)
 {
@@ -3029,8 +2990,7 @@ char colour_cycle_delay2(int delay_ms)
     return 0;
 }
 
-// Stopwatch in milliseconds. Each call is one of three states: mode 0 — start the clock: snapshot
-// `ftime` into private static seconds/milliseconds slots.
+// Start a millisecond stopwatch with mode 0 and read its elapsed time with mode 1.
 // FUNCTION: C2 0x27522
 // FUNCTION: C2WIN 0x0044e926
 int timer(int mode)
@@ -3105,8 +3065,7 @@ void no_low_beeps(int n)
     }
 }
 
-// Cycles through every beep tone for an audio test pass. The trailing vhigh_beep call falls
-// through into vhigh_beep below (no `ret`).
+// Play the sequence of tones used by the audio test.
 // FUNCTION: C2 0x2761e
 // FUNCTION: C2WIN 0x0044ea80
 void test_beeps(void)
@@ -3204,7 +3163,7 @@ void draw_a_2point(int x, int y, int colour)
     show_internal_2point(x, y, colour);
 }
 
-// Bresenham line draw from (x1, y1) to (x2, y2). Three cases: 1.
+// Draw a clipped horizontal, vertical, or diagonal Bresenham line.
 // FUNCTION: C2 0x27809
 // FUNCTION: C2WIN 0x0044ed47
 void draw_a_line(int x1, int y1, int x2, int y2, int colour)
@@ -3379,9 +3338,7 @@ void xor_a_diamond_lhs_top(int x, int y, int width, int height, int color)
     }
 }
 
-// Mirror sibling of xor_a_diamond_lhs_top: draws the top-right half of an XOR diamond outline.
-// Iterates the column from width/2 to width - 2 (exclusive) in 2-px steps and raises the row by 1
-// each iteration.
+// Draw the top-right half of an XOR diamond outline.
 // FUNCTION: C2 0x27c1b
 // FUNCTION: C2WIN 0x0044f315
 void xor_a_diamond_rhs_top(int x, int y, int width, int height, int color)
@@ -3754,8 +3711,7 @@ int lock_region(unsigned int addr, unsigned int size)
 }
 #endif /* __WATCOMC__ */
 
-// One-line forwarder onto start_system, kept distinct so it can be called from the assembly entry
-// stub.
+// Start the game runtime from the program entry path.
 // FUNCTION: C2 0x283f0
 // FUNCTION: C2WIN 0x0044ff14
 void start_game(void)
@@ -3773,7 +3729,7 @@ void exit_game(void)
     exit(0);
 }
 
-// Starts system.
+// Initialize random state, video, framebuffers, audio, scratch memory, and mouse limits.
 // FUNCTION: C2 0x283fa REORDERED
 // FUNCTION: C2WIN 0x0044ff39
 int start_system(void)
@@ -3817,9 +3773,7 @@ int start_system(void)
 
 #ifdef __WATCOMC__
 
-// Query the DPMI host for the current free-memory snapshot: * int 0x31 fn 0x500 — fills a
-// 0x20-byte block at `memory` with the DPMI memory information; offset 0x1c is the largest free
-// block in pages.
+// Query the DPMI host and runtime heap for current memory availability.
 // FUNCTION: C2 0x28579
 // FUNCTION: C2WIN 0x004500c8
 void get_dos_memory(void)
@@ -3862,7 +3816,7 @@ void free_scratch_buffer(void)
     }
 }
 
-// Returns free memory.
+// Probe the largest allocatable heap block and store its size in KiB.
 // FUNCTION: C2 0x28672
 void get_free_memory(void)
 {
@@ -3880,8 +3834,7 @@ void get_free_memory(void)
     allocable_memory = allocable_memory / 0x400;
 }
 
-// Tear down the runtime systems brought up by start_system, in reverse order: 1. Free the
-// off-screen render target (internal_screen) if one was allocated.
+// Release graphics memory and scratch storage, restore display state, and stop audio.
 // FUNCTION: C2 0x286da
 // FUNCTION: C2WIN 0x00450206
 void stop_system(void)

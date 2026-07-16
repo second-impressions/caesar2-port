@@ -13,12 +13,11 @@ static char __far *MK_FP(unsigned off, unsigned seg) { }
 extern int  open(const char *path, int flags, ...);
 void __cdecl mood_modfication(int seq);
 
-/* File-local supplements (not in c2_data.h) */
+/* Sound module globals. */
 extern int _ds;
 
 #include "ail.h"
 
-/* File-local state. */
 char negative_buffer[624];
 unsigned char * db_buf[2];
 struct sample_slot_rec ss_entries[10];
@@ -46,9 +45,9 @@ int ms;
 int mdi;
 int db_recommended_buffer_size;
 int db_buffer_size;
-struct ambient_rec ambient_list[25];   /* stride 0x46=70 (init_city_ambients imul), bound cmp edx,0x19 -> 25; span 1752 has 2b trailing pad */
+struct ambient_rec ambient_list[25];
 
-/* Far-pointer startup hooks preserve the register contract expected by Miles. */
+/* Miles startup hooks return far-pointer status values. */
 char __far *start_samples(void);
 #pragma aux start_samples modify exact [eax gs];
 char __far *start_sequences(void);
@@ -57,14 +56,12 @@ char __far *start_sound(char *buf, int loop_count);
 char __far *start_tune(unsigned char *seq_arg, int sequence_num, int slot);
 void init_ss_entires(void);
 
-/* CRT */
 void free(void *p);
 
 extern void _pos_ret3(void);
 extern void *malloc(unsigned int size);
 
-// Boot the sound subsystem: clear the playback flags, enable both digital + MIDI in c2inf, install
-// AIL, and bring up the sample + sequence drivers.
+// Initialize AIL and enable digital samples and MIDI sequences.
 // FUNCTION: C2 0x11758
 // FUNCTION: C2WIN 0x00401000
 void start_sounds(void)
@@ -82,7 +79,7 @@ void start_sounds(void)
     start_sequences();
 }
 
-// Tear down the sound subsystem: end both AIL driver halves and shut AIL down.
+// Stop the sample and sequence drivers, then shut down AIL.
 // FUNCTION: C2 0x117a2
 void stop_sounds(void)
 {
@@ -90,9 +87,7 @@ void stop_sounds(void)
     stop_sequences();
     AIL_shutdown();
 }
-// Installs the digital sound driver: loads the two click WAVs into the preloaded buffers, installs
-// DIG.INI, allocates 6 sample handles, verifies them, and flips `samples_running`. Re-entry is a
-// no-op.
+// Install the digital driver, preload feedback sounds, and allocate sample handles.
 // FUNCTION: C2 0x117b8
 // FUNCTION: C2WIN 0x00401085
 char __far *start_samples(void)
@@ -112,8 +107,7 @@ char __far *start_samples(void)
     return rc;
 }
 
-// AIL MIDI sequence bootstrap. Installs the MDI driver, allocates two sequence handles, and
-// initialises the mood-tracking globals.
+// Install the MIDI driver, allocate sequence handles, and reset music mood state.
 // FUNCTION: C2 0x118a2
 // FUNCTION: C2WIN 0x00401250
 char __far *start_sequences(void)
@@ -140,8 +134,7 @@ char __far *start_sequences(void)
     return rc;
 }
 
-// Stop every active digital sample slot. Clears db_playing and ends any S_dig handle currently
-// reporting status 4 (PLAYING).
+// Stop all active digital samples and clear streaming playback state.
 // FUNCTION: C2 0x1197b
 // FUNCTION: C2WIN 0x0040138f
 void stop_samples(void)
@@ -156,8 +149,7 @@ void stop_samples(void)
     }
 }
 
-// Stop every active music sequence. Clears the city tune flag and ends any S_mdi handle currently
-// reporting status 4 (PLAYING).
+// Stop all active MIDI sequences and clear city music playback state.
 // FUNCTION: C2 0x119e7
 void stop_sequences(void)
 {
@@ -171,9 +163,7 @@ void stop_sequences(void)
     }
 }
 
-// Push the user-configured digital-sample volume to AIL, scaled from c2inf.samples_level (0..100)
-// to AIL's 0..127 range via totalXpercent. No-op if samples are disabled or the digital driver
-// isn't initialised.
+// Apply the configured digital-sample volume to the AIL driver.
 // FUNCTION: C2 0x11a53
 // FUNCTION: C2WIN 0x0040149b
 void set_samples_volume(void)
@@ -183,8 +173,7 @@ void set_samples_volume(void)
     AIL_set_digital_master_volume(dig, totalXpercent(0x7f, c2inf.samples_level));
 }
 
-// Push the user-configured music volume to both AIL sequence handles (tune1 and tune2) — scaled
-// from c2inf.tunes_level (0..100) to AIL's 0..127 range; fade=0 (instant).
+// Apply the configured music volume to both MIDI sequence handles.
 // FUNCTION: C2 0x11a8c
 // FUNCTION: C2WIN 0x00401515
 void set_sequences_volume(void)
@@ -198,8 +187,7 @@ void set_sequences_volume(void)
     AIL_set_sequence_volume(S_mdi[tune2], vol, 0);
 }
 
-// Begin a 1-second fade-in on S_mdi[idx]: snap to 0 then fade up to the user-configured master
-// volume. Skipped if music is disabled.
+// Fade a MIDI sequence up to the configured music volume over one second.
 // FUNCTION: C2 0x11ae9
 // FUNCTION: C2WIN 0x0040158e
 void fade_sequence_in(int idx)
@@ -213,8 +201,7 @@ void fade_sequence_in(int idx)
     AIL_set_sequence_volume(S_mdi[idx], vol, 1000);
 }
 
-// Begin a 1-second fade-out on S_mdi[idx] iff music is enabled (c2inf.tunes_on) and the global
-// sequences_running flag is set. `AIL_set_sequence_volume(h, target=0, fade_ms=1000)`.
+// Fade a MIDI sequence to silence over one second.
 // FUNCTION: C2 0x11b4b
 // FUNCTION: C2WIN 0x00401604
 void fade_sequences_out(int idx)
@@ -224,9 +211,7 @@ void fade_sequences_out(int idx)
     AIL_set_sequence_volume(S_mdi[idx], 0, 1000);
 }
 
-// Schedule a digital sample for playback. Each sample slot owns a 20 000-byte (0x4E20) chunk of
-// `sample_buffer`; if the same fname has been queued before, ``check_old_sslots`` returns the
-// existing slot and we skip the load.
+// Load or reuse a cached sample and start its playback when a voice is available.
 // FUNCTION: C2 0x11b7b
 // FUNCTION: C2WIN 0x0040164d
 void set_sound(char *fname, int arg2)
@@ -246,8 +231,7 @@ void set_sound(char *fname, int arg2)
     start_sound(sample_buffer + sslot * 0x4e20, arg2);
 }
 
-// "Priority" variant of set_sound — same flow, but skips the check_for_free_slot gate. Used by
-// callers that always want the sample played, displacing the oldest slot if all 10 are busy.
+// Load or reuse a cached sample and request playback without checking for a free voice first.
 // FUNCTION: C2 0x11c35
 // FUNCTION: C2WIN 0x00401734
 void set_pri_sound(char *fname, int arg2)
@@ -266,8 +250,7 @@ void set_pri_sound(char *fname, int arg2)
     start_sound(sample_buffer + sslot * 0x4e20, arg2);
 }
 
-// Allocate a free voice slot and start a one-shot sample. Walks S_dig[0..max_samples) looking for
-// a slot in idle (status 2) or paused (status 8) state.
+// Select a digital voice, configure its sample data and loop count, and start playback.
 // FUNCTION: C2 0x11ce2
 // FUNCTION: C2WIN 0x00401809
 char __far *start_sound(char *buf, int loop_count)
@@ -302,7 +285,7 @@ int check_for_free_slot(void)
     return 0;
 }
 
-// Walk all 4 digital sample slots and end any that report status SMP_PLAYING (4).
+// Stop every active gameplay sound voice.
 // FUNCTION: C2 0x11e3b
 void stop_all_sounds(void)
 {
@@ -314,8 +297,7 @@ void stop_all_sounds(void)
 
 #pragma aux _pos_ret3 = "xor edx,edx" "mov eax,3" modify exact [eax edx]
 
-// Cinematic "positive" sting playback. Latches sample slot 4, recycles it if currently active,
-// then plays the preloaded `positive_buffer`.
+// Play the preloaded positive-feedback sound on the dedicated feedback voice.
 // FUNCTION: C2 0x11e92
 // FUNCTION: C2WIN 0x00401a69
 void pos_sound(void)
@@ -345,9 +327,7 @@ void neg_sound(void)
     }
 }
 
-// Refill one of AIL's double-buffered sample slots from the open db_handle file. buf is an array
-// of byte-buffer pointers (one per sample buffer slot); the slot index is the one AIL reports
-// ready via AIL_sample_buffer_ready (-1 if none ready, silent no-op).
+// Refill the next available half of an AIL double-buffered sample stream.
 // FUNCTION: C2 0x11fb9
 void serve_sample(int sample_handle, unsigned char **buf, int size)
 {
@@ -360,9 +340,7 @@ void serve_sample(int sample_handle, unsigned char **buf, int size)
     AIL_load_sample_buffer(sample_handle, slot, buf[slot], n);
 }
 
-// Stage a streaming digital sample ("db" = digital buffer) for double-buffered playback. Bails out
-// if the master sample/speech toggles are off, AIL isn't running, another db is already playing,
-// the filename is empty, or the file doesn't exist.
+// Open a speech sample and prepare the dedicated double-buffered streaming voice.
 // FUNCTION: C2 0x12003
 // FUNCTION: C2WIN 0x00401c57
 void set_db_sound(char *fname)
@@ -392,9 +370,7 @@ void set_db_sound(char *fname)
     main_path();
 }
 
-// Resume / advance the digital-buffer (db) playback loop. Re-stages a chunk via serve_sample(),
-// then if AIL says the previous sample finished (status == 2), closes the file handle and clears
-// db_playing.
+// Refill the active speech stream and close it after playback finishes.
 // FUNCTION: C2 0x1211e
 // FUNCTION: C2WIN 0x00401da8
 void continue_db(void)
@@ -412,8 +388,7 @@ void continue_db(void)
     main_path();
 }
 
-// Stop the current db playback. Same early-out triple-guard as continue_db, then ends the AIL
-// sample, clears db_playing, closes the file handle, and restores CWD via main_path().
+// Stop the active speech stream and close its file.
 // FUNCTION: C2 0x121a9
 // FUNCTION: C2WIN 0x00401e49
 void stop_db(void)
@@ -429,8 +404,7 @@ void stop_db(void)
     main_path();
 }
 
-// Pause/resume the digital "background" sample channel (S_dig[5]). No-op if samples are disabled
-// or the db_playing flag is clear.
+// Toggle pause state for the active speech stream.
 // FUNCTION: C2 0x121fa
 // FUNCTION: C2WIN 0x00401ec1
 int pause_db(void)
@@ -456,8 +430,7 @@ void play_tune(char *fname, int loops)
     start_tune(tune_buffer, 0, loops);
 }
 
-// Drive a music sequence on MDI slot `slot`. Special-cases: slot == 0 — first end the *other* slot
-// (S_mdi[1]) so two sequences don't clash.
+// Initialize, fade in, and start a MIDI sequence on the selected slot.
 // FUNCTION: C2 0x122bc
 char __far *start_tune(unsigned char *seq_arg, int sequence_num, int slot)
 {
@@ -480,8 +453,7 @@ char __far *start_tune(unsigned char *seq_arg, int sequence_num, int slot)
     return AIL_start_sequence(S_mdi[slot]);
 }
 
-// Halt all currently-playing music sequences. Probes both MDI handles in S_mdi[] and uses the
-// asymmetric AIL pair: stop_sequence (pauses) for slot 0, end_sequence (frees) for slot 1.
+// Stop the primary tune and end the secondary tune when they are playing.
 // FUNCTION: C2 0x1239c
 void stop_tune(void)
 {
@@ -491,7 +463,7 @@ void stop_tune(void)
     if (mdi_status == 4) AIL_end_sequence(S_mdi[1]);
 }
 
-// Halt only S_mdi[0] — the first half of stop_tune.
+// Stop the primary MIDI sequence when it is playing.
 // FUNCTION: C2 0x123f5
 void stop_tune0(void)
 {
@@ -499,9 +471,7 @@ void stop_tune0(void)
     if (mdi_status == 4) AIL_stop_sequence(S_mdi[0]);
 }
 
-// Branch-on-mood callback: invoked from the AIL sequencer when a tune reaches a marked branch
-// point. Re-evaluates the current mood (battle or city, depending on map mode) and tells the
-// sequencer where to branch next via `AIL_branch_index(seq, tune_branch)`.
+// Recalculate the current music mood and branch the active sequence.
 // FUNCTION: C2 0x12424
 void __cdecl mood_modfication(int seq)
 {
@@ -512,8 +482,7 @@ void __cdecl mood_modfication(int seq)
     AIL_branch_index(seq, tune_branch);
 }
 
-// Restore the last-known mood for the current map mode (battle uses last_battle_mood, otherwise
-// last_city_mood) into the live tune_mood global and return it.
+// Restore and return the last music mood for the current map mode.
 // FUNCTION: C2 0x12461
 // FUNCTION: C2WIN 0x004021fd
 int get_old_mood(void)
@@ -561,9 +530,7 @@ void get_city_mood(void)
     last_city_mood = tune_mood;
 }
 
-// Battle-tune branch selector. Moods 1..5 delegate to choose_odd_tune (paired branch markers at
-// 0xe / 0x16 / 0x1e / 0x26 / 0x2e); moods 6..18 select fixed branch indices 0..13; everything else
-// uses a random branch (rand128 + 0xe) & 7.
+// Select the battle-music branch for the current mood.
 // FUNCTION: C2 0x12751
 // FUNCTION: C2WIN 0x0040266b
 void get_battle_mood(void)
@@ -590,7 +557,7 @@ void get_battle_mood(void)
     last_battle_mood = tune_mood;
 }
 
-// Branch-callback helper invoked when a battle tune reaches an "odd-tune" marker.
+// Alternate battle-music branches within a mood group.
 // FUNCTION: C2 0x128ad
 // FUNCTION: C2WIN 0x00402888
 void choose_odd_tune(int x)
@@ -604,8 +571,7 @@ void choose_odd_tune(int x)
     }
 }
 
-// Periodic mood-cooldown tick: decrements each of the three transient anger counters that bias
-// music selection if non- zero, leaving the long-term `tune_mood` untouched.
+// Decay the temporary emergency, threat, and bad-mood counters.
 // FUNCTION: C2 0x128ea
 // FUNCTION: C2WIN 0x004028cf
 void sooth_mood(void)
@@ -615,8 +581,7 @@ void sooth_mood(void)
     if (bad_mood)       bad_mood       -= 1;
 }
 
-// Seed the 10 sample-slot LRU counters with their own index (so slot 9 will be the oldest and
-// recycled first) and reset the current-slot cursor.
+// Initialize the cached-sample slots and their replacement order.
 // FUNCTION: C2 0x12932
 // FUNCTION: C2WIN 0x00402913
 void init_ss_entires(void)
@@ -626,7 +591,7 @@ void init_ss_entires(void)
     sslot = 0;
 }
 
-// Returns new sslot.
+// Choose a cached-sample slot for a new file and update its replacement state.
 // FUNCTION: C2 0x12953
 // FUNCTION: C2WIN 0x00402959
 void get_new_sslot(char *fname)
@@ -646,9 +611,7 @@ void get_new_sslot(char *fname)
     strcpy(ss_entries[best].name, fname);
 }
 
-// Mark a sample slot as unused: bias its LRU counter to a huge value (1000, way above any real ply
-// count) so it'll be the next one chosen by `get_new_sslot`, and overwrite its name field with the
-// placeholder "unused.wav".
+// Mark a cached-sample slot unused so it will be replaced next.
 // FUNCTION: C2 0x129b1
 // FUNCTION: C2WIN 0x00402a06
 void free_up_sslot(int slot)
@@ -657,8 +620,7 @@ void free_up_sslot(int slot)
     strcpy(ss_entries[slot].name, "unused.wav");
 }
 
-// Linear search of the 10 sample slots for one already holding `fname`. On a hit, resets that
-// slot's LRU counter to 0 (most recently used), updates `sslot`, and returns 1.
+// Find a cached sample by filename and mark its slot recently used.
 // FUNCTION: C2 0x129db
 // FUNCTION: C2WIN 0x00402a41
 int check_old_sslots(char *fname)
@@ -674,8 +636,7 @@ int check_old_sslots(char *fname)
     return 0;
 }
 
-// Hand the AIL digital driver pointer to the Smacker video library so movie audio mixes through
-// the same DAC as game SFX. Idempotent -- bails early with 1 if already linked.
+// Connect Smacker audio playback to the active AIL digital driver.
 // FUNCTION: C2 0x12a25
 // FUNCTION: C2WIN 0x00402abd
 int link_to_smacker(void)
@@ -704,8 +665,7 @@ void set_this_ambient(int idx)
     ambient_list[idx].active = 1;
 }
 
-// Floor an ambient slot's delay_counter at `min` (bias toward firing sooner; leaves the slot alone
-// if its counter already exceeds min).
+// Raise an ambient slot's delay counter to the requested minimum.
 // FUNCTION: C2 0x12a77
 // FUNCTION: C2WIN 0x00402b4a
 void set_ambient_minimum(int idx, int min)
@@ -714,8 +674,7 @@ void set_ambient_minimum(int idx, int min)
         ambient_list[idx].delay_counter = min;
 }
 
-// City building-kind -> ambient-slot dispatcher: a dense if/else chain mapping every building tile
-// range (0x78..0xff) to one of the 24 ambient slots and marking it active.
+// Activate the ambient sound associated with a city building type.
 // FUNCTION: C2 0x12a8f
 // FUNCTION: C2WIN 0x00402b8b
 void set_city_ambient(int kind)
@@ -757,8 +716,7 @@ void set_city_ambient(int kind)
     ambient_list[slot].active = 1;
 }
 
-// Province-event → ambient-slot dispatcher. Like set_battle_fight_fx but with a denser if/else
-// chain mapping province event ids 0xd2..0xeb to slots 0xc/5/4/0xb/2/6/7/3.
+// Activate the ambient sound associated with a province event.
 // FUNCTION: C2 0x12c22
 // FUNCTION: C2WIN 0x00402e37
 void set_prov_ambient(int event)
@@ -777,9 +735,7 @@ void set_prov_ambient(int event)
     ambient_list[event].active = 1;
 }
 
-// Schedule a battle-death sound effect for the given unit-type id (0-17): picks one of 4
-// sample-slot indices via an if/else chain, activates that slot, and pins its delay_counter to
-// 0xC8.
+// Schedule the death sound associated with a battle unit type.
 // FUNCTION: C2 0x12cad
 // FUNCTION: C2WIN 0x00402f45
 void set_battle_death_fx(int unit_type)
@@ -815,8 +771,7 @@ void set_battle_march_fx(int unit_type)
     marching_fx = 10;
 }
 
-// Battle event-id -> ambient-slot dispatcher. Activates the slot and bumps delay_counter by 0x19
-// (priority boost).
+// Schedule the melee sound associated with a battle event.
 // FUNCTION: C2 0x12d41
 // FUNCTION: C2WIN 0x00403094
 void set_battle_fight_fx(int event)
@@ -837,9 +792,7 @@ void set_battle_fight_fx(int event)
     ambient_list[slot].delay_counter += 0x19;
 }
 
-// Event-id → ambient-slot dispatcher: maps an event/missile type to one of the canonical ambient
-// slots (3, 6, 0xb, or the default 0), then marks that slot active in ambient_list[] and bumps its
-// priority counter by 0x19.
+// Schedule the missile-impact sound associated with a battle event.
 // FUNCTION: C2 0x12d9f
 // FUNCTION: C2WIN 0x004031ac
 void set_missile_fight_fx(int event)
@@ -856,8 +809,7 @@ void set_missile_fight_fx(int event)
     ambient_list[slot].delay_counter += 0x19;
 }
 
-// Missile launch SFX dispatcher: maps missile_type to one of three ambient slots (0 / 1 / 4),
-// activates it, and bumps the slot's delay_counter by 0x28 (priority boost).
+// Schedule the launch sound associated with a missile type.
 // FUNCTION: C2 0x12de2
 // FUNCTION: C2WIN 0x0040326c
 void set_missile_fire_fx(int missile_type)
@@ -874,9 +826,7 @@ void set_missile_fire_fx(int missile_type)
     ambient_list[idx].delay_counter += 0x28;
 }
 
-// Service pending ambient SFX slots. Slots 1..24 have a 70-byte record: active flag, rotating
-// filename index, filename count, priority/base volume byte, a short delay/priority counter, then
-// up to four 16-byte sample names at +6/+0x16/+0x26/+0x36.
+// Play eligible ambient sounds and rotate through each slot's sample names.
 // FUNCTION: C2 0x12e1e
 // FUNCTION: C2WIN 0x0040332c
 void play_ambient_fx(void)
@@ -907,9 +857,7 @@ void play_ambient_fx(void)
     }
 }
 
-// Populate the 24 ambient slots with the city-screen sample bank -- gardens, circus, bath house,
-// colliseum, forum, fountain, schools, market, plaza, well, reservoir, aqueduct, temple, theatre,
-// business districts, fire siren, ...
+// Initialize the city ambient-sound bank.
 // FUNCTION: C2 0x12f2a
 // FUNCTION: C2WIN 0x004035c9
 void init_city_ambients(void)
@@ -988,8 +936,7 @@ void sound_error(void)
 {
 }
 
-// Populate the ambient slots with the province-screen sample bank -- birds, mining, surf / shore,
-// shipyard, warehouse, quarry, trading, march cadences, uprising, farms.
+// Initialize the province ambient-sound bank.
 // FUNCTION: C2 0x13187
 // FUNCTION: C2WIN 0x00403999
 void init_prov_ambients(void)
@@ -1040,9 +987,7 @@ void init_prov_ambients(void)
     strcpy(ambient_list[12].names[0], "null.wav");
 }
 
-// Populate the ambient slots with the battle-screen sample bank -- bow/sling launches and hits,
-// melee weapon hits (axe, sword, club, spear, knife), death cries, elephant trumpets,
-// advance/cavalry/mob march cadences, melee fight loops.
+// Initialize the battle ambient-sound bank.
 // FUNCTION: C2 0x13351
 // FUNCTION: C2WIN 0x00403cab
 void init_battle_ambients(void)
@@ -1102,9 +1047,7 @@ void init_battle_ambients(void)
 }
 
 
-// Reserve `n * 20000` bytes for the per-slot sample buffer (each slot holds a 20 000-byte raw PCM
-// clip). No-op when the audio system isn't running or the user disabled samples; returns 0 only
-// when malloc fails so the caller can flag init_err = 4.
+// Allocate storage for the requested number of cached 20,000-byte samples.
 // FUNCTION: C2 0x13546
 // FUNCTION: C2WIN 0x00403fd7
 int init_sample_buffer(int n)
@@ -1117,15 +1060,14 @@ int init_sample_buffer(int n)
     return 1;
 }
 
-// Release the sample buffer if it was allocated; `n` is unused (legacy signature kept symmetric
-// with init_sample_buffer).
+// Release the cached-sample storage.
 // FUNCTION: C2 0x1358a
 void free_sample_buffer(int n)
 {
     if (sample_buffer != 0) free(sample_buffer);
 }
 
-// No-op stub kept for symmetry with init_sample_buffer. Always 1.
+// Report successful initialization of the statically allocated tune buffer.
 // FUNCTION: C2 0x1359e
 // FUNCTION: C2WIN 0x0040408f
 int init_tune_buffer(void)
@@ -1133,7 +1075,7 @@ int init_tune_buffer(void)
     return 1;
 }
 
-// Empty placeholder (tune_buffer is a static global, never freed).
+// Leave the statically allocated tune buffer in place.
 // FUNCTION: C2 0x135a3
 void free_tune_buffer(void)
 {

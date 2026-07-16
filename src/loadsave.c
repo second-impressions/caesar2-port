@@ -555,8 +555,7 @@ int dummy_sav;
 extern void font_list(int idx, int word_count, int x, int y, unsigned char *font, int color);
 
 extern int read(int fd, void *buf, unsigned int size);
-// Load-game dialog loop. `select_filename` drives out1; when a valid .SAV is picked, loadgame()
-// performs the actual block restore.
+// Open the load dialog, validate the selected .SAV file, and load it before restarting the game.
 // FUNCTION: C2 0x70461
 // FUNCTION: C2WIN 0x00482ac0
 void load_a_game(void)
@@ -602,8 +601,7 @@ void load_a_game(void)
     hold_mouse_replace = 1;
 }
 
-// Save-game dialog loop. Existing filenames require confirmation; savegame() writes the registered
-// blocks and history payload.
+// Open the save dialog, confirm overwrites, and save the game under the selected filename.
 // FUNCTION: C2 0x705ba
 // FUNCTION: C2WIN 0x00482c33
 void save_a_game(void)
@@ -647,8 +645,7 @@ void save_a_game(void)
     }
 }
 
-// Modal filename picker/editor shared by load and save. Returns the decision flag after restoring
-// the previous pointer mode.
+// Run the modal filename picker shared by the load and save dialogs.
 // FUNCTION: C2 0x706d9
 // FUNCTION: C2WIN 0x00482d77
 int select_filename(int mode)
@@ -725,8 +722,7 @@ int select_filename(int mode)
     return 0;
 }
 
-// Scroll the directory listing down by one entry, capped at (no_of_entries - 14). 14 is the
-// visible row count.
+// Scroll the directory listing down one row without moving beyond the final visible page.
 // FUNCTION: C2 0x7093b
 // FUNCTION: C2WIN 0x0048302f
 void act_down_directory(void)
@@ -742,18 +738,17 @@ void act_up_directory(void)
     if (first_entry != 0) first_entry--;
 }
 
-// Handles the do file op user-interface action.
+// Select the dialog's file-operation action.
 // FUNCTION: C2 0x70973
 // FUNCTION: C2WIN 0x00483072
 void act_do_file_op(void)     { out1 = 2; }
 
-// Handles the cancel file op user-interface action.
+// Cancel the current file dialog.
 // FUNCTION: C2 0x7097e
 // FUNCTION: C2WIN 0x00483087
 void act_cancel_file_op(void) { out1 = 1; }
 
-// Save all registered savegame data blocks, then append the current history.dat payload. Returns
-// non-zero on success.
+// Write the registered game-state blocks and history data to a save file.
 // FUNCTION: C2 0x70989
 // FUNCTION: C2WIN 0x0048309c
 int savegame(char *fname)
@@ -788,7 +783,7 @@ int savegame(char *fname)
     return 1;
 }
 
-// Load the registered savegame blocks and appended history.dat payload.
+// Restore the registered game-state blocks and history data, then rebuild the map display state.
 // FUNCTION: C2 0x70a5c
 // FUNCTION: C2WIN 0x004832e3
 int loadgame(char *fname)
@@ -836,8 +831,7 @@ int loadgame(char *fname)
     return 1;
 }
 
-// Persist the 64-byte c2inf preferences block to caesar2.inf. Open with
-// O_WRONLY|O_CREAT|O_TRUNC|O_BINARY (0x261), mode 0600 (0x180); write c2inf; close.
+// Save the persistent preferences block to caesar2.inf.
 // FUNCTION: C2 0x70bba
 // FUNCTION: C2WIN 0x00483554
 void save_inf(void)
@@ -851,8 +845,7 @@ void save_inf(void)
     }
 }
 
-// Load caesar2.inf, preserving the two leading runtime bytes that the executable seeds before
-// reading the on-disk options block.
+// Load caesar2.inf while preserving the runtime drive settings initialized before the read.
 // FUNCTION: C2 0x70bf5
 // FUNCTION: C2WIN 0x004835b1
 void load_inf(void)
@@ -915,8 +908,7 @@ void set_language(int language)
     }
 }
 
-// Validate the loaded game's settings: if the year header isn't the magic 0x7D5 marker, fall back
-// to defaults. Then clear skill_level (signed) and arm peace_mode.
+// Validate the persistent settings and restore defaults when their year marker is invalid.
 // FUNCTION: C2 0x70d94
 // FUNCTION: C2WIN 0x0048372e
 void test_inf_settings(void)
@@ -927,8 +919,7 @@ void test_inf_settings(void)
     c2inf.peace_mode = 1;
 }
 
-// Defaults for the persistent INF/options block: initial year, player name, scroll/game speed,
-// sound toggles/levels, tutorial flags, and max sample count.
+// Initialize the persistent player, speed, sound, autosave, and game-mode settings.
 // FUNCTION: C2 0x70db8
 // FUNCTION: C2WIN 0x0048375f
 void basic_inf_settings(void)
@@ -973,8 +964,7 @@ int loadmodel(char *fname)
     return 1;
 }
 
-// Sanitise the player name in `buf`: replace control chars (< 0x20) with spaces, then
-// null-terminate at the first existing 0 byte (or at offset 24 if longer).
+// Replace control bytes in the first 24 player-name characters with spaces and append a terminator.
 // FUNCTION: C2 0x70eae
 // FUNCTION: C2WIN 0x004838d3
 void fix_plyr_name(char *buf)
@@ -988,8 +978,7 @@ void fix_plyr_name(char *buf)
     buf[i] = 0;
 }
 
-// Decode one 60x60 province region-map record from regions.dat into region_map, recording the
-// city/hut/border metadata encountered while expanding tile codes into region-map area records.
+// Decode a province's 60x60 region map and record its city, huts, and border routes.
 // FUNCTION: C2 0x70ed8
 // FUNCTION: C2WIN 0x0048393f
 void load_region_map(int province)
@@ -1083,8 +1072,7 @@ void clear_huts(void)
     }
 }
 
-// Place a hut record into the first empty slot of the 4-entry hut_list (3 bytes per entry: x, y,
-// hut kind).
+// Store a hut's position and kind in the first empty hut-list entry.
 // FUNCTION: C2 0x711ce
 // FUNCTION: C2WIN 0x00483ea3
 void put_a_hut(int x, int y, int kind)
@@ -1100,7 +1088,7 @@ void put_a_hut(int x, int y, int kind)
     }
 }
 
-// Records which region-map border a trader reached and returns its direction.
+// Record a region-map border position and return its compass direction.
 // FUNCTION: C2 0x71216
 // FUNCTION: C2WIN 0x00483f0f
 int get_border_position(int x, int y, int trader_is)
@@ -1133,7 +1121,7 @@ int get_border_position(int x, int y, int trader_is)
     return 0;
 }
 
-// Stripped stub (`return 1`).
+// Always report that key input is allowed.
 // FUNCTION: C2 0x71247
 // FUNCTION: C2WIN 0x0048423b
 int allowed_keys(void)
@@ -1141,7 +1129,7 @@ int allowed_keys(void)
     return 1;
 }
 
-// Returns zero for the disabled mouse-recorder hook.
+// Report that the mouse recorder is inactive.
 // FUNCTION: C2 0x71286 FOLDED
 // FUNCTION: C2WIN 0x004841eb REORDERED
 int mouse_recorder(void)
@@ -1149,7 +1137,7 @@ int mouse_recorder(void)
     return 0;
 }
 
-// Returns 0 for the out of sync query.
+// Report that the game state is synchronized.
 // FUNCTION: C2 0x71286 FOLDED
 // FUNCTION: C2WIN 0x00484213
 int out_of_sync(void)
@@ -1157,7 +1145,7 @@ int out_of_sync(void)
     return 0;
 }
 
-// Create history.dat and initialize its first five score fields to zero.
+// Create an empty 200-entry history.dat file and reset its ring-buffer state.
 // FUNCTION: C2 0x71289
 // FUNCTION: C2WIN 0x00483fd3 REORDERED
 void setup_history_data(void)
@@ -1179,8 +1167,7 @@ void setup_history_data(void)
     }
 }
 
-// Append/overwrite the current 5-int history_entry in the 200-slot ring file history.dat at
-// history_end_ptr. The file offset is history_end_ptr * 20.
+// Write the current five-value history entry at the next slot in the 200-entry ring file.
 // FUNCTION: C2 0x712f8
 // FUNCTION: C2WIN 0x00484094
 void save_history(void)
@@ -1204,8 +1191,7 @@ void save_history(void)
 }
 
 
-// Slurp the entire 4 000-byte / 200x5-int history.dat file into the caller-supplied buffer. Open
-// with O_RDONLY|O_BINARY (0x200); silently no-op when the file is absent.
+// Read all 200 five-value history entries into the caller's buffer when history.dat exists.
 // FUNCTION: C2 0x7138b
 // FUNCTION: C2WIN 0x0048414d
 void get_history_in_buffer(int *buf)
@@ -1219,7 +1205,7 @@ void get_history_in_buffer(int *buf)
     }
 }
 
-// Returns buf[row * 5 + col] for the get history from buffer query.
+// Return one value from a buffered five-column history entry.
 // FUNCTION: C2 0x713be
 // FUNCTION: C2WIN 0x004841a0
 int get_history_from_buffer(int *buf, int row, int col)
@@ -1234,28 +1220,28 @@ void stop_mouse_recorder(void)
 {
 }
 
-// No-op placeholder for the start demo hook.
+// No-op callback for starting demo mode.
 // FUNCTION: C2 0x713ce FOLDED
 // FUNCTION: C2WIN 0x00484208 REORDERED
 void start_demo(void)
 {
 }
 
-// No-op placeholder for the start mouse recorder hook.
+// No-op callback for starting mouse recording.
 // FUNCTION: C2 0x713ce FOLDED
 // FUNCTION: C2WIN 0x00484225
 void start_mouse_recorder(void)
 {
 }
 
-// No-op placeholder for the go demo play mode hook.
+// No-op callback for entering demo playback mode.
 // FUNCTION: C2 0x713ce FOLDED
 // FUNCTION: C2WIN 0x004841fd REORDERED
 void go_demo_play_mode(void)
 {
 }
 
-// No-op placeholder for the go demo build mode hook.
+// No-op callback for entering demo build mode.
 // FUNCTION: C2 0x713ce FOLDED
 // FUNCTION: C2WIN 0x004841ce REORDERED
 void go_demo_build_mode(void)

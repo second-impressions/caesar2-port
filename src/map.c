@@ -1,6 +1,6 @@
 #include "c2_data.h"
 
-/* File-local map state. */
+/* Temporary coordinates used while tracing a route. */
 struct byte_point_rec temp_route[16];
 
 extern void copy(unsigned char *src, unsigned char *dst, int n);
@@ -38,9 +38,7 @@ void generate_city_map_geography(void)
     }
 }
 
-// Trace one river path across the 80×80 city_map. The path is a random walk biased to flow
-// southward; each visited cell is flagged as a "river atom" (city_map[+1] |= 0x10 and city_map[+0]
-// = 4) for the flesh_river_atoms pass to turn into concrete tiles.
+// Trace a southward-biased random river across the city map, then assign its final tiles.
 // FUNCTION: C2 0x66014
 // FUNCTION: C2WIN 0x0049f923
 int generate_cm_river(void)
@@ -137,8 +135,7 @@ int generate_cm_river(void)
     return budget;
 }
 
-// Initial-state generator for the city map's scrub layer. Sets every cell's `base_kind` (byte 0)
-// to a random scrub tile in 8..23 (8 + (rand128 & 0xf)).
+// Fill the city map with randomly selected scrub terrain.
 // FUNCTION: C2 0x6623d
 // FUNCTION: C2WIN 0x0049fc8b
 void generate_cm_scrub(void)
@@ -196,9 +193,7 @@ void flesh_river_atoms(void)
     }
 }
 
-// BFS layer pass for the city-map elastic preview. Called from get_road_elastic, get_wall_elastic
-// and get_aquaduct_elastic with r = 1, 2, 3, … to expand the candidate-slot stamp (city_map[+2])
-// outward from (act_start_x, act_start_y) one ring at a time.
+// Expand a city construction path by one breadth-first search layer.
 // FUNCTION: C2 0x663ab
 // FUNCTION: C2WIN 0x0049febf
 void test_elastic_range(int r, unsigned char reject_mask)
@@ -323,9 +318,7 @@ void test_elastic_range(int r, unsigned char reject_mask)
     }
 }
 
-// Among the four neighbouring city-map cells around byte offset `ptr`, pick the non-zero elastic
-// byte (+2) with the lowest value, respecting map bounds. Search starts at `dirc` and wraps
-// through all directions; results are published in best_elastic_value/best_elastic_dirc.
+// Select the neighbouring city cell with the lowest nonzero path cost.
 // FUNCTION: C2 0x666a4
 // FUNCTION: C2WIN 0x004a03c4
 void get_best_elastic_value(int x, int y, int ptr, int dirc)
@@ -376,9 +369,7 @@ void get_best_elastic_value(int x, int y, int ptr, int dirc)
     }
 }
 
-// BFS layer pass for the region-map elastic preview; region-map twin of test_elastic_range. Called
-// from get_reg_road_elastic with strict=0 and from get_reg_wall_elastic with strict=1, both with
-// reject_mask = 0xD9.
+// Expand a regional construction path by one breadth-first search layer.
 // FUNCTION: C2 0x6675a
 // FUNCTION: C2WIN 0x004a0576
 void test_rm_elastic_range(int strict, int r, unsigned char reject_mask)
@@ -505,9 +496,7 @@ void test_rm_elastic_range(int strict, int r, unsigned char reject_mask)
     }
 }
 
-// Pick the cheapest non-wall, non-blocking neighbour (slot byte +2) in the four cardinal
-// directions starting from `dirc` and rotating through all four. Region-map sister of
-// get_best_elastic_value; publishes best_elastic_value / best_elastic_dirc.
+// Select the neighbouring region cell with the lowest usable path cost.
 // FUNCTION: C2 0x66a53
 // FUNCTION: C2WIN 0x004a0a83
 void get_best_rm_elastic_value(int x, int y, int ptr, int dirc)
@@ -572,9 +561,7 @@ void get_road_elastic(void)
     transform_road_elastic(20);
 }
 
-// City-map twin of transform_reg_road_elastic. Marks cells of city_map inside a radius-r square
-// around (act_start_x, act_start_y) as candidate road tiles (city_map[+2] = 0xFF) when their
-// terrain + edge mask match the city-road criteria.
+// Mark legal road candidates near the current city construction start.
 // FUNCTION: C2 0x66b56
 // FUNCTION: C2WIN 0x004a0c9f
 void transform_road_elastic(int r)
@@ -631,8 +618,7 @@ void transform_road_elastic(int r)
     }
 }
 
-// Commit the player-drawn city road. City-map twin of build_reg_road_from_elastic; operates on the
-// elastic preview marks left by transform_road_elastic on the 80×80 city_map (20-byte cells).
+// Build the city road represented by the current elastic path.
 // FUNCTION: C2 0x66d22
 // FUNCTION: C2WIN 0x004a0f4e
 void build_road_from_elastic(void)
@@ -820,8 +806,7 @@ int road_ramifications(int x, int y)
     return 1;
 }
 
-// Wall sister of get_road_elastic / get_aquaduct_elastic. Pre-grow elastic for wall construction
-// at (act_start_x, act_start_y).
+// Grow and transform the elastic wall preview from the current construction start cell.
 // FUNCTION: C2 0x67333
 // FUNCTION: C2WIN 0x004a1998
 void get_wall_elastic(void)
@@ -838,9 +823,7 @@ void get_wall_elastic(void)
     elastic_start_dirc = 0;
 }
 
-// City-map wall preview pass (twin of transform_aquaduct_elastic and transform_reg_wall_elastic).
-// Walks the clipped 80×80 bounding box of radius r around (act_start_x, act_start_y) and stamps
-// the candidate-wall byte (city_map[+2]) based on terrain + edge mask.
+// Mark legal wall candidates near the current city construction start.
 // FUNCTION: C2 0x673a8
 // FUNCTION: C2WIN 0x004a1a34
 void transform_wall_elastic(int r)
@@ -909,8 +892,7 @@ void transform_wall_elastic(int r)
     }
 }
 
-// Walks an elastic-wall placement preview to its final cells. Two-pass: first pass marks each
-// preview cell, second pass calls wall_ramifications() at each step.
+// Build the city wall represented by the current elastic path and update its connections.
 // FUNCTION: C2 0x67653
 // FUNCTION: C2WIN 0x004a1ee0
 void build_wall_from_elastic(void)
@@ -1034,9 +1016,7 @@ int wall_ramifications(int x, int y)
     return 1;
 }
 
-// Re-evaluate the wall sprite for a single city-map cell at (gmn_x, gmn_y). Tests the cell's
-// neighbour mask (via test_citymap_neighbours_negedge) and picks a sprite id from the wall-data
-// table; returns 0 when no valid wall sprite is available.
+// Choose the wall sprite matching the current cell's neighbouring walls.
 // FUNCTION: C2 0x67944
 // FUNCTION: C2WIN 0x004a2362
 int one_wall_ramification(void)
@@ -1138,8 +1118,7 @@ int one_wall_ramification(void)
     return 1;
 }
 
-// Aqueduct sister of get_road_elastic. Pre-grow elastic for aqueduct construction at (act_start_x,
-// act_start_y).
+// Grow and transform the elastic aqueduct preview from the current construction start cell.
 // FUNCTION: C2 0x67c23
 // FUNCTION: C2WIN 0x004a2894
 void get_aquaduct_elastic(void)
@@ -1156,9 +1135,7 @@ void get_aquaduct_elastic(void)
     elastic_start_dirc = 0;
 }
 
-// City-map aqueduct twin of transform_road_elastic. Walks the clipped 80×80 bounding box of radius
-// r around (act_start_x, act_start_y) and marks each cell's candidate-aquaduct byte (city_map[+2])
-// based on terrain + edge mask.
+// Mark legal aqueduct candidates near the current city construction start.
 // FUNCTION: C2 0x67c75
 // FUNCTION: C2WIN 0x004a292d
 void transform_aquaduct_elastic(int r)
@@ -1234,9 +1211,7 @@ void transform_aquaduct_elastic(int r)
     }
 }
 
-// Commit the player-drawn aqueduct: walks the elastic preview marks left by
-// transform_aquaduct_elastic outward from the drag-end (over_x, over_y, pm_over_cm_ptr) in two
-// phases.
+// Build the aqueduct represented by the current elastic path and update its connections.
 // FUNCTION: C2 0x67f13
 // FUNCTION: C2WIN 0x004a2d9f
 void build_aquaduct_from_elastic(void)
@@ -1330,9 +1305,7 @@ void build_aquaduct_from_elastic(void)
     }
 }
 
-// Validate aqueduct connections at (x, y) and across the 3×3 (or smaller, if at edges)
-// neighbourhood. Calls `one_aquaduct_ramification()` (which reads gmn_x/gmn_y globals) for the
-// center cell first; returns 0 immediately if the center cell is not a valid aqueduct connection.
+// Recompute aqueduct connections at a cell and its surrounding neighbourhood.
 // FUNCTION: C2 0x6811e
 // FUNCTION: C2WIN 0x004a30d6
 int aquaduct_ramifications(int x, int y)
@@ -1362,8 +1335,7 @@ int aquaduct_ramifications(int x, int y)
     return 1;
 }
 
-// Re-evaluate one cell of an aquaduct preview: re-anchors via get_aqua_web when the cell isn't on
-// an existing aquaduct, then reads the surrounding neighbour mask and writes a matching sprite id.
+// Choose the aqueduct sprite matching the current cell's neighbouring aqueducts.
 // FUNCTION: C2 0x681ad
 // FUNCTION: C2WIN 0x004a31e8
 int one_aquaduct_ramification(void)
@@ -1444,8 +1416,7 @@ int one_aquaduct_ramification(void)
     return 1;
 }
 
-// Region-map sister of get_road_elastic. Pre-grow elastic for inter-province road construction at
-// (act_start_x, act_start_y).
+// Grow and transform the regional road preview from the current construction start cell.
 // FUNCTION: C2 0x68472
 // FUNCTION: C2WIN 0x004a36d5
 void get_reg_road_elastic(void)
@@ -1459,9 +1430,7 @@ void get_reg_road_elastic(void)
     transform_reg_road_elastic(20);
 }
 
-// Mark the cells of region_map inside a radius-r square around (act_start_x, act_start_y) as
-// candidate road tiles (region_cell[+2] = 0xFF) when their terrain + edge mask match the
-// regional-road criteria.
+// Mark legal regional-road candidates near the current construction start.
 // FUNCTION: C2 0x684c8
 // FUNCTION: C2WIN 0x004a3744
 int transform_reg_road_elastic(int r)
@@ -1516,9 +1485,7 @@ int transform_reg_road_elastic(int r)
     return y_min + side;
 }
 
-// Commit the player-drawn region road. Operates on the elastic preview marks left by
-// transform_reg_road_elastic on region_map; runs a two-phase neighbour-pick walker that follows
-// decreasing-slot values from the drag-end (over_x, over_y, pm_over_cm_ptr) toward 0.
+// Build the regional road represented by the current elastic path.
 // FUNCTION: C2 0x68654
 // FUNCTION: C2WIN 0x004a39b8
 void build_reg_road_from_elastic(void)
@@ -1631,9 +1598,7 @@ finish:
     }
 }
 
-// Recompute regional road sprites in the clamped 3×3 neighbourhood around (x,y). Wall/road
-// crossings are delegated to one_reg_wall_ramification; plain road cells choose a road sprite from
-// their positive-edge neighbours.
+// Recompute regional road and wall-crossing sprites around a cell.
 // FUNCTION: C2 0x688bb
 // FUNCTION: C2WIN 0x004a3eb6
 int reg_road_ramifications(int x, int y)
@@ -1676,9 +1641,7 @@ int reg_road_ramifications(int x, int y)
     return 1;
 }
 
-// Region-map sister of get_wall_elastic. Same shape: prime the elastic preview range via
-// set_rm_range, mark the start cell, sweep test_rm_elastic_range over 20 segments, transform to
-// final wall, then de-saturate the start cell.
+// Grow and transform the regional wall preview from the current construction start cell.
 // FUNCTION: C2 0x689f6
 // FUNCTION: C2WIN 0x004a40d4
 void get_reg_wall_elastic(void)
@@ -1695,9 +1658,7 @@ void get_reg_wall_elastic(void)
     elastic_start_dirc = 0;
 }
 
-// Region-map wall preview pass (twin of transform_aquaduct_elastic but on the 60×60 region grid
-// with 8-byte cells). Walks the clipped bounding box of radius r around (act_start_x, act_start_y)
-// and stamps the candidate-wall byte (region_cell[+2]) based on terrain + edge mask.
+// Mark legal regional-wall candidates near the current construction start.
 // FUNCTION: C2 0x68a6a
 // FUNCTION: C2WIN 0x004a4172
 void transform_reg_wall_elastic(int r)
@@ -1769,9 +1730,7 @@ void transform_reg_wall_elastic(int r)
     }
 }
 
-// Commit the player-drawn region wall. Same get_best_rm_ elastic_value-driven walker shape as
-// build_aquaduct_from_elastic but on the 60×60 region_map (8-byte cells) and with the wall mask
-// bits.
+// Build the regional wall represented by the current elastic path.
 // FUNCTION: C2 0x68c7c
 // FUNCTION: C2WIN 0x004a450a
 void build_reg_wall_from_elastic(void)
@@ -1851,9 +1810,7 @@ finish:
     }
 }
 
-// Region-map sister of wall_ramifications: validate wall connections at (x, y) and across the 3×3
-// (or smaller, if at edges) neighbourhood. Region map is 60×60, so edge clamp is against 59
-// (=0x3b) instead of 79 (=0x4f).
+// Recompute regional wall connections at a cell and its surrounding neighbourhood.
 // FUNCTION: C2 0x68ea5
 // FUNCTION: C2WIN 0x004a4841
 int reg_wall_ramifications(int x, int y)
@@ -1883,8 +1840,7 @@ int reg_wall_ramifications(int x, int y)
     return 1;
 }
 
-// Region-map twin of one_wall_ramification: re-evaluate one wall sprite at (gmn_x, gmn_y) on the
-// 60x60 region grid. Returns 0 if no valid sprite, caching (gmn_err_x/y/sptr) for the caller.
+// Choose the regional wall sprite matching the current cell's neighbouring walls.
 // FUNCTION: C2 0x68f2e
 // FUNCTION: C2WIN 0x004a4953
 int one_reg_wall_ramification(void)
@@ -1996,9 +1952,7 @@ void garden_an_area(int x1, int y1, int x2, int y2)
         illegal_build = 1;
 }
 
-// Convert every clearable city-map cell in the inclusive rectangle bounded by (x1,y1) and (x2,y2)
-// to plaza paving. Existing occupied structures (base_kind >= 0x1e), blocked terrain, and hard
-// edges are left alone; if nothing was paved, mark the attempted build illegal.
+// Pave every clearable cell in a city-map rectangle as plaza.
 // FUNCTION: C2 0x6921c
 // FUNCTION: C2WIN 0x004a4dd7
 void plaza_an_area(int x1, int y1, int x2, int y2)
@@ -2146,7 +2100,6 @@ void clear_a_reg_area(int x0, int y0, int x1, int y1, int keep_fortress)
             if (keep_fortress != 0 && kind == 0xd2) continue;
             if (kind < 0x10) particles_cleared++;
             if (kind >= 0x20 && kind < 0x7c) {
-                /* nothing */
             } else if (kind >= 0xd5 && kind <= 0xeb) {
                 clear_sized_to_reg_basic(cm_sptr, 2);
             } else if (kind >= 0xec && kind <= 0xef) {
@@ -2170,9 +2123,7 @@ void clear_a_reg_area(int x0, int y0, int x1, int y1, int keep_fortress)
     stone_random_count = saved_random;
 }
 
-// Clear one region-map atom at byte offset `sptr`, handling sized industry/port footprints and
-// recalculating coast/road/wall side effects. This is the single-cell companion to
-// clear_a_reg_area.
+// Destroy a regional structure and refresh the affected terrain and connections.
 // FUNCTION: C2 0x697e7
 // FUNCTION: C2WIN 0x004a564b
 void destroy_reg_atom(int sptr)
@@ -2240,9 +2191,7 @@ void destroy_an_atom(int sptr, int rubble_kind)
     particles_cleared = 0;
 }
 
-// Directional fire-spread wrapper. Adjust the city_map byte offset by dir (0 north, 4 south, 6
-// west, 2 east), skip protected ids 0xbc..0xe2, then dispatch by forum_gfxdat size class: 4 -> 2x2
-// rubble, 9 -> 3x3, 0x10 -> 4x4, otherwise one cell.
+// Spread fire in one direction and reduce the affected building to burning rubble.
 // FUNCTION: C2 0x699d7
 // FUNCTION: C2WIN 0x004a590a
 void spread_fire_atom(int sptr, int dir)
@@ -2277,9 +2226,7 @@ void spread_fire_atom(int sptr, int dir)
         clear_to_rubble(sptr, 1);
 }
 
-// Directional wrapper around plague_an_atom: move the supplied city_map byte offset one cell
-// north/south/west/east depending on dir (0,4,6,2 respectively), then plague the target building
-// unless its edge_bits high bit is set.
+// Spread plague in one direction to an eligible neighbouring building.
 // FUNCTION: C2 0x69a77
 // FUNCTION: C2WIN 0x004a5a2b
 void spread_plague_atom(int sptr, int dir)
@@ -2310,7 +2257,7 @@ void spread_plague_atom(int sptr, int dir)
         plague_it(sptr);
 }
 
-// Plague-mark a building footprint based on the cell at byte-offset `sptr`.
+// Mark the building footprint containing a city cell as plague-stricken.
 // FUNCTION: C2 0x69afe
 // FUNCTION: C2WIN 0x004a5b27
 void plague_an_atom(int sptr)
@@ -2347,9 +2294,7 @@ void plague_sized(int sptr, int size)
             plague_it(sptr);
 }
 
-// Rubble-clear a size×size city building. The sub-tile index in activity_a (+5) identifies the
-// clicked cell within the footprint; walk back to the top-left, rubble every cell, then handle
-// linked 2×2 gatehouse halves (base kinds 0xe9..0xf0) by clearing the paired footprint as well.
+// Reduce an entire building footprint, including linked gatehouse halves, to rubble.
 // FUNCTION: C2 0x69bc6
 // FUNCTION: C2WIN 0x004a5c9a
 void clear_sized_to_rubble(int sptr, int size, int rubble_kind)
@@ -2399,8 +2344,7 @@ void clear_sized_to_rubble(int sptr, int size, int rubble_kind)
     setup_map_screen_refresh();
 }
 
-// Turn one city cell into rubble/smoke. rubble_kind selects fire rubble: set the high edge bit,
-// seed smoke animation bytes, and play fire.wav.
+// Turn one city cell into rubble and start fire effects when requested.
 // FUNCTION: C2 0x69e2b
 // FUNCTION: C2WIN 0x004a602f
 void clear_to_rubble(int sptr, int rubble_kind)
@@ -2430,9 +2374,7 @@ void clear_to_rubble(int sptr, int rubble_kind)
     particles_cleared++;
 }
 
-// Clear a single cell at byte-offset `sptr` to an "empty" scrub tile. Bumps the global
-// stone_random_count (with wrap at 0x40); if the cell's old base_kind was outside the scrub range
-// [0x1a, 0x1d], increments particles_cleared.
+// Clear a city cell to a randomly varied empty-terrain tile.
 // FUNCTION: C2 0x69f41
 // FUNCTION: C2WIN 0x004a6183
 void clear_to_empty(int sptr)
@@ -2468,8 +2410,7 @@ void clear_basic(int sptr)
     (*(struct city_cell *)((unsigned char *)city_map + ((sptr)))).business = 0;
 }
 
-// Find the top-left of a sized (size×size) building anchored at `rm_offset` and call
-// clear_reg_basic on every cell of the block.
+// Clear every cell in a sized regional building footprint.
 // FUNCTION: C2 0x6a018
 // FUNCTION: C2WIN 0x004a633c
 void clear_sized_to_reg_basic(int rm_offset, int size)
@@ -2491,9 +2432,7 @@ void clear_sized_to_reg_basic(int rm_offset, int size)
             clear_reg_basic(rm_offset);
 }
 
-// Reset a region-map cell to a clean basic state, choosing a stone tile id based on terrain bits
-// at byte +1: bit 0x40 set: tile = 0x18 + (random>>2) /* mountain */ bit 0x80 set: tile = 0x1c +
-// (random>>2) /* mountain alt*/ else: tile.
+// Reset a region cell to terrain appropriate for its underlying land type.
 // FUNCTION: C2 0x6a0a6
 // FUNCTION: C2WIN 0x004a6430
 void clear_reg_basic(int rm_offset)
@@ -2515,9 +2454,7 @@ void clear_reg_basic(int rm_offset)
     (*(struct region_cell *)((unsigned char *)region_map + (rm_offset))).edge_bits |= 1;
 }
 
-// Mark cell at byte-offset `sptr` as plague-stricken. Strips fpu_flag low bits (& 0xc0), sets
-// edge_bits 0x81 (on-road + extra), advances stone_random_count by rand8 (with wrap at 0x40),
-// copies one byte of stone_random_data to extra_edge, and sets activity_b to plague-marker 0x0a.
+// Mark a city cell as plague-stricken and initialize its plague appearance.
 // FUNCTION: C2 0x6a17a
 // FUNCTION: C2WIN 0x004a6555
 void plague_it(int sptr)
@@ -2531,8 +2468,7 @@ void plague_it(int sptr)
     (*(struct city_cell *)((unsigned char *)city_map + (sptr))).fire = 0x0a;
 }
 
-// Build/fill every legal city-map cell in the inclusive rectangle bounded by (x1,y1) and (x2,y2).
-// Illegal cells are skipped rather than aborting the whole fill.
+// Fill the legal cells in a city-map rectangle with the selected construction.
 // FUNCTION: C2 0x6a1cb
 // FUNCTION: C2WIN 0x004a6605
 void build_an_area(int x1, int y1, int x2, int y2,
@@ -2575,9 +2511,7 @@ void build_an_area(int x1, int y1, int x2, int y2,
     if (particles_built == 0) illegal_build = 1;
 }
 
-// Place a 1×1 city-map atom at (x,y). Rejects blocked / occupied cells, records the placement
-// origin globals, counts built/cleared particles, stamps base_kind/placing_flags/color/edge bits,
-// and clears the secondary image byte.
+// Validate and place a single-cell city building.
 // FUNCTION: C2 0x6a341
 // FUNCTION: C2WIN 0x004a683b
 int put_x1_area(int x, int y, char base_kind, int edge_bits, int color)
@@ -2610,9 +2544,7 @@ int put_x1_area(int x, int y, char base_kind, int edge_bits, int color)
     return 1;
 }
 
-// Stamp a 2x2 square on city_map starting at the placement anchor. Rotates the anchor by
-// map_direction, validates the 4 cells are empty, then writes base_kind / edge_bits / color +
-// diamond_ofsets_2x[n].
+// Validate and place a directionally anchored 2x2 city building.
 // FUNCTION: C2 0x6a43f
 // FUNCTION: C2WIN 0x004a6a13
 int put_x2_area(int x, int y, char base_kind, int edge_bits, int color)
@@ -2686,7 +2618,7 @@ int put_x2_area(int x, int y, char base_kind, int edge_bits, int color)
     return 1;
 }
 
-// Stamps a 3x3 building footprint onto the city map.
+// Validate and place a directionally anchored 3x3 city building.
 // FUNCTION: C2 0x6a669
 // FUNCTION: C2WIN 0x004a6d79
 int put_x3_area(int x, int y, char base_kind, int edge_bits, int color)
@@ -2760,7 +2692,7 @@ int put_x3_area(int x, int y, char base_kind, int edge_bits, int color)
     return 1;
 }
 
-// Sister of put_x2_area for a 4x4 square; uses diamond_ofsets_4x[n] for the per-cell color offset.
+// Validate and place a directionally anchored 4x4 city building.
 // FUNCTION: C2 0x6a889
 // FUNCTION: C2WIN 0x004a70e7
 int put_x4_area(int x, int y, char base_kind, int edge_bits, int color)
@@ -2834,9 +2766,7 @@ int put_x4_area(int x, int y, char base_kind, int edge_bits, int color)
     return 1;
 }
 
-// Stamp a square (1×1, 2×2, 3×3, or 4×4) on the city map starting at byte-offset `sptr`, writing
-// `bk` to base_kind and computing the upper sprite (extra_edge) from `color` plus the
-// size-specific diamond offset table (`diamond_ofsets_Nx[n]`).
+// Replace a city building footprint with a new kind and appearance.
 // FUNCTION: C2 0x6aaab
 // FUNCTION: C2WIN 0x004a7455
 void change_sized(int bk, int color, int size, int sptr)
@@ -2871,9 +2801,7 @@ void change_sized(int bk, int color, int size, int sptr)
     }
 }
 
-// Mark a directed size×size placement footprint on city_map. The visible anchor (x,y) is shifted
-// according to map_direction so the footprint extends in the direction the cursor/building preview
-// faces, then every covered city cell has edge_bits bit0 set.
+// Mark the directionally anchored city-map footprint used by a placement preview.
 // FUNCTION: C2 0x6ab34
 // FUNCTION: C2WIN 0x004a7573
 void set_map_ref(int x, int y, int size)
@@ -2911,8 +2839,7 @@ void set_map_ref(int x, int y, int size)
     }
 }
 
-// Region-map 1×1 placement. `strict_flags` selects the occupancy check used by region industry
-// placement: when true, only the low six flag bits block; otherwise any flag byte blocks.
+// Validate and place a single-cell regional building.
 // FUNCTION: C2 0x6ac09
 // FUNCTION: C2WIN 0x004a76d5
 int put_reg_x1_area(int x, int y, unsigned char base_kind, int edge_bits,
@@ -2939,8 +2866,7 @@ int put_reg_x1_area(int x, int y, unsigned char base_kind, int edge_bits,
     return 1;
 }
 
-// Region-map sister of put_x2_area: stamp a 2x2 square of region_map cells. `strict_flags` selects
-// the occupancy check (when true, only low 6 flag bits block; otherwise any flag blocks).
+// Validate and place a directionally anchored 2x2 regional building.
 // FUNCTION: C2 0x6acd1
 // FUNCTION: C2WIN 0x004a7852
 int put_reg_x2_area(int x, int y, unsigned char base_kind, int edge_bits,
@@ -3001,8 +2927,7 @@ int put_reg_x2_area(int x, int y, unsigned char base_kind, int edge_bits,
     return 1;
 }
 
-// Stamp a `size × size` square (size ∈ {1, 2, 3, …}) of region-map cells starting at byte-offset
-// `rm_offset` from `region_map`. Every cell gets: +0 = (char)rm_byte // base value (e.g.
+// Replace a regional building footprint with a new kind and appearance.
 // FUNCTION: C2 0x6aeac
 // FUNCTION: C2WIN 0x004a7b37
 void change_reg_sized(int rm_byte, int color, int size, int rm_offset)
@@ -3031,9 +2956,7 @@ void change_reg_sized(int rm_byte, int color, int size, int rm_offset)
     }
 }
 
-// Stamp an arbitrary size×size region-map square. Rejects cells with an occupant at +7, blocked
-// bit 0x10, or low flag bit set; on success writes base_kind, placing flags, edge bits, and a
-// size-dependent diamond/color byte.
+// Validate and place an arbitrary square regional building.
 // FUNCTION: C2 0x6af11
 // FUNCTION: C2WIN 0x004a7c06
 int put_rm_area(int x, int y, int size, unsigned char base_kind,
@@ -3079,9 +3002,7 @@ int put_rm_area(int x, int y, int size, unsigned char base_kind,
     return 1;
 }
 
-// OR mask_byte into the +1 terrain/flag byte of every region_map cell in a size×size square. The
-// x/y origin is adjusted for map_direction so the square is anchored around the user-facing
-// placement direction.
+// Set terrain flags across a directionally anchored regional footprint.
 // FUNCTION: C2 0x6b08c
 // FUNCTION: C2WIN 0x004a7ec5
 void flag_rm_area(int x, int y, int size, char mask_byte)
@@ -3110,8 +3031,7 @@ void flag_rm_area(int x, int y, int size, char mask_byte)
     }
 }
 
-// AND mask_byte into the +1 (terrain bits) byte of every region_map cell in the size x size square
-// at (x, y). No-op if (x < 0) or (y < 0).
+// Mask terrain flags across a regional footprint.
 // FUNCTION: C2 0x6b126
 // FUNCTION: C2WIN 0x004a7fd4
 void unflag_rm_area(int x, int y, int size, char mask_byte)
@@ -3133,9 +3053,7 @@ void unflag_rm_area(int x, int y, int size, char mask_byte)
     }
 }
 
-// Validate that a 2×2 region industry footprint overlaps exactly four cells with the requested
-// terrain flag (farm/mine/quarry masks). The footprint anchor is rotated like other 2×2 region
-// placements.
+// Check whether a 2x2 regional industry footprint has the required terrain.
 // FUNCTION: C2 0x6b18c
 // FUNCTION: C2WIN 0x004a808c
 void check_region_map_for_farm_square(int x, int y, char mask)
@@ -3163,8 +3081,7 @@ void check_region_map_for_farm_square(int x, int y, char mask)
     else illegal_build = 1;
 }
 
-// Validate a 2×2 port footprint: at least one covered tile must have a coast neighbour on its
-// negative edge. On success, industry_build_ok is cleared; otherwise illegal_build is set.
+// Check whether a 2x2 port footprint touches a suitable coastline.
 // FUNCTION: C2 0x6b26d
 // FUNCTION: C2WIN 0x004a81d2
 void check_region_map_for_port_square(int x, int y)
@@ -3191,9 +3108,7 @@ void check_region_map_for_port_square(int x, int y)
     illegal_build = 1;
 }
 
-// Re-evaluate coast tiles in a clipped region rectangle. For every water/coast candidate, compute
-// neighbour bits, choose a matching coast sprite, and update the impassable/coast flag from
-// coast_data.
+// Rebuild coastline tiles and navigation flags in a regional rectangle.
 // FUNCTION: C2 0x6b347
 // FUNCTION: C2WIN 0x004a8311
 void adjust_regions_coastline(int x, int y, int width, int height)
@@ -3234,9 +3149,7 @@ void adjust_regions_coastline(int x, int y, int width, int height)
     }
 }
 
-// Sweep the 60x60 region_map grid. For cells whose +1 flag has bit 0x08 set, check the base tile
-// byte against coast_data+0x220; if that coast-data byte is non-zero (and base < 0x7c), clear bit
-// 0x10 in the same +1 flag.
+// Update which regional coast cells are navigable.
 // FUNCTION: C2 0x6b474
 // FUNCTION: C2WIN 0x004a84fc
 void adjust_sailable_area(void)
@@ -3260,8 +3173,7 @@ void adjust_sailable_area(void)
     }
 }
 
-// Read the 8-neighbour mask of (gmn_x, gmn_y) on city_map into the gmn[0..7] array plus the
-// various counters (gmn_count / polar / ns / ew / nesw / nwse / density / max_run).
+// Measure matching neighbours around the current city-map cell, treating map edges as occupied.
 // FUNCTION: C2 0x6b4f3
 // FUNCTION: C2WIN 0x004a85d6
 void test_citymap_neighbours_posedge(char mask)
@@ -3319,8 +3231,7 @@ void test_citymap_neighbours_posedge(char mask)
     }
 }
 
-// Sister of test_citymap_neighbours_posedge with the opposite off-map convention: cells off the
-// grid count as `0` (negative edge: "absent" outside the map).
+// Measure matching neighbours around the current city-map cell, treating map edges as empty.
 // FUNCTION: C2 0x6b814
 // FUNCTION: C2WIN 0x004a89f2
 void test_citymap_neighbours_negedge(char mask)
@@ -3378,8 +3289,7 @@ void test_citymap_neighbours_negedge(char mask)
     }
 }
 
-// Type-variant: edge sets gmn[i]=0 + decrements counter; non-edge computes byte^type (0 = match).
-// Second pass: if (gmn[i] == 0) promote to 1 and increment counters; else gmn[i] = 0.
+// Measure neighbours of a specific type around a city cell, treating map edges as occupied.
 // FUNCTION: C2 0x6bb01
 // FUNCTION: C2WIN 0x004a8dde
 void test_type_citymap_neighbours_posedge(unsigned char type)
@@ -3441,9 +3351,7 @@ void test_type_citymap_neighbours_posedge(unsigned char type)
     for (i = 0; i < 16; i++) { if (gmn[i]) gmn_run++; else gmn_run = 0; if (gmn_run > gmn_max_run) gmn_max_run = gmn_run; }
 }
 
-// Type-variant negedge: edge sets gmn[i]=1 (sentinel that fails the match-test below); non-edge
-// computes byte^type. Second pass gates on `gmn[i] == 0`: match → promote to 1 + inc; else →
-// gmn[i] = 0.
+// Measure neighbours of a specific type around a city cell, treating map edges as empty.
 // FUNCTION: C2 0x6beb5
 // FUNCTION: C2WIN 0x004a9272
 void test_type_citymap_neighbours_negedge(unsigned char type)
@@ -3505,8 +3413,7 @@ void test_type_citymap_neighbours_negedge(unsigned char type)
     for (i = 0; i < 16; i++) { if (gmn[i]) gmn_run++; else gmn_run = 0; if (gmn_run > gmn_max_run) gmn_max_run = gmn_run; }
 }
 
-// Region-map sister of test_citymap_neighbours_posedge on the 60x60 region grid. Off-map cells
-// count as `1`.
+// Measure matching neighbours around the current region cell, treating map edges as occupied.
 // FUNCTION: C2 0x6c22e
 // FUNCTION: C2WIN 0x004a96d6
 void test_regionmap_neighbours_posedge(char mask)
@@ -3564,8 +3471,7 @@ void test_regionmap_neighbours_posedge(char mask)
     }
 }
 
-// Region-map sister of test_citymap_neighbours_negedge on the 60x60 region grid. Off-map cells
-// count as `0`.
+// Measure matching neighbours around the current region cell, treating map edges as empty.
 // FUNCTION: C2 0x6c54f
 // FUNCTION: C2WIN 0x004a9af2
 void test_regionmap_neighbours_negedge(char mask)
@@ -3623,7 +3529,7 @@ void test_regionmap_neighbours_negedge(char mask)
     }
 }
 
-// Tests type regionmap neighbours posedge and returns the result.
+// Measure neighbours of a specific type around a region cell, treating map edges as occupied.
 // FUNCTION: C2 0x6c83c
 // FUNCTION: C2WIN 0x004a9ede
 void test_type_regionmap_neighbours_posedge(unsigned char type)
@@ -3685,8 +3591,7 @@ void test_type_regionmap_neighbours_posedge(unsigned char type)
     for (i = 0; i < 16; i++) { if (gmn[i]) gmn_run++; else gmn_run = 0; if (gmn_run > gmn_max_run) gmn_max_run = gmn_run; }
 }
 
-// Sister of test_type_regionmap_neighbours_posedge: off-map cells count as `1` (treated as
-// "matching").
+// Measure neighbours of a specific type around a region cell, treating map edges as empty.
 // FUNCTION: C2 0x6cbf0
 // FUNCTION: C2WIN 0x004aa372
 void test_type_regionmap_neighbours_negedge(unsigned char type)
@@ -3748,9 +3653,7 @@ void test_type_regionmap_neighbours_negedge(unsigned char type)
     for (i = 0; i < 16; i++) { if (gmn[i]) gmn_run++; else gmn_run = 0; if (gmn_run > gmn_max_run) gmn_max_run = gmn_run; }
 }
 
-// Walk `records` (8-slot match arrays + value + counter) and find the first record whose 8 match
-// bits agree with the global gmn[] (skip-2 slots are wildcards, 1 needs gmn[i] != 0, 0 needs
-// gmn[i] == 0).
+// Choose the first pattern record matching the current neighbour configuration.
 // FUNCTION: C2 0x6cf69
 // FUNCTION: C2WIN 0x004aa7d6
 int choose_from(struct choice_rec *records, int count)
@@ -3778,8 +3681,7 @@ int choose_from(struct choice_rec *records, int count)
     return 0;
 }
 
-// Clear the "selected" byte (offset 11) of every entry in a 12-byte-strided choice array. Used to
-// reset selection state on UI panels with a chooser list.
+// Reset the selection state of a choice table.
 // FUNCTION: C2 0x6cfed
 // FUNCTION: C2WIN 0x004aa8fd
 void init_choices(struct choice_rec *arr, int count)
@@ -3789,7 +3691,7 @@ void init_choices(struct choice_rec *arr, int count)
         arr->counter = 0;
 }
 
-// Toggle every byte in gmn[0..16): 0 ↔ 1.
+// Invert the current neighbour flags.
 // FUNCTION: C2 0x6d002
 void invert_gmn(void)
 {
@@ -3799,7 +3701,7 @@ void invert_gmn(void)
     }
 }
 
-// Region-map sibling of ``clear_all_cm``. Region cells are 8 bytes each and the grid is 60×60.
+// Clear one data layer across the region map.
 // FUNCTION: C2 0x6d01e
 // FUNCTION: C2WIN 0x004aaa92
 void clear_all_rm(char layer)
@@ -3822,9 +3724,7 @@ void clear_all_rm(char layer)
     }
 }
 
-// Battle-map sister of clear_all_cm: zero the byte at offset `layer` inside every cell of the
-// 52×52 battle_map (cell stride 4 bytes, not 20). 4 byte-stores per inner iter × 13 inner iters ×
-// 52 outer iters = 2704 cells = full battle_map.
+// Clear one data layer across the battle map.
 // FUNCTION: C2 0x6d0b7
 // FUNCTION: C2WIN 0x004aabba
 void clear_all_bm(char layer)
@@ -3841,8 +3741,7 @@ void clear_all_bm(char layer)
     }
 }
 
-// Walk the entire 80×80 city map and AND `mask` into a single byte field (at byte-offset
-// `field_off` within each cell). Used to clear flag bits across the whole map (e.g.
+// Mask one data field across the city map.
 // FUNCTION: C2 0x6d12c
 // FUNCTION: C2WIN 0x004aac70
 void unflag_all_cm(char field_off, int mask)
@@ -3867,8 +3766,7 @@ void unflag_all_cm(char field_off, int mask)
     } while (gmn_y < 80);
 }
 
-// Sister of \`unflag_all_cm\` for the 60×60 region map. Cells are 8 bytes wide; inner loop
-// unrolled 10 cells wide (gmn_x < 6 × 10 = 60 cells per row).
+// Mask one data field across the region map.
 // FUNCTION: C2 0x6d1b7
 // FUNCTION: C2WIN 0x004aae45
 void unflag_all_rm(char field_off, int mask)
@@ -3895,9 +3793,7 @@ void unflag_all_rm(char field_off, int mask)
     } while (gmn_y < 60);
 }
 
-// 60×60 region-map sweep that strips the upper 2 bits of the `+3` flags byte on every cell whose
-// `+0` rm_byte is *not* 0xd4 (warehouse marker). Inner loop unrolled 4 cells wide (gmn_x < 15 × 4
-// = 60 cells per row).
+// Clear temporary edge flags from all regional cells except warehouses.
 // FUNCTION: C2 0x6d24b
 // FUNCTION: C2WIN 0x004ab0be
 void unflag_all_rm_xwarehouse(void)
@@ -3922,8 +3818,7 @@ void unflag_all_rm_xwarehouse(void)
     } while (gmn_y < 60);
 }
 
-// Fill a clipped city-map square centered at (x,y), writing `value` to byte field `field_off` for
-// every covered cell. The side length is 2*range+1.
+// Set a data field throughout a clipped square of the city map.
 // FUNCTION: C2 0x6d309
 // FUNCTION: C2WIN 0x004ab1f8
 void set_range(int x, int y, int range, unsigned char field_off, unsigned char value)
@@ -3962,9 +3857,7 @@ void set_range(int x, int y, int range, unsigned char field_off, unsigned char v
     }
 }
 
-// Region-map sister of set_range. Writes ``kind_byte`` to byte offset ``field_offset`` within
-// every region_map cell of a (2*half_width+1)×(2*half_width+1) square centred on (x, y), clamped
-// to the 60×60 region grid.
+// Set a data field throughout a clipped square of the region map.
 // FUNCTION: C2 0x6d3ed
 // FUNCTION: C2WIN 0x004ab344
 void set_rm_range(int x, int y, int half_width, char field_offset,
@@ -4003,7 +3896,7 @@ void set_rm_range(int x, int y, int half_width, char field_offset,
     }
 }
 
-// Apply `mask` to a square city-map field around `(x, y)`, publishing the current scan position.
+// Set flag bits throughout a clipped square of the city map.
 // FUNCTION: C2 0x6d4c1
 // FUNCTION: C2WIN 0x004ab48d
 void flag_range(int extra, int x, int y, int range, unsigned char field_off, unsigned char mask)
@@ -4046,9 +3939,7 @@ void flag_range(int extra, int x, int y, int range, unsigned char field_off, uns
     }
 }
 
-// Stamp a (2*range+1)+extra-side square of city_map cells' entertainment byte (+0x0C) with
-// `threshold` if the cell's current value, masked by `query_mask`, falls strictly below
-// `threshold`.
+// Raise an entertainment coverage band throughout a clipped city-map square.
 // FUNCTION: C2 0x6d5aa
 // FUNCTION: C2WIN 0x004ab603
 void flag_range3(int extra, int x, int y, int range, int unused_field_off,
@@ -4099,8 +3990,7 @@ void flag_range3(int extra, int x, int y, int range, int unused_field_off,
     }
 }
 
-// Set a byte field (`field_off`) on all four city-map neighbours that exist around (x,y). `sptr`
-// is the current cell byte offset.
+// Set a data field on each cardinal city-map neighbour.
 // FUNCTION: C2 0x6d6b5
 // FUNCTION: C2WIN 0x004ab7b3
 void set_4_neighbours(int x, int y, int sptr, unsigned char field_off, unsigned char value)
@@ -4111,8 +4001,7 @@ void set_4_neighbours(int x, int y, int sptr, unsigned char field_off, unsigned 
     if (y < 79) ((unsigned char *)city_map)[sptr + 1600 + field_off] = value;
 }
 
-// Same as set_4_neighbours, but do not overwrite neighbours whose terrain byte has wall/tower bits
-// (0x06) set.
+// Set a data field on cardinal city neighbours that are not walls or towers.
 // FUNCTION: C2 0x6d6fb
 // FUNCTION: C2WIN 0x004ab82e
 void set_4_neighbours_if_not_wallortower(int x, int y, int sptr,
@@ -4128,7 +4017,7 @@ void set_4_neighbours_if_not_wallortower(int x, int y, int sptr,
         ((unsigned char *)city_map)[sptr + 1600 + field_off] = value;
 }
 
-// Set either east/west (`north_south == 0`) or north/south neighbours, skipping wall/tower cells.
+// Set a data field on one axis of city neighbours that are not walls or towers.
 // FUNCTION: C2 0x6d785
 // FUNCTION: C2WIN 0x004ab8f9
 void set_2_neighbours_if_not_wallortower(int x, int y, int sptr,
@@ -4148,8 +4037,7 @@ void set_2_neighbours_if_not_wallortower(int x, int y, int sptr,
     }
 }
 
-// Stamp `value` at byte field_off on every cardinal neighbour (city_map) whose terrain bits 0x40 /
-// 0x80 (aquaduct / reservoir) are clear.
+// Set a data field on cardinal city neighbours that are not aqueducts or reservoirs.
 // FUNCTION: C2 0x6d80a
 // FUNCTION: C2WIN 0x004ab9d3
 void set_4_neighbours_if_not_aquaductorresevoir(int x, int y, int sptr,
@@ -4165,8 +4053,7 @@ void set_4_neighbours_if_not_aquaductorresevoir(int x, int y, int sptr,
         ((unsigned char *)city_map)[sptr + 1600 + field_off] = value;
 }
 
-// Half-sister of set_4_neighbours_if_not_aquaductorresevoir: stamps only the E/W pair when
-// north_south == 0, only the N/S pair when north_south != 0.
+// Set a data field on one axis of city neighbours that are not aqueducts or reservoirs.
 // FUNCTION: C2 0x6d894
 // FUNCTION: C2WIN 0x004aba9e
 void set_2_neighbours_if_not_aquaductorresevoir(int x, int y, int sptr,
@@ -4186,8 +4073,7 @@ void set_2_neighbours_if_not_aquaductorresevoir(int x, int y, int sptr,
     }
 }
 
-// Region-map sister of set_4_neighbours: stamps `value` at field_off on every cardinal region-map
-// neighbour whose terrain bits 0x02 / 0x04 (wall / tower) are clear.
+// Set a data field on cardinal region neighbours that are not walls or towers.
 // FUNCTION: C2 0x6d919
 // FUNCTION: C2WIN 0x004abb78
 void set_4_rm_neighbours_if_not_wallortower(int x, int y, int sptr,
@@ -4203,8 +4089,7 @@ void set_4_rm_neighbours_if_not_wallortower(int x, int y, int sptr,
         ((unsigned char *)region_map)[(sptr + 480 + field_off)] = (unsigned char)value;
 }
 
-// Sister of set_4_rm_neighbours_if_not_wallortower with a different mask (0x40 =
-// aquaduct/reservoir bit).
+// Set a data field on cardinal region neighbours that are not aqueducts or reservoirs.
 // FUNCTION: C2 0x6d9a3
 // FUNCTION: C2WIN 0x004abc43
 void set_4_rm_neighbours_if_not_aquaductorresevoir(int x, int y, int sptr,
@@ -4220,9 +4105,7 @@ void set_4_rm_neighbours_if_not_aquaductorresevoir(int x, int y, int sptr,
         ((unsigned char *)region_map)[(sptr + 480 + field_off)] = value;
 }
 
-// Increment the "elastic" field (byte +2 of city_cell) by 2 at each of the 4 cardinal neighbours
-// of cell (x, y) at byte- offset `sptr`. Saturates at 0xff: a neighbour cell whose elastic value
-// is already 0xff is left untouched.
+// Increase the path cost of each cardinal city neighbour without changing blocked cells.
 // FUNCTION: C2 0x6da2d
 // FUNCTION: C2WIN 0x004abd0e
 void inc_elastic_by2(int x, int y, int sptr)
@@ -4245,7 +4128,7 @@ void inc_elastic_by2(int x, int y, int sptr)
     }
 }
 
-// Tests for ns polar walls and returns the result.
+// Test whether the north or south city neighbour is a wall.
 // FUNCTION: C2 0x6daa6
 // FUNCTION: C2WIN 0x004abdf9
 int test_for_ns_polar_walls(int _eax_unused, int y, int sptr)
@@ -4256,7 +4139,7 @@ int test_for_ns_polar_walls(int _eax_unused, int y, int sptr)
     return 0;
 }
 
-// Tests for ew polar walls and returns the result.
+// Test whether the east or west city neighbour is a wall.
 // FUNCTION: C2 0x6dad6
 // FUNCTION: C2WIN 0x004abe5b
 int test_for_ew_polar_walls(int x, int _edx_unused, int sptr)
@@ -4267,7 +4150,7 @@ int test_for_ew_polar_walls(int x, int _edx_unused, int sptr)
     return 0;
 }
 
-// Tests for next to region wall and returns the result.
+// Test whether any adjacent regional cell, including diagonals, is a wall.
 // FUNCTION: C2 0x6db08
 // FUNCTION: C2WIN 0x004abebd
 int test_for_next_to_region_wall(int x, int y)
@@ -4325,8 +4208,7 @@ int get_reg_buildings_in_radius(int x, int y, int span, int radius,
     return count;
 }
 
-// Count 3×3-neighbourhood regional industry/port tiles (0xdc..0xef) around (x,y), clipping at the
-// 60×60 map edges.
+// Count regional industry and port cells around a location.
 // FUNCTION: C2 0x6dcb4
 // FUNCTION: C2WIN 0x004ac19b
 int get_reg_industries_in_radius(int x, int y)
@@ -4358,9 +4240,7 @@ int get_reg_industries_in_radius(int x, int y)
     return count;
 }
 
-// Search a clipped radius around (x,y) for the nearest top-left tile of a
-// logging-camp/trading-post style 2×2 building (0xe8..0xeb). The best cell offset is published in
-// gmn_sptr; the return value is the longest-axis distance to that cell, or radius+1 if none found.
+// Find the nearest available trading-post building within a regional search radius.
 // FUNCTION: C2 0x6dd8c
 // FUNCTION: C2WIN 0x004ac2ff
 int get_closest_trading_post(int x, int y, int radius)
@@ -4416,8 +4296,7 @@ int get_closest_trading_post(int x, int y, int radius)
     return best;
 }
 
-// Add `amount` goods of type `goods` to warehouses in the 4×4 area around (x,y). Warehouse cells
-// store goods in region_map[(+7)]: high nibble = goods type, low nibble = amount.
+// Distribute goods among compatible warehouses near a regional location.
 // FUNCTION: C2 0x6dedf
 // FUNCTION: C2WIN 0x004ac4e9
 void fill_warehouses_with(int x, int y, int amount, int goods, int refresh)
@@ -4486,8 +4365,7 @@ next_unit:
     }
 }
 
-// Remove up to `amount` goods of type `goods` from warehouses, scanning the whole region map.
-// Stops once the request is satisfied.
+// Remove the requested goods from warehouses across the region map.
 // FUNCTION: C2 0x6e10d
 // FUNCTION: C2WIN 0x004ac84e
 void take_from_warehouses(int amount, int goods)
@@ -4524,8 +4402,7 @@ void take_from_warehouses(int amount, int goods)
     }
 }
 
-// Stamp `value` at field_off on the north + south city_map neighbours of `sptr` (skips the E/W
-// pair). Used by polar neighbour passes.
+// Set a data field on the north and south city neighbours.
 // FUNCTION: C2 0x6e1cb
 // FUNCTION: C2WIN 0x004ac9b3
 void set_ns_polar(int x, int y, int sptr, unsigned char field_off, unsigned char value)
@@ -4535,7 +4412,7 @@ void set_ns_polar(int x, int y, int sptr, unsigned char field_off, unsigned char
     if (y < 79) ((unsigned char *)city_map)[sptr + 1600 + field_off] = value;
 }
 
-// Sister of set_ns_polar: stamps `value` on the E/W neighbours only.
+// Set a data field on the east and west city neighbours.
 // FUNCTION: C2 0x6e1f6
 // FUNCTION: C2WIN 0x004ac9f6
 void set_ew_polar(int x, int y, int sptr, unsigned char field_off, unsigned char value)
@@ -4545,8 +4422,7 @@ void set_ew_polar(int x, int y, int sptr, unsigned char field_off, unsigned char
     if (x < 79) ((unsigned char *)city_map)[sptr + 20 + field_off] = value;
 }
 
-// Add signed `delta` to land_value (+0x0f) over a clipped city-map rectangle centered at (x,y).
-// Radius plus extra width determines the side length; values are clamped to [-64, 64].
+// Adjust land values in a clipped city-map area, clamping them to the valid range.
 // FUNCTION: C2 0x6e221
 // FUNCTION: C2WIN 0x004aca39
 void change_lv(int x, int y, int radius, int extra, int delta)
@@ -4584,9 +4460,7 @@ void change_lv(int x, int y, int radius, int extra, int delta)
     }
 }
 
-// Return the maximum ``land_value`` (cell field +0x0F) over a ``bp × bp`` square of city_map cells
-// starting at ``base``. Used by evolve_* paths to score zone-suitable land before stamping new
-// buildings.
+// Return the highest land value in a square city-map footprint.
 // FUNCTION: C2 0x6e31b
 // FUNCTION: C2WIN 0x004acbcf
 int get_best_lv(unsigned char *base, int bp)
@@ -4605,8 +4479,7 @@ int get_best_lv(unsigned char *base, int bp)
     return best;
 }
 
-// Given a city-map byte pointer into a multi-cell building, return a pointer to the building's
-// top-left corner cell.
+// Return the top-left cell of the building footprint containing a city-map cell.
 // FUNCTION: C2 0x6e36a
 // FUNCTION: C2WIN 0x004acc61
 unsigned char *get_ptr_to_corner(unsigned char *base_ptr, int size)
@@ -4620,9 +4493,7 @@ unsigned char *get_ptr_to_corner(unsigned char *base_ptr, int size)
     packed *= 1600; return base_ptr - packed;
 }
 
-// Returns 1 if any cell in a range×range square starting at `p` has `cell.education` (+0x0D)
-// sharing any bit with `mask`. Special-cased range==1 path returns the bitwise AND directly (used
-// for single-cell footprints like simple housing).
+// Test whether a city building footprint has any requested education coverage.
 // FUNCTION: C2 0x6e3b5
 // FUNCTION: C2WIN 0x004accc6
 char affected_by_cover1(unsigned char *p, int range, char mask)
@@ -4641,8 +4512,7 @@ char affected_by_cover1(unsigned char *p, int range, char mask)
     return 0;
 }
 
-// Sibling of affected_by_cover1; same shape but reads `cell.health` (+0x0E) instead of
-// `cell.education` (+0x0D).
+// Test whether a city building footprint has any requested health coverage.
 // FUNCTION: C2 0x6e41c
 // FUNCTION: C2WIN 0x004acd6f
 char affected_by_cover2(unsigned char *p, int range, char mask)
@@ -4661,9 +4531,7 @@ char affected_by_cover2(unsigned char *p, int range, char mask)
     return 0;
 }
 
-// Scan a `range × range` block of city-map cells starting at `start` and return the maximum value
-// of `cell->range_flag & mask` found in the block. Used by `cap_land_value` and `get_query_info`
-// to find the highest range marker in a neighbourhood.
+// Return the highest masked service-range value in a city building footprint.
 // FUNCTION: C2 0x6e47b
 // FUNCTION: C2WIN 0x004ace18
 int get_range1(unsigned char *start, int range, char mask)
@@ -4692,9 +4560,7 @@ int get_range1(unsigned char *start, int range, char mask)
     return best;
 }
 
-// Sister of `get_range1` for `cell->entertain` (+0xc) instead of `cell->range_flag` (+0xa).
-// Callers pass entertainment masks 0x3/0xc/0x30 (theatre/colosseum/circus 2-bit slots), confirming
-// the field is CC_ENTERTAIN, not CC_FPU_FLAG.
+// Return the highest masked entertainment coverage in a city building footprint.
 // FUNCTION: C2 0x6e4f3
 // FUNCTION: C2WIN 0x004aced1
 int get_range3(unsigned char *start, int range, char mask)
@@ -4723,8 +4589,7 @@ int get_range3(unsigned char *start, int range, char mask)
     return best;
 }
 
-// Scan a clipped square around (x, y) for housing cells (0x82..0xa1) that are top-left footprint
-// cells.
+// Summarize housing and service coverage within a city-map radius.
 // FUNCTION: C2 0x6e563
 // FUNCTION: C2WIN 0x004acf8a
 void test_range_for(int x, int y, int radius, int mode)
@@ -4796,7 +4661,7 @@ void test_range_for(int x, int y, int radius, int mode)
     }
 }
 
-// Return true if any cell in a clipped city-map square has the road / plaza terrain bit 0x20 set.
+// Test whether a city-map radius contains a road or plaza.
 // FUNCTION: C2 0x6e6d6
 // FUNCTION: C2WIN 0x004ad1db
 int test_range_for_road(int x, int y, int radius)
@@ -4829,8 +4694,7 @@ int test_range_for_road(int x, int y, int radius)
     return 0;
 }
 
-// Sum houses_to_people for top-left housing cells in a clipped area around (x,y). The optional
-// extra parameter widens the square beyond radius.
+// Count the population represented by housing within a city-map area.
 // FUNCTION: C2 0x6e7a2
 // FUNCTION: C2WIN 0x004ad339
 int test_area_for_population(int extra, int x, int y, int radius)
@@ -4882,9 +4746,7 @@ int test_area_for_population(int extra, int x, int y, int radius)
     return total;
 }
 
-// Snapshot the active map (city_map @ 80×80×20, or region_map @ 60×60×8) into the undo scratch
-// buffer. City snapshot lives at scratch_buffer + 0..0x1F3FF; region snapshot at
-// +0x1F400..+0x2647F.
+// Save the active city or region map for a possible undo.
 // FUNCTION: C2 0x6e898
 // FUNCTION: C2WIN 0x004ad4f0
 void save_undo_info(void)
@@ -4899,8 +4761,7 @@ void save_undo_info(void)
 }
 
 
-// Roll back the city map (80×80×20 = 0x1F400 bytes) from the undo scratch buffer. Skip if the undo
-// region was already flushed.
+// Restore the city map from the pending undo snapshot.
 // FUNCTION: C2 0x6e8eb
 // FUNCTION: C2WIN 0x004ad562
 void restore_city_from_undo_buffer(void)
@@ -4911,9 +4772,7 @@ void restore_city_from_undo_buffer(void)
     particles_cleared = 0;
 }
 
-// Region-map equivalent: city undo lives at scratch_buffer +0..0x1F3FF, region undo at
-// +0x1F400..+0x2647F (28 800 bytes). After the rollback, replays army-position adjustments
-// invalidated by the undo.
+// Restore the region map from the pending undo snapshot and repair army positions.
 // FUNCTION: C2 0x6e91b
 // FUNCTION: C2WIN 0x004ad5ad
 void restore_region_from_undo_buffer(void)
@@ -4940,8 +4799,7 @@ void clear_region_map(void)
     clear_all_cm(4);
 }
 
-// Zero the byte at offset `layer` (0..19) inside every cell of the 80x80 city_map. 8 byte-stores
-// per inner iter × 10 inner iters × 80 outer iters = 6400 cells = full city_map.
+// Clear one data layer across the city map.
 // FUNCTION: C2 0x6e99d
 void clear_all_cm(char layer)
 {
@@ -4961,8 +4819,7 @@ void clear_all_cm(char layer)
     }
 }
 
-// Strip the edge-info bit (mask 0xfd) from byte +3 on every cell of the active map (city or
-// region, picked by map_mode).
+// Clear temporary edge information from the active map.
 // FUNCTION: C2 0x6ea2d
 void clear_edge_info(void)
 {
@@ -4973,8 +4830,7 @@ void clear_edge_info(void)
     }
 }
 
-// Reset the route elastic-band overlay: clear region-map layer 2 then call set_route_elastic_range
-// for each band 1..15.
+// Build the regional movement-cost field used to preview an army route.
 // FUNCTION: C2 0x6ea65
 // FUNCTION: C2WIN 0x004ad6aa
 void set_route_elastic(void)
@@ -4985,7 +4841,7 @@ void set_route_elastic(void)
         set_route_elastic_range(i);
 }
 
-// BFS step for army route-finding on region_map.
+// Expand the regional army route search by one range band.
 // FUNCTION: C2 0x6ea84
 // FUNCTION: C2WIN 0x004ad6ec
 void set_route_elastic_range(int r)
@@ -5109,9 +4965,7 @@ void set_route_elastic_range(int r)
     }
 }
 
-// Steepest-descent route reconstruction on region_map. Called from show_latest_route after
-// set_route_elastic_range has filled cm[+2] of each region-map cell with the BFS distance from the
-// chosen start.
+// Trace the lowest-cost regional path back into the selected army route.
 // FUNCTION: C2 0x6ee0b
 // FUNCTION: C2WIN 0x004adcc4
 void trace_back_route_elastic(void)
@@ -5184,7 +5038,7 @@ void trace_back_route_elastic(void)
         .row_len[this_route_number] = (unsigned char)idx + 1;
 }
 
-// Reset every flag-marker subsystem (city / province / danger).
+// Reset city, province, and danger map markers.
 // FUNCTION: C2 0x6f0fa
 // FUNCTION: C2WIN 0x004ae1a9
 void init_flag_markers(void)
@@ -5208,7 +5062,7 @@ void init_flag_markers(void)
         danger_flag_list[i] = -1;
 }
 
-// Count active entries (≠ -1) in city_flag_list.
+// Update the number of active city markers.
 // FUNCTION: C2 0x6f173
 // FUNCTION: C2WIN 0x004ae2e2
 void count_city_flags(void)
@@ -5221,7 +5075,7 @@ void count_city_flags(void)
     }
 }
 
-// Count active entries (≠ -1) in prov_flag_list.
+// Update the number of active province markers.
 // FUNCTION: C2 0x6f196
 // FUNCTION: C2WIN 0x004ae32f
 void count_prov_flags(void)
@@ -5234,8 +5088,7 @@ void count_prov_flags(void)
     }
 }
 
-// If `val` is in city_flag_list, clear it and return 1. Otherwise route to put_city_flag and
-// return 1 on hit, 0 otherwise.
+// Add or remove the city marker at a map location.
 // FUNCTION: C2 0x6f1b9
 // FUNCTION: C2WIN 0x004ae37c
 int toggle_city_flag(int val)
@@ -5251,7 +5104,7 @@ int toggle_city_flag(int val)
     return 0;
 }
 
-// Mirror of toggle_city_flag for prov_flag_list.
+// Add or remove the province marker at a map location.
 // FUNCTION: C2 0x6f1ed
 // FUNCTION: C2WIN 0x004ae3f6
 int toggle_prov_flag(int val)
@@ -5267,9 +5120,7 @@ int toggle_prov_flag(int val)
     return 0;
 }
 
-// Insert `val` (a cm_ptr) into the next free slot of city_flag_list[20], starting the search from
-// last_city_flag+1 (wrapping at 20). Returns 1 on insert, 0 if the list is full (no_of_city_flags
-// >= 20) or no free slot was found in 20 attempts.
+// Add a city marker if a marker slot is available.
 // FUNCTION: C2 0x6f221
 // FUNCTION: C2WIN 0x004ae470
 int put_city_flag(int val)
@@ -5291,9 +5142,7 @@ int put_city_flag(int val)
     return 0;
 }
 
-// Sister of put_city_flag for the region map: inserts `val` into prov_flag_list[20], cycling
-// last_prov_flag, marking region_map[(val/20)].+0x2 = 1. Same special-case for
-// danger_flag_list[0].
+// Add a province marker if a marker slot is available.
 // FUNCTION: C2 0x6f290
 // FUNCTION: C2WIN 0x004ae529
 int put_prov_flag(int val)
@@ -5315,7 +5164,7 @@ int put_prov_flag(int val)
     return 0;
 }
 
-// Latch a single danger flag at slot 0 of danger_flag_list and reset the cursor. Always returns 1.
+// Set the current danger marker.
 // FUNCTION: C2 0x6f2ff
 // FUNCTION: C2WIN 0x004ae5e2
 int put_danger_flag(int val)
@@ -5325,9 +5174,7 @@ int put_danger_flag(int val)
     return 1;
 }
 
-// Clear every city_flag_list slot whose value matches `val`, also wiping the road/aqueduct byte
-// (+0x02) of the corresponding city_map cell, then refresh the running flag count. Loop scans the
-// full 20-entry table without an early-out so duplicate entries are all cleared.
+// Remove all city markers at a map location.
 // FUNCTION: C2 0x6f312
 // FUNCTION: C2WIN 0x004ae609
 void clear_city_flag(int val)
@@ -5342,7 +5189,7 @@ void clear_city_flag(int val)
     count_city_flags();
 }
 
-// Mirror of clear_city_flag for prov_flag_list / region_map.
+// Remove all province markers at a map location.
 // FUNCTION: C2 0x6f34c
 // FUNCTION: C2WIN 0x004ae665
 void clear_prov_flag(int val)
@@ -5357,7 +5204,7 @@ void clear_prov_flag(int val)
     count_prov_flags();
 }
 
-// Clears danger flag.
+// Clear the current danger marker.
 // FUNCTION: C2 0x6f386
 // FUNCTION: C2WIN 0x004ae6c1
 void clear_danger_flag(void)
@@ -5366,7 +5213,7 @@ void clear_danger_flag(void)
     count_danger_flags();
 }
 
-// Count active entries (≠ -1) in danger_flag_list.
+// Update the number of active danger markers.
 // FUNCTION: C2 0x6f390
 // FUNCTION: C2WIN 0x004ae295 REORDERED
 void count_danger_flags(void)
@@ -5379,8 +5226,7 @@ void count_danger_flags(void)
     }
 }
 
-// Cycle the "selected city flag" pointer forward to the next valid (i.e. non-empty) entry in
-// city_flag_list.
+// Select the next active city marker.
 // FUNCTION: C2 0x6f3b3
 // FUNCTION: C2WIN 0x004ae761
 int next_city_flag(void)
@@ -5397,8 +5243,7 @@ int next_city_flag(void)
     return 0;
 }
 
-// Cycle the "selected province flag" pointer forward to the next valid entry in prov_flag_list.
-// Returns 1 on success, 0 when the list is empty.
+// Select the next active province marker.
 // FUNCTION: C2 0x6f405
 // FUNCTION: C2WIN 0x004ae7e7
 int next_prov_flag(void)
@@ -5415,8 +5260,7 @@ int next_prov_flag(void)
     return 0;
 }
 
-// Cycle the "selected danger flag" cursor forward to the next active danger marker. Returns 1 on
-// success, 0 when the list is empty.
+// Select the next active danger marker.
 // FUNCTION: C2 0x6f457
 // FUNCTION: C2WIN 0x004ae6db REORDERED
 int next_danger_flag(void)

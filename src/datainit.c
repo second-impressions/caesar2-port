@@ -284,21 +284,3 @@ extern void sf13_autofire_missile(void);
 extern void sf14_opertunist_fire(void);
 extern void sf15_move_and_reform(void);
 extern void sf16_beserk(void);
-
-/* IFF / Deluxe Paint LBM file header written to disk by
-   write_lbm() before the pixel data.  Bytes spell:
-     'FORM' <size:BE> 'PBM ' 'BMHD' <14:BE>
-     <width=640> <height=480> <0> <0> <8bpp> <0> <0>
-     <0xff:transp> <1:compress> <1:pad>
-     <width=640> <height=480>
-     'CMAP' <0x300:BE>  (24-bit, 256-entry palette follows)
-   Declared int[] so the loader can `memcpy` 48 bytes in one
-   shot; the values are pure binary, not numeric. */
-
-
-/* IFF / Deluxe Paint LBM body chunk header: 'BODY' <size:BE>.
-   Written between the CMAP palette and the raw 640x480 pixel
-   data.  Same int[] storage rationale as LBM_HEADER1. */
-
-
-/* These pairs intentionally share handlers. */

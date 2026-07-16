@@ -10,10 +10,7 @@ extern void write_i_sprite(unsigned char *sprite_addr);
 extern void write_i_left_sprite(unsigned char *sprite_addr);
 extern void write_i_right_sprite(unsigned char *sprite_addr);
 
-/* Assembly sprite-diamond blitters. */
-
-// Repaint the region map: clear sprite_error, set the ambient sprite slot, then redraw base + top
-// layers.
+// Draw the region map's terrain and object layers with a fresh sprite-error count.
 // FUNCTION: C2 0x39411
 // FUNCTION: C2WIN 0x00445910
 void show_regionmap(void)
@@ -24,8 +21,7 @@ void show_regionmap(void)
     show_regionmap_top();
 }
 
-// Region-map base layer. Reads the byte-sized region_map cells (tile = base_kind), rotates via
-// rotated2_map[tile].dir[map_dir/2] + 0x10, and stamps a diamond.
+// Draw terrain and building bases for the visible region-map cells.
 // FUNCTION: C2 0x39430
 // FUNCTION: C2WIN 0x00445939
 void show_regionmap_base(void)
@@ -101,7 +97,7 @@ void show_regionmap_base(void)
     }
 }
 
-// Region-map top layer (building tops + army sprites). Mirrors show_battlemap_top.
+// Draw building tops, armies, and bottom-edge roof slices over the region map.
 // FUNCTION: C2 0x396c5
 // FUNCTION: C2WIN 0x00445cb5
 void show_regionmap_top(void)
@@ -169,8 +165,7 @@ void show_regionmap_top(void)
     bottom2_line_no_sides();
 }
 
-// Region-map base scanline (no edge clipping). All pm_screen_width cells use the full-diamond
-// style.
+// Draw an unclipped row of terrain and building bases, then advance the map scan.
 // FUNCTION: C2 0x398a6
 // FUNCTION: C2WIN 0x00445fa4
 void mid2_line_no_sides_base(void)
@@ -212,9 +207,7 @@ void mid2_line_no_sides_base(void)
     pm_y_clip += h;
 }
 
-// Region-map base scanline with edge clipping. Leftmost cell uses place_lefthalf_diamond();
-// rightmost uses place_righthalf_diamond(); middle (pm_screen_width-2) cells use full
-// place_diamond().
+// Draw a base row with half-diamonds at the left and right viewport edges.
 // FUNCTION: C2 0x399cc
 // FUNCTION: C2WIN 0x0044611a
 void mid2_line_with_sides_base(void)
@@ -297,8 +290,7 @@ right_edge_done:
     pm_y_clip += h;
 }
 
-// Region-map top-layer scanline (no edge clipping). Walks pm_screen_width cells calling
-// place2_sprite(0) (or place2_a_building_top(0) when tile > 0x7C).
+// Draw an unclipped row of building tops and sprites, including adjacent spillover sprites.
 // FUNCTION: C2 0x39c9f
 // FUNCTION: C2WIN 0x004464de
 void mid2_line_no_sides_top(void)
@@ -337,8 +329,7 @@ void mid2_line_no_sides_top(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// Region-map top-layer scanline with edge clipping. Left edge uses place2_sprite(1) (and
-// place2_a_building_top(3) when a building); middle cells use 0; right uses 2 (4 for buildings).
+// Draw a top-layer row with clipped building and sprite styles at both viewport edges.
 // FUNCTION: C2 0x39dd3
 // FUNCTION: C2WIN 0x004466a9
 void mid2_line_with_sides_top(void)
@@ -383,8 +374,7 @@ void mid2_line_with_sides_top(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// Twin of mid2_line_with_sides_top for the bottom edge of the displayed slice. Wrapped in `if
-// (pm_shown_y < 0xA1)` so it becomes a no-op once we’ve walked past the bottom of the region map.
+// Draw a clipped bottom row using building roofs, stopping at the region-map boundary.
 // FUNCTION: C2 0x39f31
 // FUNCTION: C2WIN 0x004468c6
 void bottom2_line_with_sides(void)
@@ -431,8 +421,7 @@ void bottom2_line_with_sides(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// Twin of mid2_line_no_sides_top for the bottom edge. Same off-screen `if (pm_shown_y < 0xA1)`
-// guard and place2_a_building_roof substitution as bottom2_line_with_sides.
+// Draw an unclipped bottom row using building roofs and adjacent spillover sprites.
 // FUNCTION: C2 0x3a096
 // FUNCTION: C2WIN 0x00446ae3
 void bottom2_line_no_sides(void)
@@ -529,9 +518,7 @@ void place2_a_building_base(int style)
     }
 }
 
-// Region-map building-top ("hat") diamond. Same five-bank image / rotation lookup as
-// place2_a_building_base over the region's rotated2_bank0..3 tables; bank 0x10 routes through
-// fixt_data via rotated2_map.
+// Draw a building's visible upper slice, province label, and any regional marker.
 // FUNCTION: C2 0x3a402
 // FUNCTION: C2WIN 0x0044707e
 void place2_a_building_top(int style)
@@ -689,9 +676,7 @@ put_back: sprite_x = old_sprite_x; sprite_y = old_sprite_y;
     }
 }
 
-// Region-map roof slice of a building. Snapshot sprite_y, do the same five-bank image lookup as
-// place2_a_building_base, then: * Early-out when y_length <= pm_y_clip (entire roof above the
-// visible slice): middle styles bump sprite_x by pm_diamond_width, edge styles just exit.
+// Draw the portion of a building roof that crosses the bottom of the visible map slice.
 // FUNCTION: C2 0x3ab26
 // FUNCTION: C2WIN 0x00447bf3
 void place2_a_building_roof(int style)
@@ -809,8 +794,7 @@ void place2_a_building_roof(int style)
     }
 }
 
-// Region-map army renderer. Reads the cell's army index from occupant and dispatches up to four
-// sprite passes: 1.
+// Draw a cell's army layers together with its flag and event overlays.
 // FUNCTION: C2 0x3af6b
 // FUNCTION: C2WIN 0x004482d9
 void place2_sprite(int style)
@@ -1056,8 +1040,7 @@ restore_event:
     }
 }
 
-// Region-map debug overlay. test_mode1 compresses two region flags into a tiny status value (bit
-// 0x40 from +6 and bit 0x20 from +3), while test_mode2 prints signed region_map+2.
+// Print the selected per-cell diagnostic value over a region-map diamond.
 // FUNCTION: C2 0x3ba9d
 // FUNCTION: C2WIN 0x00449419
 void print2_test_info(void)

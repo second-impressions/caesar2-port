@@ -9,9 +9,8 @@ extern void write_i_sprite(unsigned char *sprite_addr);
 extern void write_i_left_sprite(unsigned char *sprite_addr);
 extern void write_i_right_sprite(unsigned char *sprite_addr);
 
-// Top-level battle-map render: clears the per-frame sprite error flag, draws the battle-map base
-// and top-half overlays, paints a 2x8 grid of small clipping sprites along the top edge at zoom 1,
-// decrements the cell-update countdown, and pops the battle-setup dialog if the setup phase is.
+// Render the battle pseudo-map, its figure and arrow overlays, zoom-one top clipping strip,
+// pending cell updates, and the active battle-setup dialog.
 // FUNCTION: C2 0x3bb88
 // FUNCTION: C2WIN 0x0041dc80
 void show_battlemap(void)
@@ -31,7 +30,7 @@ void show_battlemap(void)
         show_battle_setup_box();
 }
 
-// Paint the terrain half of the battle pseudo-map, including clipped edges and virtual background tiles.
+// Render the visible battle terrain rows, honoring dirty-cell updates, clipped edges, and virtual tiles.
 // FUNCTION: C2 0x3bbeb
 // FUNCTION: C2WIN 0x0041dd0b
 void show_battlemap_base(void)
@@ -45,7 +44,7 @@ void show_battlemap_base(void)
     pm_shown_y = pm_y;
     pm_y_clip  = 0;
 
-    /* top edge */
+    /* Render the upper clipped row. */
     for (i = 0, pm_shown_x = pm_x;
          i < pm_screen_width; i++) {
         pm_shown_ptr = pseudo_map[pm_shown_y][pm_shown_x++];
@@ -90,14 +89,14 @@ void show_battlemap_base(void)
     sprite_y += pm_diamond_half_height;
     pm_shown_y++;
 
-    /* interior */
+    /* Render alternating interior row layouts. */
     mid3_line_with_sides_base();
     for (j = 0; j < (pm_screen_height - 2) / 2; j++) {
         mid3_line_no_sides_base();
         mid3_line_with_sides_base();
     }
 
-    /* bottom edge — same as top with style=1 */
+    /* Render the lower clipped row. */
     sprite_x   = pm_screen_x_start;
     for (i = 0, pm_shown_x = pm_x; i < pm_screen_width; i++) {
         pm_shown_ptr = pseudo_map[pm_shown_y][pm_shown_x++];
@@ -141,8 +140,7 @@ void show_battlemap_base(void)
     }
 }
 
-// Top-half (figures, arrows, sprites) twin of show_battlemap_base. Same scanline layout but each
-// cell invokes place3_sprite() which draws the figure_a / arrow_a stored in battle_map[+1] / [+3].
+// Render the figure and arrow overlays for the visible battle-map rows.
 // FUNCTION: C2 0x3bf3c
 // FUNCTION: C2WIN 0x0041e1e0
 void show_battlemap_top(void)
@@ -173,7 +171,7 @@ void show_battlemap_top(void)
         mid3_line_with_sides_top();
     }
 
-    /* bottom-edge sprite-only scan (mirror of top) */
+    /* Render the lower overlay row and its two following edge rows. */
     sprite_x   = pm_screen_x_start;
     i = 0;
     pm_shown_x = pm_x;
@@ -194,8 +192,7 @@ void show_battlemap_top(void)
     bottom3_line_no_sides();
 }
 
-// Render one interior base scanline (no edge clipping). All pm_screen_width cells use the
-// full-diamond style.
+// Render one interior terrain row with full diamonds and optional debug labels.
 // FUNCTION: C2 0x3c0af
 // FUNCTION: C2WIN 0x0041e3ca
 void mid3_line_no_sides_base(void)
@@ -247,9 +244,7 @@ void mid3_line_no_sides_base(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// Render one interior base scanline with edge clipping — uses place_lefthalf_diamond() for the
-// leftmost column, place_righthalf_diamond() for the rightmost, and full place_diamond() for the
-// (pm_screen_width-2) middle cells.
+// Render one terrain row with half-diamond clipping at the left and right map edges.
 // FUNCTION: C2 0x3c244
 // FUNCTION: C2WIN 0x0041e622
 void mid3_line_with_sides_base(void)
@@ -260,7 +255,7 @@ void mid3_line_with_sides_base(void)
     pm_shown_x = pm_x;
     sprite_x   = pm_screen_x_start;
 
-    /* leftmost half-diamond — same body as middle but place_lefthalf_diamond */
+    /* Render the clipped left edge cell. */
     pm_shown_ptr = pseudo_map[pm_shown_y][pm_shown_x++];
     if (update_map == 0) {
         if (((pm_shown_ptr) >= 0x0FFF0000)) {
@@ -295,7 +290,7 @@ terrain_left:
     } else goto terrain_left;
     sprite_x += pm_diamond_half_width;
 
-    /* middle full diamonds */
+    /* Render the full interior cells. */
     for (i = 0; i < pm_screen_width - 1; i++) {
         pm_shown_ptr = pseudo_map[pm_shown_y][pm_shown_x++];
         if (update_map == 0) {
@@ -335,7 +330,7 @@ terrain_left:
         print3_test_info();
     }
 
-    /* rightmost half-diamond — same body as middle but place_righthalf_diamond */
+    /* Render the clipped right edge cell. */
     pm_shown_ptr = pseudo_map[pm_shown_y][pm_shown_x++];
     if (update_map == 0) {
         if (((pm_shown_ptr) >= 0x0FFF0000)) {
@@ -373,8 +368,7 @@ mid_done:
     pm_y_clip += pm_diamond_half_height;
 }
 
-// Top-half mid scanline, no edge half-cells. Three render passes (leading/main/trailing
-// half-cells, styles 2/0/2).
+// Render an overlay row plus any visible neighboring cells beyond its left and right edges.
 // FUNCTION: C2 0x3c61e
 // FUNCTION: C2WIN 0x0041ebe0
 void mid3_line_no_sides_top(void)
@@ -409,8 +403,7 @@ void mid3_line_no_sides_top(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// Top-half mid scanline, full edge cells. Three render passes: leading full cell (style=1), main
-// row of pm_screen_width - 1 cells (style=0), trailing full cell (style=2).
+// Render an overlay row whose first and last cells are clipped to the visible half-diamonds.
 // FUNCTION: C2 0x3c733
 // FUNCTION: C2WIN 0x0041ed78
 void mid3_line_with_sides_top(void)
@@ -442,7 +435,7 @@ void mid3_line_with_sides_top(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// Bottom-edge with-sides scanline. Three render passes: 1.
+// Render a bounded lower overlay row with clipped first and last cells.
 // FUNCTION: C2 0x3c846
 // FUNCTION: C2WIN 0x0041ef08
 void bottom3_line_with_sides(void)
@@ -476,7 +469,7 @@ void bottom3_line_with_sides(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// Bottom-edge no-sides scanline. Three render passes: 1.
+// Render a bounded lower overlay row plus any visible neighboring edge cells.
 // FUNCTION: C2 0x3c960
 // FUNCTION: C2WIN 0x0041f098
 void bottom3_line_no_sides(void)
@@ -513,8 +506,8 @@ void bottom3_line_no_sides(void)
     pm_y_clip += pm_diamond_half_height;
 }
 
-// Composite figure-and-arrow sprite renderer for one battle-map cell. Reads figure_a from
-// battle_map[+1] and arrow_a from battle_map[+3] of the current pm_shown_ptr.
+// Render a cell's figure, elephant riders, and linked arrow sprites with directional offsets
+// and screen clipping.
 // FUNCTION: C2 0x3ca7f
 // FUNCTION: C2WIN 0x0041f231
 void place3_sprite(int style)
@@ -680,8 +673,7 @@ void place3_sprite(int style)
     }
 }
 
-// Battle-map debug overlay. test_mode1 prints the state_idx of the figure stored in battle_map+1
-// (or zero for an empty cell); test_mode2 prints signed battle_map+3.
+// Print the cell's figure state or signed arrow value when the corresponding debug mode is active.
 // FUNCTION: C2 0x3d2d5
 // FUNCTION: C2WIN 0x0041fe23
 void print3_test_info(void)

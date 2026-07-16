@@ -1,5 +1,5 @@
 
-#include <stdlib.h>     /* free() */
+#include <stdlib.h>
 
 #include "c2_data.h"
 
@@ -202,24 +202,17 @@ struct gfx_entry c2_battle_aux_gfx[68] = {
     { "PA3SWDBX.PL8", 100000 }
 };
 
-/* File-local state. */
+/* Persistent game settings and player information. */
 struct c2inf_rec c2inf;
-
-/* sb_cm_undo_flushed and sb_rm_undo_flushed are byte-wide flags. */
-
-/* Forward declarations of helpers from other Caesar II modules. */
 
 extern void *malloc(unsigned int size);
 extern void  printf(const char *fmt, ...);
 extern void  exit(int status);
 
 #ifndef _MSC_VER
-extern int read_config();  /* really char -- lib32.c */
-extern int to_upper();     /* really char -- lib32.c */
+extern int read_config();
+extern int to_upper();
 #endif
-
-/* String constants for circus / building filenames in the data segment. */
-
 
 extern int   _getdrive(void);
 extern int   getch(void);
@@ -233,7 +226,7 @@ extern int      chdir(const char *path);
 extern int      open(const char *path, int flags, ...);
 extern int      close(int fd);
 
-// Caesar II program entry point.
+// Initializes the game, runs campaign sessions until exit, then releases resources.
 // FUNCTION: C2 0x10010
 // FUNCTION: C2WIN 0x00443733
 void main(int argc, char *argv[])
@@ -394,7 +387,7 @@ void main(int argc, char *argv[])
 end:;
 }
 
-// Per-tick battle bookkeeping. Only fires when the game is in the BATTLE state (game_state == 4).
+// Continues an active battle and returns to normal play unless the battle requests a restart.
 // FUNCTION: C2 0x10409
 // FUNCTION: C2WIN 0x00443c91
 void deal_with_battles(void)
@@ -417,7 +410,7 @@ void deal_with_battles(void)
     }
 }
 
-// Starts a new game.
+// Initializes a new campaign and opens its first province unless a saved game or tutorial was loaded.
 // FUNCTION: C2 0x1049b
 // FUNCTION: C2WIN 0x00443d62
 void start_a_new_game(void)
@@ -427,7 +420,7 @@ void start_a_new_game(void)
     if (exit_flag)     exit_game();
     if (pre_loaded_status)        return;
     if (continue_tutorial_status) return;
-    start_year = year = -300;          /* 0xFFFFFED4 = -300 BC */
+    start_year = year = -300;          /* 300 BC */
     week = month = 0;
     years_elapsed = 0;
     completed_provinces = 0;
@@ -440,7 +433,7 @@ void start_a_new_game(void)
     new_province();
 }
 
-// Starts a promotion.
+// Advances the calendar as needed and starts the province awarded by a promotion.
 // FUNCTION: C2 0x10529
 // FUNCTION: C2WIN 0x00443e35
 void start_a_promotion(void)
@@ -455,9 +448,7 @@ void start_a_promotion(void)
     if (restart_flag) start_a_new_game();
 }
 
-// Initialize a fresh province for play: clear figures and armies, reset growth counters, set
-// starting denarii (skill-tier scaled minus a per-completed-province reduction), and call the
-// province-setup helpers.
+// Initializes a province's map, population, armies, economy, ratings, and regional systems.
 // FUNCTION: C2 0x10565
 // FUNCTION: C2WIN 0x00443eca
 void new_province(void)
@@ -524,9 +515,7 @@ void new_province(void)
     pax_romanum             = 0;
 }
 
-// One-shot reset of the per-game runtime state: panel-map cursor, city/province camera, zoom and
-// rotation, command-window pixel rect, ambient map dimensions, and the placing/cheat/highlight
-// scratchpads. Loads the pseudo-map and the per-zoom map graphics for the freshly-zoomed view.
+// Resets map, camera, command-window, placement, and cheat state for a game session.
 // FUNCTION: C2 0x106bb
 // FUNCTION: C2WIN 0x004440a8
 void setup_game(void)
@@ -574,8 +563,7 @@ void setup_game(void)
     pm_build_shape    = 0;
 }
 
-// Reload the eight per-zoom map-graphics buffers (people, fixtures, houses, four building tiers,
-// and tops) from c2_map_gfx.
+// Reloads the eight map graphics buffers for the selected map mode and zoom level.
 // FUNCTION: C2 0x107db
 // FUNCTION: C2WIN 0x0044421c
 int load_map_graphics(int mode, int level)
@@ -661,7 +649,7 @@ done:
     return ret;
 }
 
-// Swaps the active circus graphics set and refreshes its cached sprites.
+// Reloads circus sprites for a populous city, alternating the graphics by year.
 // FUNCTION: C2 0x10944
 // FUNCTION: C2WIN 0x0044474a
 void swap_circus_gfx(void)
@@ -690,9 +678,7 @@ void swap_circus_gfx(void)
     }
 }
 
-// Read one zoom-keyed graphics-table entry into the people_data buffer. The 0-arg path uses
-// c2_map_gfx (8 entries per zoom), the non-zero arg path uses c2_overlay_gfx (1 entry per zoom);
-// each entry is 20 bytes (16-byte filename + 4-byte size).
+// Loads the people or overlay graphics for the current zoom level into people_data.
 // FUNCTION: C2 0x10a40
 // FUNCTION: C2WIN 0x004448fb
 int load_overlay_graphics(int param)
@@ -722,7 +708,7 @@ int load_overlay_graphics(int param)
     return ok;
 }
 
-// Reload map, unit, and optional mercenary graphics for the active battle.
+// Reloads terrain, troop, and optional mercenary graphics for the active battle.
 // FUNCTION: C2 0x10ac9
 // FUNCTION: C2WIN 0x004449df
 int load_battle_graphics(int n)
@@ -765,8 +751,7 @@ int load_battle_graphics(int n)
     return 1;
 }
 
-// Read one slot of a 2D graphics-file table and load the named file into a freshly malloc'd
-// buffer. Each table entry is 20 bytes: 16-byte filename followed by a 4-byte size field.
+// Allocates and loads one troop graphics file from the primary or auxiliary battle table.
 // FUNCTION: C2 0x10c03
 // FUNCTION: C2WIN 0x00444cf6
 void *load_a_battle_gfx_file(int n, int idx, int aux)
@@ -809,7 +794,7 @@ void *load_a_battle_gfx_file(int n, int idx, int aux)
     return buf;
 }
 
-// Initializes map gfx buffers.
+// Marks all map graphics buffers as empty.
 // FUNCTION: C2 0x10cb9
 // FUNCTION: C2WIN 0x00444e27
 void init_map_gfx_buffers(void)
@@ -824,7 +809,7 @@ void init_map_gfx_buffers(void)
     tops_data      = 0;
 }
 
-// Clears map gfx buffers.
+// Releases all allocated map graphics buffers.
 // FUNCTION: C2 0x10cee
 // FUNCTION: C2WIN 0x00444fd3
 void clear_map_gfx_buffers(void)
@@ -839,7 +824,7 @@ void clear_map_gfx_buffers(void)
     if (tops_data)      free(tops_data);
 }
 
-// Initializes battle gfx buffers.
+// Marks all battle graphics buffers as empty.
 // FUNCTION: C2 0x10d80
 // FUNCTION: C2WIN 0x004451bf
 void init_battle_gfx_buffers(void)
@@ -857,7 +842,7 @@ void init_battle_gfx_buffers(void)
     figure10_data = 0;
 }
 
-// Clears battle gfx buffers.
+// Releases all allocated battle graphics buffers.
 // FUNCTION: C2 0x10dc7
 // FUNCTION: C2WIN 0x0044536f
 void clear_battle_gfx_buffers(void)
@@ -875,8 +860,8 @@ void clear_battle_gfx_buffers(void)
     if (figure10_data) free(figure10_data);
 }
 
-// Read the 14 boot-time art / data blobs into their fixed destination buffers. Returns 0 on
-// success or a 1-based code identifying the first file that failed to load.
+// Loads boot-time graphics, text, palettes, and interface data into their fixed buffers.
+// Returns zero on success or the one-based index of the first file that failed.
 // FUNCTION: C2 0x10e89
 // FUNCTION: C2WIN 0x0044551f
 int load_start_graphics(void)
@@ -898,7 +883,7 @@ int load_start_graphics(void)
     return 0;
 }
 
-// Flushes the pending sound-buffer data.
+// Marks both map undo buffers as flushed.
 // FUNCTION: C2 0x1107c
 // FUNCTION: C2WIN 0x0044578b
 void flush_sb_buffer(void)
@@ -907,7 +892,7 @@ void flush_sb_buffer(void)
     sb_rm_undo_flushed = 1;
 }
 
-// Performs pos.
+// Plays the positive-action feedback sound.
 // FUNCTION: C2 0x1108b
 // FUNCTION: C2WIN 0x004457a4
 void do_pos(void)
@@ -915,7 +900,7 @@ void do_pos(void)
     pos_sound();
 }
 
-// Performs neg.
+// Plays the negative-action feedback sound.
 // FUNCTION: C2 0x11090
 // FUNCTION: C2WIN 0x004457b4
 void do_neg(void)
@@ -923,7 +908,8 @@ void do_neg(void)
     neg_sound();
 }
 
-// Verify that the configured CD-ROM drive contains "cd.dat".
+// Checks the configured CD drive for cd.dat and restores the startup drive and path.
+// Returns zero on success or an error code identifying the failed step.
 // FUNCTION: C2 0x11095
 // FUNCTION: C2WIN 0x004457c4
 int test_cd_drive(void)

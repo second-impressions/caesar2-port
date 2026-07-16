@@ -1,6 +1,4 @@
-//
-// Initialized rotation lookup data.
-// Data-only translation unit.
+// Lookup tables mapping sprite and tile indices across map rotations.
 
 #include "c2_data.h"
 

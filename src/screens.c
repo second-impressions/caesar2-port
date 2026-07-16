@@ -1,12 +1,12 @@
 
 #include "c2_data.h"
-#include "c2_types.h"   /* struct request_message */
+#include "c2_types.h"
 
 int history_graph_years[5] = { 10, 20, 50, 100, 200 };
 
 #ifndef _MSC_VER
-extern int affected_by_cover1();  /* really char -- map.c */
-extern int affected_by_cover2();  /* really char -- map.c */
+extern int affected_by_cover1();
+extern int affected_by_cover2();
 #endif
 
 
@@ -15,8 +15,6 @@ extern void font_list(int idx, int word_count, int x, int y, unsigned char *font
 extern void font_no(int value, char pad_char, char *suffix, int x, int y, unsigned char *font, int color);
 extern void font_format_split(int idx, int word_skip, int x, int y_start, int max_width, int line_limit, int x_overflow, int max_width_overflow, unsigned char *font, int color);
 extern void show_cursor(unsigned char *font);
-
-/* Assembly helpers. */
 
 // Redraw the complete city screen, including map, controls, overlays, status bar, and palette.
 // FUNCTION: C2 0x5b181
@@ -58,9 +56,7 @@ void city_map_screen(int do_black_out)
     hold_mouse_replace = 1;
 }
 
-// Build and display the region-map screen. Optionally fades to black, loads the base province PL8
-// into scratch_buffer, restores the four image quadrants, draws menus/compass/landfill cursor,
-// refreshes the top-line/icon areas, then installs the region palette.
+// Draw the complete region screen, including its map, controls, status areas, and palette.
 // FUNCTION: C2 0x5b2ca
 // FUNCTION: C2WIN 0x00422610
 void region_map_screen(int do_black_out)
@@ -142,16 +138,14 @@ void battle_screen(int skipblackout)
     hold_mouse_replace = 1;
 }
 
-// Right-pane battle stats panel. Dirty-checks the cached values in request_message (bs_nof_units /
-// bs_men / bs_morale / bs_type and prev_mode / pointer_mode / last_icon_over) and bails when
-// nothing changed.
+// Update the battle statistics panel when its unit data or pointer context changes.
 // FUNCTION: C2 0x5b53d
 // FUNCTION: C2WIN 0x004227f5
 void battle_stats_panel(void)
 {
-    int a;  /* ratio / bar count */
-    int b;  /* loop counter */
-    int c;  /* mode */
+    int a;
+    int b;
+    int c;
 
     c = 0;
 
@@ -255,9 +249,7 @@ void battle_stats_panel(void)
     setup_refresh_area(0x1e6, 0x170, 0xa, 7, 1);
 }
 
-// Repaint the top-of-battle-map totals panel: "their" and "our" armies’ man-counts + morale bars
-// side by side. Dirty-checks against request_message+0x24..0x30 + the redraw_icons flag; bails
-// when nothing changed.
+// Update the opposing armies' troop totals and morale bars when their values change.
 // FUNCTION: C2 0x5ba21
 // FUNCTION: C2WIN 0x00422e53
 void battle_totals_panel(void)
@@ -322,8 +314,7 @@ void battle_totals_panel(void)
     setup_refresh_area(0, 0x180, 0xb, 6, 1);
 }
 
-// Battle setup modal: fixed mosaic window, heading/subheading, wrapped explanatory text, and an
-// OK/continue prompt.
+// Show the battle setup message and continue prompt.
 // FUNCTION: C2 0x5bd04
 // FUNCTION: C2WIN 0x004231d9
 void show_battle_setup_box(void)
@@ -336,9 +327,7 @@ void show_battle_setup_box(void)
     font_list(9, 1, 0x100, 0x130, font1, 0x10);
 }
 
-// Render the "Paused" overlay banner. Compares the current paused flag (c2inf.paused) against a
-// per-instance stash at request_message + 0x34; if it changed, request a whole-screen refresh so
-// the banner gets repainted.
+// Show or clear the paused banner when the pause state changes.
 // FUNCTION: C2 0x5bdb6
 // FUNCTION: C2WIN 0x00423280
 void show_paused(void)
@@ -353,8 +342,7 @@ void show_paused(void)
     }
 }
 
-// At zoom level 1, paint a 1-pixel black L-shape along the top, bottom, and bottom-2 edges of the
-// rendered map area to mask any garbage between the map and the side panels.
+// Mask the exposed edges of the zoomed city and region maps.
 // FUNCTION: C2 0x5be21
 // FUNCTION: C2WIN 0x004232df
 void clip_zoom_level1(void)
@@ -376,9 +364,7 @@ void clip_zoom_level1(void)
     }
 }
 
-// At zoom level 2 in the battle view, paint a 1-pixel black vertical strip at x=0..0 (4-point) and
-// x=4..5 (2-point) for each row from y=0x18 to y=0x167. Used to mask the leftmost columns when the
-// battle map is offset for the side panel.
+// Mask the left edge of the zoomed battle map beside the side panel.
 // FUNCTION: C2 0x5bea0
 // FUNCTION: C2WIN 0x004232ed
 void clip_battle_zoom_level2(void)
@@ -392,8 +378,7 @@ void clip_battle_zoom_level2(void)
     }
 }
 
-// Paint six black bottom clip rows (y=0x1da..0x1df): 4-point blocks across x=0..0x1d8, then a
-// 2-point tail at x=0x1dc.
+// Mask the exposed rows beneath the map.
 // FUNCTION: C2 0x5bedb
 // FUNCTION: C2WIN 0x004232fb
 void clip_map_bottom(void)
@@ -414,9 +399,7 @@ void clip_map_bottom(void)
     show_internal_2point(x, 0x1df, 0);
 }
 
-// Pump one frame of pending icon-strip redraws. Decrements redraw_icons (bail when already zero),
-// redraws the persistent strip elements for the current map_mode (city/region/battle), and then
-// conditionally repaints the tutorial-tooltip box when tutorial_mode is on.
+// Process a pending icon-strip redraw for the current map and tutorial state.
 // FUNCTION: C2 0x5bfd2
 // FUNCTION: C2WIN 0x00423309
 void redraw_icon_bits(void)
@@ -465,9 +448,7 @@ void redraw_icon_bits(void)
     flush_sb_buffer();
 }
 
-// Roman cohort info panel. Bring in forumbit.pl8 from disk into scratch_buffer (60000 bytes),
-// frame a 20x28 outer mosaic at (0x10, 0x30) with an 18x26 inner blank, exit button at (0x1A4,
-// 0x144), then paint: * General sprite (army_list[+0x28] + 0x21) at (0x190, 0x44).
+// Show the selected Roman cohort's commander, composition, strength, morale, and orders.
 // FUNCTION: C2 0x5c1a4
 // FUNCTION: C2WIN 0x00423580
 void show_cohort_box(void)
@@ -525,8 +506,7 @@ void show_cohort_box(void)
     setup_map_screen_refresh();
 }
 
-// Non-cohort army (barbarian / civilian) info panel. Frames an 8x22 mosaic window at (0x50, 0xF0)
-// with an exit button in the corner.
+// Show summary information for a non-cohort army.
 // FUNCTION: C2 0x5c4e8
 // FUNCTION: C2WIN 0x00423934
 void show_non_cohort_box(void)
@@ -565,9 +545,7 @@ void show_non_cohort_box(void)
     }
 }
 
-// Render the tribunes-report panel into a 0x15x9 strip anchored at (x, y). `mode` (param 4) is 0
-// for the stationary view (large parade sprites, +0x2B/+0x30/+0x35/ +0x2E base sprite indices) and
-// non-zero for the moving view (small sprites, +0xA/+0xF/+0x14/+0xD).
+// Show an army's formation, troop composition, morale, and readiness.
 // FUNCTION: C2 0x5c71b
 // FUNCTION: C2WIN 0x00423bef
 void show_tribunes_report(int army_idx, int x, int y, int mode)
@@ -642,9 +620,7 @@ void show_tribunes_report(int army_idx, int x, int y, int mode)
 }
 
 
-// Bring up the "choose your starting region" dialog: black out the screen, load the empire palette
-// + parts pl8, paint the box body via reshow_initreg_box, then push the new frame and palette to
-// SVGA.
+// Show the initial-region selection screen.
 // FUNCTION: C2 0x5cb50
 // FUNCTION: C2WIN 0x00424275
 void show_initreg_box(void)
@@ -660,9 +636,7 @@ void show_initreg_box(void)
     set_palette(temp_palette);
 }
 
-// Re-paint the initial-region selection screen body without the title bar. Loads empire.pl8, calls
-// the four sub- renderers (region list, offer panel, top + bottom slabs), schedules a refresh,
-// then draws the 0x30 caption with font1 colour 0x3f.
+// Redraw the map, available regions, and frame of the initial-region selection screen.
 // FUNCTION: C2 0x5cb8f
 // FUNCTION: C2WIN 0x004242ef
 void reshow_initreg_box(void)
@@ -677,9 +651,7 @@ void reshow_initreg_box(void)
     hold_mouse_replace = 1;
 }
 
-// "No provinces yet" notification box. Sets stone_random_count to 15 (gives the mosaic a stable
-// RNG seed), draws a frame + blank inner panel, the title strip, a wrapped paragraph via
-// font_format_split, and an exit/OK hint.
+// Show the notification that the player controls no provinces.
 // FUNCTION: C2 0x5cbd7
 // FUNCTION: C2WIN 0x00424359
 void show_no_provinces_box(void)
@@ -695,9 +667,7 @@ void show_no_provinces_box(void)
     hold_mouse_replace = 1;
 }
 
-// "First region" greeting box. Identical structure to show_no_provinces_box (same mosaic frame +
-// blank panel + title strip + paragraph layout) but with string ID 0x30 ("first region acquired")
-// instead of 0x4e ("no provinces yet").
+// Show the message that introduces the player's first province.
 // FUNCTION: C2 0x5cc82
 // FUNCTION: C2WIN 0x00424400
 void show_first_region_box(void)
@@ -713,8 +683,7 @@ void show_first_region_box(void)
     hold_mouse_replace = 1;
 }
 
-// "This region" info dialog. Mode (p1) selects the outer frame height: 0x10 when p1 == 0 (full
-// info with confirm buttons), 0xE when p1 != 0 (compact view with single label).
+// Show information and available actions for the selected province.
 // FUNCTION: C2 0x5cd03
 // FUNCTION: C2WIN 0x004244a7
 void this_region_box(int p1)
@@ -775,7 +744,7 @@ void this_region_box(int p1)
     setup_whole_screen_refresh();
 }
 
-// First-skill (army-tactic primer) info box.
+// Show the introductory skill-selection information.
 // FUNCTION: C2 0x5cf71
 // FUNCTION: C2WIN 0x00424785
 void show_skill1_box(void)
@@ -792,9 +761,7 @@ void show_skill1_box(void)
     hold_mouse_replace = 1;
 }
 
-// Second-skill (army-tactic detail) info box. Same shell as show_skill1_box (same window geometry,
-// system_window vs mosaic_window selection), but with three font_list lines of different content +
-// three child renderers (show_skill_level / show_peace_level / show_name_choice).
+// Show the detailed game settings and player choices.
 // FUNCTION: C2 0x5d03b
 // FUNCTION: C2WIN 0x0042483c
 void show_skill2_box(void)
@@ -812,8 +779,7 @@ void show_skill2_box(void)
     hold_mouse_replace = 1;
 }
 
-// Display one of four settings sub-pages in a mosaic window: p1 == 0 → music settings (height 7).
-// Music on/off toggle (c2inf+0xD) and the music volume (c2inf+0x12) value.
+// Show the selected sound, music, speed, or scroll settings page.
 // FUNCTION: C2 0x5d0d7
 // FUNCTION: C2WIN 0x004248c2
 void show_fx_box(int p1)
@@ -883,9 +849,7 @@ void show_fx_box(int p1)
     hold_mouse_replace = 1;
 }
 
-// Renders the in-game "About" box: a 0x14×0xa mosaic window at (0x80, 0x40), three lines of
-// caption text (string IDs 0xb, 0x3b, 9) using font1 in colour 0x10, the Impressions logo image at
-// (0x150, 0x78), and an exit button at (0x194, 0xb4).
+// Show the game's credits and Impressions logo.
 // FUNCTION: C2 0x5d4d4
 // FUNCTION: C2WIN 0x00424d30
 void show_about_box(void)
@@ -901,8 +865,7 @@ void show_about_box(void)
     hold_mouse_replace = 1;
 }
 
-// New-Game name-prompt panel. 3-row blank at (0x60, 0x110) with the "Enter your name:" label (text
-// 0x2b/0xa) on the left and the player's current name (`c2inf.player_name`) on the right.
+// Show the player's current name in the new-game settings.
 // FUNCTION: C2 0x5d581
 // FUNCTION: C2WIN 0x00424dd3
 void show_name_choice(void)
@@ -912,7 +875,7 @@ void show_name_choice(void)
     put_a_font_string(c2inf.player_name, 0x140, 0x126, font1, 0x10);
 }
 
-// Peace-mode toggle panel. 3-row blank at (0x60, 0xe0).
+// Show whether peaceful play is enabled.
 // FUNCTION: C2 0x5d5dc
 // FUNCTION: C2WIN 0x00424e2d
 void show_peace_level(void)
@@ -923,9 +886,7 @@ void show_peace_level(void)
     setup_refresh_area(0x60, 0xe0, 0x1c, 3, 1);
 }
 
-// Render the skill-level selector subpanel in the options/about UI. Shows a blank system slab, an
-// outline box, label text, the current skill label, an explanatory paragraph, then refreshes the
-// slab.
+// Show the selected difficulty level and its explanation.
 // FUNCTION: C2 0x5d658
 // FUNCTION: C2WIN 0x00424e8b
 void show_skill_level(void)
@@ -938,9 +899,7 @@ void show_skill_level(void)
     setup_refresh_area(0x60, 0x90, 0x1c, 6, 1);
 }
 
-// Render the "enter new player name" dialog box. Layout: * 17×5-cell system window centred at
-// (0xd0, 0xd0) * Current player name as the editable string at (0xe2, 0xe0) * Paragraph string
-// 0x2b ("Type your name and press ENTER") at (0xe0, 0x100), 14 words wide.
+// Show the dialog for entering a new player name.
 // FUNCTION: C2 0x5d70c
 // FUNCTION: C2WIN 0x00424f21
 void show_new_name_box(void)
@@ -953,8 +912,7 @@ void show_new_name_box(void)
     hold_mouse_replace = 1;
 }
 
-// Fixed exit confirmation panel: 14x9 system window centered at (0x80, 0xa0), followed by three
-// text lines (paragraph 0x4d, entries 9..11).
+// Show the exit confirmation dialog.
 // FUNCTION: C2 0x5d765
 // FUNCTION: C2WIN 0x00424f8d
 void show_exit_box(void)
@@ -968,8 +926,7 @@ void show_exit_box(void)
     hold_mouse_replace = 1;
 }
 
-// Draw the shared load/save file-picker frame. The caller supplies the title string id; the
-// directory list is populated separately by show_directory(999).
+// Draw the shared frame for the load and save file pickers.
 // FUNCTION: C2 0x5d7eb
 // FUNCTION: C2WIN 0x00425011
 void show_loadsave_box(int title_id)
@@ -986,8 +943,7 @@ void show_loadsave_box(int title_id)
     hold_mouse_replace = 1;
 }
 
-// Render the save-file directory picker. Reset cursor state, draw two stacked header strips, stamp
-// the active filename with a follow-up text cursor, then paint a 19-row entry box.
+// Draw the scrollable save-file directory and editable filename.
 // FUNCTION: C2 0x5d8b0
 // FUNCTION: C2WIN 0x004250c4
 void show_directory(int scroll_top)
@@ -1046,7 +1002,7 @@ check_entries:
     }
 }
 
-// One-time forum scene loader.
+// Load the forum artwork, palette, and department explanation panels.
 // FUNCTION: C2 0x5da18
 // FUNCTION: C2WIN 0x00425294
 void forum_constant_screen(void)
@@ -1065,9 +1021,7 @@ void forum_constant_screen(void)
     hold_mouse_replace = 1;
 }
 
-// Plain background screen used as a quiet curtain between scenes (title → forum, splash → menu):
-// black out, load the background palette + pl8, refresh, push the palette, and raise
-// hold_mouse_replace.
+// Show the neutral background used between major screens.
 // FUNCTION: C2 0x5da8f
 // FUNCTION: C2WIN 0x0042533e
 void background_screen(void)
@@ -1081,9 +1035,7 @@ void background_screen(void)
     hold_mouse_replace = 1;
 }
 
-// "Empty" forum screen — no department highlighted: paint the generic forum panel and run
-// forum_explanations() over all 12 slots in non-highlight mode, then push the new frame and
-// palette to SVGA and raise hold_mouse_replace.
+// Show the forum with no department selected.
 // FUNCTION: C2 0x5dac6
 // FUNCTION: C2WIN 0x00425395
 void forum_empty_screen(void)
@@ -1101,9 +1053,7 @@ void forum_empty_screen(void)
     set_palette(temp_palette);
 }
 
-// Render the "city-only" forum advisor screen: cover any stale mouse trail, mark the whole screen
-// for refresh, re-paper the chosen department panel if its forum_repapering flag is set, then
-// explain_forum() to draw the dept text.
+// Show the simplified forum advisor view used when only the city is available.
 // FUNCTION: C2 0x5db0b
 // FUNCTION: C2WIN 0x004253ff
 void forum_city_only_screen(void)
@@ -1124,9 +1074,7 @@ void forum_city_only_screen(void)
     set_palette(temp_palette);
 }
 
-// The forum admin panel: explain backdrop, title strip, treasury (denarii, with " Dn" suffix and
-// negative-aware formatting), population, employment rate, two dotted separator lines, and the
-// admin button strip.
+// Show the administration forum with treasury, population, employment, and tax controls.
 // FUNCTION: C2 0x5dbb4
 // FUNCTION: C2WIN 0x004254b0
 void forum_admin_screen(void)
@@ -1176,7 +1124,7 @@ void forum_admin_screen(void)
     set_palette(temp_palette);
 }
 
-// Tax-rate panel. Refresh the cached averages, then paint two stacked boxes: 1.
+// Show the current and average tax rates.
 // FUNCTION: C2 0x5ddcd
 // FUNCTION: C2WIN 0x004256cf
 void show_tax_rates(void)
@@ -1216,9 +1164,7 @@ void show_tax_rates(void)
     setup_refresh_area(0x158, -14, 0x12, 6, 1);
 }
 
-// Treasury detail panel. Mosaic-blank a 6x18 column header at (0x10, 0x4A), stamp last year's date
-// and the account total in white (positive) or red (negative) with the word label "surplus" /
-// "deficit".
+// Show last year's treasury income, expenses, and surplus or deficit.
 // FUNCTION: C2 0x5dfa2
 // FUNCTION: C2WIN 0x004258b9
 void show_accounts(void)
@@ -1265,9 +1211,7 @@ void show_accounts(void)
     font_list(0x1e, 0x10, 0x8c, 0xa2, font1, 0x10);
 }
 
-// Year-end estimate panel: same shape as show_accounts but rendered into the right-hand 6x18
-// column at (0x144, 0x4A) and reading from the cached `estimate_*` predictions (get_estimates is
-// called first to refresh them).
+// Show projected year-end income, expenses, and surplus or deficit.
 // FUNCTION: C2 0x5e2bd
 // FUNCTION: C2WIN 0x00425bae
 void show_estimate(void)
@@ -1317,9 +1261,7 @@ void show_estimate(void)
     setup_refresh_area(0x140, 0x4c, 0x14, 9, 1);
 }
 
-// Forum career panel: explain panel + outer mosaic + title row, the player's name
-// (c2inf.player_name), the current rank label, and — only when not in peace mode AND player_rank <
-// 0xa — the "N provinces remaining" line plus a hint row that switches at skill_level.
+// Show the player's name, rank, promotion progress, and career guidance.
 // FUNCTION: C2 0x5e60d
 // FUNCTION: C2WIN 0x00425ed0
 void forum_career_screen(void)
@@ -1366,8 +1308,7 @@ void forum_career_screen(void)
     set_palette(temp_palette);
 }
 
-// Personal cash stats panel. Shows the player's current denarii balance (red "-NNN" if negative,
-// black " NNN" if positive) and yearly salary in a 12×4-cell blank-mosaic at (0x10,0x5c).
+// Show the player's personal balance and annual salary.
 // FUNCTION: C2 0x5e7f3
 // FUNCTION: C2WIN 0x004260ba
 void show_personal_cash_stats(void)
@@ -1389,8 +1330,7 @@ void show_personal_cash_stats(void)
     setup_refresh_area(0x10, 0x40, 0x11, 6, 1);
 }
 
-// Donation adjustment panel. Blank/refresh screen, draw a 17x9 mosaic at (0xa0,0x20), render the
-// current donation level, two labels, and an exit button.
+// Show the controls for donating personal money to the city.
 // FUNCTION: C2 0x5e91e
 // FUNCTION: C2WIN 0x004261cf
 void show_donation_box(void)
@@ -1408,8 +1348,7 @@ void show_donation_box(void)
     set_palette(temp_palette);
 }
 
-// Donation-level panel. Two-row blank mosaic at (0xb0, 0x38) with the "Donation:" label (string
-// table 0x1f, line 4) followed by the current donation_level formatted with " Dn" suffix.
+// Show the currently selected donation amount.
 // FUNCTION: C2 0x5e9a4
 // FUNCTION: C2WIN 0x00426260
 void show_donation_level(void)
@@ -1422,9 +1361,7 @@ void show_donation_level(void)
     setup_refresh_area(0xb0, 0x30, 0xa, 3, 1);
 }
 
-// Rome (imperial relations) sub-screen of the forum. Loads the per-department forum_repapering
-// plate from forum.pl8 when the player switched in from another department, then calls
-// explain_forum to repaint the help text.
+// Show the forum's imperial-relations department.
 // FUNCTION: C2 0x5ea37
 // FUNCTION: C2WIN 0x004262d2
 void forum_rome_screen(void)
@@ -1488,7 +1425,7 @@ void forum_rome_screen(void)
     set_palette(temp_palette);
 }
 
-// "Final bribe" / imperial-gift confirmation box.
+// Show the confirmation dialog for sending an imperial gift.
 // FUNCTION: C2 0x5ed7c
 // FUNCTION: C2WIN 0x00426609
 void show_final_bribe_box(void)
@@ -1513,8 +1450,7 @@ void show_final_bribe_box(void)
     refresh_svga_screen();
 }
 
-// Draw the imperial-gift selection panel and initialise the amount display to slot 4, then refresh
-// the screen.
+// Show the imperial-gift selection panel.
 // FUNCTION: C2 0x5ef04
 // FUNCTION: C2WIN 0x0042677f
 void show_gift_box(void)
@@ -1533,9 +1469,7 @@ void show_gift_box(void)
     refresh_svga_screen();
 }
 
-// Render the imperial-gift amount box for gift slot `gift_index` (0–3 typically). Draws a
-// 1-cell-tall blank mosaic at column 0x1a0, row gift_index*16 - 4 (above the gift thumbnail), then
-// prints `imperial_gift_level` (the player's gift-rating numeric) inside it at row 0x1a8.
+// Show the gift value beside the selected imperial-gift slot.
 // FUNCTION: C2 0x5efcd
 // FUNCTION: C2WIN 0x00426836
 void show_gift_amount(int gift_index)
@@ -1549,9 +1483,7 @@ void show_gift_amount(int gift_index)
     setup_refresh_area(0x140, gift_index * 16 - 0x10, 0xf, 2, 2);
 }
 
-// Forum advisor entry: black out, cover mouse, mark a full refresh, paint the forum panel and
-// palette, run explain_forum to draw the dept body, then push the frame and palette to SVGA and
-// raise hold_mouse_replace.
+// Enter the selected forum advisor department.
 // FUNCTION: C2 0x5f03f
 // FUNCTION: C2WIN 0x004268a3
 void forum_advisor_screen(void)
@@ -1567,9 +1499,7 @@ void forum_advisor_screen(void)
     set_palette(temp_palette);
 }
 
-// Forum entry: temple-overview variant. Blank palette, load rat_back.256 + rat_back.pl8
-// (rat-eating-grain background), render basic_temple_screen, fade up the temple palette, preload
-// forum.256 + forumbit.pl8 for the next transition.
+// Enter the religion forum and prepare its temple overview.
 // FUNCTION: C2 0x5f080
 // FUNCTION: C2WIN 0x00426901
 void forum_temple_screen(void)
@@ -1583,8 +1513,7 @@ void forum_temple_screen(void)
     readfile("forumbit.pl8", ((void *)scratch_buffer), 0xea60, 0);
 }
 
-// Forum/temple ratings sub-screen. Loads rat_fron.pl8 as the background plate, frames a 0x28x8
-// panel at (0, 0x160), stamps the panel heading (font1 string 0x22 word 3, colour 0x20).
+// Show temple coverage, favor, funding, and religion statistics.
 // FUNCTION: C2 0x5f0f5
 // FUNCTION: C2WIN 0x00426989
 void basic_temple_screen(void)
@@ -1685,8 +1614,7 @@ void basic_temple_screen(void)
     set_palette(temp_palette);
 }
 
-// Draw the temple-tip panel at the bottom of the forum temple screen. Peace-mode/tutorial skips
-// the early tips by forcing current_temple_tip to 0x11 when it is still below 9.
+// Show the current temple advice, skipping unsuitable early tips in peaceful play.
 // FUNCTION: C2 0x5f743
 // FUNCTION: C2WIN 0x00427122
 void show_temple_tip(void)
@@ -1703,9 +1631,7 @@ void show_temple_tip(void)
     setup_refresh_area(0, 0x190, 0x28, 5, 1);
 }
 
-// The forum-clerks panel: re-papers the dept background if the current last_forum_dept is on the
-// repapering list, draws the explain panel + outer mosaic, lays out the title strip, then chains
-// history_graphs and history_selection.
+// Show the clerks forum with historical graphs and range controls.
 // FUNCTION: C2 0x5f7e2
 // FUNCTION: C2WIN 0x004271af
 void forum_clerks_screen(void)
@@ -1741,8 +1667,7 @@ void forum_clerks_screen(void)
     set_palette(temp_palette);
 }
 
-// Header strip for the history graph screen. Lays out: * Two top "From / To" labels (font_list 5 +
-// 6) inside a mosaic blank.
+// Show the selected time span and controls for the history graphs.
 // FUNCTION: C2 0x5f89e
 // FUNCTION: C2WIN 0x00427286
 void history_selection(void)
@@ -1770,8 +1695,7 @@ void history_selection(void)
     setup_refresh_area(0x10, 0x84, 0xb, 7, 1);
 }
 
-// Render the four history graphs on the forum clerks screen. Four columns: "current" plus three
-// retrospective panels, each label-then-graph-then-numeric-tick.
+// Draw the population, treasury, employment, and reputation history graphs.
 // FUNCTION: C2 0x5f9f0
 // FUNCTION: C2WIN 0x004273b1
 void history_graphs(void)
@@ -1804,9 +1728,7 @@ void history_graphs(void)
     setup_refresh_area(0xb0, 0x10, 0x1d, 0xe, 1);
 }
 
-// Plot a single history series onto a 200x200 graph at (x, y). The series index is `idx`; the
-// current zoom level is history_graph_length, indexing history_graph_years[] to get the displayed
-// span in years.
+// Plot one historical statistic over the selected number of years.
 // FUNCTION: C2 0x5fbba
 // FUNCTION: C2WIN 0x004275a1
 int show_history_graph(int x, int y, int idx)
@@ -1890,8 +1812,7 @@ int show_history_graph(int x, int y, int idx)
     return top_value;
 }
 
-// Forum: load the empire-overview screen. In peace_mode (tutorial) the forum is disabled, so we
-// tail-call forum_city_only_screen instead.
+// Show the empire overview, or the city-only forum during peaceful play.
 // FUNCTION: C2 0x5ffc8
 // FUNCTION: C2WIN 0x00427ae3
 void forum_empire_screen(void)
@@ -1908,9 +1829,7 @@ void forum_empire_screen(void)
     readfile("forum.256", temp_palette, 0x300, 0);
 }
 
-// Empire-screen base: load `empire.pl8` background, render the regional shapes + top/bottom slabs,
-// draw the title at (0xbe, 0x19e) and subtitle at (0xd0, 0x1ce) using string table 0x22 lines 1 &
-// 3, then refresh the whole screen.
+// Draw the empire map, province markers, frame, and headings.
 // FUNCTION: C2 0x60038
 // FUNCTION: C2WIN 0x00427b6a
 void basic_empire_screen(void)
@@ -1926,8 +1845,7 @@ void basic_empire_screen(void)
     refresh_svga_screen();
 }
 
-// Stamp the standard region marker sprite onto the empire map for every region with empire[i] == 6
-// (player-controlled), then dispatch to show_regions_on_offer for the rest.
+// Mark the player's provinces on the empire map, then draw the remaining offers.
 // FUNCTION: C2 0x600a3
 // FUNCTION: C2WIN 0x00427bdc
 void show_regions_in_empire(void)
@@ -1943,9 +1861,7 @@ void show_regions_in_empire(void)
     show_regions_on_offer();
 }
 
-// Draw offer/availability markers for regions on the empire map. empire == 2 gets marker 7; empire
-// == 6 is further keyed by empire_won: not yet won -> 6, completed sentinel -> 8, otherwise if
-// below the active threshold -> 5.
+// Mark provinces that are available, active, won, or completed on the empire map.
 // FUNCTION: C2 0x600db
 // FUNCTION: C2WIN 0x00427c45
 void show_regions_on_offer(void)
@@ -1974,8 +1890,7 @@ void show_regions_on_offer(void)
     }
 }
 
-// Top slab of the empire-screen frame: writes four horizontal trim sprites at column x=0x1a (=26
-// px in) down the screen at rows 0xd2, 0x112, 0x132, 0x16c (210, 274, 306, 364).
+// Draw the upper decorative sections of the empire screen.
 // FUNCTION: C2 0x601cc
 // FUNCTION: C2WIN 0x00427d86
 void show_empire_top_slab(void)
@@ -1986,8 +1901,7 @@ void show_empire_top_slab(void)
     write_general_sprite(0x2d, 0x16c, 0x1a);
 }
 
-// Bottom slab of the empire-screen frame: writes five vertical trim sprites at row y=0x199 (=409
-// px down) across the screen at columns 0xb8, 0xf8, 0x124, 0x144, 0x184 (184, 248, 292, 324, 388).
+// Draw the lower decorative sections of the empire screen.
 // FUNCTION: C2 0x60221
 // FUNCTION: C2WIN 0x00427dd5
 void show_empire_bottom_slab(void)
@@ -1999,9 +1913,7 @@ void show_empire_bottom_slab(void)
     write_general_sprite(0x2d, 0x184, 0x199);
 }
 
-// The forum-army panel: city-only mode delegates to the simpler forum_city_only_screen; otherwise
-// we refresh cohort tallies, repaper the dept background if applicable, draw the explain panel +
-// outer mosaic + title row, and chain the recruitment / tribune rollup / mercs sub-panels.
+// Show the army forum with cohort, recruitment, tribune, and mercenary information.
 // FUNCTION: C2 0x6027f
 // FUNCTION: C2WIN 0x00427e44
 void forum_army_screen(void)
@@ -2054,9 +1966,7 @@ void forum_army_screen(void)
     set_palette(temp_palette);
 }
 
-// Mercenary panel inside forum_army_screen. When mercs are allowed: a fresh mosaic blank, the
-// count + 'mercenaries' label, the 'from <province>' line, the 'of <type>' line, and the upkeep
-// cost (mercs_in_army / 50 * mercs_cost_per_50 "Dn").
+// Show available mercenaries, their origin and type, and their upkeep cost.
 // FUNCTION: C2 0x603c1
 // FUNCTION: C2WIN 0x00427f9b
 void show_mercs(void)
@@ -2085,7 +1995,7 @@ void show_mercs(void)
     }
 }
 
-// Tribune-detail panel.
+// Show army-wide recruitment totals or the selected cohort's composition and status.
 // FUNCTION: C2 0x6058a
 // FUNCTION: C2WIN 0x0042813c
 void show_this_tribune(void)
@@ -2175,9 +2085,7 @@ void show_this_tribune(void)
     setup_refresh_area(0x108, 0x1e, 0x17, 0xb, 1);
 }
 
-// Advance and draw the animated tribune flag in either the city panel (`mode` == 0) or the forum
-// panel (`mode` != 0). The frame counter lives at request_message+0x38 and wraps every 64 ticks;
-// routed armies (state_idx 10) force it back to zero.
+// Animate the selected cohort's flag in the city or forum panel.
 // FUNCTION: C2 0x60b15
 // FUNCTION: C2WIN 0x004286d5
 void update_tribune_flag(int mode)
@@ -2206,9 +2114,7 @@ void update_tribune_flag(int mode)
     }
 }
 
-// Recruitment status panel. Refreshes predict_army_totals and stashes the currently-viewed army
-// into temp_army, then paints two narrow header strips at y=0xB6 / 0xC0, the recruitment-detail
-// body at (0xC0, 0x3A) and the engagement status line at (0x1E0, 0xB6).
+// Show recruitment progress and the selected cohort's engagement status.
 // FUNCTION: C2 0x60c04
 // FUNCTION: C2WIN 0x004287b8
 void show_recruitment(void)
@@ -2284,9 +2190,7 @@ void show_recruitment(void)
     setup_refresh_area(0x1e0, 0xb6, 9, 3, 1);
 }
 
-// Industry sub-screen of the forum. Branches on c2inf+0x35: * normal mode (c2inf+0x35 == 0):
-// iterate i = 0..7 over province_industries[i], reading the (kind, is_trader) pair plus the
-// matching industry[kind] supply / delivered / status counters.
+// Show the province's industries, staffing, supplies, output, and trade status.
 // FUNCTION: C2 0x6100b
 // FUNCTION: C2WIN 0x00428be0
 void forum_industry_screen(void)
@@ -2373,9 +2277,7 @@ void forum_industry_screen(void)
     set_palette(temp_palette);
 }
 
-// Forum slaves dept: repaper if needed, draw explain panel + outer mosaic + title, show current
-// slave count, then a delta line that reads as one of three messages keyed on the sign of
-// slave_population_change: < 0 : line 2 + abs(delta) > 0 .
+// Show slave population, welfare, and labor allocation in the forum.
 // FUNCTION: C2 0x6147e
 // FUNCTION: C2WIN 0x004291b5
 void forum_slaves_screen(void)
@@ -2425,8 +2327,7 @@ void forum_slaves_screen(void)
     set_palette(temp_palette);
 }
 
-// Slave-welfare summary panel. Calls slave_estimate() to refresh the projected slave population,
-// then paints: * A 0x18-wide 1-row header strip at (0x10, 0x71).
+// Show current and projected slave welfare costs and population changes.
 // FUNCTION: C2 0x61661
 // FUNCTION: C2WIN 0x004293ea
 void show_slave_welfare_bill(void)
@@ -2463,9 +2364,7 @@ void show_slave_welfare_bill(void)
     setup_refresh_area(0x18, 0x62, 0x14, 9, 1);
 }
 
-// Slave-allocation table. 0x15-wide 0xC-high mosaic at (0x120, 0x10) holds eight per-industry rows
-// (string 0x25 words 0xC..0x13) on the left, then a per-row pair of current / max values at
-// columns 0x1EA / 0x21A.
+// Show current and maximum slave allocations for each industry.
 // FUNCTION: C2 0x6182d
 // FUNCTION: C2WIN 0x004295b2
 void show_slave_allocation(void)
@@ -2505,9 +2404,7 @@ void show_slave_allocation(void)
     setup_refresh_area(0x18e, 6, 0x17, 0xe, 1);
 }
 
-// Year-end report screen. Cover the cursor, request a full redraw, frame the outer mosaic at
-// (0x10, 0x30) 0x1C wide, 0xF tall; inner blank at (0x20, 0x40) 0x1A x 0xD; exit button at (0x1A4,
-// 0xF4); speech dias at (0x30, 0x70) 0x180x0x70.
+// Show the annual report, including the governor's appraisal and financial results.
 // FUNCTION: C2 0x61a99
 // FUNCTION: C2WIN 0x00429825
 void show_year_end_screen(void)
@@ -2594,9 +2491,7 @@ void show_year_end_screen(void)
     refresh_svga_screen();
 }
 
-// Repaint the top-of-screen status bar (date + treasury). Driven by four "dirty" inputs: a 40-tick
-// countdown in request_message+0x40 toggles the slave-warning blink flag at +0x44, redraw_topline
-// forced refresh, month change vs the per-frame snapshot at +0x58, denarii change vs +0x50.
+// Update the date, treasury, and warning indicators in the top status bar.
 // FUNCTION: C2 0x61fad
 // FUNCTION: C2WIN 0x00429d9f
 void show_top_line(void)
@@ -2649,8 +2544,7 @@ void show_top_line(void)
     setup_refresh_area(0xeb, 0, 0x1a, 2, 1);
 }
 
-// Repaint the bottom-of-screen icon / cost status strip. One of three things is shown (in priority
-// order): 1.
+// Update the bottom strip with construction costs, icon help, or current map information.
 // FUNCTION: C2 0x62177
 // FUNCTION: C2WIN 0x00429f9c
 void show_icon_strip(void)
@@ -2739,8 +2633,7 @@ void show_icon_strip(void)
     setup_refresh_area(0x1e0, 0x10b, 0xa, 2, 1);
 }
 
-// Redraw the small overview-mode selector bar when the city map top line is dirty or the ov-bar
-// countdown requests an update.
+// Update the city overview-mode selector when its state changes.
 // FUNCTION: C2 0x62366
 // FUNCTION: C2WIN 0x0042a299
 void show_ov_bar(void)
@@ -2768,8 +2661,7 @@ void show_ov_bar(void)
     setup_refresh_area(0x1e0, 0x1c, 0xa, 2, w);
 }
 
-// Repaint the city-map overlay legend bar at y=0x30 when the player has opened an analysis overlay
-// (ov_map_mode 1..9).
+// Draw the legend for the active city analysis overlay.
 // FUNCTION: C2 0x62462
 // FUNCTION: C2WIN 0x0042a52e
 void show_ov_legend_panel(void)
@@ -2815,8 +2707,7 @@ void show_ov_legend_panel(void)
     refresh_svga_screen();
 }
 
-// Sister of place_3x_legend_blocks: same 3-column legend layout, but captions use ascending
-// paragraph numbers p1, p1+1, p1+2 (instead of descending).
+// Draw three vertically stacked legend entries with ascending captions.
 // FUNCTION: C2 0x62634
 // FUNCTION: C2WIN 0x0042a5f3
 void place_3_legend_blocks(int p1, int p2, int p3, int p4)
@@ -2829,9 +2720,7 @@ void place_3_legend_blocks(int p1, int p2, int p3, int p4)
     font_list(0x35, p1 + 2, 0x200, 0xbc, font1, 0x10);
 }
 
-// Render the 3-column legend block for the empire-overview screen: three sprite tiles stacked
-// vertically at x = 0x1e8 (sprite id taken from p2 / p3 / p4), captioned with three paragraph
-// numbers p1, p1-1, p1-2 in font1.
+// Draw three vertically stacked legend entries with descending captions.
 // FUNCTION: C2 0x626c9
 // FUNCTION: C2WIN 0x0042a6a1
 void place_3x_legend_blocks(int p1, int p2, int p3, int p4)
@@ -2844,9 +2733,7 @@ void place_3x_legend_blocks(int p1, int p2, int p3, int p4)
     font_list(0x35, p1 - 2, 0x200, 0xbc, font1, 0x10);
 }
 
-// Render a 9-block legend strip: sprite indices 0x7e,0x81,...,0x96 at x positions
-// 0x1e8,0x1f8,...,0x268 and y=0x92, then place the two caption strings (paragraphs 0x16 and 0x18)
-// to the right.
+// Draw the nine-color legend used by the population-density overlay.
 // FUNCTION: C2 0x6274c
 // FUNCTION: C2WIN 0x0042a74f
 void place_9_legend_blocks(void)
@@ -2860,8 +2747,7 @@ void place_9_legend_blocks(void)
     font_list(0x35, 0x18, 0x250, 0xaa, font1, 0x10);
 }
 
-// Stamp one 16x16 legend tile at (x, y): paints 64 2x2 blocks from the landfill sprite at
-// sprite_idx, then frames it with a 0x10 border.
+// Draw and frame one legend color tile.
 // FUNCTION: C2 0x627b6
 // FUNCTION: C2WIN 0x0042a7d8
 void place_legend_block(int sprite_idx, int x, int y)
@@ -2879,9 +2765,7 @@ void place_legend_block(int sprite_idx, int x, int y)
     draw_a_box(x - 1, y - 1, 0x12, 0x12, 0x10);
 }
 
-// Print a year number followed by the date-era label from string list 0x1a. Negative years use
-// label 0, non-negative years label 1; mode 2 uses highlight colour 0x3f, modes 0/1 use colour
-// 0x10.
+// Print a year with the appropriate BC or AD label and display color.
 // FUNCTION: C2 0x62828
 // FUNCTION: C2WIN 0x0042a88d
 void show_date(int year, int x, int y, int mode)
@@ -2945,8 +2829,7 @@ void show_census_panel(void)
     hold_mouse_replace = 1;
 }
 
-// Draw/update the turbo-mode population panel. If the cached population is unchanged and
-// turbo_mode is already past the setup states, the panel is left alone.
+// Update the population display used during turbo mode.
 // FUNCTION: C2 0x62a51
 // FUNCTION: C2WIN 0x0042abb8
 void show_turbo_panel(void)
@@ -2967,7 +2850,7 @@ void show_turbo_panel(void)
     request_message.cached_population = population;
 }
 
-// Reset the query panel UI: enable button index 0x54, clear query mode and queried person.
+// Reset the query panel and selected person.
 // FUNCTION: C2 0x62b49
 // FUNCTION: C2WIN 0x0042aca8
 void init_queery_panel(void)
@@ -2991,7 +2874,7 @@ void show_querymode_panel(void)
     }
 }
 
-// Top-level dispatcher for the query panel.
+// Draw the query panel and dispatch to its active city, resident, detail, or region view.
 // FUNCTION: C2 0x62c14
 // FUNCTION: C2WIN 0x0042ad66
 void show_query_panel(void)
@@ -3048,7 +2931,7 @@ void show_query_panel(void)
     hold_mouse_replace = 1;
 }
 
-// Draw the heading rows for the query panel.
+// Draw the queried building's category and development-level heading.
 // FUNCTION: C2 0x62d6e
 // FUNCTION: C2WIN 0x0042af17
 void show_query_panel_heading(int y)
@@ -3087,9 +2970,7 @@ void show_query_panel_heading(int y)
     font_no(q_lv, 0x20, " ", x_is + 0x98, y2, font2, 0x10);
 }
 
-// Right-click query dispatcher — inspect a city-map tile. Forwards to specialised panels for house
-// tiles (q_type 0x82..0xA1 → show_query_house_advice) and business tiles (q_type 0xFA →
-// show_query_business_advice).
+// Show general, residential, or business details for the queried city tile.
 // FUNCTION: C2 0x62eb6
 // FUNCTION: C2WIN 0x0042b109
 void show_general_query_panel(void)
@@ -3183,8 +3064,7 @@ void show_general_query_panel(void)
     }
 }
 
-// House-tile query advice. Picks one of ~30 help-paragraph words from string 0x3D based on a
-// per-level requirement state machine.
+// Explain which services or conditions are limiting the queried house.
 // FUNCTION: C2 0x63169
 // FUNCTION: C2WIN 0x0042b5ad
 void show_query_house_advice(void)
@@ -3478,9 +3358,7 @@ void show_query_business_advice(void)
               font1, 0x10);
 }
 
-// Pick a paragraph-ID describing the dominant economic hindrance for the city-overview "why is
-// business slow?" dialog. Cascades through five conditions in fixed priority order, returning the
-// first match.
+// Select the explanation for the queried business's most important obstacle.
 // FUNCTION: C2 0x63945
 // FUNCTION: C2WIN 0x0042c280
 int general_business_cause(void)
@@ -3498,8 +3376,7 @@ int general_business_cause(void)
     return 0x39;
 }
 
-// People-query panel: "who lives here?" right-click on a house tile shows the people inside. When
-// q_no_of_people is zero, render the "empty" paragraph (string 0x40 word 0) and bail.
+// List the people living in the queried house, or report that it is empty.
 // FUNCTION: C2 0x639b4
 // FUNCTION: C2WIN 0x0042c330
 void show_people_query_panel(void)
@@ -3635,9 +3512,7 @@ void show_people_query_panel(void)
                       0x150, 0x64, 0, 0, font1, 0x10);
 }
 
-// Hit-test the rows of the query-panel person list. When the player has just left-clicked while in
-// query mode, scan all `q_no_of_people` rows; if the mouse falls inside row `i`'s rectangle, store
-// `i` into `queried_person` and refresh the panel.
+// Select the person clicked in the query-panel resident list.
 // FUNCTION: C2 0x63ef3
 // FUNCTION: C2WIN 0x0042cba3
 void get_queried_person(void)
@@ -3726,7 +3601,7 @@ void show_detailed_query_panel(void)
     font_list(0x26, ind_growth_factor + 0x20, 0xd0, 0x176, font1, 0x10);
 }
 
-// Region-map query panel.
+// Explain the queried regional building, unit, terrain, or industry.
 // FUNCTION: C2 0x64371
 // FUNCTION: C2WIN 0x0042d278
 void show_region_query_panel(int y)
@@ -3836,8 +3711,7 @@ void show_region_query_panel(int y)
                       0x150, 0x64, 0, 0, font1, 0x10);
 }
 
-// Pick the industry-advisor quote string id based on the q_* state flags. Falls through to `x +
-// 0x11` for the deep case (q_road set, q_workhouse > 1, q_outside == 0).
+// Select the regional-industry advice matching its access, labor, and supply state.
 // FUNCTION: C2 0x64880
 // FUNCTION: C2WIN 0x0042dabd
 int reg_industry_quote(int x)
@@ -3849,8 +3723,7 @@ int reg_industry_quote(int x)
     return x + 0x11;
 }
 
-// Trading-post info quote selector. Returns string id 0x19 when no road exists to the cell,
-// otherwise the standard base + 0x15.
+// Select trading-post advice based on road access.
 // FUNCTION: C2 0x648c0
 // FUNCTION: C2WIN 0x0042db4b
 int reg_tpost_quote(int base)
@@ -3859,8 +3732,7 @@ int reg_tpost_quote(int base)
     return base + 0x15;
 }
 
-// Port info quote selector. Returns string id 0x19 when no road exists to the cell, otherwise the
-// standard base + 0x15.
+// Select port advice based on road access.
 // FUNCTION: C2 0x648d3
 // FUNCTION: C2WIN 0x0042db85
 int reg_port_quote(int base)
@@ -3869,7 +3741,7 @@ int reg_port_quote(int base)
     return base + 0x15;
 }
 
-// City-map right-click info gatherer.
+// Collect building, service, business, and resident data for the queried city tile.
 // FUNCTION: C2 0x648e6
 // FUNCTION: C2WIN 0x0042dbbf
 void get_query_info(void)
@@ -4016,7 +3888,7 @@ void get_query_info(void)
     }
 }
 
-// Region-map right-click info gatherer.
+// Collect building, access, labor, and goods data for the queried region tile.
 // FUNCTION: C2 0x64e92
 // FUNCTION: C2WIN 0x0042e3ed
 void get_region_query_info(void)
@@ -4071,9 +3943,7 @@ void get_region_query_info(void)
     q_had_goods = (*(struct region_cell *)((unsigned char *)region_map + (ptr))).edge_bits & 0x40;
 }
 
-// Per-statistic pertinence filter used by show_detailed_query_panel: given a row index `p1` (0..n,
-// 0xa = "all"), return 0 if the stat is applicable to the current q_type panel. Each q_type band
-// has its own row to suppress.
+// Report whether a detailed statistic applies to the current query type.
 // FUNCTION: C2 0x65001
 // FUNCTION: C2WIN 0x0042e5dc
 int not_pertinant_statistic1(int p1)
@@ -4115,8 +3985,7 @@ not_pert:
     return 0;
 }
 
-// Statistic-pertinence filter for the empire census screen: returns 0 ("not pertinent") for q_type
-// in [0x7C..0xB9] or [0xD7..0xE2], else 1. Companion to not_pertinant_statistic1.
+// Report whether the secondary statistic applies to the current query type.
 // FUNCTION: C2 0x650c3
 // FUNCTION: C2WIN 0x0042e7a9
 int not_pertinant_statistic2(void)
@@ -4126,7 +3995,7 @@ int not_pertinant_statistic2(void)
     return 1;
 }
 
-// Pre-battle briefing screen. Mosaic window at (8, 0xB0) 0x27x0x13.
+// Show the pre-battle briefing, armies, terrain, and tactical choices.
 // FUNCTION: C2 0x650f4
 // FUNCTION: C2WIN 0x0042e817
 void show_battle_intro_screen(void)
@@ -4199,9 +4068,7 @@ void show_battle_intro_screen(void)
     set_palette(city_palette);
 }
 
-// Post-battle outcome screen. Same window frame as the intro screen ((8, 0xB0) 0x27x0x13) but the
-// title varies with battle_victor / battle_state: * Victor 0 (loss): word 0, subtitle word 2,
-// speech 5.
+// Show the battle result, losses, morale changes, and follow-up message.
 // FUNCTION: C2 0x656cd
 // FUNCTION: C2WIN 0x0042eeac
 void show_battle_outtro_screen(void)

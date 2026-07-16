@@ -1,6 +1,4 @@
-//
-// Initialized control data.
-// Data-only translation unit.
+// Menu, selection, and button definitions mapping UI controls to actions.
 
 #include "c2_data.h"
 #include "c2_funcs.h"

@@ -2,16 +2,13 @@
 #include "c2_data.h"
 #include "c2_types.h"
 
-/* File-local supplements (not in c2_data.h) */
-/* army_list provided as `struct army_rec army_list[]` via c2_types.h */
-
 #ifndef _MSC_VER
-extern int affected_by_cover1();   /* really char -- map.c */
-extern int colour_cycle_delay1();  /* really char -- lib32.c */
+extern int affected_by_cover1();
+extern int colour_cycle_delay1();
 #endif
 
 
-/* Internal callees and shared helpers (forward decls). */
+/* Local helper declarations. */
 void save_a_game(void);
 void clear_landfill(void);
 int  pause_db(void);
@@ -28,28 +25,22 @@ void rewind_help_history(void);
 void get_next_viewed_cohort(int dir);
 
 
-/* Selection-box helpers used by the act_houses/act_water/... wrappers. */
+/* Selection-box helpers. */
 void get_selection_goods_list(int what);
 int control_selection(struct selection_rec *list, int count, int x, int y, int width);
 void show_fx_box(int what);
 void stop_all_sounds(void);
 void stop_db(void);
 
-/* Companion act_house1 used by the housing-cheat branch in act_houses. */
 void act_house1(void);
 
-/* Cohort/map maintenance helpers used by act_undo_cm. */
-
-/* Slave-requirements helper used by the act_slave_* +/- wrappers. */
 int alter_slave_reqs(int kind, int delta);
 
-/* Misc helpers used by the small toggle/wrap actions. */
 void rotate_pm_clockwise(void);
 void rotate_pm_anticlockwise(void);
 void figure_images(void);
 void clear_edge_info(void);
 
-/* Battle-screen helpers. */
 void general_reform(int kind);
 void select_all_figures(void);
 void goto_flag_marker_mode(void);
@@ -60,8 +51,8 @@ void goto_flag_marker_mode(void);
 // FUNCTION: C2WIN 0x004b0630
 void action(void)
 {
-    int icons_helped;       /* index into city/region_icons_to_help */
-    int idx;                /* save reg_placing_type around control_selection */
+    int icons_helped;       /* Index into the active map's icon-help table. */
+    int idx;                /* Preserves the region placement type across the selection dialog. */
 
     old_scrolling = scrolling;
     scrolling = 0;
@@ -654,9 +645,7 @@ void mouse_follow_cohort(void)
     set_mouse();
 }
 
-// Twin of `mouse_follow_cohort` for hostile armies. Active when the player is in pointer_mode 6..8
-// (the attack-target modes); pulls the mouse toward the hovered enemy army's screen coordinates so
-// the cursor "snaps" onto the unit it last selected.
+// Pulls the cursor toward the hovered enemy army while choosing an attack target.
 // FUNCTION: C2 0x2ff3c
 // FUNCTION: C2WIN 0x004b2194
 void mouse_hunt_enemies(void)
@@ -880,7 +869,7 @@ void build_city_item(void)
         if (pm_over != 0 && pm_over != old_pm_over) setup_map_screen_refresh();
     }
 
-    /* Houses (house1..house5): shape+sprite from the placing_type*4 table at +0x4D3B. */
+    /* Houses use the placement type to select their footprint and graphics. */
     if (placing_type >= 0x82 && placing_type <= 0xa1) {
         restore_city_from_undo_buffer();
         building_type = placing_type;
@@ -894,7 +883,7 @@ void build_city_item(void)
         }
     }
 
-    /* Forums (small/medium/large): shape+sprite from the placing_type*4 table at +0x4D0B. */
+    /* Forums use the placement type to select their footprint and graphics. */
     if (placing_type >= 0xae && placing_type <= 0xb9) {
         restore_city_from_undo_buffer();
         building_type = placing_type;
@@ -1089,8 +1078,7 @@ after_clear:
     return;
 }
 
-// Region-map twin of `prebuild_city_item`. Snapshots cursor and denarii, then dispatches to the
-// appropriate elastic-preview helper for the active reg_placing_type.
+// Captures the starting region cell and funds, then prepares the active elastic build preview.
 // FUNCTION: C2 0x30ebf
 // FUNCTION: C2WIN 0x004b3568
 void prebuild_region_item(void)
@@ -1110,8 +1098,7 @@ void prebuild_region_item(void)
     }
 }
 
-// Region-map twin of `build_city_item`. Long if-chain on `reg_placing_type` for road/wall/clear
-// and the various industry (farm, mine, quarry, port, …) and fortress placements.
+// Builds or clears the selected region-map structure and charges its resulting cost.
 // FUNCTION: C2 0x30f3a
 // FUNCTION: C2WIN 0x004b35f0
 void build_region_item(void)
@@ -1352,9 +1339,7 @@ void build_region_item(void)
     denarii -= total_build_cost;
 }
 
-// Used by the farm-type-selection box: stamp `para1<<4` into the upper nibble of the cell's
-// `(*(struct region_cell *)((unsigned char *)region_map + (+7))).base_kind` byte at the start of
-// the selected 2x2 farm.
+// Stores the selected farm type in the origin cell of the current 2x2 farm.
 // FUNCTION: C2 0x31645
 // FUNCTION: C2WIN 0x004b3fd6
 void act_select_farm(void)
@@ -1365,9 +1350,7 @@ void act_select_farm(void)
     (*(struct region_cell *)((unsigned char *)region_map + (off))).occupant |= (unsigned char)para1;
 }
 
-// Given a cm-byte pointer somewhere inside a 2x2 farm/mine/etc., walk back to the byte pointer of
-// its top-left cell. The 2x2 origin index is stored in the low 2 bits of (*(struct region_cell
-// *)((unsigned char *)region_map + (+7))).base_kind of the cell.
+// Returns the origin-cell pointer for the 2x2 region building containing `cm_ptr`.
 // FUNCTION: C2 0x3166c
 // FUNCTION: C2WIN 0x004b402d
 int get_region_2x2_start(int cm_ptr)
@@ -1534,8 +1517,7 @@ int use_city_overmap_to_move(void)
     return 0;
 }
 
-// Region-map twin of `use_city_overmap_to_move`: convert mouse coordinates over the command strip
-// into a region cell pointer and call `jump_to_regionmap_ptr`. Returns 1 on consumed click.
+// Converts a click on the region overview map into a region cell and recentres the view there.
 // FUNCTION: C2 0x31997
 // FUNCTION: C2WIN 0x004b459d
 int use_region_overmap_to_move(void)
@@ -1612,8 +1594,7 @@ found:
     return 2;
 }
 
-// Region-map twin of `jump_to_citymap_ptr`. If we're on the city map, save city rotation/zoom and
-// switch to the region view; then linear-search pseudo_map for `target_ptr` and jump to it.
+// Switches to the region map if needed and recentres it on `target_ptr`.
 // FUNCTION: C2 0x31b1b
 // FUNCTION: C2WIN 0x004b47ba
 int jump_to_regionmap_ptr(int target_ptr)
@@ -1690,8 +1671,7 @@ int perform_city_strip_action(void)
     return 1;
 }
 
-// Region-mode dispatch for icon-strip clicks. Mirrors `perform_city_strip_action` but indexes into
-// `city_actions+0x50` instead.
+// Dispatches a region-screen command-strip click to the selected icon action.
 // FUNCTION: C2 0x31c3c
 // FUNCTION: C2WIN 0x004b49d3
 int perform_region_strip_action(void)
@@ -1726,8 +1706,7 @@ void act_null(void)
 {
 }
 
-// Find which battle-screen icon (4..0x14) the cursor is in and, on a left-click, dispatch via
-// `region_actions+0x3C`. Sets `last_icon_over` to the matched icon and `last_icon_used` if idx>=9.
+// Finds the battle-screen icon under the cursor and dispatches its action on a left click.
 // FUNCTION: C2 0x31c9f
 // FUNCTION: C2WIN 0x004b4a6f REORDERED
 int perform_battle_strip_action(void)
@@ -1968,8 +1947,7 @@ void act_toggle_tunes(void)
     set_sequences_volume();
 }
 
-// Toggle the "tunes enabled" bit (c2inf[+0xD] xor 1) and either stop the current tune (if now
-// disabled) or start one of the two scene tunes (battle vs. peaceful), based on map_mode.
+// Toggles music and stops or starts the tune appropriate to the current map.
 // FUNCTION: C2 0x3207d
 // FUNCTION: C2WIN 0x004b4fd1
 void act_tog_tunes(void)
@@ -2049,8 +2027,7 @@ void act_tog_speech(void)
     if (c2inf.speech_on == 0) stop_db();
 }
 
-// Adjust the SFX volume slider; same template as `act_tunes_level`, refreshes sample volume and
-// re-shows the FX box (mode 1) so the new value is rendered.
+// Adjusts the sound-effects volume, applies it, and refreshes the options dialog.
 // FUNCTION: C2 0x321aa
 // FUNCTION: C2WIN 0x004b5189
 void act_samples_level(void)
@@ -2061,8 +2038,7 @@ void act_samples_level(void)
     show_fx_box(1);
 }
 
-// Adjust the "number of simultaneous samples" slider in the FX dialog (entry 5: c2inf[+0x3C], step
-// 1, 1..4, x=0x70, y=0x90, flag 2).
+// Adjusts the maximum number of simultaneous sound effects between one and four.
 // FUNCTION: C2 0x321ec
 // FUNCTION: C2WIN 0x004b51cf
 void act_nof_samples(void)
@@ -2130,8 +2106,7 @@ void act_tog_yearend(void)
     show_fx_box(3);
 }
 
-// Toggle the "auto-save on year-end" bit (c2inf[+0x3B]) and re-render the year-end FX dialog (mode
-// 3). Tutorial / demo blocked.
+// Toggles year-end autosaving and refreshes the options dialog. Disabled in tutorials and demos.
 // FUNCTION: C2 0x322e7
 // FUNCTION: C2WIN 0x004b532b
 void act_tog_autosave(void)
@@ -2148,8 +2123,7 @@ void act_tog_autosave(void)
     show_fx_box(3);
 }
 
-// Adjust the game-speed slider in the FX dialog: kind 1, target=&c2inf[+4], step 0xa, max 0x64,
-// min 0, (x,y)=(0xa0,0xa0), flag 1.
+// Adjusts game speed in ten-point steps. Disabled during tutorials.
 // FUNCTION: C2 0x32337
 // FUNCTION: C2WIN 0x004b5394
 void act_game_speed(void)
@@ -2161,8 +2135,7 @@ void act_game_speed(void)
     adjust(1, &c2inf.game_speed, 0xa, 0x64, 0, 0xa0, 0xa0, 1);
 }
 
-// Adjust the scroll-speed slider: kind 2, target=&c2inf[+8], step 0xa, max 0x64, min 0,
-// (x,y)=(0xa0,0xa0), flag 1.
+// Adjusts map scrolling speed in ten-point steps. Disabled during tutorials.
 // FUNCTION: C2 0x32386
 // FUNCTION: C2WIN 0x004b53e7
 void act_scroll_speed(void)
@@ -2941,9 +2914,8 @@ void act_order_cohort(void)
     starting_denarii = denarii;
 }
 
-// "Set patrol markers" — initiates the patrol-route placement UI for the currently tracked cohort.
-// If the army is exhausted (total_troops==0 && morale_timer==0) or already in state 10, it instead
-// pops a "cannot patrol" warning.
+// Starts patrol-route placement for the tracked cohort, unless it has no troops while its morale
+// timer is active or is already inactive.
 // FUNCTION: C2 0x33148
 // FUNCTION: C2WIN 0x004b6837
 void act_set_patrol_markers(void)
@@ -2995,9 +2967,7 @@ void act_set_patrol_markers(void)
     clear_mouse();
 }
 
-// "Return home" cohort order — resets the patrol-route slot, restores the cohort's home tile
-// (army_list[+0x2C] is the home_ref), sets state_idx=5 (returning), clears the patrolling flag bit
-// and sets order_progress=1.
+// Clears the tracked cohort's patrol route and orders it back to its fortress.
 // FUNCTION: C2 0x3329b
 void act_set_return_home(void)
 {
@@ -3022,7 +2992,7 @@ void act_set_return_home(void)
         army_list[tracking_army].cohort_id].target_army = 0;
 
     q = army_list[tracking_army].fort_ref / 8;
-    r = q % 60;       /* 0x3c */
+    r = q % 60;
     army_list[tracking_army].target_x = r;
     army_list[tracking_army].target_y = (q / 60);
     army_list[tracking_army].state_idx = 5;
@@ -3109,7 +3079,7 @@ void act_rotate_anticlockwise(void)
     pointer_mode    = 0;
 }
 
-// Zoom-out click handler — tail-calls do_act_zoom_out(0).
+// Handles a zoom-out click.
 // FUNCTION: C2 0x33483
 // FUNCTION: C2WIN 0x004b6fec
 void act_zoom_out(void)
@@ -3261,7 +3231,7 @@ void act_goto_city_map(void)
     act_correct_map();
 }
 
-// Switch to the region map. Tutorial-restricted via c2inf[+0x35].
+// Switches to the region map unless peaceful mode disables it.
 // FUNCTION: C2 0x33783
 // FUNCTION: C2WIN 0x004b7722
 void act_goto_prov_map(void)
@@ -3434,7 +3404,7 @@ void act_set_marker1(void)
     jump_to_citymap_ptr(city_flag_list[last_city_flag]);
 }
 
-// Province-flag twin of `act_set_marker1`: cycle next_prov_flag and pan the region map to it.
+// Cycles to the next province flag and recentres the region map on it.
 // FUNCTION: C2 0x33ba2
 // FUNCTION: C2WIN 0x004b7d38
 void act_set_marker2(void)
@@ -3546,8 +3516,7 @@ void act_forum(void)
     in_the_forum = 0;
 }
 
-// Tail-dispatch the per-department forum idle loop. Each `forum_*_game_loop` runs the modal until
-// either it sets `out1` or another department is chosen.
+// Runs the interaction loop for the active forum department.
 // FUNCTION: C2 0x33ea7
 // FUNCTION: C2WIN 0x004b7e89
 void forum_game_loop(void)
@@ -3851,9 +3820,8 @@ void act_prev_cohort(void)
     gen_refresh1 = 1;
 }
 
-// 4-state demobilise toggle for the currently viewed army. army_list[+0xA0] cycles 0→1→2→3→0: 0 no
-// demob queued 1 demob next turn 2 demob immediately (saves state_idx into +0x10, sets idle 0xa) 3
-// reverts (restores +0x10 into state_idx).
+// Cycles the viewed cohort through its demobilisation states, preserving and restoring its prior
+// activity state when necessary.
 // FUNCTION: C2 0x343ca
 // FUNCTION: C2WIN 0x004b8771
 void act_demob_cohort(void)
@@ -3988,8 +3956,7 @@ void act_slave_reg_upkeep_up(void)  { if (!c2inf.peace_mode) { alter_slave_reqs(
 // FUNCTION: C2WIN 0x004b8b93
 void act_slave_reg_upkeep_down(void){ if (!c2inf.peace_mode) { alter_slave_reqs(6, -1); gen_refresh2 = 1; } }
 
-// Bring `slave_requirements[kind][0]` into agreement with the "needed" target at slot `+0x4`, by
-// repeatedly nudging via `alter_slave_reqs` (which returns 0 once it can't move further).
+// Moves a slave-work category's allocation toward its required level.
 // FUNCTION: C2 0x345f6
 // FUNCTION: C2WIN 0x004b8bc5
 void act_set_slaves_to_need_level(int kind)
@@ -4012,8 +3979,7 @@ void act_set_slaves_to_need_level(int kind)
     gen_refresh2 = 1;
 }
 
-// Adjust slave_requirements[kind][0] by delta (-1 or +1). The pool is conserved through
-// `slave_requirements[+0x38]` (free slaves remaining).
+// Adjusts one slave-work category while conserving the total through the free-slave pool.
 // FUNCTION: C2 0x3463a
 // FUNCTION: C2WIN 0x004b8c5d
 int alter_slave_reqs(int kind, int delta)
@@ -4025,7 +3991,7 @@ int alter_slave_reqs(int kind, int delta)
             return 0;
         }
         slave_requirements[kind].current -= 1;
-        slave_requirements[7].current += 1;          /* +0x38 / 4 */
+        slave_requirements[7].current += 1;
         return 1;
     }
 
@@ -4154,9 +4120,7 @@ void act_zoom_level2(void)
     clip_battle_zoom_level2();
 }
 
-// Click the "begin / pause battle" toggle. Marks icon-strip repaint, advances battle_state from
-// 0→1 if applicable, flips the c2inf[+0x18] bit, and resets the battle_setup_count and
-// battle_turbo flags.
+// Starts an unstarted battle or toggles its paused state, then resets battle timing controls.
 // FUNCTION: C2 0x34822
 // FUNCTION: C2WIN 0x004b8f4e
 void act_stop_go(void)
@@ -4274,8 +4238,7 @@ void act_unit_tortoise_formation(void)
     else pointer_mode = 1;
 }
 
-// mop_up tail-calls general_reform(3) — no battle_state guard, just clears pointer_mode and lets
-// reform run.
+// Orders selected battle units to mop up remaining enemies.
 // FUNCTION: C2 0x34a10
 // FUNCTION: C2WIN 0x004b9270
 void act_unit_mop_up_formation(void)
@@ -4315,8 +4278,8 @@ void act_set_skill_levels(void)
     flush_sb_buffer();
 }
 
-// Province-selection on first promotion. In tutorial mode this is pre-canned: province_is = 0,
-// province_difficulty derived from c2inf[+0x34].
+// Runs province selection for a promotion, or derives the peaceful-mode province difficulty from
+// the chosen skill level.
 // FUNCTION: C2 0x34ab0
 // FUNCTION: C2WIN 0x004b9357
 void act_choose_init_region(void)
@@ -4517,9 +4480,8 @@ void act_census(void)
     in_census_mode = 0;
 }
 
-// Show the query panel for the cell under the cursor. Resolves pm_over_cm_ptr → act_start_x/y,
-// fetches city or region info, pre-selects the proper view button (queery_buttons+0x54 / +0x6C /
-// +0x84) based on q_type/q_flag, then idles queery_game_loop while the user clicks through it.
+// Opens the city or region query panel for the cell under the cursor and restores the prior
+// pointer mode after the panel closes.
 // FUNCTION: C2 0x34e10
 // FUNCTION: C2WIN 0x004b97d7
 void act_query(void)
@@ -4610,7 +4572,7 @@ void act_general_query(void)
     show_query_panel();
 }
 
-// Query-panel "People" tab. Same shape as `act_general_query` but selects mode 1.
+// Selects the query panel's people tab and refreshes the panel.
 // FUNCTION: C2 0x34ff1
 // FUNCTION: C2WIN 0x004b9a29
 void act_people_query(void)
@@ -4738,7 +4700,7 @@ void act_query_mode(void)
     else                   pointer_mode = 4;
 }
 
-// Final stub for the source file: end-of-year sequence. Tutorial games skip the modal entirely.
+// Runs year-end autosave and summary handling outside tutorial mode.
 // FUNCTION: C2 0x35190
 // FUNCTION: C2WIN 0x004b9ca2
 void act_do_year_end(void)

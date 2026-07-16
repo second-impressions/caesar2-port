@@ -10,26 +10,9 @@ char events[5][64] = {
     { 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 2, 0, 4, 0, 0, 3, 0, 0, 3, 0, 0, 0, 0, 0, 3, 0, 0, 4, 0, 0, 0, 3, 0, 0, 4, 0, 0, 3, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 3, 3, 0, 0, 4, 0, 0, 0 }
 };
 
-/* Army sizing / tax parameters live in the main_paras[10] startup table
-   (data.c; see datainit.c): [1] = regular-cohort baseline, [2..4] =
-   recruit caps (aux/irr/reg), [5] = imperial_tax reset base (= 4). */
-
-
-// ── Army record ──────────────────────────────────────────────────────────────
-// 26 records of 0xAF (175) bytes each starting at linker symbol `army_list`.
-// Only the fields needed by formulae.c are declared; the rest are padding.
-//
-// Cohort `type` encoding (used in centuries[]): 0=empty, 1=regulars,
-// 2=irregulars, 3=auxillaries, 4=specials. This differs from the order of
-// the num_* fields below.
-// army_rec and century are defined in c2_types.h.
-// ── External functions ────────────────────────────────────────────────────────
 void stop_db(void);
 
-
-// ── Stubs ─────────────────────────────────────────────────────────────────────
-
-// Checks game over and returns the result.
+// Advances the bankruptcy countdown and ends the game if the treasury stays negative.
 // FUNCTION: C2 0x55326
 // FUNCTION: C2WIN 0x00454cb0
 void check_game_over(void) {
@@ -51,7 +34,7 @@ void check_game_over(void) {
     }
 }
 
-// Checks for promotion and returns the result.
+// Recalculates the governor ratings and offers any promotion the player has earned.
 // FUNCTION: C2 0x5539d
 // FUNCTION: C2WIN 0x00454d39
 void check_for_promotion(void) {
@@ -94,7 +77,7 @@ void adjust_peace_criteria(void) {
     if (pax_romanum > 1000) pax_romanum = 1000;
     if (pax_romanum < 0)    pax_romanum = 0;
     t = pax_romanum;
-    peace_rating = t / 10;                          // store before reg-save
+    peace_rating = t / 10;
     orig = peace_rating;
     adj = city_pop_limit_10_to_1(orig, 1);
     peace_rating = adj;
@@ -164,8 +147,7 @@ void adjust_proserity_criteria(void) {
     if (population < 10) prosperity_rating_pop_limit = 0;
 }
 
-// Direct-global-update pattern: apply `+=` directly to empire_rating in memory (no `rating`
-// local).
+// Recomputes the empire rating from favour, trade links, and provincial infrastructure.
 // FUNCTION: C2 0x558a0
 // FUNCTION: C2WIN 0x00455342
 void adjust_empire_criteria(void) {
@@ -246,7 +228,7 @@ int want_promotion(int level) {
 }
 
 
-// Handles the take promotion user-interface action.
+// Accepts the pending promotion and closes the promotion dialog.
 // FUNCTION: C2 0x55ac7
 // FUNCTION: C2WIN 0x004556eb
 void act_take_promotion(void) {
@@ -254,7 +236,7 @@ void act_take_promotion(void) {
     out2 = 1;
 }
 
-// Handles the review in 10 user-interface action.
+// Defers the pending promotion for ten months.
 // FUNCTION: C2 0x55ad9
 // FUNCTION: C2WIN 0x00455707
 void act_review_in_10(void) {
@@ -263,7 +245,7 @@ void act_review_in_10(void) {
     refused_promotion = 120;
 }
 
-// Handles the review in 25 user-interface action.
+// Defers the pending promotion for twenty-five months.
 // FUNCTION: C2 0x55af6
 // FUNCTION: C2WIN 0x0045572d
 void act_review_in_25(void) {
@@ -272,14 +254,14 @@ void act_review_in_25(void) {
     refused_promotion = 300;
 }
 
-// Finishes the current province and opens the next-province selection.
+// Switches the game to province selection after the current assignment ends.
 // FUNCTION: C2 0x55b13
 // FUNCTION: C2WIN 0x00455753
 void assign_to_new_province(void) {
     game_state = 3;
 }
 
-// Performs promotion.
+// Applies a rank promotion and returns to province selection.
 // FUNCTION: C2 0x55b1e
 // FUNCTION: C2WIN 0x00455768
 void do_promotion(int level) {
@@ -300,7 +282,7 @@ void make_emperor(void) {
     game_state = 2;
 }
 
-// Initializes legion.
+// Resets legion staffing, reinforcement, morale, and readiness state.
 // FUNCTION: C2 0x55b52
 // FUNCTION: C2WIN 0x004557c9
 void init_legion(void) {
@@ -337,7 +319,7 @@ void init_legion(void) {
     get_cohorts_in_action();
 }
 
-// Converts available recruits into trained cohort soldiers.
+// Reconciles cohort staffing with available recruits and charges the army's monthly costs.
 // FUNCTION: C2 0x55c0b
 // FUNCTION: C2WIN 0x004558f1
 void train_soldiers(void) {
@@ -356,7 +338,7 @@ void train_soldiers(void) {
     denarii -= mercs_cost;
 }
 
-// Returns morale and readiness.
+// Recalculates readiness for each active cohort and updates the army-wide averages.
 // FUNCTION: C2 0x55c82
 // FUNCTION: C2WIN 0x00455983
 void get_morale_and_readiness(void) {
@@ -388,7 +370,7 @@ void get_morale_and_readiness(void) {
     }
 }
 
-// Returns current cohort totals.
+// Totals each troop type currently assigned to active cohorts.
 // FUNCTION: C2 0x55d79
 // FUNCTION: C2WIN 0x00455b9a
 void get_current_cohort_totals(void) {
@@ -408,7 +390,7 @@ void get_current_cohort_totals(void) {
                            + current_no_of_auxillaries + current_no_of_specials;
 }
 
-// Remove troop shortfalls, distribute available reinforcements, and refresh each army's totals.
+// Removes troop shortfalls, distributes reinforcements, and refreshes active cohort totals.
 // FUNCTION: C2 0x55e1d
 // FUNCTION: C2WIN 0x00455cce
 void set_current_cohort_totals(void) {
@@ -431,7 +413,7 @@ void set_current_cohort_totals(void) {
     count = 0;
     temp_army = last_adjusted_cohort;
 
-    // ── auxillaries ─────────────────────────────────────────────────────────
+    // Reconcile auxiliaries.
     while (lacking_auxillaries > 0) {
         count++;
         if (count >= 40000) break;
@@ -454,7 +436,7 @@ void set_current_cohort_totals(void) {
         }
     }
 
-    // ── irregulars ──────────────────────────────────────────────────────────
+    // Reconcile irregulars.
     while (lacking_irregulars > 0) {
         count++;
         if (count >= 40000) break;
@@ -477,7 +459,7 @@ void set_current_cohort_totals(void) {
         }
     }
 
-    // ── regulars ────────────────────────────────────────────────────────────
+    // Reconcile regulars.
     while (lacking_regulars > 0) {
         count++;
         if (count >= 40000) break;
@@ -500,7 +482,7 @@ void set_current_cohort_totals(void) {
         }
     }
 
-    // ── specials ────────────────────────────────────────────────────────────
+    // Reconcile special troops.
     while (lacking_specials > 0) {
         count++;
         if (count >= 40000) break;
@@ -525,7 +507,7 @@ void set_current_cohort_totals(void) {
 
     last_adjusted_cohort = temp_army;
 
-    // ── recompute total_troops per army, clear assigned_needs ──────────────────
+    // Refresh each active cohort's troop total.
     for (temp_army = 1; temp_army < 26; temp_army++) {
         if (army_list[temp_army].exists == 0) continue;
         if (army_list[temp_army].type != 1) continue;
@@ -537,7 +519,7 @@ void set_current_cohort_totals(void) {
         army_list[temp_army].assigned_needs = 0;
     }
 
-    // ── spread the `needed_no_of_*` requirements as reinforcement tags ──────
+    // Distribute remaining reinforcement needs among active cohorts.
     needed_aux = needed_no_of_auxillaries;
     needed_irr = needed_no_of_irregulars;
     needed_reg = needed_no_of_regulars;
@@ -685,7 +667,7 @@ void fill_cohort_centuries(void) {
     }
 }
 
-// Returns army totals.
+// Computes available troop totals, recruitment changes, and remaining army needs.
 // FUNCTION: C2 0x5654e
 // FUNCTION: C2WIN 0x00456d85
 void get_army_totals(void) {
@@ -827,13 +809,12 @@ void slave_welfare(void) {
     else if (quality >  750) { mortality_pct =    2; growth_pct =  60; }
     else if (quality >  500) { mortality_pct =    2; growth_pct =  40; }
     else if (quality >  300) { mortality_pct =    2; growth_pct =  20; }
-    else if (quality >  200) { /* mortality stays 3 (==ebx from idiv) */
-                               mortality_pct =    3; growth_pct =  15; }
+    else if (quality >  200) { mortality_pct =    3; growth_pct =  15; }
     else if (quality >  150) { mortality_pct =    4; growth_pct =  11; }
     else if (quality >  125) { mortality_pct =    5; growth_pct =   9; }
     else if (quality >  105) { mortality_pct =    6; growth_pct =   8; }
     else {
-        // 95..=105: sustainable equilibrium, no change
+        // A balanced welfare level leaves the slave population unchanged.
         slave_population_change = 0;
         return;
     }
@@ -847,7 +828,7 @@ void slave_welfare(void) {
     slave_population_change = slaves - orig_slaves;
 }
 
-// Charges monthly slave costs and updates the slave workforce totals.
+// Charges the monthly slave welfare bill to the provincial treasury.
 // FUNCTION: C2 0x56b5a
 // FUNCTION: C2WIN 0x004574e1
 void slave_costs(void) {
@@ -893,7 +874,7 @@ void adjust_slave_usage(void) {
             pool = 0;
         }
     }
-    slave_requirements[i].current = pool;              /* i == 7, indexed store */
+    slave_requirements[i].current = pool;              /* Unassigned workforce. */
 }
 
 // Draw and apply a skill-dependent random province event for the current turn.
@@ -907,14 +888,14 @@ void random_event(void) {
     int temple_w;
     int rob_w;
 
-    // Draw event from the skill-level event row.
+    // Draw an event from the current difficulty's event table.
     event = (unsigned char)events[c2inf.skill_level][rand128 & 63];
 
     plague_accident = 999999;
     revolt_accident = 999999;
 
     if (event == 0) {
-        // ── event 0: good fortune / robbery check ───────────────────────────
+        // Convert a favorable roll into a robbery check when the city is wealthy enough.
         if (denarii < 1000) return;
         if (population < 100) return;
         temple_score = large_temples_count * 4
@@ -934,13 +915,13 @@ void random_event(void) {
         event = 3;
     }
 
-    // ── event 4: plague ───────────────────────────────────────────────────
+    // Schedule a plague accident.
     if (event == 4) {
         if (plague_running_count < 4) return;
         plague_accident = get_rand_max(plague_running_count);
     }
 
-    // ── event 2: revolt warning / fine ───────────────────────────────────
+    // Warn about temple neglect, then take a quarter of the treasury on recurrence.
     if (event == 2) {
         if (denarii < 1000)   return;
         if (population < 100) return;
@@ -950,11 +931,11 @@ void random_event(void) {
                 put_message(88, 0, 14);
             } else {
                 put_message(89, 0, 16);
-                stolen_denarii = denarii / 4;  // sar-shl-sbb idiom
+                stolen_denarii = denarii / 4;
                 denarii -= stolen_denarii;
             }
         }
-        // temples_count != 0: fall through to event==3 check below
+        // Cities with temples continue into the robbery calculation.
     }
 
     if (event != 3) return;
@@ -966,7 +947,7 @@ void random_event(void) {
             put_message(88, 0, 14);
         } else {
             put_message(89, 0, 16);
-            stolen_denarii = denarii / 4;  // sar-shl-sbb idiom
+            stolen_denarii = denarii / 4;
             denarii -= stolen_denarii;
         }
         return;
@@ -997,7 +978,7 @@ void pay_salary(void) {
     denarii -= sal;
 }
 
-// Returns population growth factor.
+// Updates population growth pressure from taxes, employment, difficulty, and tutorial mode.
 // FUNCTION: C2 0x56ed0
 // FUNCTION: C2WIN 0x004579b5
 void get_population_growth_factor(void) {
@@ -1007,10 +988,10 @@ void get_population_growth_factor(void) {
     if (pop_growth_future >  36) pop_growth_future =  36;
     if (pop_growth_future < -36) pop_growth_future = -36;
     if (tutorial_mode != 0) pop_growth_future = 36;
-    pop_growth_factor = pop_growth_future / 8;          // sar-shl-sbb idiom
+    pop_growth_factor = pop_growth_future / 8;
 }
 
-// Returns industry growth factor.
+// Updates industry growth pressure from taxation and the current business population.
 // FUNCTION: C2 0x56f74
 // FUNCTION: C2WIN 0x00457a5d
 void get_industry_growth_factor(void) {
@@ -1018,10 +999,10 @@ void get_industry_growth_factor(void) {
     if (ind_growth_future >  36) ind_growth_future =  36;
     if (ind_growth_future < -36) ind_growth_future = -36;
     if (business_count == 0) ind_growth_future = business_count;
-    ind_growth_factor = ind_growth_future / 8;    // sar-shl-sbb idiom (signed /8)
+    ind_growth_factor = ind_growth_future / 8;
 }
 
-// Returns insurrection factor.
+// Converts accumulated tax, difficulty, and conscription unrest into an insurrection factor.
 // FUNCTION: C2 0x56fdd
 // FUNCTION: C2WIN 0x00457ad2
 void get_insurrection_factor(void) {
@@ -1068,7 +1049,7 @@ void year_end_accounts(void) {
 // FUNCTION: C2WIN 0x00457d4d
 void collect_pop_tax(void) {
     if (pop_tax_counts != 0) {
-        account_pop_tax       = pop_tax_running_total / pop_tax_counts;  // two-step
+        account_pop_tax       = pop_tax_running_total / pop_tax_counts;
         account_pop_tax      /= 100;
         denarii              += account_pop_tax;
         pop_tax_running_total = 0;
@@ -1081,7 +1062,7 @@ void collect_pop_tax(void) {
 // FUNCTION: C2WIN 0x00457dac
 void collect_ind_tax(void) {
     if (ind_tax_counts != 0) {
-        account_ind_tax       = ind_tax_running_total / ind_tax_counts;  // two-step
+        account_ind_tax       = ind_tax_running_total / ind_tax_counts;
         account_ind_tax      /= 100;
         denarii              += account_ind_tax;
         ind_tax_running_total = 0;
@@ -1089,7 +1070,7 @@ void collect_ind_tax(void) {
     }
 }
 
-// Returns estimates.
+// Projects the current year's income, expenses, tribute, and final balance.
 // FUNCTION: C2 0x5729a
 // FUNCTION: C2WIN 0x00457e0b
 void get_estimates(void) {
@@ -1110,7 +1091,7 @@ void get_estimates(void) {
                                 - tribute;
 }
 
-// Projects pop tax for remaining months and divides by 12 to get monthly avg.
+// Estimates annual population-tax income using collected and projected monthly receipts.
 // FUNCTION: C2 0x57356
 // FUNCTION: C2WIN 0x00457ec2
 void get_pop_tax_estimate(void) {
@@ -1121,11 +1102,11 @@ void get_pop_tax_estimate(void) {
         projected *= months_left;
     }
     projected += pop_tax_running_total;
-    estimate_pop_tax  = projected / 12;            // two-step: PS stores intermediate
+    estimate_pop_tax  = projected / 12;
     estimate_pop_tax /= 100;
 }
 
-// Returns ind tax estimate.
+// Estimates annual industry-tax income using collected and projected monthly receipts.
 // FUNCTION: C2 0x573b5
 // FUNCTION: C2WIN 0x00457f44
 void get_ind_tax_estimate(void) {
@@ -1136,7 +1117,7 @@ void get_ind_tax_estimate(void) {
         projected *= months_left;
     }
     projected += ind_tax_running_total;
-    estimate_ind_tax  = projected / 12;            // two-step: PS stores intermediate
+    estimate_ind_tax  = projected / 12;
     estimate_ind_tax /= 100;
 }
 
@@ -1158,7 +1139,7 @@ void get_average_pop_tax(void) {
     average_pop_tax_asses     = per_person % 100;
 }
 
-// Returns average ind tax.
+// Computes average industry tax per business in denarii and asses.
 // FUNCTION: C2 0x5747e
 // FUNCTION: C2WIN 0x00458046
 void get_average_ind_tax(void) {
@@ -1176,7 +1157,7 @@ void get_average_ind_tax(void) {
     average_ind_tax_asses     = per_business % 100;
 }
 
-// Updates imperial tribute demand, processes requests and reviews.
+// Updates imperial favour, requests, tribute reviews, and personal tax demands.
 // FUNCTION: C2 0x574e8
 // FUNCTION: C2WIN 0x004580c6
 void get_new_tribute(void) {
@@ -1250,8 +1231,6 @@ void get_new_tribute(void) {
 
     imperial_tax -= 1; if (imperial_tax <= 0) {
         imperial_tax = main_paras[5] + (rand8 & 3); cp = completed_provinces;
-        /* tax_rates is laid out as int[3][20]: row 0 = greedy band,
-           row 1 = 5-citizen band, row 2 = poor band. */
         if (players_denarii >= tax_triggers[0]) {
             last_imperial_tax_percent = tax_rates[cp];
             last_imperial_tax_amount = totalXpercent(players_denarii, last_imperial_tax_percent);
@@ -1271,7 +1250,7 @@ void get_new_tribute(void) {
     }
 }
 
-// Initializes tribute.
+// Resets imperial favour, tribute, bribe, gift, and personal-tax state.
 // FUNCTION: C2 0x57958
 // FUNCTION: C2WIN 0x004586ae
 void init_tribute(void) {
@@ -1289,7 +1268,7 @@ void init_tribute(void) {
     total_imperial_taxes      = 0;
 }
 
-// Returns temple tip.
+// Selects and speaks a rating-specific temple advisor tip.
 // FUNCTION: C2 0x579b1
 // FUNCTION: C2WIN 0x0045873d
 void get_temple_tip(int param_1) {
@@ -1309,7 +1288,7 @@ void get_temple_tip(int param_1) {
         if (current_gdp < 10)                 { current_temple_tip = 11; play_speech(39); return; }
                                                 current_temple_tip = 12; play_speech(40); return;
     }
-    // param_1 == 3: culture
+    // Culture advice identifies the weakest service category.
     if (culture_rating_pop_limit != 0) { current_temple_tip = 13; play_speech(41); return; }
     if (entertainment_level <= religion_level && entertainment_level <= utility_level)
                                        { current_temple_tip = 14; play_speech(42); return; }

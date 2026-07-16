@@ -2,9 +2,9 @@
 #include "c2_data.h"
 
 
-/* Assembly sprite-diamond blitters. */
+/* Pseudo-map coordinate conversion and isometric diamond rendering. */
 
-// Returns pm from actual.
+// Finds an actual map offset in the pseudo-map and stores its row and column in x and y.
 // FUNCTION: C2 0x352aa
 // FUNCTION: C2WIN 0x00484250
 void get_pm_from_actual(int actual)
@@ -26,7 +26,7 @@ void get_pm_from_actual(int actual)
     }
 }
 
-// Returns pseudo map.
+// Builds the oriented pseudo-map lookup and marks cells outside the active map with sentinels.
 // FUNCTION: C2 0x35311
 // FUNCTION: C2WIN 0x0048430f
 void get_pseudo_map(int direction)
@@ -156,7 +156,7 @@ void pm_limits(void)
     if (max <= pm_y) pm_y = max;
 }
 
-// Returns pm over diamond.
+// Resolves the mouse position to a visible pseudo-map diamond and updates the selection globals.
 // FUNCTION: C2 0x3574e
 // FUNCTION: C2WIN 0x0048488c
 int get_pm_over_diamond(int force_zero_offset)
@@ -349,7 +349,7 @@ void rotate_pm_anticlockwise(void)
     }
 }
 
-// Renders diamond ptr.
+// Draws the pointer footprint for the current building shape.
 // FUNCTION: C2 0x35cc0
 // FUNCTION: C2WIN 0x0048504c
 void show_diamond_ptr(void)
@@ -377,7 +377,7 @@ void show_diamond_ptr(void)
     }
 }
 
-// Render a 3-row × 3-col isometric "diamond" of pointer arrows centred at (x, y).
+// Draws a nine-tile isometric pointer footprint centered at (x, y).
 // FUNCTION: C2 0x35dc0
 // FUNCTION: C2WIN 0x00485206
 void three_by_three(int x, int y)
@@ -395,7 +395,7 @@ void three_by_three(int x, int y)
     show_one_ptr(x, y + 4);
 }
 
-// Copies a 4x4 tile block into the pseudo-map buffer.
+// Draws a sixteen-tile isometric pointer footprint centered at (x, y).
 // FUNCTION: C2 0x35e3f
 // FUNCTION: C2WIN 0x004852e5
 void four_by_four(int x, int y)
@@ -420,8 +420,7 @@ void four_by_four(int x, int y)
     show_one_ptr(x, y + 6);
 }
 
-// Render the cursor / pointer diamond sprite onto the active panorama- map cell (x, y). Panorama
-// coordinates are isometric: x walks columns, y walks rows of half-diamonds.
+// Marks one map cell and draws its clipped pointer diamond at the current zoom level.
 // FUNCTION: C2 0x35f0f
 // FUNCTION: C2WIN 0x0048545c
 void show_one_ptr(int x, int y)
@@ -488,9 +487,7 @@ void show_one_ptr(int x, int y)
     }
 }
 
-// Compute sprite_start = 24-bit little-endian int at ``fixt_data[data_ptr + 4..6]`` where
-// ``data_ptr = sprite_image_no * 16 + 8``. Bounds-check (must be in [0, 0x4BAF0]) — out-of-range
-// bumps ``sprite_error`` and returns silently.
+// Loads a fixture sprite and draws its full diamond at the current zoom level.
 // FUNCTION: C2 0x36165
 // FUNCTION: C2WIN 0x004857da
 void place_diamond(int style)
@@ -519,7 +516,7 @@ void place_diamond(int style)
     place_i_small_diamond(fixt_data, style);
 }
 
-// Draw the left half of a fixture diamond using the blitter for the current zoom level.
+// Loads a fixture sprite and draws its left half at the current zoom level.
 // FUNCTION: C2 0x361fd
 // FUNCTION: C2WIN 0x0048592d
 void place_lefthalf_diamond(void)
@@ -548,7 +545,7 @@ void place_lefthalf_diamond(void)
     place_i_small_diamond_lefthalf(fixt_data, 0);
 }
 
-// Draws the right half of a pseudo-map diamond tile.
+// Loads a fixture sprite and draws its right half at the current zoom level.
 // FUNCTION: C2 0x36295
 // FUNCTION: C2WIN 0x00485a5e
 void place_righthalf_diamond(void)
@@ -577,7 +574,7 @@ void place_righthalf_diamond(void)
     place_i_small_diamond_righthalf(fixt_data, 0);
 }
 
-// Places overlay.
+// Loads a people sprite and draws its full overlay diamond at the current zoom level.
 // FUNCTION: C2 0x3632d
 // FUNCTION: C2WIN 0x00485b8f
 void place_overlay(int style)
@@ -606,7 +603,7 @@ void place_overlay(int style)
     place_i_small_diamond(people_data, style);
 }
 
-// Places lefthalf overlay.
+// Loads a people sprite and draws the left half of its overlay at the current zoom level.
 // FUNCTION: C2 0x363c5
 // FUNCTION: C2WIN 0x00485cc6
 void place_lefthalf_overlay(int style)
@@ -635,7 +632,7 @@ void place_lefthalf_overlay(int style)
     place_i_small_diamond_lefthalf(people_data, 0);
 }
 
-// Places righthalf overlay.
+// Loads a people sprite and draws the right half of its overlay at the current zoom level.
 // FUNCTION: C2 0x3645d
 // FUNCTION: C2WIN 0x00485df7
 void place_righthalf_overlay(int style)

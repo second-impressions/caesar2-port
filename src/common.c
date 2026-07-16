@@ -36,8 +36,6 @@ char tb_road_flag;
 char tb_prev_flag;
 char tb_occ_a_flag;
 
-/* army_rec now in c2_types.h, storage in formulae.c */
-
 /* Forward declarations */
 heading_t get_heading(int sx, int sy, int ex, int ey, char mode);
 void init_bd(int x1, int y1, int x2, int y2);
@@ -47,7 +45,7 @@ unsigned char ferret_heading(int x, int y);
 unsigned char get_tb_value(int dir);
 unsigned char get_ferret2(int dir);
 
-// Creates citizen.
+// Allocates and initializes a citizen in an available city-map slot.
 // FUNCTION: C2 0x2a907
 // FUNCTION: C2WIN 0x004691b0
 int create_citizen(int type, int x, int y, char is_barb)
@@ -65,7 +63,7 @@ int create_citizen(int type, int x, int y, char is_barb)
     citizen_a = (unsigned char)CM_CELL((ref)).citizen_a;
     citizen_b = (unsigned char)CM_CELL((ref)).citizen_b;
     if ((citizen_a == 0 || citizen_b == 0) && (terrain & 0x8b) == 0) {
-        if (is_barb != 0) {                          /* PS layout: else-first */
+        if (is_barb != 0) {
             if ((terrain & 0x20) == 0)
                 return 0;
         } else {
@@ -95,7 +93,7 @@ int create_citizen(int type, int x, int y, char is_barb)
                     CM_CELL((ref)).citizen_b = created_citizen_no;
                 }
                 CM_CELL((ref)).edge_bits = CM_CELL((ref)).edge_bits | 1;
-                if (is_barb != 0) {                              /* PS layout: else-first */
+                if (is_barb != 0) {
                     citizen_list[created_citizen_no].is_barbarian = 1;
                 } else {
                     citizen_list[created_citizen_no].is_barbarian = 0;
@@ -118,7 +116,7 @@ int create_citizen(int type, int x, int y, char is_barb)
     return 0;
 }
 
-// Creates army.
+// Allocates an army on an unoccupied region cell allowed by the requested mode.
 // FUNCTION: C2 0x2ab1a
 // FUNCTION: C2WIN 0x004695b9
 int create_army(int type, int x, int y, char mode)
@@ -176,7 +174,7 @@ int create_army(int type, int x, int y, char mode)
     return 0;
 }
 
-// Creates unit.
+// Allocates and initializes a battle unit.
 // FUNCTION: C2 0x2ac8b
 // FUNCTION: C2WIN 0x0046993d
 int create_unit(int owner, int x, int y, int type)
@@ -197,7 +195,7 @@ int create_unit(int owner, int x, int y, int type)
     return 0;
 }
 
-// Creates figure.
+// Allocates a battle figure and claims its destination map cell.
 // FUNCTION: C2 0x2acfb
 // FUNCTION: C2WIN 0x00469aa3
 int create_figure(int sprite_type, int base_x, int off_x, int base_y, int off_y, int owner, int unit_no)
@@ -233,7 +231,7 @@ int create_figure(int sprite_type, int base_x, int off_x, int base_y, int off_y,
     return 0;
 }
 
-// Creates arrow.
+// Allocates an arrow and initializes its flight path between two battle cells.
 // FUNCTION: C2 0x2ae0e
 // FUNCTION: C2WIN 0x00469d49
 int create_arrow(unsigned char *arrow_data_ptr, int owner, int sx, int sy, int ex, int ey)
@@ -262,7 +260,7 @@ int create_arrow(unsigned char *arrow_data_ptr, int owner, int sx, int sy, int e
     return 0;
 }
 
-// Clears citizen.
+// Zeros a citizen record.
 // FUNCTION: C2 0x2af5a
 // FUNCTION: C2WIN 0x00469f7e
 void clear_citizen(struct citizen_rec *p)
@@ -274,7 +272,7 @@ void clear_citizen(struct citizen_rec *p)
     }
 }
 
-// Clears army.
+// Zeros an army record.
 // FUNCTION: C2 0x2af6d
 // FUNCTION: C2WIN 0x00469f9c
 void clear_army(struct army_rec *p)
@@ -297,7 +295,7 @@ void clear_unit(struct unit_rec *p)
     }
 }
 
-// Clears figure.
+// Zeros a battle-figure record.
 // FUNCTION: C2 0x2af8e REORDERED
 // FUNCTION: C2WIN 0x00469fb7
 void clear_figure(struct figure_rec *p)
@@ -309,7 +307,7 @@ void clear_figure(struct figure_rec *p)
     }
 }
 
-// Clears arrow.
+// Zeros an arrow record.
 // FUNCTION: C2 0x2afa1
 // FUNCTION: C2WIN 0x00469fd2
 void clear_arrow(struct arrow_rec *p)
@@ -321,7 +319,7 @@ void clear_arrow(struct arrow_rec *p)
     }
 }
 
-// Removes unit.
+// Removes a battle unit by clearing its record.
 // FUNCTION: C2 0x2afb4
 // FUNCTION: C2WIN 0x00469fed
 void remove_unit(int n)
@@ -329,7 +327,7 @@ void remove_unit(int n)
     clear_unit(&unit_list[n]);
 }
 
-// Removes figure.
+// Releases a figure's battle-map cell and clears its record.
 // FUNCTION: C2 0x2afc3
 // FUNCTION: C2WIN 0x0046a016
 void remove_figure(int n)
@@ -340,7 +338,7 @@ void remove_figure(int n)
     clear_figure(&figure_list[n]);
 }
 
-// Removes citizen.
+// Releases a citizen's city-map slot and clears its record.
 // FUNCTION: C2 0x2afe3
 // FUNCTION: C2WIN 0x0046a055
 void remove_citizen(int n)
@@ -355,7 +353,7 @@ void remove_citizen(int n)
     clear_citizen(&citizen_list[n]);
 }
 
-// Removes army.
+// Releases an army's region-map cell and clears its record.
 // FUNCTION: C2 0x2b02a
 // FUNCTION: C2WIN 0x0046a102
 void remove_army(int n)
@@ -366,7 +364,7 @@ void remove_army(int n)
     clear_army(&army_list[n]);
 }
 
-// Clears unit list.
+// Clears every usable battle-unit record.
 // FUNCTION: C2 0x2b04d
 // FUNCTION: C2WIN 0x0046a146
 void clear_unit_list(void)
@@ -376,7 +374,7 @@ void clear_unit_list(void)
     }
 }
 
-// Clears figure list.
+// Clears every usable battle-figure record.
 // FUNCTION: C2 0x2b079
 // FUNCTION: C2WIN 0x0046a19d
 void clear_figure_list(void)
@@ -386,7 +384,7 @@ void clear_figure_list(void)
     }
 }
 
-// Clears arrow list.
+// Clears every usable arrow record.
 // FUNCTION: C2 0x2b0a7
 // FUNCTION: C2WIN 0x0046a1f3
 void clear_arrow_list(void)
@@ -396,7 +394,7 @@ void clear_arrow_list(void)
     }
 }
 
-// Checks citizen list and returns the result.
+// Rebuilds city-map citizen occupancy from the active citizen list.
 // FUNCTION: C2 0x2b0e3
 // FUNCTION: C2WIN 0x0046a245
 void check_citizen_list(void)
@@ -432,7 +430,7 @@ void check_citizen_list(void)
     }
 }
 
-// Checks army list and returns the result.
+// Rebuilds region-map army occupancy from the active army list.
 // FUNCTION: C2 0x2b1ba
 // FUNCTION: C2WIN 0x0046a3ed
 void check_army_list(void)
@@ -462,7 +460,7 @@ void check_army_list(void)
     }
 }
 
-// Clears citizen list.
+// Removes every citizen and releases its city-map occupancy.
 // FUNCTION: C2 0x2b282
 // FUNCTION: C2WIN 0x0046a551
 void clear_citizen_list(void)
@@ -472,7 +470,7 @@ void clear_citizen_list(void)
     }
 }
 
-// Clears army list.
+// Removes every army and releases its region-map occupancy.
 // FUNCTION: C2 0x2b2a8
 // FUNCTION: C2WIN 0x0046a59b
 void clear_army_list(void)
@@ -527,7 +525,7 @@ void army_building_adjusts(void)
     }
 }
 
-// Clears army from fort ref.
+// Marks the active army assigned to a fort for removal.
 // FUNCTION: C2 0x2b3b3
 // FUNCTION: C2WIN 0x0046a7c6
 void clear_army_from_fort_ref(int ref)
@@ -540,7 +538,7 @@ void clear_army_from_fort_ref(int ref)
     }
 }
 
-// Returns army name from fort ref.
+// Returns the cohort identifier of the army assigned to a fort.
 // FUNCTION: C2 0x2b3f9
 // FUNCTION: C2WIN 0x0046a85b
 int get_army_name_from_fort_ref(int ref)
@@ -549,14 +547,14 @@ int get_army_name_from_fort_ref(int ref)
     /* Callers guarantee a matching fort reference. */
     for (army_no = 0; army_no < 26; army_no++) {
         if (army_list[army_no].exists != 0 && ref == army_list[army_no].fort_ref) {
-            result = army_list[army_no].cohort_id;           /* signed-char movsx */
+            result = army_list[army_no].cohort_id;
             return result;
         }
     }
     return result;
 }
 
-// Returns nearest army to track.
+// Selects the nearest friendly field army and returns its distance.
 // FUNCTION: C2 0x2b442
 // FUNCTION: C2WIN 0x0046a8f0
 int get_nearest_army_to_track(int x, int y)
@@ -577,7 +575,7 @@ int get_nearest_army_to_track(int x, int y)
     return best;
 }
 
-// Returns nearest enemy to track.
+// Selects the nearest enemy field army and returns its distance.
 // FUNCTION: C2 0x2b4cb
 // FUNCTION: C2WIN 0x0046aa26
 int get_nearest_enemy_to_track(int x, int y)
@@ -600,7 +598,7 @@ int get_nearest_enemy_to_track(int x, int y)
     return best;
 }
 
-// Returns tracking army distance.
+// Returns a tracked army's distance from a point, or 999 if it is off-map.
 // FUNCTION: C2 0x2b557
 // FUNCTION: C2WIN 0x0046ab7e
 int get_tracking_army_distance(int n, int x, int y)
@@ -610,7 +608,7 @@ int get_tracking_army_distance(int n, int x, int y)
                                 army_list[n].map_y, x, y);
 }
 
-// Returns a unit centered on mouse.
+// Finds the battle unit under a left-click, if any.
 // FUNCTION: C2 0x2b593
 // FUNCTION: C2WIN 0x0046ac17
 int get_a_unit_centered_on_mouse(void)
@@ -622,14 +620,14 @@ int get_a_unit_centered_on_mouse(void)
     return temp_unit;
 }
 
-// Returns 0 for the find figure query.
+// Reports that no battle figure was found.
 // FUNCTION: C2 0x2b59c
 int find_figure(int mode)
 {
     return 0;
 }
 
-// Returns a shootable unit.
+// Clears unit target flags, finds a figure, and marks its unit as the target.
 // FUNCTION: C2 0x2b5b1
 // FUNCTION: C2WIN 0x0046ac54
 int get_a_shootable_unit(void)
@@ -642,7 +640,7 @@ int get_a_shootable_unit(void)
     return temp_unit;
 }
 
-// Returns heading.
+// Returns the eight-way heading from one point to another.
 // FUNCTION: C2 0x2b5f5
 // FUNCTION: C2WIN 0x0046ad14
 heading_t get_heading(int sx, int sy, int ex, int ey, char mode)
@@ -664,7 +662,7 @@ heading_t get_heading(int sx, int sy, int ex, int ey, char mode)
     return heading;
 }
 
-// Clears ferret map.
+// Initializes a city-map corridor with path costs, barriers, and road classes.
 // FUNCTION: C2 0x2b662
 // FUNCTION: C2WIN 0x0046ae0d
 void clear_ferret_map(int margin, unsigned char *map_base, int map_wi, int map_hi,
@@ -750,7 +748,7 @@ void clear_ferret_map(int margin, unsigned char *map_base, int map_wi, int map_h
     }
 }
 
-// Clears region ferret map.
+// Initializes a region-map corridor for the current army's movement rules.
 // FUNCTION: C2 0x2b7e0
 // FUNCTION: C2WIN 0x0046b083
 void clear_region_ferret_map(int mode, int margin, unsigned char *map_base, int map_wi,
@@ -871,7 +869,7 @@ void clear_region_ferret_map(int mode, int margin, unsigned char *map_base, int 
     }
 }
 
-// Clears sea ferret map.
+// Initializes a map corridor so only navigable sea cells remain passable.
 // FUNCTION: C2 0x2ba5e
 // FUNCTION: C2WIN 0x0046b4a9
 void clear_sea_ferret_map(int unused, int margin, unsigned char *map_base, int map_wi,
@@ -944,7 +942,7 @@ void clear_sea_ferret_map(int unused, int margin, unsigned char *map_base, int m
     }
 }
 
-// Runs 2 map ferrets.
+// Searches clockwise and anticlockwise for a route, then traces a successful path.
 // FUNCTION: C2 0x2bb7b
 // FUNCTION: C2WIN 0x0046b68b
 int run_2_map_ferrets(int param1, unsigned char *map_base, int map_wi, int map_hi,
@@ -999,7 +997,7 @@ int run_2_map_ferrets(int param1, unsigned char *map_base, int map_wi, int map_h
     return 0;
 }
 
-// Loads ferret run.
+// Converts a marked ferret path into a bounded sequence of directions.
 // FUNCTION: C2 0x2bceb
 // FUNCTION: C2WIN 0x0046b875
 void load_ferret_run(int x, int y, int max_len)
@@ -1185,7 +1183,7 @@ int trace_forward_ferret(int steps)
     return 1;
 }
 
-// Runs clock ferret.
+// Advances the clockwise path probe toward the target.
 // FUNCTION: C2 0x2c062
 // FUNCTION: C2WIN 0x0046bedd
 void run_clock_ferret(void)
@@ -1242,7 +1240,7 @@ void run_clock_ferret(void)
     clock_ferret_running = 0;
 }
 
-// Runs anti ferret.
+// Advances the anticlockwise path probe toward the target.
 // FUNCTION: C2 0x2c1ab
 // FUNCTION: C2WIN 0x0046c10f
 void run_anti_ferret(void)
@@ -1299,7 +1297,7 @@ void run_anti_ferret(void)
     anti_ferret_running = 0;
 }
 
-// Checks clock ferret move and returns the result.
+// Reads a clockwise probe neighbor's cost, occupancy, and visited state.
 // FUNCTION: C2 0x2c31b
 // FUNCTION: C2WIN 0x0046c335
 signed char check_clock_ferret_move(signed char dir)
@@ -1430,7 +1428,7 @@ void move_clock_ferret(signed char dir, char mode)
     }
 }
 
-// Checks anti ferret move and returns the result.
+// Reads an anticlockwise probe neighbor's cost, occupancy, and visited state.
 // FUNCTION: C2 0x2c883
 // FUNCTION: C2WIN 0x0046cb49
 signed char check_anti_ferret_move(signed char dir)
@@ -1582,7 +1580,7 @@ unsigned char ferret_heading(int x, int y)
     return 8;
 }
 
-// Returns tb value.
+// Returns a neighboring path cost and records its road class.
 // FUNCTION: C2 0x2ce5b
 // FUNCTION: C2WIN 0x0046d47e
 unsigned char get_tb_value(int dir)
@@ -1628,7 +1626,7 @@ unsigned char get_tb_value(int dir)
     return 0xFF;
 }
 
-// Returns ferret2.
+// Returns a neighboring path marker, rejecting blocked and out-of-bounds cells.
 // FUNCTION: C2 0x2cfef
 // FUNCTION: C2WIN 0x0046d7dd
 unsigned char get_ferret2(int dir)
@@ -1724,7 +1722,7 @@ void move_to_tb_value(int dir)
     *(ferret_map + tb_ptr + 6) = 1;
 }
 
-// Returns over coords.
+// Converts the overview-map pointer offset into map coordinates.
 // FUNCTION: C2 0x2d305
 // FUNCTION: C2WIN 0x0046dd00
 void get_over_coords(void)
@@ -1746,7 +1744,7 @@ int at_edge_of_map(int x, int y)
     return 0;
 }
 
-// Returns over army.
+// Finds the army under the overview pointer or occupying an adjacent home cell.
 // FUNCTION: C2 0x2d372
 // FUNCTION: C2WIN 0x0046ddab
 void get_over_army(void)
@@ -1756,7 +1754,7 @@ void get_over_army(void)
     int ey;
     int ex;
     int ref;
-    int idx;                               /* signed: PS does signed compare */
+    int idx;
 
     over_an_army = 0;
     if (map_mode != 1 || pointer_mode != 0 || pm_over == 0)
@@ -1786,7 +1784,7 @@ void get_over_army(void)
             army_a = (unsigned char)RM_CELL(ref).occupant;
             if ((RM_CELL(ref).terrain & 1) == 0
                 && army_a != 0
-                && army_a >= 0) {                    /* explicit signed-short >=0 test */
+                && army_a >= 0) {
                 idx = army_a;
                 if (idx < 26 && army_list[idx].home_ref == pm_over_cm_ptr) {
                     over_an_army = idx;

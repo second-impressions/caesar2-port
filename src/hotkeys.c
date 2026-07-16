@@ -13,12 +13,10 @@ int LBM_HEADER1[12] = { 1297239878, 817038336, 541934160, 1145589058, 335544320,
 int LBM_HEADER2[2] = { 1497648962, 11535360 };
 
 int LBM_PADDING = 0;
-#ifndef S_IRUSR          /* MSVC's <sys/stat.h> lacks the POSIX _USR names; */
-#define S_IRUSR 0400     /* PS open() mode arg = S_IRUSR|S_IWUSR = 0x180     */
+#ifndef S_IRUSR          /* MSVC's <sys/stat.h> lacks the POSIX _USR names. */
+#define S_IRUSR 0400
 #define S_IWUSR 0200
 #endif
-
-/* go_16m_palette: stub in lib32.c with corrected signature. */
 
 extern void __cdecl code_01871D(void);
 extern void __cdecl code_018738(void);
@@ -239,22 +237,8 @@ char sim_mouse(void)
         break;
     }
     /*
-     * Cheat/debug chords are intentionally not stored as the typed text.
-     * Each key is written to old_key_buffer as `key_ascii + 3`, and the
-     * buffer is newest-first, so these strcmp literals are Caesar-shifted
-     * and reversed relative to what the player/developer typed:
-     *
-     *   GE78DuhQ -> NerA54BD   (test_mode1)
-     *   GE78HuhQ -> NerE54BD   (test_mode2)
-     *   GE78LuhQ -> NerI54BD   (test_mode3)
-     *   GE78RuhQ -> NerO54BD   (test_mode4; enables Space->debug_screen)
-     *   WIVqNSPS -> PMPKnSFT   (denarii bonus after FORUM_DEPT_INDUSTRY)
-     *   eoxJloef -> cbliGulb   (promotion_cheat flag)
-     *
-     * The resulting typed strings are odd-looking because these appear to
-     * be hidden developer/debug toggles rather than user-facing cheat codes;
-     * the +3 transform is a simple Caesar obfuscation (aptly enough), and
-     * the reversal is a side effect of maintaining the rolling key buffer.
+     * Cheat chords are matched newest-first after adding three to each key.
+     * They toggle the four test modes, grant denarii, or enable promotions.
      */
     if (strcmp(old_key_buffer, "GE78DuhQ") == 0) test_mode1 ^= 1;
     if (strcmp(old_key_buffer, "GE78HuhQ") == 0) test_mode2 ^= 1;

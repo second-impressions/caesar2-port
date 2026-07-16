@@ -1,5 +1,3 @@
-//
-
 #include "c2_data.h"
 #include "c2_types.h"
 #include "refresh.h"
@@ -15,8 +13,7 @@ extern void place_16x16_block(unsigned char *panel_addr);
 extern void place_24x24_block(unsigned char *panel_addr);
 extern void place_32x32_block(unsigned char *panel_addr);
 
-// Render the top-bar menu strip. Each menu caption is drawn at (x_is, m->y) and gets its bounding
-// x1/x2 fields stamped so over_menu / control_menus can hit-test it later.
+// Draw the top-bar menus, record their horizontal hit boxes, and mark the strip for refresh.
 // FUNCTION: C2 0x2d4a5
 // FUNCTION: C2WIN 0x0041ff90
 void show_menus(struct menu_rec *menus, int count, int active)
@@ -72,8 +69,7 @@ void show_menus(struct menu_rec *menus, int count, int active)
             svga_refresh_table[rx + ry * 40] = 2;
 }
 
-// Drop-down pane for an open menu: paints the background mosaic at (x, y + 0x12) then `count` item
-// captions 20 px apart; the active row is highlighted via show_fast_rect + reversed colours.
+// Draw a menu's drop-down items and highlight the active row.
 // FUNCTION: C2 0x2d66e
 // FUNCTION: C2WIN 0x004201d2
 void show_menu_items(struct menu_item_rec *items, int x, int y, int text_group, int count, int active)
@@ -111,9 +107,7 @@ void show_menu_items(struct menu_item_rec *items, int x, int y, int text_group, 
         for (rx = ref_x; rx < ref_x + xspan; rx++) svga_refresh_table[rx + ry * 40] = 2;
 }
 
-// Show the selection panel as a system window: covers the mouse droppings, marks the screen as
-// held for replace, then defers to `show_a_system_window` after converting the selection's pixel
-// width/height into cell counts (÷16, signed).
+// Draw a system window sized for the current selection list.
 // FUNCTION: C2 0x2d7bd
 // FUNCTION: C2WIN 0x0042036d
 void show_selection_box(int p1, int x, int y, int p4)
@@ -127,9 +121,7 @@ void show_selection_box(int p1, int x, int y, int p4)
                          select_height / 16);
 }
 
-// Walk a selection_rec array and mark which rows are visible to the user. An entry is dropped when
-// list->max_population exceeds the current city population or when its goods_kind is not in the
-// allowed list (per check_selection_goods_list).
+// Determine which choices are available and calculate the selection panel's dimensions.
 // FUNCTION: C2 0x2d80c
 // FUNCTION: C2WIN 0x004203b8
 void get_allowed_selections(struct selection_rec *list, int count, int what)
@@ -171,7 +163,7 @@ void get_allowed_selections(struct selection_rec *list, int count, int what)
     select_width += 0x30;
 }
 
-// Zero-fill loop.
+// Clear all goods highlights.
 // FUNCTION: C2 0x2d942
 // FUNCTION: C2WIN 0x004205ad
 void clear_highlight_goods_list(void)
@@ -182,9 +174,7 @@ void clear_highlight_goods_list(void)
         highlight_goods_list[i] = 0;
 }
 
-// Build the goods-selection list. Mode 0 lists active industry kinds and marks already-established
-// industries in highlight_goods_list; modes 1..3 copy the three import/export/source slots for the
-// current province from region_sources.
+// Build the allowed-goods list from city industries or the province's selected source group.
 // FUNCTION: C2 0x2d958
 // FUNCTION: C2WIN 0x004205e6
 void get_selection_goods_list(int mode)
@@ -217,7 +207,7 @@ void get_selection_goods_list(int mode)
     }
 }
 
-// Return 1 if `val` occurs in selection_goods_list, otherwise return 0.
+// Return whether a goods kind is present in the current selection list.
 // FUNCTION: C2 0x2da47
 // FUNCTION: C2WIN 0x0042077b
 int check_selection_goods_list(short val)
@@ -229,8 +219,7 @@ int check_selection_goods_list(short val)
     return 0;
 }
 
-// True when highlight_goods_list[idx] is non-zero (industry already established / row should be
-// marked).
+// Return whether a goods kind should be highlighted.
 // FUNCTION: C2 0x2da67
 // FUNCTION: C2WIN 0x004207cf
 int check_highlight_list(short idx)
@@ -238,8 +227,7 @@ int check_highlight_list(short idx)
     return highlight_goods_list[idx] != 0;
 }
 
-// Paint the selection list (build menu, forum trade-good list, ...). Walks `count` entries; only
-// ones flagged visible by get_allowed_selections draw.
+// Draw the visible selection choices, including costs and selection or highlight colours.
 // FUNCTION: C2 0x2da7a
 // FUNCTION: C2WIN 0x004207ff
 void show_selections(struct selection_rec *list, int count, int x, int y, int what, int selected)
@@ -306,9 +294,7 @@ void show_selections(struct selection_rec *list, int count, int x, int y, int wh
             svga_refresh_table[rx + ry * 40] = 2;
 }
 
-// Generic confirm-dialog panel: a 12×8-cell mosaic-window at (x-0x10, y-0x10) with the
-// message-string `what` drawn at (x+0x10, y+0x10) and the confirming_buttons (Y/N) drawn at (x,
-// y).
+// Draw a confirmation dialog with its message and yes/no buttons.
 // FUNCTION: C2 0x2dcfc
 // FUNCTION: C2WIN 0x00420b2e
 void show_confirming_panel(int what, int x, int y)
@@ -320,9 +306,7 @@ void show_confirming_panel(int what, int x, int y)
     show_buttons(x, y, confirming_buttons, 2);
 }
 
-// Extended-confirm panel — wider, taller variant of `show_confirming_panel` for messages that need
-// more room. A 12×10-cell mosaic window at (x-0x10, y-0x30) with the message wrapped via
-// `font_format_split` (90 px wide, max 100 lines) at (x+0x10, y-0x16).
+// Draw a taller confirmation dialog with wrapped message text and yes/no buttons.
 // FUNCTION: C2 0x2dd58
 // FUNCTION: C2WIN 0x00420b99
 void show_Xconfirming_panel(int what, int x, int y)
@@ -335,7 +319,7 @@ void show_Xconfirming_panel(int what, int x, int y)
     show_buttons(x, y, confirming_buttons, 2);
 }
 
-// Render the "adjust this number" panel (tax rate, prices, ...).
+// Draw a numeric adjustment dialog using the requested display format.
 // FUNCTION: C2 0x2dda9
 // FUNCTION: C2WIN 0x00420c0f
 void show_adjusting_panel(int what, int x, int y, int kind)
@@ -356,9 +340,7 @@ void show_adjusting_panel(int what, int x, int y, int kind)
     show_buttons(x, y, adjusting_buttons, 2);
 }
 
-// Render a 5-row x 20-col system window at (x, y) with two caption paragraphs (`what`, `what+1`)
-// and a fixed "OK" prompt (paragraph 9, p2=0) below. Sets hold_mouse_replace so the cursor isn't
-// redrawn over the panel.
+// Draw a warning window with two message lines and an OK prompt.
 // FUNCTION: C2 0x2de9c
 // FUNCTION: C2WIN 0x00420d5d
 void show_warning_panel(int what, int x, int y)
@@ -371,8 +353,7 @@ void show_warning_panel(int what, int x, int y)
     font_list(9,   0,        x + 0x60, y + 0x3c, font1, 0x10);
 }
 
-// Stamp an icon array into the sprite globals. Each icon contributes (x, y, sprite_image_no); the
-// pressed image is sprite + 1 when icon->down is non-zero.
+// Load each icon's position and current pressed or released image into the sprite state.
 // FUNCTION: C2 0x2df1d
 // FUNCTION: C2WIN 0x00420df0
 void show_icons(struct icon_rec *icons, int count)
@@ -390,7 +371,7 @@ void show_icons(struct icon_rec *icons, int count)
     }
 }
 
-// Render `count` UI buttons from a 24-byte-stride record array.
+// Draw a set of buttons with images selected from their type and state, then mark them for refresh.
 // FUNCTION: C2 0x2df68
 // FUNCTION: C2WIN 0x00420e66
 void show_buttons(int x, int y, struct button_rec *buttons, int count)
@@ -443,9 +424,7 @@ void show_buttons(int x, int y, struct button_rec *buttons, int count)
 }
 
 
-// Render the standard exit-screen "X" button at (x, y). Sprite 0x33 from the system panel sheet;
-// (x, y) is also recorded in the global click-target pair so the input layer can later test the
-// cursor against this rect.
+// Draw the standard exit button and record its hit-test position.
 // FUNCTION: C2 0x2e0a1
 // FUNCTION: C2WIN 0x0042102b
 void show_an_exit_button(int x, int y)
@@ -458,7 +437,7 @@ void show_an_exit_button(int x, int y)
     place_24x24_block(system_panel);
 }
 
-// Dispatches mouse input to each slider's decrement button, track, or increment button.
+// Handle clicks on slider decrement buttons, tracks, and increment buttons.
 // FUNCTION: C2 0x2e0cb
 // FUNCTION: C2WIN 0x0042106d
 int slider_control(struct slider_rec *sliders, int count)
@@ -496,7 +475,7 @@ int slider_control(struct slider_rec *sliders, int count)
     return 0;
 }
 
-// Updates the active slider from the mouse position along its track.
+// Set a slider from a track position while balancing its complementary value.
 // FUNCTION: C2 0x2e1a1
 // FUNCTION: C2WIN 0x004211f2
 void mid_slider_var(struct slider_rec *s, int pos)
@@ -526,7 +505,7 @@ void mid_slider_var(struct slider_rec *s, int pos)
     }
 }
 
-// Step the slider value DOWN by step (clamped to min).
+// Decrease a slider by one effective step, respecting its minimum and complement.
 // FUNCTION: C2 0x2e24a
 // FUNCTION: C2WIN 0x0042131c
 void down_slider_var(struct slider_rec *s)
@@ -567,8 +546,7 @@ void down_slider_var(struct slider_rec *s)
         *s->complement -= (char)(t - old);
 }
 
-// Mirror of down_slider_var: step the slider value UP by step (clamped to max). Refuses to act
-// when the bundle complement would underflow below min + step.
+// Increase a slider by one effective step when its complement permits it.
 // FUNCTION: C2 0x2e327
 // FUNCTION: C2WIN 0x00421495
 void up_slider_var(struct slider_rec *s)
@@ -611,9 +589,7 @@ void up_slider_var(struct slider_rec *s)
         *s->complement -= (char)(t - old);
 }
 
-// Hit-test an icon array against the current mouse_x/y. On a click inside any 32x32 icon, lifts
-// every other icon (de_toggle_all_icons), marks the hit icon as down, loads para1/para2 from the
-// record, and fires its callback().
+// Activate the clicked icon, release the others, and invoke its callback parameters.
 // FUNCTION: C2 0x2e406
 // FUNCTION: C2WIN 0x00421613
 int control_icons(struct icon_rec *icons, int count)
@@ -638,8 +614,7 @@ int control_icons(struct icon_rec *icons, int count)
     return 0;
 }
 
-// Clear `down` on every icon in the array and mark a 3x3 tile span dirty around each one in
-// svga_refresh_table so the panels get repainted with the released sprite next frame.
+// Release all icons and mark their screen regions for repainting.
 // FUNCTION: C2 0x2e47b
 // FUNCTION: C2WIN 0x004216f6
 void de_toggle_all_icons(struct icon_rec *icons, int count)
@@ -659,9 +634,7 @@ void de_toggle_all_icons(struct icon_rec *icons, int count)
     }
 }
 
-// Drive button state for a panel: a first pass updates each button’s `repeat` counter and fires
-// the type-4 (auto-repeat / state-2) variant; a second pass hit-tests the cursor against each
-// button rect and, depending on type (2 = toggle on click, 3 = momentary, 4.
+// Update button repeat and visual states, then handle toggle, momentary, and repeating clicks.
 // FUNCTION: C2 0x2e4f3
 // FUNCTION: C2WIN 0x004217c7
 int control_buttons(int x, int y, struct button_rec *buttons, int count)
@@ -733,9 +706,7 @@ int control_buttons(int x, int y, struct button_rec *buttons, int count)
     return 0;
 }
 
-// Run the top-bar menu interaction. Opens the menu the mouse is over (active_menu = over_menu()),
-// then loops the standard gloop_start / show_map_fn / show_menu_items / gloop_end pump while
-// tracking hover-switches between menus and the current item-under-cursor.
+// Run top-bar menu interaction and invoke the selected item's action.
 // FUNCTION: C2 0x2e67d
 // FUNCTION: C2WIN 0x00421ae2
 int control_menus(struct menu_rec *menus, int count, void (*show_map_fn)(void))
@@ -794,8 +765,7 @@ int control_menus(struct menu_rec *menus, int count, void (*show_map_fn)(void))
     return 1;
 }
 
-// Hit-test the mouse against an array of `count` menu rectangles starting at `menu`. Each entry is
-// 14 bytes: short x1, x2, y_top, then 8 bytes of caption / payload.
+// Return the one-based top-bar menu index under the mouse, or zero.
 // FUNCTION: C2 0x2e81c
 // FUNCTION: C2WIN 0x00421d3c
 int over_menu(struct menu_rec *menu, int count)
@@ -812,8 +782,7 @@ int over_menu(struct menu_rec *menu, int count)
     return 0;
 }
 
-// Hit-test the mouse against `count` menu items in a column. Each item is a fixed 96×15-pixel
-// rectangle whose left edge is `x_start` and whose top is `y_base + 0x17 + items[i].y`.
+// Return the one-based drop-down item index under the mouse, or zero.
 // FUNCTION: C2 0x2e868
 // FUNCTION: C2WIN 0x00421dcb
 int over_item(struct menu_item_rec *items, int count, int x_start, int y_base)
@@ -831,9 +800,7 @@ int over_item(struct menu_item_rec *items, int count, int x_start, int y_base)
     return 0;
 }
 
-// Run the selection-panel interaction (build menu, forum trade-good chooser, ...). Calls
-// get_allowed_selections to size the panel, clamps (x, y) into the visible area, then pumps the
-// gloop loop while over_selection tracks the hovered row.
+// Run a selection dialog and invoke the callback for the chosen visible entry.
 // FUNCTION: C2 0x2e8bb
 // FUNCTION: C2WIN 0x00421e5e
 int control_selection(struct selection_rec *list, int count, int x, int y, int what)
@@ -886,9 +853,7 @@ int control_selection(struct selection_rec *list, int count, int x, int y, int w
     return 1;
 }
 
-// Hit-test the mouse cursor against a vertical list of `n` selection items rendered at column `x`,
-// starting row `base_y + 7`, with each row 20 pixels tall and `select_width + select_cost_flag`
-// pixels wide.
+// Return the one-based selection row under the mouse, or zero.
 // FUNCTION: C2 0x2ea4f
 // FUNCTION: C2WIN 0x004220d2
 int over_selection(int n, int x, int base_y)
@@ -908,8 +873,7 @@ int over_selection(int n, int x, int base_y)
     return 0;
 }
 
-// Pop a non-modal warning panel and block until the user clicks anywhere. Pumps the gloop loop
-// until either mouse button is clicked, then refreshes the screen so the panel is wiped.
+// Show a modal warning until either mouse button is clicked.
 // FUNCTION: C2 0x2eaac
 // FUNCTION: C2WIN 0x0042216b
 void click_warning(int what, int x, int y)
@@ -928,8 +892,7 @@ void click_warning(int what, int x, int y)
     setup_whole_screen_refresh();
 }
 
-// Standard Y/N confirm dialog. Renders the panel, pumps the gloop loop while the Y/N buttons drive
-// the global `decision`, and exits when a callback sets out1 to 1.
+// Run a yes/no confirmation dialog and leave the result in the global decision state.
 // FUNCTION: C2 0x2eb01
 // FUNCTION: C2WIN 0x004221cc
 void confirm(int what, int x, int y)
@@ -954,8 +917,7 @@ void confirm(int what, int x, int y)
     update_map = 1;
 }
 
-// Same as `confirm` but renders the wider X-panel (`show_Xconfirming_panel`) for messages that
-// need more room.
+// Run a taller yes/no confirmation dialog for wrapped messages.
 // FUNCTION: C2 0x2eb95
 // FUNCTION: C2WIN 0x0042222f
 void extended_confirm(int what, int x, int y)
@@ -980,7 +942,7 @@ void extended_confirm(int what, int x, int y)
     update_map = 1;
 }
 
-// Modal "adjust this number" dialog.
+// Run a modal numeric adjustment dialog.
 // FUNCTION: C2 0x2ec18
 // FUNCTION: C2WIN 0x004222ac
 void adjust(int kind, int *var, int step, int max, int min, int x, int y, int mode)
@@ -1014,9 +976,7 @@ void adjust(int kind, int *var, int step, int max, int min, int x, int y, int mo
     setup_whole_screen_refresh();
 }
 
-// Hit-test for the standard exit-X button: returns 1 (and clears the click) if the user just
-// left-clicked inside a 24x24 region at (exit_x_at, exit_y_at), 0 otherwise. Pairs with
-// show_an_exit_button() which renders the button and stamps the exit_*_at globals.
+// Consume a left click on the recorded exit-button region.
 // FUNCTION: C2 0x2ed7a
 // FUNCTION: C2WIN 0x00422479
 int exit_screen(void)
@@ -1031,8 +991,7 @@ int exit_screen(void)
     return 0;
 }
 
-// Hit-test for an "exit screen" mouse click. Only fires when the user pressed the left button
-// (mouse_left_preclick gates every panel "clickable" region).
+// Consume a left click on an exit-button region at the supplied position.
 // FUNCTION: C2 0x2edb5
 // FUNCTION: C2WIN 0x004224d0
 int exit_screen_at(int x, int y)
