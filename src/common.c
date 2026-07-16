@@ -37,68 +37,68 @@ char tb_prev_flag;
 char tb_occ_a_flag;
 
 /* Forward declarations */
-heading_t get_heading(int sx, int sy, int ex, int ey, char mode);
-void init_bd(int x1, int y1, int x2, int y2);
-signed char check_clock_ferret_move(signed char dir);
-signed char check_anti_ferret_move(signed char dir);
-unsigned char ferret_heading(int x, int y);
-unsigned char get_tb_value(int dir);
-unsigned char get_ferret2(int dir);
+heading_t get_heading(int start_x, int start_y, int end_x, int end_y, char still_offset);
+void init_bd(int start_x, int start_y, int end_x, int end_y);
+signed char check_clock_ferret_move(signed char direction);
+signed char check_anti_ferret_move(signed char direction);
+unsigned char ferret_heading(int current_x, int current_y);
+unsigned char get_tb_value(int direction);
+unsigned char get_ferret2(int direction);
 
 // Allocates and initializes a citizen in an available city-map slot.
 // FUNCTION: C2 0x2a907
 // FUNCTION: C2WIN 0x004691b0
-int create_citizen(int type, int x, int y, char is_barb)
+int create_citizen(int citizen_type, int cell_x, int cell_y, char is_barbarian)
 {
-    int ref;
-    char terrain;
-    char cx;
-    char cy;
+    int cell_offset;
+    char terrain_flags;
+    char citizen_x;
+    char citizen_y;
 
-    if (x < 0 || x >= 0x50 || y < 0 || y >= 0x50)
+    if (cell_x < 0 || cell_x >= 0x50 || cell_y < 0 || cell_y >= 0x50)
         return 0;
 
-    ref = (y * 0x50 + x) * 0x14;
-    terrain = CM_CELL((ref)).terrain;
-    citizen_a = (unsigned char)CM_CELL((ref)).citizen_a;
-    citizen_b = (unsigned char)CM_CELL((ref)).citizen_b;
-    if ((citizen_a == 0 || citizen_b == 0) && (terrain & 0x8b) == 0) {
-        if (is_barb != 0) {
-            if ((terrain & 0x20) == 0)
+    cell_offset = (cell_y * 0x50 + cell_x) * 0x14;
+    terrain_flags = CM_CELL((cell_offset)).terrain;
+    citizen_a = (unsigned char)CM_CELL((cell_offset)).citizen_a;
+    citizen_b = (unsigned char)CM_CELL((cell_offset)).citizen_b;
+    if ((citizen_a == 0 || citizen_b == 0) && (terrain_flags & 0x8b) == 0) {
+        if (is_barbarian != 0) {
+            if ((terrain_flags & 0x20) == 0)
                 return 0;
         } else {
-            if ((terrain & 0x54) != 0)
+            if ((terrain_flags & 0x54) != 0)
                 return 0;
         }
         for (created_citizen_no = 1; created_citizen_no < 0xC9; created_citizen_no++) {
             if (citizen_list[created_citizen_no].exists == 0) {
                 citizen_list[created_citizen_no].exists = 1;
                 citizen_list[created_citizen_no].evolve_timer = (evolve_count + (short)rand128) & 0x7fff;
-                cx = x;
-                cy = y;
-                citizen_list[created_citizen_no].type = type;
-                citizen_list[created_citizen_no].x = cx;
-                citizen_list[created_citizen_no].dest_x = cx;
-                citizen_list[created_citizen_no].y = cy;
-                citizen_list[created_citizen_no].dest_y = cy;
-                citizen_list[created_citizen_no].map_ref = ref;
-                citizen_list[created_citizen_no].pixel_x = cx << 4;
-                citizen_list[created_citizen_no].pixel_y = cy << 4;
+                citizen_x = cell_x;
+                citizen_y = cell_y;
+                citizen_list[created_citizen_no].type = citizen_type;
+                citizen_list[created_citizen_no].x = citizen_x;
+                citizen_list[created_citizen_no].dest_x = citizen_x;
+                citizen_list[created_citizen_no].y = citizen_y;
+                citizen_list[created_citizen_no].dest_y = citizen_y;
+                citizen_list[created_citizen_no].map_ref = cell_offset;
+                citizen_list[created_citizen_no].pixel_x = citizen_x << 4;
+                citizen_list[created_citizen_no].pixel_y = citizen_y << 4;
                 citizen_list[created_citizen_no].world_dir = 1;
                 citizen_list[created_citizen_no].speed = 5;
                 citizen_list[created_citizen_no].state = 0;
                 if (citizen_a == 0) {
-                    CM_CELL((ref)).citizen_a = created_citizen_no;
+                    CM_CELL((cell_offset)).citizen_a = created_citizen_no;
                 } else {
-                    CM_CELL((ref)).citizen_b = created_citizen_no;
+                    CM_CELL((cell_offset)).citizen_b = created_citizen_no;
                 }
-                CM_CELL((ref)).edge_bits = CM_CELL((ref)).edge_bits | 1;
-                if (is_barb != 0) {
+                CM_CELL((cell_offset)).edge_bits = CM_CELL((cell_offset)).edge_bits | 1;
+                if (is_barbarian != 0) {
                     citizen_list[created_citizen_no].is_barbarian = 1;
                 } else {
                     citizen_list[created_citizen_no].is_barbarian = 0;
                 }
-                if (type == 3) {
+                if (citizen_type == 3) {
                     citizen_list[created_citizen_no].name_id = barbarian_name_count;
                 } else {
                     citizen_list[created_citizen_no].name_id = roman_name_count;
@@ -119,31 +119,31 @@ int create_citizen(int type, int x, int y, char is_barb)
 // Allocates an army on an unoccupied region cell allowed by the requested mode.
 // FUNCTION: C2 0x2ab1a
 // FUNCTION: C2WIN 0x004695b9
-int create_army(int type, int x, int y, char mode)
+int create_army(int army_type, int region_x, int region_y, char placement_mode)
 {
-    int ref;
-    char terrain;
+    int cell_offset;
+    char terrain_flags;
 
-    if (x < 0)
+    if (region_x < 0)
         return 0;
-    if (x >= 0x3C)
+    if (region_x >= 0x3C)
         return 0;
-    if (y < 0)
+    if (region_y < 0)
         return 0;
-    if (y >= 0x3C)
+    if (region_y >= 0x3C)
         return 0;
 
-    ref = (x + y * 0x3C) * 8;
-    terrain = RM_CELL(ref).terrain;
-    army_a = (unsigned char)RM_CELL(ref).occupant;
+    cell_offset = (region_x + region_y * 0x3C) * 8;
+    terrain_flags = RM_CELL(cell_offset).terrain;
+    army_a = (unsigned char)RM_CELL(cell_offset).occupant;
     if (army_a != 0)
         return 0;
 
-    if (mode == 1) {
-        if ((terrain & 8) == 0)
+    if (placement_mode == 1) {
+        if ((terrain_flags & 8) == 0)
             return 0;
-    } else if (mode == 2) {
-        if ((terrain & 0x1F) != 0)
+    } else if (placement_mode == 2) {
+        if ((terrain_flags & 0x1F) != 0)
             return 0;
     }
 
@@ -153,21 +153,21 @@ int create_army(int type, int x, int y, char mode)
             army_list[created_army_no].exists = 1;
             army_list[created_army_no].morale = 2;
             army_list[created_army_no].evolve_timer = (evolve_count + (short)rand128) & 0x7fff;
-            army_list[created_army_no].type = type;
-            army_list[created_army_no].x = x;
-            army_list[created_army_no].target_x = x;
-            army_list[created_army_no].y = y;
-            army_list[created_army_no].target_y = y;
-            army_list[created_army_no].map_ref = ref;
-            army_list[created_army_no].home_ref = ref;
-            army_list[created_army_no].fort_ref = ref;
-            army_list[created_army_no].pixel_x = x << 4;
-            army_list[created_army_no].pixel_y = y << 4;
+            army_list[created_army_no].type = army_type;
+            army_list[created_army_no].x = region_x;
+            army_list[created_army_no].target_x = region_x;
+            army_list[created_army_no].y = region_y;
+            army_list[created_army_no].target_y = region_y;
+            army_list[created_army_no].map_ref = cell_offset;
+            army_list[created_army_no].home_ref = cell_offset;
+            army_list[created_army_no].fort_ref = cell_offset;
+            army_list[created_army_no].pixel_x = region_x << 4;
+            army_list[created_army_no].pixel_y = region_y << 4;
             army_list[created_army_no].world_dir = 1;
             army_list[created_army_no].heading = 5;
             army_list[created_army_no].flags |= 1;
-            RM_CELL(ref).occupant = created_army_no;
-            RM_CELL(ref).edge_bits |= 1;
+            RM_CELL(cell_offset).occupant = created_army_no;
+            RM_CELL(cell_offset).edge_bits |= 1;
             return 1;
         }
     }
@@ -177,18 +177,18 @@ int create_army(int type, int x, int y, char mode)
 // Allocates and initializes a battle unit.
 // FUNCTION: C2 0x2ac8b
 // FUNCTION: C2WIN 0x0046993d
-int create_unit(int owner, int x, int y, int type)
+int create_unit(int owner_idx, int grid_x, int grid_y, int unit_type)
 {
     for (created_unit_no = 1; created_unit_no < 0x33; created_unit_no++) {
         if (unit_list[created_unit_no].exists == 0) {
             unit_list[created_unit_no].exists = 1;
-            unit_list[created_unit_no].owner = owner;
-            unit_list[created_unit_no].x = x;
-            unit_list[created_unit_no].prev_x = x;
-            unit_list[created_unit_no].y = y;
-            unit_list[created_unit_no].prev_y = y;
+            unit_list[created_unit_no].owner = owner_idx;
+            unit_list[created_unit_no].x = grid_x;
+            unit_list[created_unit_no].prev_x = grid_x;
+            unit_list[created_unit_no].y = grid_y;
+            unit_list[created_unit_no].prev_y = grid_y;
             unit_list[created_unit_no].state = 0;
-            unit_list[created_unit_no].type = type;
+            unit_list[created_unit_no].type = unit_type;
             return 1;
         }
     }
@@ -198,12 +198,12 @@ int create_unit(int owner, int x, int y, int type)
 // Allocates a battle figure and claims its destination map cell.
 // FUNCTION: C2 0x2acfb
 // FUNCTION: C2WIN 0x00469aa3
-int create_figure(int sprite_type, int base_x, int off_x, int base_y, int off_y, int owner, int unit_no)
+int create_figure(int sprite_type, int base_x, int off_x, int base_y, int off_y, int owner_idx, int unit_idx)
 {
     for (created_figure_no = 1; created_figure_no < 0xC9; created_figure_no++) {
         if (figure_list[created_figure_no].exists == 0) {
             figure_list[created_figure_no].exists = 1;
-            figure_list[created_figure_no].owner = owner;
+            figure_list[created_figure_no].owner = owner_idx;
             base_x = base_x + off_x;
             base_y = base_y + off_y;
             figure_list[created_figure_no].grid_x = base_x;
@@ -213,11 +213,11 @@ int create_figure(int sprite_type, int base_x, int off_x, int base_y, int off_y,
                 return 0;
             ((unsigned char *)battle_map)[figure_list[created_figure_no].map_ref + 1] = created_figure_no;
             figure_list[created_figure_no].sprite_type = sprite_type;
-            figure_list[created_figure_no].unit_ref = unit_no;
-            figure_list[created_figure_no].unit_type = unit_list[unit_no].fig_count;
+            figure_list[created_figure_no].unit_ref = unit_idx;
+            figure_list[created_figure_no].unit_type = unit_list[unit_idx].fig_count;
             figure_list[created_figure_no].offset_x = off_x;
             figure_list[created_figure_no].offset_y = off_y;
-            if (unit_list[unit_no].heading == -1)
+            if (unit_list[unit_idx].heading == -1)
                 figure_list[created_figure_no].direction = 4;
             else
                 figure_list[created_figure_no].direction = 0;
@@ -234,20 +234,20 @@ int create_figure(int sprite_type, int base_x, int off_x, int base_y, int off_y,
 // Allocates an arrow and initializes its flight path between two battle cells.
 // FUNCTION: C2 0x2ae0e
 // FUNCTION: C2WIN 0x00469d49
-int create_arrow(unsigned char *arrow_data_ptr, int owner, int sx, int sy, int ex, int ey)
+int create_arrow(unsigned char *arrow_data_ptr, int owner_idx, int start_x, int start_y, int end_x, int end_y)
 {
     for (created_arrow_no = 1; created_arrow_no < 0xC9; created_arrow_no++) {
         if (arrow_list[created_arrow_no].exists == 0) {
             arrow_list[created_arrow_no].exists = 1;
-            arrow_list[created_arrow_no].owner = owner;
-            arrow_list[created_arrow_no].end_x = ex * 7;
-            arrow_list[created_arrow_no].end_y = ey * 7;
-            arrow_list[created_arrow_no].start_x = (short)sx * 7;
-            arrow_list[created_arrow_no].start_y = sy * 7;
-            arrow_list[created_arrow_no].grid_x = sx;
-            arrow_list[created_arrow_no].grid_y = sy;
+            arrow_list[created_arrow_no].owner = owner_idx;
+            arrow_list[created_arrow_no].end_x = end_x * 7;
+            arrow_list[created_arrow_no].end_y = end_y * 7;
+            arrow_list[created_arrow_no].start_x = (short)start_x * 7;
+            arrow_list[created_arrow_no].start_y = start_y * 7;
+            arrow_list[created_arrow_no].grid_x = start_x;
+            arrow_list[created_arrow_no].grid_y = start_y;
             arrow_list[created_arrow_no].map_ref = (arrow_list[created_arrow_no].grid_x + arrow_list[created_arrow_no].grid_y * 0x34) * 4;
-            arrow_list[created_arrow_no].heading = get_heading(sx, sy, ex, ey, 0);
+            arrow_list[created_arrow_no].heading = get_heading(start_x, start_y, end_x, end_y, 0);
             arrow_list[created_arrow_no].arrow_data_ptr = arrow_data_ptr;
             arrow_list[created_arrow_no].anim_count = 0;
             arrow_no = created_arrow_no;
@@ -263,105 +263,105 @@ int create_arrow(unsigned char *arrow_data_ptr, int owner, int sx, int sy, int e
 // Zeros a citizen record.
 // FUNCTION: C2 0x2af5a
 // FUNCTION: C2WIN 0x00469f7e
-void clear_citizen(struct citizen_rec *p)
+void clear_citizen(struct citizen_rec *record_ptr)
 {
     unsigned int i;
-    char *bytes = (char *)p;
+    char *record_bytes = (char *)record_ptr;
     for (i = 0; i < sizeof(struct citizen_rec); i++) {
-        bytes[i] = 0;
+        record_bytes[i] = 0;
     }
 }
 
 // Zeros an army record.
 // FUNCTION: C2 0x2af6d
 // FUNCTION: C2WIN 0x00469f9c
-void clear_army(struct army_rec *p)
+void clear_army(struct army_rec *record_ptr)
 {
     unsigned int i;
-    char *bytes = (char *)p;
+    char *record_bytes = (char *)record_ptr;
     for (i = 0; i < sizeof(struct army_rec); i++) {
-        bytes[i] = 0;
+        record_bytes[i] = 0;
     }
 }
 
 // Clears every field in a unit record.
 // FUNCTION: C2 0x2afbc
-void clear_unit(struct unit_rec *p)
+void clear_unit(struct unit_rec *record_ptr)
 {
     unsigned int i;
-    char *bytes = (char *)p;
+    char *record_bytes = (char *)record_ptr;
     for (i = 0; i < sizeof(struct unit_rec); i++) {
-        bytes[i] = 0;
+        record_bytes[i] = 0;
     }
 }
 
 // Zeros a battle-figure record.
 // FUNCTION: C2 0x2af8e REORDERED
 // FUNCTION: C2WIN 0x00469fb7
-void clear_figure(struct figure_rec *p)
+void clear_figure(struct figure_rec *record_ptr)
 {
     unsigned int i;
-    char *bytes = (char *)p;
+    char *record_bytes = (char *)record_ptr;
     for (i = 0; i < sizeof(struct figure_rec); i++) {
-        bytes[i] = 0;
+        record_bytes[i] = 0;
     }
 }
 
 // Zeros an arrow record.
 // FUNCTION: C2 0x2afa1
 // FUNCTION: C2WIN 0x00469fd2
-void clear_arrow(struct arrow_rec *p)
+void clear_arrow(struct arrow_rec *record_ptr)
 {
     unsigned int i;
-    char *bytes = (char *)p;
+    char *record_bytes = (char *)record_ptr;
     for (i = 0; i < sizeof(struct arrow_rec); i++) {
-        bytes[i] = 0;
+        record_bytes[i] = 0;
     }
 }
 
 // Removes a battle unit by clearing its record.
 // FUNCTION: C2 0x2afb4
 // FUNCTION: C2WIN 0x00469fed
-void remove_unit(int n)
+void remove_unit(int unit_idx)
 {
-    clear_unit(&unit_list[n]);
+    clear_unit(&unit_list[unit_idx]);
 }
 
 // Releases a figure's battle-map cell and clears its record.
 // FUNCTION: C2 0x2afc3
 // FUNCTION: C2WIN 0x0046a016
-void remove_figure(int n)
+void remove_figure(int figure_idx)
 {
     char zero = 0;
-    int ref = figure_list[n].map_ref;
-    ((unsigned char *)battle_map)[(ref) + 1] = zero;
-    clear_figure(&figure_list[n]);
+    int cell_offset = figure_list[figure_idx].map_ref;
+    ((unsigned char *)battle_map)[(cell_offset) + 1] = zero;
+    clear_figure(&figure_list[figure_idx]);
 }
 
 // Releases a citizen's city-map slot and clears its record.
 // FUNCTION: C2 0x2afe3
 // FUNCTION: C2WIN 0x0046a055
-void remove_citizen(int n)
+void remove_citizen(int citizen_idx)
 {
     char zero = 0;
-    int ref = citizen_list[n].map_ref;
-    if (CM_CELL((ref)).citizen_a == n) {
-        CM_CELL((ref)).citizen_a = zero;
-    } else if (CM_CELL((ref)).citizen_b == n) {
-        CM_CELL((ref)).citizen_b = zero;
+    int cell_offset = citizen_list[citizen_idx].map_ref;
+    if (CM_CELL((cell_offset)).citizen_a == citizen_idx) {
+        CM_CELL((cell_offset)).citizen_a = zero;
+    } else if (CM_CELL((cell_offset)).citizen_b == citizen_idx) {
+        CM_CELL((cell_offset)).citizen_b = zero;
     }
-    clear_citizen(&citizen_list[n]);
+    clear_citizen(&citizen_list[citizen_idx]);
 }
 
 // Releases an army's region-map cell and clears its record.
 // FUNCTION: C2 0x2b02a
 // FUNCTION: C2WIN 0x0046a102
-void remove_army(int n)
+void remove_army(int army_idx)
 {
     char zero = 0;
-    int ref = army_list[n].map_ref;
-    RM_CELL(ref).occupant = zero;
-    clear_army(&army_list[n]);
+    int cell_offset = army_list[army_idx].map_ref;
+    RM_CELL(cell_offset).occupant = zero;
+    clear_army(&army_list[army_idx]);
 }
 
 // Clears every usable battle-unit record.
@@ -501,16 +501,16 @@ void army_restoring_adjusts(void)
 // FUNCTION: C2WIN 0x0046a6b4
 int any_army_building_adjusts(void)
 {
-    int result = 0;
+    int any_building = 0;
     for (army_no = 0; army_no < 0x1A; army_no++) {
         if (army_list[army_no].exists == 2) {
             army_list[army_no].exists = 1;
         }
         if (army_list[army_no].exists == 3) {
-            result = 1;
+            any_building = 1;
         }
     }
-    return result;
+    return any_building;
 }
 
 // Removes armies left in the temporary building state.
@@ -528,10 +528,10 @@ void army_building_adjusts(void)
 // Marks the active army assigned to a fort for removal.
 // FUNCTION: C2 0x2b3b3
 // FUNCTION: C2WIN 0x0046a7c6
-void clear_army_from_fort_ref(int ref)
+void clear_army_from_fort_ref(int fort_ref)
 {
     for (army_no = 0; army_no < 26; army_no++) {
-        if (army_list[army_no].exists != 0 && ref == army_list[army_no].fort_ref) {
+        if (army_list[army_no].exists != 0 && fort_ref == army_list[army_no].fort_ref) {
             army_list[army_no].exists = 3;
             return;
         }
@@ -541,71 +541,71 @@ void clear_army_from_fort_ref(int ref)
 // Returns the cohort identifier of the army assigned to a fort.
 // FUNCTION: C2 0x2b3f9
 // FUNCTION: C2WIN 0x0046a85b
-int get_army_name_from_fort_ref(int ref)
+int get_army_name_from_fort_ref(int fort_ref)
 {
-    int result;
+    int cohort_id;
     /* Callers guarantee a matching fort reference. */
     for (army_no = 0; army_no < 26; army_no++) {
-        if (army_list[army_no].exists != 0 && ref == army_list[army_no].fort_ref) {
-            result = army_list[army_no].cohort_id;
-            return result;
+        if (army_list[army_no].exists != 0 && fort_ref == army_list[army_no].fort_ref) {
+            cohort_id = army_list[army_no].cohort_id;
+            return cohort_id;
         }
     }
-    return result;
+    return cohort_id;
 }
 
 // Selects the nearest friendly field army and returns its distance.
 // FUNCTION: C2 0x2b442
 // FUNCTION: C2WIN 0x0046a8f0
-int get_nearest_army_to_track(int x, int y)
+int get_nearest_army_to_track(int map_x, int map_y)
 {
-    int dist;
-    int best = 9999;
+    int distance;
+    int best_distance = 9999;
     for (army_no = 0; army_no < 26; army_no++) {
         if (army_list[army_no].exists != 0 && army_list[army_no].type == 1
             && army_list[army_no].map_x != 0 && army_list[army_no].map_y != 0) {
-            dist = get_longest_distance(army_list[army_no].map_x,
-                                        army_list[army_no].map_y, x, y);
-            if (dist < best) {
+            distance = get_longest_distance(army_list[army_no].map_x,
+                                        army_list[army_no].map_y, map_x, map_y);
+            if (distance < best_distance) {
                 tracking_army = army_no;
-                best = dist;
+                best_distance = distance;
             }
         }
     }
-    return best;
+    return best_distance;
 }
 
 // Selects the nearest enemy field army and returns its distance.
 // FUNCTION: C2 0x2b4cb
 // FUNCTION: C2WIN 0x0046aa26
-int get_nearest_enemy_to_track(int x, int y)
+int get_nearest_enemy_to_track(int map_x, int map_y)
 {
-    int dist;
-    int best = 9999;
+    int distance;
+    int best_distance = 9999;
     for (army_no = 0; army_no < 26; army_no++) {
         if (army_list[army_no].exists != 0
             && army_list[army_no].type >= 2
             && army_list[army_no].type <= 5
             && army_list[army_no].map_x != 0 && army_list[army_no].map_y != 0) {
-            dist = get_longest_distance(army_list[army_no].map_x,
-                                        army_list[army_no].map_y, x, y);
-            if (dist < best) {
+            distance = get_longest_distance(army_list[army_no].map_x,
+                                        army_list[army_no].map_y, map_x, map_y);
+            if (distance < best_distance) {
                 hunting_army = army_no;
-                best = dist;
+                best_distance = distance;
             }
         }
     }
-    return best;
+    return best_distance;
 }
 
 // Returns a tracked army's distance from a point, or 999 if it is off-map.
 // FUNCTION: C2 0x2b557
 // FUNCTION: C2WIN 0x0046ab7e
-int get_tracking_army_distance(int n, int x, int y)
+int get_tracking_army_distance(int army_idx, int map_x, int map_y)
 {
-    if (army_list[n].map_x == 0 || army_list[n].map_y == 0) return 999;
-    return get_longest_distance(army_list[n].map_x,
-                                army_list[n].map_y, x, y);
+    if (army_list[army_idx].map_x == 0 || army_list[army_idx].map_y == 0) return 999;
+    return get_longest_distance(army_list[army_idx].map_x,
+                                army_list[army_idx].map_y, map_x, map_y);
 }
 
 // Finds the battle unit under a left-click, if any.
@@ -622,7 +622,7 @@ int get_a_unit_centered_on_mouse(void)
 
 // Reports that no battle figure was found.
 // FUNCTION: C2 0x2b59c
-int find_figure(int mode)
+int find_figure(int selection_mode)
 {
     return 0;
 }
@@ -643,21 +643,21 @@ int get_a_shootable_unit(void)
 // Returns the eight-way heading from one point to another.
 // FUNCTION: C2 0x2b5f5
 // FUNCTION: C2WIN 0x0046ad14
-heading_t get_heading(int sx, int sy, int ex, int ey, char mode)
+heading_t get_heading(int start_x, int start_y, int end_x, int end_y, char still_offset)
 {
     heading_t heading;
-    if (sx > ex) {
-        if (sy > ey) heading = HEADING_NW;
-        else if (sy == ey) heading = HEADING_W;
-        else if (sy < ey) heading = HEADING_SW;
-    } else if (sx == ex) {
-        if (sy > ey) heading = HEADING_N;
-        else if (sy == ey) heading = mode + HEADING_STILL;
-        else if (sy < ey) heading = HEADING_S;
-    } else if (sx < ex) {
-        if (sy > ey) heading = HEADING_NE;
-        else if (sy == ey) heading = HEADING_E;
-        else if (sy < ey) heading = HEADING_SE;
+    if (start_x > end_x) {
+        if (start_y > end_y) heading = HEADING_NW;
+        else if (start_y == end_y) heading = HEADING_W;
+        else if (start_y < end_y) heading = HEADING_SW;
+    } else if (start_x == end_x) {
+        if (start_y > end_y) heading = HEADING_N;
+        else if (start_y == end_y) heading = still_offset + HEADING_STILL;
+        else if (start_y < end_y) heading = HEADING_S;
+    } else if (start_x < end_x) {
+        if (start_y > end_y) heading = HEADING_NE;
+        else if (start_y == end_y) heading = HEADING_E;
+        else if (start_y < end_y) heading = HEADING_SE;
     }
     return heading;
 }
@@ -665,85 +665,85 @@ heading_t get_heading(int sx, int sy, int ex, int ey, char mode)
 // Initializes a city-map corridor with path costs, barriers, and road classes.
 // FUNCTION: C2 0x2b662
 // FUNCTION: C2WIN 0x0046ae0d
-void clear_ferret_map(int margin, unsigned char *map_base, int map_wi, int map_hi,
-                      int cell_size, int x1, int y1, int x2, int y2)
+void clear_ferret_map(int margin, unsigned char *map_base, int map_width, int map_height,
+                      int cell_size, int start_x, int start_y, int end_x, int end_y)
 {
-    int miny;
-    int maxy;
-    int minx;
-    int maxx;
-    int sx;
-    int sy;
-    int ey;
-    int ex;
-    int ptr;
-    int x;
-    int y;
-    int tmp;
-    unsigned char terrain;
-    unsigned char val;
+    int min_y;
+    int max_y;
+    int min_x;
+    int max_x;
+    int corridor_start_x;
+    int corridor_start_y;
+    int corridor_end_y;
+    int corridor_end_x;
+    int row_offset;
+    int cell_x;
+    int cell_y;
+    int cell_offset;
+    unsigned char terrain_flags;
+    unsigned char path_value;
 
-    if (x1 <= x2) {
-        minx = x1;
-        maxx = x2;
+    if (start_x <= end_x) {
+        min_x = start_x;
+        max_x = end_x;
     } else {
-        minx = x2;
-        maxx = x1;
+        min_x = end_x;
+        max_x = start_x;
     }
-    if (y1 <= y2) {
-        miny = y1;
-        maxy = y2;
+    if (start_y <= end_y) {
+        min_y = start_y;
+        max_y = end_y;
     } else {
-        miny = y2;
-        maxy = y1;
+        min_y = end_y;
+        max_y = start_y;
     }
-    sx = minx - margin;
-    sy = miny - margin;
-    ex = maxx + margin;
-    ey = maxy + margin;
-    if (sx < 0) sx = 0;
-    if (sy < 0) sy = 0;
-    if (ex >= map_wi) ex = map_wi - 1;
-    if (ey >= map_hi) ey = map_hi - 1;
+    corridor_start_x = min_x - margin;
+    corridor_start_y = min_y - margin;
+    corridor_end_x = max_x + margin;
+    corridor_end_y = max_y + margin;
+    if (corridor_start_x < 0) corridor_start_x = 0;
+    if (corridor_start_y < 0) corridor_start_y = 0;
+    if (corridor_end_x >= map_width) corridor_end_x = map_width - 1;
+    if (corridor_end_y >= map_height) corridor_end_y = map_height - 1;
 
-    ptr = cell_size * (sx + sy * map_wi);
-    for (y = sy; y <= ey; y++, ptr += map_wi * cell_size) {
-        for (x = sx, tmp = ptr; x <= ex; x++, tmp += cell_size) {
-            if (y == sy)
-                val = 0xFF;
-            else if (y == ey)
-                val = 0xFF;
-            else if (x == sx)
-                val = 0xFF;
-            else if (x == ex)
-                val = 0xFF;
+    row_offset = cell_size * (corridor_start_x + corridor_start_y * map_width);
+    for (cell_y = corridor_start_y; cell_y <= corridor_end_y; cell_y++, row_offset += map_width * cell_size) {
+        for (cell_x = corridor_start_x, cell_offset = row_offset; cell_x <= corridor_end_x; cell_x++, cell_offset += cell_size) {
+            if (cell_y == corridor_start_y)
+                path_value = 0xFF;
+            else if (cell_y == corridor_end_y)
+                path_value = 0xFF;
+            else if (cell_x == corridor_start_x)
+                path_value = 0xFF;
+            else if (cell_x == corridor_end_x)
+                path_value = 0xFF;
             else {
-                val = 0;
-                terrain = *(map_base + tmp + 1);
-                if ((terrain & 1) != 0) {
-                    val = 0xFE;
-                } else if ((terrain & 4) != 0) {
+                path_value = 0;
+                terrain_flags = *(map_base + cell_offset + 1);
+                if ((terrain_flags & 1) != 0) {
+                    path_value = 0xFE;
+                } else if ((terrain_flags & 4) != 0) {
                     if (citizen_list[citizen_no].type == 3) {
-                        val = 0xFE;
-                    } else if ((terrain & 0x20) != 0) {
-                        *(map_base + tmp + 6) = 0;
-                        *(map_base + tmp + 5) = 1;
+                        path_value = 0xFE;
+                    } else if ((terrain_flags & 0x20) != 0) {
+                        *(map_base + cell_offset + 6) = 0;
+                        *(map_base + cell_offset + 5) = 1;
                     } else {
-                        val = 0xFE;
+                        path_value = 0xFE;
                     }
                 } else {
-                    *(map_base + tmp + 6) = 0;
-                    if ((terrain & 0x20) != 0) {
-                        *(map_base + tmp + 5) = 1;
-                    } else if (terrain != 0) {
-                        val = 0xFE;
-                        *(map_base + tmp + 5) = 0;
+                    *(map_base + cell_offset + 6) = 0;
+                    if ((terrain_flags & 0x20) != 0) {
+                        *(map_base + cell_offset + 5) = 1;
+                    } else if (terrain_flags != 0) {
+                        path_value = 0xFE;
+                        *(map_base + cell_offset + 5) = 0;
                     } else {
-                        *(map_base + tmp + 5) = 2;
+                        *(map_base + cell_offset + 5) = 2;
                     }
                 }
             }
-            *(map_base + tmp + 2) = val;
+            *(map_base + cell_offset + 2) = path_value;
         }
     }
 }
@@ -751,120 +751,120 @@ void clear_ferret_map(int margin, unsigned char *map_base, int map_wi, int map_h
 // Initializes a region-map corridor for the current army's movement rules.
 // FUNCTION: C2 0x2b7e0
 // FUNCTION: C2WIN 0x0046b083
-void clear_region_ferret_map(int mode, int margin, unsigned char *map_base, int map_wi,
-                             int map_hi, int cell_size, int x1, int y1,
-                             int x2, int y2)
+void clear_region_ferret_map(int movement_mode, int margin, unsigned char *map_base, int map_width,
+                             int map_height, int cell_size, int start_x, int start_y,
+                             int end_x, int end_y)
 {
-    int maxy;
-    int miny;
-    int minx;
-    int maxx;
-    int sx;
-    int sy;
-    int ey;
-    int ex;
-    int ptr;
-    int tmp;
-    int x;
-    int y;
-    unsigned char terrain;
-    unsigned char val;
-    unsigned char cell0;
-    unsigned char cell7;
+    int max_y;
+    int min_y;
+    int min_x;
+    int max_x;
+    int corridor_start_x;
+    int corridor_start_y;
+    int corridor_end_y;
+    int corridor_end_x;
+    int row_offset;
+    int cell_offset;
+    int cell_x;
+    int cell_y;
+    unsigned char terrain_flags;
+    unsigned char path_value;
+    unsigned char cell_kind;
+    unsigned char army_id;
 
-    if (x1 <= x2) {
-        minx = x1;
-        maxx = x2;
+    if (start_x <= end_x) {
+        min_x = start_x;
+        max_x = end_x;
     } else {
-        minx = x2;
-        maxx = x1;
+        min_x = end_x;
+        max_x = start_x;
     }
-    if (y1 <= y2) {
-        miny = y1;
-        maxy = y2;
+    if (start_y <= end_y) {
+        min_y = start_y;
+        max_y = end_y;
     } else {
-        miny = y2;
-        maxy = y1;
+        min_y = end_y;
+        max_y = start_y;
     }
-    sx = minx - margin;
-    sy = miny - margin;
-    ex = maxx + margin;
-    ey = maxy + margin;
-    if (sx < 0) sx = 0;
-    if (sy < 0) sy = 0;
-    if (ex >= map_wi) ex = map_wi - 1;
-    if (ey >= map_hi) ey = map_hi - 1;
+    corridor_start_x = min_x - margin;
+    corridor_start_y = min_y - margin;
+    corridor_end_x = max_x + margin;
+    corridor_end_y = max_y + margin;
+    if (corridor_start_x < 0) corridor_start_x = 0;
+    if (corridor_start_y < 0) corridor_start_y = 0;
+    if (corridor_end_x >= map_width) corridor_end_x = map_width - 1;
+    if (corridor_end_y >= map_height) corridor_end_y = map_height - 1;
 
-    ptr = cell_size * (sx + sy * map_wi);
-    for (y = sy; y <= ey; y++, ptr += map_wi * cell_size) {
-        for (x = sx, tmp = ptr; x <= ex; x++, tmp += cell_size) {
-            if (y == sy)
-                val = 0xFF;
-            else if (y == ey)
-                val = 0xFF;
-            else if (x == sx)
-                val = 0xFF;
-            else if (x == ex)
-                val = 0xFF;
+    row_offset = cell_size * (corridor_start_x + corridor_start_y * map_width);
+    for (cell_y = corridor_start_y; cell_y <= corridor_end_y; cell_y++, row_offset += map_width * cell_size) {
+        for (cell_x = corridor_start_x, cell_offset = row_offset; cell_x <= corridor_end_x; cell_x++, cell_offset += cell_size) {
+            if (cell_y == corridor_start_y)
+                path_value = 0xFF;
+            else if (cell_y == corridor_end_y)
+                path_value = 0xFF;
+            else if (cell_x == corridor_start_x)
+                path_value = 0xFF;
+            else if (cell_x == corridor_end_x)
+                path_value = 0xFF;
             else {
-                val = 0;
-                terrain = *(map_base + tmp + 1);
-                cell0 = *(map_base + tmp);
-                cell7 = *(map_base + tmp + 7);
+                path_value = 0;
+                terrain_flags = *(map_base + cell_offset + 1);
+                cell_kind = *(map_base + cell_offset);
+                army_id = *(map_base + cell_offset + 7);
 
-                *(map_base + tmp + 6) = 0;
-                *(map_base + tmp + 5) = 0;
-                if ((terrain & 1) != 0) {
+                *(map_base + cell_offset + 6) = 0;
+                *(map_base + cell_offset + 5) = 0;
+                if ((terrain_flags & 1) != 0) {
                     if (army_list[army_no].type == 1) {
-                        val = 0xFE;
-                    } else if (cell0 >= 0x93 && cell0 <= 0x9B) {
-                        val = 0xFE;
+                        path_value = 0xFE;
+                    } else if (cell_kind >= 0x93 && cell_kind <= 0x9B) {
+                        path_value = 0xFE;
                     } else {
-                        *(map_base + tmp + 5) = 1;
+                        *(map_base + cell_offset + 5) = 1;
                     }
-                } else if ((terrain & 4) != 0) {
+                } else if ((terrain_flags & 4) != 0) {
                     if (army_list[army_no].type == 1) {
-                        *(map_base + tmp + 5) = 1;
+                        *(map_base + cell_offset + 5) = 1;
                     } else {
-                        val = 0xFE;
+                        path_value = 0xFE;
                     }
-                } else if ((terrain & 2) != 0) {
+                } else if ((terrain_flags & 2) != 0) {
                     if (army_list[army_no].type == 1) {
-                        if ((terrain & 0x20) != 0) {
-                            *(map_base + tmp + 5) = 1;
+                        if ((terrain_flags & 0x20) != 0) {
+                            *(map_base + cell_offset + 5) = 1;
                         } else {
-                            val = 0xFE;
+                            path_value = 0xFE;
                         }
-                    } else if (mode != 0) {
-                        *(map_base + tmp + 5) = 1;
+                    } else if (movement_mode != 0) {
+                        *(map_base + cell_offset + 5) = 1;
                     } else {
-                        val = 0xFE;
+                        path_value = 0xFE;
                     }
-                } else if ((terrain & 0x20) != 0) {
-                    *(map_base + tmp + 5) = 1;
-                } else if ((terrain & 8) != 0) {
-                    if ((terrain & 0x10) != 0) {
-                        val = 0xFE;
+                } else if ((terrain_flags & 0x20) != 0) {
+                    *(map_base + cell_offset + 5) = 1;
+                } else if ((terrain_flags & 8) != 0) {
+                    if ((terrain_flags & 0x10) != 0) {
+                        path_value = 0xFE;
                     } else if (army_list[army_no].type != 1) {
-                        val = 0xFE;
+                        path_value = 0xFE;
                     } else if (army_list[army_no].state_idx != 4) {
-                        val = 0xFE;
-                    } else if (cell7 == 0) {
-                        val = 0xFE;
-                    } else if (cell7 != army_list[army_no].army_id) {
-                        val = 0xFE;
+                        path_value = 0xFE;
+                    } else if (army_id == 0) {
+                        path_value = 0xFE;
+                    } else if (army_id != army_list[army_no].army_id) {
+                        path_value = 0xFE;
                     } else {
-                        *(map_base + tmp + 5) = 2;
+                        *(map_base + cell_offset + 5) = 2;
                     }
-                } else if ((terrain & 0x10) != 0) {
-                    val = 0xFE;
-                } else if ((terrain & 8) != 0) {
-                    val = 0xFE;
+                } else if ((terrain_flags & 0x10) != 0) {
+                    path_value = 0xFE;
+                } else if ((terrain_flags & 8) != 0) {
+                    path_value = 0xFE;
                 } else {
-                    *(map_base + tmp + 5) = 2;
+                    *(map_base + cell_offset + 5) = 2;
                 }
             }
-            *(map_base + tmp + 2) = val;
+            *(map_base + cell_offset + 2) = path_value;
         }
     }
 }
@@ -872,72 +872,72 @@ void clear_region_ferret_map(int mode, int margin, unsigned char *map_base, int 
 // Initializes a map corridor so only navigable sea cells remain passable.
 // FUNCTION: C2 0x2ba5e
 // FUNCTION: C2WIN 0x0046b4a9
-void clear_sea_ferret_map(int unused, int margin, unsigned char *map_base, int map_wi,
-                          int map_hi, int cell_size, int x1, int y1,
-                          int x2, int y2)
+void clear_sea_ferret_map(int unused, int margin, unsigned char *map_base, int map_width,
+                          int map_height, int cell_size, int start_x, int start_y,
+                          int end_x, int end_y)
 {
-    int miny;
-    int maxy;
-    int minx;
-    int maxx;
-    int sx;
-    int sy;
-    int ey;
-    int ex;
-    int ptr;
-    int tmp;
-    int x;
-    int y;
-    unsigned char terrain;
-    unsigned char val;
+    int min_y;
+    int max_y;
+    int min_x;
+    int max_x;
+    int corridor_start_x;
+    int corridor_start_y;
+    int corridor_end_y;
+    int corridor_end_x;
+    int row_offset;
+    int cell_offset;
+    int cell_x;
+    int cell_y;
+    unsigned char terrain_flags;
+    unsigned char path_value;
 
-    if (x1 <= x2) {
-        minx = x1;
-        maxx = x2;
+    if (start_x <= end_x) {
+        min_x = start_x;
+        max_x = end_x;
     } else {
-        minx = x2;
-        maxx = x1;
+        min_x = end_x;
+        max_x = start_x;
     }
-    if (y1 <= y2) {
-        miny = y1;
-        maxy = y2;
+    if (start_y <= end_y) {
+        min_y = start_y;
+        max_y = end_y;
     } else {
-        miny = y2;
-        maxy = y1;
+        min_y = end_y;
+        max_y = start_y;
     }
-    sx = minx - margin;
-    sy = miny - margin;
-    ex = maxx + margin;
-    ey = maxy + margin;
-    if (sx < 0) sx = 0;
-    if (sy < 0) sy = 0;
-    if (ex >= map_wi) ex = map_wi - 1;
-    if (ey >= map_hi) ey = map_hi - 1;
+    corridor_start_x = min_x - margin;
+    corridor_start_y = min_y - margin;
+    corridor_end_x = max_x + margin;
+    corridor_end_y = max_y + margin;
+    if (corridor_start_x < 0) corridor_start_x = 0;
+    if (corridor_start_y < 0) corridor_start_y = 0;
+    if (corridor_end_x >= map_width) corridor_end_x = map_width - 1;
+    if (corridor_end_y >= map_height) corridor_end_y = map_height - 1;
 
-    ptr = cell_size * (sx + sy * map_wi);
-    for (y = sy; y <= ey; y++, ptr += map_wi * cell_size) {
-        for (x = sx, tmp = ptr; x <= ex; x++, tmp += cell_size) {
-            if (y == sy)
-                val = 0xFF;
-            else if (y == ey)
-                val = 0xFF;
-            else if (x == sx)
-                val = 0xFF;
-            else if (x == ex)
-                val = 0xFF;
+    row_offset = cell_size * (corridor_start_x + corridor_start_y * map_width);
+    for (cell_y = corridor_start_y; cell_y <= corridor_end_y; cell_y++, row_offset += map_width * cell_size) {
+        for (cell_x = corridor_start_x, cell_offset = row_offset; cell_x <= corridor_end_x; cell_x++, cell_offset += cell_size) {
+            if (cell_y == corridor_start_y)
+                path_value = 0xFF;
+            else if (cell_y == corridor_end_y)
+                path_value = 0xFF;
+            else if (cell_x == corridor_start_x)
+                path_value = 0xFF;
+            else if (cell_x == corridor_end_x)
+                path_value = 0xFF;
             else {
-                val = 0xFE;
-                terrain = *(map_base + tmp + 1);
-                *(map_base + tmp + 6) = 0;
-                *(map_base + tmp + 5) = 0;
-                if ((terrain & 0x10) != 0) {
-                    if ((terrain & 8) != 0) {
-                        val = 0;
-                        *(map_base + tmp + 5) = 1;
+                path_value = 0xFE;
+                terrain_flags = *(map_base + cell_offset + 1);
+                *(map_base + cell_offset + 6) = 0;
+                *(map_base + cell_offset + 5) = 0;
+                if ((terrain_flags & 0x10) != 0) {
+                    if ((terrain_flags & 8) != 0) {
+                        path_value = 0;
+                        *(map_base + cell_offset + 5) = 1;
                     }
                 }
             }
-            *(map_base + tmp + 2) = val;
+            *(map_base + cell_offset + 2) = path_value;
         }
     }
 }
@@ -945,9 +945,9 @@ void clear_sea_ferret_map(int unused, int margin, unsigned char *map_base, int m
 // Searches clockwise and anticlockwise for a route, then traces a successful path.
 // FUNCTION: C2 0x2bb7b
 // FUNCTION: C2WIN 0x0046b68b
-int run_2_map_ferrets(int param1, unsigned char *map_base, int map_wi, int map_hi,
+int run_2_map_ferrets(int margin, unsigned char *map_base, int map_width, int map_height,
                       int cell_size, int start_x, int start_y,
-                      int targ_x, int targ_y)
+                      int target_x, int target_y)
 {
     int i;
 
@@ -955,7 +955,7 @@ int run_2_map_ferrets(int param1, unsigned char *map_base, int map_wi, int map_h
     clock_ferret_x = start_x;
     anti_ferret_y = start_y;
     clock_ferret_y = start_y;
-    anti_ferret_ptr = cell_size * (start_y * map_wi + start_x);
+    anti_ferret_ptr = cell_size * (start_y * map_width + start_x);
     clock_ferret_ptr = anti_ferret_ptr;
     anti_ferret_running = 1;
     clock_ferret_running = 1;
@@ -965,12 +965,12 @@ int run_2_map_ferrets(int param1, unsigned char *map_base, int map_wi, int map_h
     ferret_energy = 200;
     ferret_home = 0;
     ferret_horiz_off = cell_size;
-    ferret_vert_off = cell_size * map_wi;
-    ferret_targ_x = targ_x;
-    ferret_targ_y = targ_y;
-    ferret_targ_ptr = cell_size * (targ_y * map_wi + targ_x);
-    ferret_map_wi = map_wi;
-    ferret_map_hi = map_hi;
+    ferret_vert_off = cell_size * map_width;
+    ferret_targ_x = target_x;
+    ferret_targ_y = target_y;
+    ferret_targ_ptr = cell_size * (target_y * map_width + target_x);
+    ferret_map_wi = map_width;
+    ferret_map_hi = map_height;
     ferret_map = map_base;
     last_clock_ferret_dirc = 0;
     last_anti_ferret_dirc = 0;
@@ -987,8 +987,8 @@ int run_2_map_ferrets(int param1, unsigned char *map_base, int map_wi, int map_h
         ferret_run[i] = 0;
 
     if (ferret_home != 0) {
-        smooth_ferret_run(param1, map_base, map_wi, map_hi,
-                          cell_size, start_x, start_y, targ_x, targ_y);
+        smooth_ferret_run(margin, map_base, map_width, map_height,
+                          cell_size, start_x, start_y, target_x, target_y);
         if (trace_back_ferret() != 0) {
             load_ferret_run(start_x, start_y, 20);
             return 1;
@@ -1000,112 +1000,112 @@ int run_2_map_ferrets(int param1, unsigned char *map_base, int map_wi, int map_h
 // Converts a marked ferret path into a bounded sequence of directions.
 // FUNCTION: C2 0x2bceb
 // FUNCTION: C2WIN 0x0046b875
-void load_ferret_run(int x, int y, int max_len)
+void load_ferret_run(int start_x, int start_y, int max_length)
 {
-    unsigned char dir;
-    unsigned char back;
+    unsigned char direction;
+    unsigned char reverse_direction;
 
     ferret_run_length = 0;
-    tb_x = x;
-    tb_y = y;
-    tb_ptr = (x + y * ferret_map_wi) * ferret_horiz_off;
-    back = 8;
-    while (max_len > ferret_run_length) {
-        for (dir = 0; dir < 8; dir++) {
-            if (get_ferret2(dir) == 1 && dir != back) break;
+    tb_x = start_x;
+    tb_y = start_y;
+    tb_ptr = (start_x + start_y * ferret_map_wi) * ferret_horiz_off;
+    reverse_direction = 8;
+    while (max_length > ferret_run_length) {
+        for (direction = 0; direction < 8; direction++) {
+            if (get_ferret2(direction) == 1 && direction != reverse_direction) break;
         }
-        if (dir >= 8) return;
-        back = (dir + 4) % 8;
-        ferret_run[ferret_run_length++] = dir;
-        move_to_tb_value(dir);
+        if (direction >= 8) return;
+        reverse_direction = (direction + 4) % 8;
+        ferret_run[ferret_run_length++] = direction;
+        move_to_tb_value(direction);
     }
 }
 
 // Relaxes pathfinding costs within the corridor around the current ferret route.
 // FUNCTION: C2 0x2bd7c
 // FUNCTION: C2WIN 0x0046b96b
-void smooth_ferret_run(int margin, unsigned char *map_base, int map_wi, int map_hi,
-                       int cell_size, int x1, int y1, int x2, int y2)
+void smooth_ferret_run(int margin, unsigned char *map_base, int map_width, int map_height,
+                       int cell_size, int start_x, int start_y, int end_x, int end_y)
 {
-    int minx;
-    int miny;
-    int maxx;
-    int maxy;
-    int sx;
-    int sy;
-    int ey;
-    int ex;
-    int ptr;
-    int dir;
-    unsigned char saved_targ;
-    unsigned char cur_val;
-    unsigned char best_val;
-    unsigned char tb_val;
-    unsigned char slot2;
-    unsigned char slot1;
+    int min_x;
+    int min_y;
+    int max_x;
+    int max_y;
+    int corridor_start_x;
+    int corridor_start_y;
+    int corridor_end_y;
+    int corridor_end_x;
+    int row_offset;
+    int direction;
+    unsigned char saved_target_value;
+    unsigned char current_value;
+    unsigned char best_value;
+    unsigned char neighbor_value;
+    unsigned char occupant_b;
+    unsigned char occupant_a;
 
-    saved_targ = *(map_base + ferret_targ_ptr + 2);
+    saved_target_value = *(map_base + ferret_targ_ptr + 2);
 
-    if (x1 <= x2) {
-        minx = x1;
-        maxx = x2;
+    if (start_x <= end_x) {
+        min_x = start_x;
+        max_x = end_x;
     } else {
-        minx = x2;
-        maxx = x1;
+        min_x = end_x;
+        max_x = start_x;
     }
-    if (y1 <= y2) {
-        miny = y1;
-        maxy = y2;
+    if (start_y <= end_y) {
+        min_y = start_y;
+        max_y = end_y;
     } else {
-        miny = y2;
-        maxy = y1;
+        min_y = end_y;
+        max_y = start_y;
     }
-    sx = minx - margin;
-    sy = miny - margin;
-    ex = maxx + margin;
-    ey = maxy + margin;
-    if (sx < 0) sx = 0;
-    if (sy < 0) sy = 0;
-    if (ex >= map_wi) ex = map_wi - 1;
-    if (ey >= map_hi) ey = map_hi - 1;
+    corridor_start_x = min_x - margin;
+    corridor_start_y = min_y - margin;
+    corridor_end_x = max_x + margin;
+    corridor_end_y = max_y + margin;
+    if (corridor_start_x < 0) corridor_start_x = 0;
+    if (corridor_start_y < 0) corridor_start_y = 0;
+    if (corridor_end_x >= map_width) corridor_end_x = map_width - 1;
+    if (corridor_end_y >= map_height) corridor_end_y = map_height - 1;
 
-    ptr = (sx + sy * map_wi) * cell_size;
-    for (tb_y = sy; tb_y <= ey; tb_y++, ptr += map_wi * cell_size) {
-        for (tb_x = sx, tb_ptr = ptr; tb_x <= ex; tb_x++, tb_ptr += cell_size) {
-            cur_val = *(map_base + tb_ptr + 2);
-            slot1 = *(map_base + tb_ptr + 7);
-            slot2 = *(map_base + tb_ptr + 8);
-            if (cur_val < 0xFE) {
-                if (cur_val == 0) {
-                    best_val = 0xFA;
+    row_offset = (corridor_start_x + corridor_start_y * map_width) * cell_size;
+    for (tb_y = corridor_start_y; tb_y <= corridor_end_y; tb_y++, row_offset += map_width * cell_size) {
+        for (tb_x = corridor_start_x, tb_ptr = row_offset; tb_x <= corridor_end_x; tb_x++, tb_ptr += cell_size) {
+            current_value = *(map_base + tb_ptr + 2);
+            occupant_a = *(map_base + tb_ptr + 7);
+            occupant_b = *(map_base + tb_ptr + 8);
+            if (current_value < 0xFE) {
+                if (current_value == 0) {
+                    best_value = 0xFA;
                 } else {
-                    best_val = cur_val;
+                    best_value = current_value;
                 }
-                for (dir = 0; dir < 8; dir++) {
-                    tb_val = get_tb_value(dir);
-                    if (tb_val < 0xFE && tb_val != 0) {
+                for (direction = 0; direction < 8; direction++) {
+                    neighbor_value = get_tb_value(direction);
+                    if (neighbor_value < 0xFE && neighbor_value != 0) {
                         if (tb_road_flag == 1) {
-                            tb_val++;
+                            neighbor_value++;
                         } else if (tb_road_flag == 2) {
-                            tb_val += 2;
+                            neighbor_value += 2;
                         } else {
                             continue;
                         }
-                        if (tb_val < best_val) {
-                            best_val = tb_val;
+                        if (neighbor_value < best_value) {
+                            best_value = neighbor_value;
                         }
                     }
                 }
-                if (cur_val == 0 || best_val != cur_val) {
-                    *(map_base + tb_ptr + 2) = best_val;
-                    if (slot1 != 0 && slot2 != 0) {
+                if (current_value == 0 || best_value != current_value) {
+                    *(map_base + tb_ptr + 2) = best_value;
+                    if (occupant_a != 0 && occupant_b != 0) {
                         *(map_base + tb_ptr + 2) = 0xFE;
                     }
                 }
             }
         }
     }
-    *(map_base + ferret_targ_ptr + 2) = saved_targ;
+    *(map_base + ferret_targ_ptr + 2) = saved_target_value;
 }
 
 // Traces a ferret route backward from the target along decreasing path costs.
@@ -1113,39 +1113,39 @@ void smooth_ferret_run(int margin, unsigned char *map_base, int map_wi, int map_
 // FUNCTION: C2WIN 0x0046bc3b
 int trace_back_ferret(void)
 {
-    unsigned char cur_val;
-    unsigned char best_val;
-    int best_dir;
-    int dir;
-    int energy;
+    unsigned char current_value;
+    unsigned char best_value;
+    int best_direction;
+    int direction;
+    int steps_left;
 
     tb_x = ferret_targ_x;
     tb_y = ferret_targ_y;
     tb_ptr = (ferret_targ_x + ferret_targ_y * ferret_map_wi) * ferret_horiz_off;
-    cur_val = *(ferret_map + tb_ptr + 2);
+    current_value = *(ferret_map + tb_ptr + 2);
     *(ferret_map + tb_ptr + 6) = 1;
-    energy = 100;
+    steps_left = 100;
 
-    while (cur_val > 1) {
-        energy--;
-        if (energy < 0) return 0;
-        cur_val++;
-        best_val = cur_val;
-        best_dir = 0;
-        for (dir = 0; dir < 8; dir++) {
-            unsigned char val = get_tb_value(dir);
-            if (val != 0) {
-                if (val < best_val) {
-                    best_val = val;
-                    best_dir = dir;
-                } else if (val == best_val && tb_road_flag == 1) {
-                    best_dir = dir;
+    while (current_value > 1) {
+        steps_left--;
+        if (steps_left < 0) return 0;
+        current_value++;
+        best_value = current_value;
+        best_direction = 0;
+        for (direction = 0; direction < 8; direction++) {
+            unsigned char neighbor_value = get_tb_value(direction);
+            if (neighbor_value != 0) {
+                if (neighbor_value < best_value) {
+                    best_value = neighbor_value;
+                    best_direction = direction;
+                } else if (neighbor_value == best_value && tb_road_flag == 1) {
+                    best_direction = direction;
                 }
             }
         }
-        if (best_val == cur_val) return 0;      /* cur_val was pre-incremented */
-        cur_val = best_val;
-        move_to_tb_value(best_dir);
+        if (best_value == current_value) return 0;      /* cur_val was pre-incremented */
+        current_value = best_value;
+        move_to_tb_value(best_direction);
     }
     return 1;
 }
@@ -1153,32 +1153,32 @@ int trace_back_ferret(void)
 // Traces a ferret route forward for a bounded number of steps.
 // FUNCTION: C2 0x2bfca
 // FUNCTION: C2WIN 0x0046bd96
-int trace_forward_ferret(int steps)
+int trace_forward_ferret(int steps_remaining)
 {
-    unsigned char cur_val;
-    unsigned char best_val;
-    int best_dir;
-    int dir;
+    unsigned char current_value;
+    unsigned char best_value;
+    int best_direction;
+    int direction;
 
     tb_x = clock_ferret_x;
     tb_y = clock_ferret_y;
     tb_ptr = clock_ferret_ptr;
-    cur_val = *(ferret_map + tb_ptr + 2);
+    current_value = *(ferret_map + tb_ptr + 2);
     *(ferret_map + tb_ptr + 6) = 1;
 
-    while (steps-- > 0) {
-        best_val = cur_val;
-        best_dir = 0;
-        for (dir = 0; dir < 8; dir++) {
-            unsigned char val = get_tb_value(dir);
-            if (val != 0 && val < 0xFE) {
-                if (val > best_val) { best_val = val; best_dir = dir; }
-                else if (val == best_val && tb_road_flag == 1) best_dir = dir;
+    while (steps_remaining-- > 0) {
+        best_value = current_value;
+        best_direction = 0;
+        for (direction = 0; direction < 8; direction++) {
+            unsigned char neighbor_value = get_tb_value(direction);
+            if (neighbor_value != 0 && neighbor_value < 0xFE) {
+                if (neighbor_value > best_value) { best_value = neighbor_value; best_direction = direction; }
+                else if (neighbor_value == best_value && tb_road_flag == 1) best_direction = direction;
             }
         }
-        if (best_val == cur_val) return 0;
-        cur_val = best_val;
-        move_to_tb_value(best_dir);
+        if (best_value == current_value) return 0;
+        current_value = best_value;
+        move_to_tb_value(best_direction);
     }
     return 1;
 }
@@ -1189,9 +1189,9 @@ int trace_forward_ferret(int steps)
 void run_clock_ferret(void)
 {
     unsigned char heading;
-    int result;
-    int count;
-    int dir;
+    int move_result;
+    int attempt_count;
+    int direction;
 
     if (clock_ferret_running == 0) return;
 
@@ -1201,42 +1201,42 @@ void run_clock_ferret(void)
         return;
     }
 
-    dir = heading;
-    count = 0;
+    direction = heading;
+    attempt_count = 0;
     do {
-        result = (unsigned char)check_clock_ferret_move((signed char)dir);
-        if (tb_occ_a_flag != 0 && tb_occ_b_flag != 0) result = 0xFE;
-        if (result == 0xFF) { clock_ferret_running = 0; return; }
-        if (result == 0) {
-            move_clock_ferret((signed char)dir, 0);
-            last_clock_ferret_dirc = dir;
+        move_result = (unsigned char)check_clock_ferret_move((signed char)direction);
+        if (tb_occ_a_flag != 0 && tb_occ_b_flag != 0) move_result = 0xFE;
+        if (move_result == 0xFF) { clock_ferret_running = 0; return; }
+        if (move_result == 0) {
+            move_clock_ferret((signed char)direction, 0);
+            last_clock_ferret_dirc = direction;
             return;
         }
-        if (++dir >= 8) dir = 0;
-    } while (++count < 8);
+        if (++direction >= 8) direction = 0;
+    } while (++attempt_count < 8);
 
-    dir = last_clock_ferret_dirc;
-    count = 0;
+    direction = last_clock_ferret_dirc;
+    attempt_count = 0;
     do {
-        result = (unsigned char)check_clock_ferret_move((signed char)dir);
-        if (tb_occ_a_flag != 0 && tb_occ_b_flag != 0) result = 0xFE;
-        if (result < 0xFE && tb_prev_flag == 0) {
-            move_clock_ferret((signed char)dir, 1);
+        move_result = (unsigned char)check_clock_ferret_move((signed char)direction);
+        if (tb_occ_a_flag != 0 && tb_occ_b_flag != 0) move_result = 0xFE;
+        if (move_result < 0xFE && tb_prev_flag == 0) {
+            move_clock_ferret((signed char)direction, 1);
             *(ferret_map + clock_ferret_ptr + 5) |= 0x80;
             return;
         }
-        if (++dir >= 8) dir = 0;
-    } while (++count < 8);
+        if (++direction >= 8) direction = 0;
+    } while (++attempt_count < 8);
 
-    count = 0;
+    attempt_count = 0;
     do {
-        result = (unsigned char)check_clock_ferret_move((signed char)dir);
-        if (result < 0xFE) {
-            move_clock_ferret((signed char)dir, 1);
+        move_result = (unsigned char)check_clock_ferret_move((signed char)direction);
+        if (move_result < 0xFE) {
+            move_clock_ferret((signed char)direction, 1);
             return;
         }
-        if (++dir >= 8) dir = 0;
-    } while (++count < 8);
+        if (++direction >= 8) direction = 0;
+    } while (++attempt_count < 8);
     clock_ferret_running = 0;
 }
 
@@ -1246,9 +1246,9 @@ void run_clock_ferret(void)
 void run_anti_ferret(void)
 {
     unsigned char heading;
-    int result;
-    int count;
-    int dir;
+    int move_result;
+    int attempt_count;
+    int direction;
 
     if (anti_ferret_running == 0) return;
 
@@ -1258,51 +1258,51 @@ void run_anti_ferret(void)
         return;
     }
 
-    dir = heading;
-    count = 0;
+    direction = heading;
+    attempt_count = 0;
     do {
-        result = (unsigned char)check_anti_ferret_move((signed char)dir);
-        if (tb_occ_a_flag != 0 && tb_occ_b_flag != 0) result = 0xFE;
-        if (result == 0xFF) { anti_ferret_running = 0; return; }
-        if (result == 0) {
-            move_anti_ferret((signed char)dir, 0);
-            last_anti_ferret_dirc = dir;
+        move_result = (unsigned char)check_anti_ferret_move((signed char)direction);
+        if (tb_occ_a_flag != 0 && tb_occ_b_flag != 0) move_result = 0xFE;
+        if (move_result == 0xFF) { anti_ferret_running = 0; return; }
+        if (move_result == 0) {
+            move_anti_ferret((signed char)direction, 0);
+            last_anti_ferret_dirc = direction;
             return;
         }
-        if (--dir < 0) dir = 7;
-    } while (++count < 8);
+        if (--direction < 0) direction = 7;
+    } while (++attempt_count < 8);
 
-    dir = last_anti_ferret_dirc;
-    count = 0;
+    direction = last_anti_ferret_dirc;
+    attempt_count = 0;
     do {
-        result = (unsigned char)check_anti_ferret_move((signed char)dir);
-        if (tb_occ_a_flag != 0 && tb_occ_b_flag != 0) result = 0xFE;
-        if (result < 0xFE && tb_prev_flag == 0) {
-            move_anti_ferret((signed char)dir, 1);
+        move_result = (unsigned char)check_anti_ferret_move((signed char)direction);
+        if (tb_occ_a_flag != 0 && tb_occ_b_flag != 0) move_result = 0xFE;
+        if (move_result < 0xFE && tb_prev_flag == 0) {
+            move_anti_ferret((signed char)direction, 1);
             *(ferret_map + anti_ferret_ptr + 5) |= 0x40;
             return;
         }
-        if (--dir < 0) dir = 7;
-    } while (++count < 8);
+        if (--direction < 0) direction = 7;
+    } while (++attempt_count < 8);
 
-    count = 0;
+    attempt_count = 0;
     do {
-        result = (unsigned char)check_anti_ferret_move((signed char)dir);
-        if (result < 0xFE) {
-            move_anti_ferret((signed char)dir, 1);
+        move_result = (unsigned char)check_anti_ferret_move((signed char)direction);
+        if (move_result < 0xFE) {
+            move_anti_ferret((signed char)direction, 1);
             return;
         }
-        if (--dir < 0) dir = 7;
-    } while (++count < 8);
+        if (--direction < 0) direction = 7;
+    } while (++attempt_count < 8);
     anti_ferret_running = 0;
 }
 
 // Reads a clockwise probe neighbor's cost, occupancy, and visited state.
 // FUNCTION: C2 0x2c31b
 // FUNCTION: C2WIN 0x0046c335
-signed char check_clock_ferret_move(signed char dir)
+signed char check_clock_ferret_move(signed char direction)
 {
-    switch (dir) {
+    switch (direction) {
     case 0:
         if (clock_ferret_y <= 0) return -1;
         tb_prev_flag = *(ferret_map + clock_ferret_ptr - ferret_vert_off + 5) & 0x80;
@@ -1370,12 +1370,12 @@ signed char check_clock_ferret_move(signed char dir)
 // Moves the clockwise path probe one cell and stamps its accumulated route cost.
 // FUNCTION: C2 0x2c70b
 // FUNCTION: C2WIN 0x0046c965
-void move_clock_ferret(signed char dir, char mode)
+void move_clock_ferret(signed char direction, char update_existing)
 {
-    unsigned char val;
-    unsigned char road;
+    unsigned char path_value;
+    unsigned char road_cost;
 
-    switch (dir) {
+    switch (direction) {
     case 0:
         --clock_ferret_y;
         clock_ferret_ptr -= ferret_vert_off;
@@ -1417,23 +1417,23 @@ void move_clock_ferret(signed char dir, char mode)
         clock_ferret_ptr -= ferret_horiz_off;
         break;
     }
-    val = *(ferret_map + clock_ferret_ptr + 2);
-    road = *(ferret_map + clock_ferret_ptr + 5) & 3;
-    if (val == 0) {
+    path_value = *(ferret_map + clock_ferret_ptr + 2);
+    road_cost = *(ferret_map + clock_ferret_ptr + 5) & 3;
+    if (path_value == 0) {
         *(ferret_map + clock_ferret_ptr + 2) = clock_ferret_count;
-        clock_ferret_count += road;
+        clock_ferret_count += road_cost;
         clock_ferret_moves++;
-    } else if (mode != 0) {
-        clock_ferret_count = val + road;
+    } else if (update_existing != 0) {
+        clock_ferret_count = path_value + road_cost;
     }
 }
 
 // Reads an anticlockwise probe neighbor's cost, occupancy, and visited state.
 // FUNCTION: C2 0x2c883
 // FUNCTION: C2WIN 0x0046cb49
-signed char check_anti_ferret_move(signed char dir)
+signed char check_anti_ferret_move(signed char direction)
 {
-    switch (dir) {
+    switch (direction) {
     case 0:
         if (anti_ferret_y <= 0) return -1;
         tb_prev_flag = *(ferret_map + anti_ferret_ptr - ferret_vert_off + 5) & 0x40;
@@ -1501,12 +1501,12 @@ signed char check_anti_ferret_move(signed char dir)
 // Moves the anticlockwise path probe one cell and stamps its accumulated route cost.
 // FUNCTION: C2 0x2cc73
 // FUNCTION: C2WIN 0x0046d179
-void move_anti_ferret(signed char dir, char mode)
+void move_anti_ferret(signed char direction, char update_existing)
 {
-    unsigned char val;
-    unsigned char road;
+    unsigned char path_value;
+    unsigned char road_cost;
 
-    switch (dir) {
+    switch (direction) {
     case 0:
         --anti_ferret_y;
         anti_ferret_ptr -= ferret_vert_off;
@@ -1548,34 +1548,34 @@ void move_anti_ferret(signed char dir, char mode)
         anti_ferret_ptr -= ferret_horiz_off;
         break;
     }
-    val = *(ferret_map + anti_ferret_ptr + 2);
-    road = *(ferret_map + anti_ferret_ptr + 5) & 3;
-    if (val == 0) {
+    path_value = *(ferret_map + anti_ferret_ptr + 2);
+    road_cost = *(ferret_map + anti_ferret_ptr + 5) & 3;
+    if (path_value == 0) {
         *(ferret_map + anti_ferret_ptr + 2) = anti_ferret_count;
-        anti_ferret_count += road;
+        anti_ferret_count += road_cost;
         anti_ferret_moves++;
-    } else if (mode != 0) {
-        anti_ferret_count = val + road;
+    } else if (update_existing != 0) {
+        anti_ferret_count = path_value + road_cost;
     }
 }
 
 // Returns the compass direction from a point toward the ferret target.
 // FUNCTION: C2 0x2cdcd
 // FUNCTION: C2WIN 0x0046d35d
-unsigned char ferret_heading(int x, int y)
+unsigned char ferret_heading(int current_x, int current_y)
 {
-    if (x > ferret_targ_x) {
-        if (y > ferret_targ_y) return 7;
-        if (y == ferret_targ_y) return 6;
-        if (y < ferret_targ_y) return 5;
-    } else if (x == ferret_targ_x) {
-        if (y > ferret_targ_y) return 0;
-        if (y == ferret_targ_y) return 8;
-        if (y < ferret_targ_y) return 4;
-    } else if (x < ferret_targ_x) {
-        if (y > ferret_targ_y) return 1;
-        if (y == ferret_targ_y) return 2;
-        if (y < ferret_targ_y) return 3;
+    if (current_x > ferret_targ_x) {
+        if (current_y > ferret_targ_y) return 7;
+        if (current_y == ferret_targ_y) return 6;
+        if (current_y < ferret_targ_y) return 5;
+    } else if (current_x == ferret_targ_x) {
+        if (current_y > ferret_targ_y) return 0;
+        if (current_y == ferret_targ_y) return 8;
+        if (current_y < ferret_targ_y) return 4;
+    } else if (current_x < ferret_targ_x) {
+        if (current_y > ferret_targ_y) return 1;
+        if (current_y == ferret_targ_y) return 2;
+        if (current_y < ferret_targ_y) return 3;
     }
     return 8;
 }
@@ -1583,9 +1583,9 @@ unsigned char ferret_heading(int x, int y)
 // Returns a neighboring path cost and records its road class.
 // FUNCTION: C2 0x2ce5b
 // FUNCTION: C2WIN 0x0046d47e
-unsigned char get_tb_value(int dir)
+unsigned char get_tb_value(int direction)
 {
-    switch (dir) {
+    switch (direction) {
     case 0:
         if (tb_y <= 0) return 0xFF;
         tb_road_flag = *(ferret_map + tb_ptr - ferret_vert_off + 5) & 3;
@@ -1629,9 +1629,9 @@ unsigned char get_tb_value(int dir)
 // Returns a neighboring path marker, rejecting blocked and out-of-bounds cells.
 // FUNCTION: C2 0x2cfef
 // FUNCTION: C2WIN 0x0046d7dd
-unsigned char get_ferret2(int dir)
+unsigned char get_ferret2(int direction)
 {
-    switch (dir) {
+    switch (direction) {
     case 0:
         if (tb_y <= 0) return 0xFF;
         if (*(ferret_map + tb_ptr - ferret_vert_off + 2) == 0xFE) return 0xFF;
@@ -1675,9 +1675,9 @@ unsigned char get_ferret2(int dir)
 // Advances the current ferret trace and marks the destination cell.
 // FUNCTION: C2 0x2d1ef
 // FUNCTION: C2WIN 0x0046db8c
-void move_to_tb_value(int dir)
+void move_to_tb_value(int direction)
 {
-    switch (dir) {
+    switch (direction) {
     case 0:
         --tb_y;
         tb_ptr -= ferret_vert_off;
@@ -1735,12 +1735,12 @@ void get_over_coords(void)
 // Returns whether the current overview coordinates lie on a map edge.
 // FUNCTION: C2 0x2d349
 // FUNCTION: C2WIN 0x0046dd3f
-int at_edge_of_map(int x, int y)
+int at_edge_of_map(int map_x, int map_y)
 {
-    if (x <= 0) return 1;
-    if (x >= map_actual_width - 1) return 1;
-    if (y <= 0) return 1;
-    if (y >= map_actual_height - 1) return 1;
+    if (map_x <= 0) return 1;
+    if (map_x >= map_actual_width - 1) return 1;
+    if (map_y <= 0) return 1;
+    if (map_y >= map_actual_height - 1) return 1;
     return 0;
 }
 
@@ -1749,12 +1749,12 @@ int at_edge_of_map(int x, int y)
 // FUNCTION: C2WIN 0x0046ddab
 void get_over_army(void)
 {
-    int sy;
-    int sx;
-    int ey;
-    int ex;
-    int ref;
-    int idx;
+    int start_y;
+    int start_x;
+    int end_y;
+    int end_x;
+    int cell_offset;
+    int army_idx;
 
     over_an_army = 0;
     if (map_mode != 1 || pointer_mode != 0 || pm_over == 0)
@@ -1768,26 +1768,26 @@ void get_over_army(void)
         return;
     }
 
-    sx = over_x - 1;
-    if (sx < 0) sx = 0;
-    sy = over_y - 1;
-    if (sy < 0) sy = 0;
-    ex = over_x + 1;
-    if (ex >= map_actual_width) ex = map_actual_width - 1;
-    ey = over_y + 1;
-    if (ey >= map_actual_height) ey = map_actual_height - 1;
+    start_x = over_x - 1;
+    if (start_x < 0) start_x = 0;
+    start_y = over_y - 1;
+    if (start_y < 0) start_y = 0;
+    end_x = over_x + 1;
+    if (end_x >= map_actual_width) end_x = map_actual_width - 1;
+    end_y = over_y + 1;
+    if (end_y >= map_actual_height) end_y = map_actual_height - 1;
 
-    for (; sy <= ey; sy++) {
-        int tx;
-        for (tx = sx; tx <= ex; tx++) {
-            ref = (map_actual_width * sy + tx) * map_actual_atom;
-            army_a = (unsigned char)RM_CELL(ref).occupant;
-            if ((RM_CELL(ref).terrain & 1) == 0
+    for (; start_y <= end_y; start_y++) {
+        int cell_x;
+        for (cell_x = start_x; cell_x <= end_x; cell_x++) {
+            cell_offset = (map_actual_width * start_y + cell_x) * map_actual_atom;
+            army_a = (unsigned char)RM_CELL(cell_offset).occupant;
+            if ((RM_CELL(cell_offset).terrain & 1) == 0
                 && army_a != 0
                 && army_a >= 0) {
-                idx = army_a;
-                if (idx < 26 && army_list[idx].home_ref == pm_over_cm_ptr) {
-                    over_an_army = idx;
+                army_idx = army_a;
+                if (army_idx < 26 && army_list[army_idx].home_ref == pm_over_cm_ptr) {
+                    over_an_army = army_idx;
                 }
             }
         }
