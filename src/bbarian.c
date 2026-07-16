@@ -71,7 +71,7 @@ int revolt_trouble(void)
 // FUNCTION: C2WIN 0x0046eb23
 int raider_trouble(void)
 {
-    int   total;
+    int   total_troops;
 
     months_since_last_raider++;
 
@@ -86,10 +86,10 @@ int raider_trouble(void)
         army_list[created_army_no].num_irregulars  = tribe_to_troop_numbers[army_list[created_army_no].tribe_id].irregulars * 3;
         army_list[created_army_no].num_auxillaries = tribe_to_troop_numbers[army_list[created_army_no].tribe_id].auxiliaries * 3;
 
-        total = army_list[created_army_no].num_specials + army_list[created_army_no].num_horse
-              + army_list[created_army_no].num_regulars + army_list[created_army_no].num_irregulars
-              + army_list[created_army_no].num_auxillaries;
-        army_list[created_army_no].total_troops = total;
+        total_troops = army_list[created_army_no].num_specials + army_list[created_army_no].num_horse
+                     + army_list[created_army_no].num_regulars + army_list[created_army_no].num_irregulars
+                     + army_list[created_army_no].num_auxillaries;
+        army_list[created_army_no].total_troops = total_troops;
 
         set_sound("marchb2.wav", 1);
 
@@ -106,7 +106,7 @@ int raider_trouble(void)
 // FUNCTION: C2WIN 0x0046edd3
 int horde_trouble(void)
 {
-    int total;
+    int total_troops;
 
     months_since_last_horde++;
 
@@ -121,10 +121,10 @@ int horde_trouble(void)
         army_list[created_army_no].num_irregulars  = tribe_to_troop_numbers[army_list[created_army_no].tribe_id].irregulars * 6;
         army_list[created_army_no].num_auxillaries = tribe_to_troop_numbers[army_list[created_army_no].tribe_id].auxiliaries * 6;
 
-        total = army_list[created_army_no].num_specials + army_list[created_army_no].num_horse
-              + army_list[created_army_no].num_regulars + army_list[created_army_no].num_irregulars
-              + army_list[created_army_no].num_auxillaries;
-        army_list[created_army_no].total_troops = total;
+        total_troops = army_list[created_army_no].num_specials + army_list[created_army_no].num_horse
+                     + army_list[created_army_no].num_regulars + army_list[created_army_no].num_irregulars
+                     + army_list[created_army_no].num_auxillaries;
+        army_list[created_army_no].total_troops = total_troops;
 
         set_sound("marchb2.wav", 1);
 
@@ -141,7 +141,7 @@ int horde_trouble(void)
 // FUNCTION: C2WIN 0x0046f08d
 int war_trouble(void)
 {
-    int   total;
+    int   total_troops;
 
     months_since_last_war++;
 
@@ -156,10 +156,10 @@ int war_trouble(void)
         army_list[created_army_no].num_irregulars  = tribe_to_troop_numbers[army_list[created_army_no].tribe_id].irregulars * 8;
         army_list[created_army_no].num_auxillaries = tribe_to_troop_numbers[army_list[created_army_no].tribe_id].auxiliaries * 8;
 
-        total = army_list[created_army_no].num_specials + army_list[created_army_no].num_horse
-              + army_list[created_army_no].num_regulars + army_list[created_army_no].num_irregulars
-              + army_list[created_army_no].num_auxillaries;
-        army_list[created_army_no].total_troops = total;
+        total_troops = army_list[created_army_no].num_specials + army_list[created_army_no].num_horse
+                     + army_list[created_army_no].num_regulars + army_list[created_army_no].num_irregulars
+                     + army_list[created_army_no].num_auxillaries;
+        army_list[created_army_no].total_troops = total_troops;
 
         set_sound("marchb2.wav", 1);
 
@@ -175,25 +175,25 @@ int war_trouble(void)
 // FUNCTION: C2 0x5341a
 // FUNCTION: C2WIN 0x0046f33d
 int chance_of_attack(int trouble_type, int months_since,
-                     int probe_only, int p4)
+                     int probe_only, int scan_all_borders)
 {
-    int honeymoon;
+    int honeymoon_years;
     int frequency;
-    int debar;
+    int debar_months;
 
     attack_from_sea = 0;
-    honeymoon = skill_to_trouble_honeymoons[c2inf.skill_level][trouble_type];
+    honeymoon_years = skill_to_trouble_honeymoons[c2inf.skill_level][trouble_type];
     frequency = skill_to_trouble_frequency[c2inf.skill_level][trouble_type];
-    debar     = skill_to_trouble_debar[c2inf.skill_level][trouble_type];
+    debar_months = skill_to_trouble_debar[c2inf.skill_level][trouble_type];
 
-    if (honeymoon > years_elapsed_in_region) return 0;
-    if (months_since <= debar)               return 0;
+    if (honeymoon_years > years_elapsed_in_region) return 0;
+    if (months_since <= debar_months)               return 0;
     random();
     if (rand128 < 20)                        return 0;
     if (frequency + 20 <= rand128)           return 0;
 
     if (probe_only == 0) {
-        attack_direction = get_attackers(rand128 & 3, p4);
+        attack_direction = get_attackers(rand128 & 3, scan_all_borders);
         if (attack_direction >= 8) return 0;
         if (attack_direction == 0 && north_trader_is == 1) attack_from_sea = 1;
         if (attack_direction == 2 && east_trader_is  == 1) attack_from_sea = 1;
@@ -206,20 +206,20 @@ int chance_of_attack(int trouble_type, int months_since,
 // Selects an eligible neighboring region and returns its compass direction.
 // FUNCTION: C2 0x534fd
 // FUNCTION: C2WIN 0x0046f4d0
-int get_attackers(int dir, int scan_all)
+int get_attackers(int border_idx, int scan_all_borders)
 {
-    int kind;
+    int region_idx;
     int i;
 
-    if (scan_all) {
+    if (scan_all_borders) {
         /* Scan all four borders; return the first one whose kind is a
            known hostile category (6/f/12/22) and whose empire entry is
            not the friendly value (6). */
         for (i = 0; i < 4; i++) {
-            kind = region_borders[province_is].u.dir[i];
-            if (kind == 6 || kind == 0xf || kind == 0x12 || kind == 0x22) {
-                if (empire[kind] != 6) {
-                    attacking_region = kind;
+            region_idx = region_borders[province_is].u.dir[i];
+            if (region_idx == 6 || region_idx == 0xf || region_idx == 0x12 || region_idx == 0x22) {
+                if (empire[region_idx] != 6) {
+                    attacking_region = region_idx;
                     return i + i;
                 }
             }
@@ -229,14 +229,14 @@ int get_attackers(int dir, int scan_all)
         /* Single-direction probe with the opposite eligibility test:
            the four "hostile" kinds (6/f/12/22) are rejected here, only
            neighbours outside that set are candidates. */
-        kind = region_borders[province_is].u.dir[dir];
-        if (kind == 6)    return 8;
-        if (kind == 0xf)  return 8;
-        if (kind == 0x12) return 8;
-        if (kind == 0x22) return 8;
-        if (empire[kind] == 6) return 8;
-        attacking_region = kind;
-        return dir * 2;
+        region_idx = region_borders[province_is].u.dir[border_idx];
+        if (region_idx == 6)    return 8;
+        if (region_idx == 0xf)  return 8;
+        if (region_idx == 0x12) return 8;
+        if (region_idx == 0x22) return 8;
+        if (empire[region_idx] == 6) return 8;
+        attacking_region = region_idx;
+        return border_idx * 2;
     }
     return 8;
 }
@@ -244,11 +244,11 @@ int get_attackers(int dir, int scan_all)
 // Spawns a raider army at a valid land or sea invasion point.
 // FUNCTION: C2 0x5358c
 // FUNCTION: C2WIN 0x0046f5e3
-int raider_in_region(int dirc, int from_sea)
+int raider_in_region(int direction, int from_sea)
 {
-    int map_ref;
+    int message_map_ref;
 
-    if (get_region_invasion_points(dirc, from_sea) == 0) return 0;
+    if (get_region_invasion_points(direction, from_sea) == 0) return 0;
 
     if (from_sea != 0) {
         if (create_army(4, barb_x, barb_y, 1) == 0) return 0;
@@ -268,20 +268,20 @@ int raider_in_region(int dirc, int from_sea)
     army_list[created_army_no].target_y = 0;
     army_list[created_army_no].target_x = 0;
 
-    map_ref = army_list[created_army_no].map_ref;
-    if (map_ref == 0) map_ref = 8;
-    put_message(0x5b, map_ref, 0x11);
+    message_map_ref = army_list[created_army_no].map_ref;
+    if (message_map_ref == 0) message_map_ref = 8;
+    put_message(0x5b, message_map_ref, 0x11);
     return 1;
 }
 
 // Spawns a barbarian army at a valid land or sea invasion point.
 // FUNCTION: C2 0x53688
 // FUNCTION: C2WIN 0x0046f7fd
-int barbarian_in_region(int dirc, int from_sea)
+int barbarian_in_region(int direction, int from_sea)
 {
-    int map_ref;
+    int message_map_ref;
 
-    if (get_region_invasion_points(dirc, from_sea) == 0) return 0;
+    if (get_region_invasion_points(direction, from_sea) == 0) return 0;
 
     if (from_sea != 0) {
         if (create_army(3, barb_x, barb_y, 1) == 0) return 0;
@@ -298,20 +298,20 @@ int barbarian_in_region(int dirc, int from_sea)
         army_list[created_army_no].saved_state_idx  = 7;
     }
 
-    map_ref = army_list[created_army_no].map_ref;
-    map_ref = map_ref == 0 ? 8 : map_ref;
-    put_message(0x5d, map_ref, 0x11);
+    message_map_ref = army_list[created_army_no].map_ref;
+    message_map_ref = message_map_ref == 0 ? 8 : message_map_ref;
+    put_message(0x5d, message_map_ref, 0x11);
     return 1;
 }
 
 // Spawns a hostile empire army at a valid land or sea invasion point.
 // FUNCTION: C2 0x53776
 // FUNCTION: C2WIN 0x0046f9ce
-int empire_in_region(int dirc, int from_sea)
+int empire_in_region(int direction, int from_sea)
 {
-    int map_ref;
+    int message_map_ref;
 
-    if (get_region_invasion_points(dirc, from_sea) == 0) return 0;
+    if (get_region_invasion_points(direction, from_sea) == 0) return 0;
 
     if (from_sea != 0) {
         if (create_army(2, barb_x, barb_y, 1) == 0) return 0;
@@ -328,18 +328,18 @@ int empire_in_region(int dirc, int from_sea)
         army_list[created_army_no].saved_state_idx  = 7;
     }
 
-    map_ref = army_list[created_army_no].map_ref;
-    map_ref = map_ref == 0 ? 8 : map_ref;
-    put_message(0x5e, map_ref, 0x11);
+    message_map_ref = army_list[created_army_no].map_ref;
+    message_map_ref = message_map_ref == 0 ? 8 : message_map_ref;
+    put_message(0x5e, message_map_ref, 0x11);
     return 1;
 }
 
 // Selects a revolt point and spawns a rebel army there.
 // FUNCTION: C2 0x53861
 // FUNCTION: C2WIN 0x0046fb9f
-int revolt_in_region(int dirc, int from_sea)
+int revolt_in_region(int direction, int from_sea)
 {
-    (void)dirc;
+    (void)direction;
     (void)from_sea;
     revolt_size = get_region_revolt_points();
     if (revolt_size == 0) return 0;
@@ -355,21 +355,21 @@ int revolt_in_region(int dirc, int from_sea)
 // Searches random map-edge positions for a valid invasion point.
 // FUNCTION: C2 0x538d6
 // FUNCTION: C2WIN 0x0046fc82
-int get_region_invasion_points(int dirc, int from_sea)
+int get_region_invasion_points(int direction, int from_sea)
 {
-    int i;
-    char t;
+    int attempt;
+    char terrain;
 
-    i = 0;
-    while (i++ < 20) {
-        get_random_start_points_from_dirc(dirc, 0x3c, 0x3f);
+    attempt = 0;
+    while (attempt++ < 20) {
+        get_random_start_points_from_dirc(direction, 0x3c, 0x3f);
         barb_ptr = (barb_x + barb_y * REGION_W) * REGION_CELL_BYTES;
-        t = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr))).terrain;
+        terrain = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr))).terrain;
         if (from_sea != 0) {
-            if ((t & 8) != 0)
+            if ((terrain & 8) != 0)
                 return 1;
         } else {
-            if ((t & 0x1c) == 0) {
+            if ((terrain & 0x1c) == 0) {
                 clear_a_reg_area(barb_x, barb_y, barb_x, barb_y, 1);
                 return 1;
             }
@@ -383,29 +383,29 @@ int get_region_invasion_points(int dirc, int from_sea)
 // FUNCTION: C2WIN 0x0046fd4f
 int get_region_revolt_points(void)
 {
-    int n;
-    int off;
-    char tile;
-    char occ;
-    char t;
+    int hut_idx;
+    int hut_offset;
+    char hut_kind;
+    char occupant;
+    char terrain;
 
-    n = rand128 & 3;
-    off = hut_list[n].x * REGION_CELL_BYTES;
-    off += hut_list[n].y * REGION_W * REGION_CELL_BYTES;
-    tile = RM_CELL(off).base_kind;
-    if (tile >= 0x93 && tile <= 0x96) {
-        t   = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr - 480))).terrain;
-        occ = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr - 480))).occupant;
-        if ((t & 8) == 0 && occ == 0) { barb_x = hut_list[n].x; barb_y = hut_list[n].y - 1; return tile - 0x92; }
-        t   = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr + 8))).terrain;
-        occ = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr + 8))).occupant;
-        if ((t & 8) == 0 && occ == 0) { barb_x = hut_list[n].x + 1; barb_y = hut_list[n].y; return tile - 0x92; }
-        t   = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr + 480))).terrain;
-        occ = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr + 480))).occupant;
-        if ((t & 8) == 0 && occ == 0) { barb_x = hut_list[n].x; barb_y = hut_list[n].y + 1; return tile - 0x92; }
-        t   = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr - 8))).terrain;
-        occ = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr - 8))).occupant;
-        if ((t & 8) == 0 && occ == 0) { barb_x = hut_list[n].x - 1; barb_y = hut_list[n].y; return tile - 0x92; }
+    hut_idx = rand128 & 3;
+    hut_offset = hut_list[hut_idx].x * REGION_CELL_BYTES;
+    hut_offset += hut_list[hut_idx].y * REGION_W * REGION_CELL_BYTES;
+    hut_kind = RM_CELL(hut_offset).base_kind;
+    if (hut_kind >= 0x93 && hut_kind <= 0x96) {
+        terrain  = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr - 480))).terrain;
+        occupant = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr - 480))).occupant;
+        if ((terrain & 8) == 0 && occupant == 0) { barb_x = hut_list[hut_idx].x; barb_y = hut_list[hut_idx].y - 1; return hut_kind - 0x92; }
+        terrain  = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr + 8))).terrain;
+        occupant = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr + 8))).occupant;
+        if ((terrain & 8) == 0 && occupant == 0) { barb_x = hut_list[hut_idx].x + 1; barb_y = hut_list[hut_idx].y; return hut_kind - 0x92; }
+        terrain  = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr + 480))).terrain;
+        occupant = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr + 480))).occupant;
+        if ((terrain & 8) == 0 && occupant == 0) { barb_x = hut_list[hut_idx].x; barb_y = hut_list[hut_idx].y + 1; return hut_kind - 0x92; }
+        terrain  = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr - 8))).terrain;
+        occupant = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr - 8))).occupant;
+        if ((terrain & 8) == 0 && occupant == 0) { barb_x = hut_list[hut_idx].x - 1; barb_y = hut_list[hut_idx].y; return hut_kind - 0x92; }
     }
     return 0;
 }
@@ -416,23 +416,23 @@ int get_region_revolt_points(void)
 // FUNCTION: C2WIN 0x0046ff71
 int barbarian_invades_city(int army_idx)
 {
-    int   count;
-    int   dir;
-    int   placed;
+    int   invader_count;
+    int   direction;
+    int   placed_count;
     int   attempts;
     unsigned char terrain;
 
-    if      (army_list[army_idx].total_troops >= 0x320) count = 9;
-    else if (army_list[army_idx].total_troops >= 0x258) count = 7;
-    else if (army_list[army_idx].total_troops >= 0x190) count = 5;
-    else if (army_list[army_idx].total_troops >=  0xc8) count = 3;
-    else                                                count = 2;
+    if      (army_list[army_idx].total_troops >= 0x320) invader_count = 9;
+    else if (army_list[army_idx].total_troops >= 0x258) invader_count = 7;
+    else if (army_list[army_idx].total_troops >= 0x190) invader_count = 5;
+    else if (army_list[army_idx].total_troops >=  0xc8) invader_count = 3;
+    else                                                invader_count = 2;
 
-    dir = (army_list[army_idx].world_dir + 4) % 8;
+    direction = (army_list[army_idx].world_dir + 4) % 8;
 
-    for (placed = 0; placed < count; placed++) {
+    for (placed_count = 0; placed_count < invader_count; placed_count++) {
         for (attempts = 0; attempts++ < 10; ) {
-            get_random_start_points_from_dirc(dir, 0x50, 0x3f);
+            get_random_start_points_from_dirc(direction, 0x50, 0x3f);
             barb_ptr = (barb_y * CITY_W + barb_x) * CITY_CELL_BYTES;
             terrain = (*(struct city_cell *)((unsigned char *)city_map + (barb_ptr))).terrain;
             if (terrain & 0xe7) {
@@ -450,7 +450,7 @@ int barbarian_invades_city(int army_idx)
     }
 
 finished:
-    if (placed == 0) return 0;
+    if (placed_count == 0) return 0;
 
     put_message(0x53, citizen_list[created_citizen_no].map_ref, 0x17);
 
@@ -462,15 +462,15 @@ finished:
 // Drops a requested number of barbarian citizens along a city-map edge.
 // FUNCTION: C2 0x53c43
 // FUNCTION: C2WIN 0x00470206
-void barbarians_drop_by_city(int dirc, int count)
+void barbarians_drop_by_city(int direction, int invader_count)
 {
-    int i;
+    int placed_count;
     int attempts;
     unsigned char terrain;
 
-    for (i = 0; i < count; i++) {
+    for (placed_count = 0; placed_count < invader_count; placed_count++) {
         for (attempts = 0; attempts++ < 10; ) {
-            get_random_start_points_from_dirc(dirc, 0x50, 0x3f);
+            get_random_start_points_from_dirc(direction, 0x50, 0x3f);
             barb_ptr = (barb_y * CITY_W + barb_x) * CITY_CELL_BYTES;
             terrain = (*(struct city_cell *)((unsigned char *)city_map + (barb_ptr))).terrain;
             if (terrain & 0xe7) {
@@ -487,69 +487,69 @@ void barbarians_drop_by_city(int dirc, int count)
     }
 
 finished:
-    if (i != 0) {
+    if (placed_count != 0) {
         put_message(0x53, citizen_list[created_citizen_no].map_ref, 0x17);
         pax_romanum -= 0x40;
         if (pax_romanum < 0) pax_romanum = 0;
     }
 }
 
-// Chooses a pseudo-random point on the map edge indicated by `dirc`.
+// Chooses a pseudo-random point on the map edge indicated by `direction`.
 // FUNCTION: C2 0x53d4e
 // FUNCTION: C2WIN 0x004703be
-void get_random_start_points_from_dirc(int dirc, int size, int mask)
+void get_random_start_points_from_dirc(int direction, int map_size, int random_mask)
 {
-    int wrapped;
-    int seed;
-    int x;
-    int y;
+    int wrapped_flag;
+    int random_offset;
+    int edge_x;
+    int edge_y;
 
     barb_entry_count++;
-    seed = (rand128 + barb_entry_count) & mask;
-    x = (size - mask) / 2;
-    if (x < 0) x = 0;
-    y = size - mask / 4;
-    if (y < 0) y = 0;
-    x += seed;
-    y += seed / 2;
-    wrapped = 0;
-    if (x >= size) x /= 2;
-    if (y >= size) { y -= size; wrapped = 1; }
+    random_offset = (rand128 + barb_entry_count) & random_mask;
+    edge_x = (map_size - random_mask) / 2;
+    if (edge_x < 0) edge_x = 0;
+    edge_y = map_size - random_mask / 4;
+    if (edge_y < 0) edge_y = 0;
+    edge_x += random_offset;
+    edge_y += random_offset / 2;
+    wrapped_flag = 0;
+    if (edge_x >= map_size) edge_x /= 2;
+    if (edge_y >= map_size) { edge_y -= map_size; wrapped_flag = 1; }
 
-    if (dirc == 0) { barb_x = x; barb_y = 0; }
-    else if (dirc == 1) {
-        if (wrapped) { barb_x = size - 1; barb_y = y; }
-        else { barb_x = y; barb_y = 0; }
-    } else if (dirc == 2) { barb_x = size - 1; barb_y = x; }
-    else if (dirc == 3) {
-        if (wrapped) { barb_x = size - 1 - y; barb_y = size - 1; }
-        else { barb_x = size - 1; barb_y = y; }
-    } else if (dirc == 4) { barb_x = x; barb_y = size - 1; }
-    else if (dirc == 5) {
-        if (wrapped) { barb_x = 0; barb_y = size - 1 - y; }
-        else { barb_x = size - 1 - y; barb_y = size - 1; }
-    } else if (dirc == 6) { barb_x = 0; barb_y = x; }
-    else if (dirc == 7) {
-        if (wrapped) { barb_x = y; barb_y = 0; }
-        else { barb_x = 0; barb_y = size - 1 - y; }
+    if (direction == 0) { barb_x = edge_x; barb_y = 0; }
+    else if (direction == 1) {
+        if (wrapped_flag) { barb_x = map_size - 1; barb_y = edge_y; }
+        else { barb_x = edge_y; barb_y = 0; }
+    } else if (direction == 2) { barb_x = map_size - 1; barb_y = edge_x; }
+    else if (direction == 3) {
+        if (wrapped_flag) { barb_x = map_size - 1 - edge_y; barb_y = map_size - 1; }
+        else { barb_x = map_size - 1; barb_y = edge_y; }
+    } else if (direction == 4) { barb_x = edge_x; barb_y = map_size - 1; }
+    else if (direction == 5) {
+        if (wrapped_flag) { barb_x = 0; barb_y = map_size - 1 - edge_y; }
+        else { barb_x = map_size - 1 - edge_y; barb_y = map_size - 1; }
+    } else if (direction == 6) { barb_x = 0; barb_y = edge_x; }
+    else if (direction == 7) {
+        if (wrapped_flag) { barb_x = edge_y; barb_y = 0; }
+        else { barb_x = 0; barb_y = map_size - 1 - edge_y; }
     }
 }
 
 // Advances `temp_army` to the next eligible cohort in round-robin order.
 // FUNCTION: C2 0x53e8e
 // FUNCTION: C2WIN 0x00470607
-int get_next_temp_cohort(int strict)
+int get_next_temp_cohort(int require_target)
 {
-    int retries;
+    int attempts;
 
-    for (retries = 0; retries < 26; retries++) {
+    for (attempts = 0; attempts < 26; attempts++) {
         temp_army++;
         if (temp_army >= 26)
             temp_army = 1;
 
         if (army_list[temp_army].exists == 0) continue;
         if (army_list[temp_army].type   != 1) continue;
-        if (strict != 0) {
+        if (require_target != 0) {
             if (army_list[temp_army].state_idx    == 10) continue;
             if (army_list[temp_army].target_timer == 0)  continue;
         }
@@ -563,9 +563,9 @@ int get_next_temp_cohort(int strict)
 // FUNCTION: C2WIN 0x004706fe
 void get_cohorts_in_action(void)
 {
-    int i;
+    int cohort_idx;
 
-    for (no_of_cohorts_in_action = i = 0; i < 10; i++) cohort_in_action[i] = 0;
+    for (no_of_cohorts_in_action = cohort_idx = 0; cohort_idx < 10; cohort_idx++) cohort_in_action[cohort_idx] = 0;
 
     for (army_no = 1; army_no < 26; army_no++) {
         if (army_list[army_no].exists != 0 &&
@@ -578,7 +578,7 @@ void get_cohorts_in_action(void)
         }
     }
 
-    for (next_cohort_free = i = 0; i < 10; ) { if (cohort_in_action[i] == 0) break; i++; next_cohort_free++; }
+    for (next_cohort_free = cohort_idx = 0; cohort_idx < 10; ) { if (cohort_in_action[cohort_idx] == 0) break; cohort_idx++; next_cohort_free++; }
 }
 
 // Selects the previous or next active cohort in the forum view.
@@ -586,10 +586,10 @@ void get_cohorts_in_action(void)
 // FUNCTION: C2WIN 0x00470843
 void get_next_viewed_cohort(int direction)
 {
-    int tries;
+    int attempts;
 
     get_cohorts_in_action();
-    tries = 0;
+    attempts = 0;
     for (;;) {
         if (direction == 0) {
             --forum_viewed_army;
@@ -600,8 +600,8 @@ void get_next_viewed_cohort(int direction)
         if (forum_viewed_army > 10) forum_viewed_army = 0;
         if (forum_viewed_army == 10) return;
         if ((cohort_in_action[forum_viewed_army] & 0xff) == 1) return;
-        ++tries;
-        if (tries >= 11) break;
+        ++attempts;
+        if (attempts >= 11) break;
     }
     forum_viewed_army = 10;
 }
@@ -646,8 +646,8 @@ int get_actual_viewed_army(void)
 // FUNCTION: C2WIN 0x00470a6a
 void init_traders(void)
 {
-    int pi;
-    int border;
+    int province_idx;
+    int neighbor_region;
 
     north_trader_count0 = 2;
     north_trader_count1 = 0xa;
@@ -658,15 +658,15 @@ void init_traders(void)
     west_trader_count0  = 8;
     west_trader_count1  = 0x10;
 
-    pi = province_is;
-    border = region_borders[pi].u.side.north;
-    north_trader_brings = region_sources[border].primary;
-    border = region_borders[pi].u.side.east;
-    east_trader_brings  = region_sources[border].primary;
-    border = region_borders[pi].u.side.south;
-    south_trader_brings = region_sources[border].primary;
-    border = region_borders[pi].u.side.west;
-    west_trader_brings  = region_sources[border].primary;
+    province_idx = province_is;
+    neighbor_region = region_borders[province_idx].u.side.north;
+    north_trader_brings = region_sources[neighbor_region].primary;
+    neighbor_region = region_borders[province_idx].u.side.east;
+    east_trader_brings  = region_sources[neighbor_region].primary;
+    neighbor_region = region_borders[province_idx].u.side.south;
+    south_trader_brings = region_sources[neighbor_region].primary;
+    neighbor_region = region_borders[province_idx].u.side.west;
+    west_trader_brings  = region_sources[neighbor_region].primary;
 }
 
 // Advances the border trade timers and launches due land or sea traders.
@@ -774,38 +774,38 @@ void launch_traders(void)
 // Updates the nearest trading post's route strength and incoming direction.
 // FUNCTION: C2 0x54503
 // FUNCTION: C2WIN 0x00470f23
-void do_land_trade(int kind, int p2, int x, int y)
+void do_land_trade(int direction, int cargo, int border_x, int border_y)
 {
-    int dist;
-    char new_lvl;
-    char cur_lvl;
-    char q;
-    (void)p2;
+    int distance;
+    char new_level;
+    char current_level;
+    char road_flag;
+    (void)cargo;
 
-    q = (*(struct region_cell *)((unsigned char *)region_map + ((x + y * REGION_W) * REGION_CELL_BYTES))).edge_bits & 0x20;
+    road_flag = (*(struct region_cell *)((unsigned char *)region_map + ((border_x + border_y * REGION_W) * REGION_CELL_BYTES))).edge_bits & 0x20;
 
-    if (q == 0) return;
-    dist = get_closest_trading_post(x, y, 0x10);
-    if (dist > 0x10) return;
-    cur_lvl = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).occupant & 0x1c;
-    cur_lvl >>= 2;
-    if (dist <= 2)       new_lvl = 7;
-    else if (dist <= 4)  new_lvl = 6;
-    else if (dist <= 6)  new_lvl = 5;
-    else if (dist <= 8)  new_lvl = 4;
-    else if (dist <= 10) new_lvl = 3;
-    else if (dist <= 12) new_lvl = 2;
-    else                 new_lvl = 1;
-    if (new_lvl > cur_lvl) cur_lvl = new_lvl;
-    cur_lvl <<= 2;
+    if (road_flag == 0) return;
+    distance = get_closest_trading_post(border_x, border_y, 0x10);
+    if (distance > 0x10) return;
+    current_level = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).occupant & 0x1c;
+    current_level >>= 2;
+    if (distance <= 2)       new_level = 7;
+    else if (distance <= 4)  new_level = 6;
+    else if (distance <= 6)  new_level = 5;
+    else if (distance <= 8)  new_level = 4;
+    else if (distance <= 10) new_level = 3;
+    else if (distance <= 12) new_level = 2;
+    else                     new_level = 1;
+    if (new_level > current_level) current_level = new_level;
+    current_level <<= 2;
     (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).occupant &= 0xe3;
-    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).occupant |= cur_lvl;
+    (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).occupant |= current_level;
 
     (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).occupant &= 0x9f;
-    if (kind == 0) return;
-    if (kind == 2) { (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).occupant |= 0x20; return; }
-    if (kind == 4) { (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).occupant |= 0x40; return; }
-    if (kind == 6) { (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).occupant |= 0x60; return; }
+    if (direction == 0) return;
+    if (direction == 2) { (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).occupant |= 0x20; return; }
+    if (direction == 4) { (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).occupant |= 0x40; return; }
+    if (direction == 6) { (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).occupant |= 0x60; return; }
 }
 
 // Spawns and initializes a sea-trader army.
@@ -814,22 +814,22 @@ void do_land_trade(int kind, int p2, int x, int y)
 int do_sea_trade(int compass_side, int cargo,
                  int home_x, int home_y, int army_id)
 {
-    int idx;
+    int army_idx;
 
     if (create_army(6, home_x, home_y, 1) == 0) return 0;
-    idx = created_army_no;
-    army_list[idx].home_x          = home_x;
-    army_list[idx].home_y          = home_y;
-    army_list[idx].compass_side    = compass_side;
-    army_list[idx].trader_brings   = cargo;
-    army_list[idx].state_idx       = 0xb;
-    army_list[idx].saved_state_idx = 0xb;
-    army_list[idx].exists          = 1;
-    army_list[idx].departure_year  = year;
-    army_list[idx].target_count = 0; army_list[idx].target_kind = 0;
-    army_list[idx].return_flag = 0;
-    army_list[idx].army_id     = army_id;
-    army_list[idx].flags |= 1;
+    army_idx = created_army_no;
+    army_list[army_idx].home_x          = home_x;
+    army_list[army_idx].home_y          = home_y;
+    army_list[army_idx].compass_side    = compass_side;
+    army_list[army_idx].trader_brings   = cargo;
+    army_list[army_idx].state_idx       = 0xb;
+    army_list[army_idx].saved_state_idx = 0xb;
+    army_list[army_idx].exists          = 1;
+    army_list[army_idx].departure_year  = year;
+    army_list[army_idx].target_count = 0; army_list[army_idx].target_kind = 0;
+    army_list[army_idx].return_flag = 0;
+    army_list[army_idx].army_id     = army_id;
+    army_list[army_idx].flags |= 1;
     return 1;
 }
 
@@ -838,7 +838,7 @@ int do_sea_trade(int compass_side, int cargo,
 // FUNCTION: C2WIN 0x004712b4
 void continue_battle(int pre_loaded)
 {
-    unsigned char mm;
+    unsigned char saved_map_mode;
 
     battle_setup_count = 0;
     if (pre_loaded == 0) {
@@ -895,9 +895,9 @@ void continue_battle(int pre_loaded)
     battle_outtro();
     do_battle_victory();
 
-    mm = map_mode;
-    if (mm == 0)      city_map_screen(0);
-    else if (mm == 1) region_map_screen(0);
+    saved_map_mode = map_mode;
+    if (saved_map_mode == 0)      city_map_screen(0);
+    else if (saved_map_mode == 1) region_map_screen(0);
 
     play_tune("cityprov.xmi", 0);
     city_tune_playing = 1;
@@ -971,25 +971,25 @@ void we_retreat(void)
 // FUNCTION: C2WIN 0x00471967
 void battle_auto_resolve(void)
 {
-    int ratio_band;
-    int our_str;
-    int their_str;
+    int loss_base;
+    int our_strength;
+    int their_strength;
     int our_score;
     int their_score;
-    int lose;
-    int pct;
+    int loss_percent;
+    int survivor_percent;
     int aggression;
 
     aggression = tribe_ai_data[army_list[their_battle_army].tribe_id].aggression;
     random();   /* discarded — only the side-effect on rand128 matters */
 
-    our_str = army_list[our_battle_army].num_regulars + army_list[our_battle_army].num_irregulars
-            + army_list[our_battle_army].num_auxillaries + army_list[our_battle_army].num_specials;
+    our_strength = army_list[our_battle_army].num_regulars + army_list[our_battle_army].num_irregulars
+                 + army_list[our_battle_army].num_auxillaries + army_list[our_battle_army].num_specials;
 
-    if      (our_str < 50)   our_score = army_list[our_battle_army].morale * 20;
-    else if (our_str <= 100) our_score = army_list[our_battle_army].morale * 50;
-    else if (our_str <= 200) our_score = army_list[our_battle_army].morale * 80;
-    else                     our_score = army_list[our_battle_army].morale * 100;
+    if      (our_strength < 50)   our_score = army_list[our_battle_army].morale * 20;
+    else if (our_strength <= 100) our_score = army_list[our_battle_army].morale * 50;
+    else if (our_strength <= 200) our_score = army_list[our_battle_army].morale * 80;
+    else                          our_score = army_list[our_battle_army].morale * 100;
     our_score += army_list[our_battle_army].num_regulars * 5;
     our_score += army_list[our_battle_army].num_irregulars * 3;
     our_score += army_list[our_battle_army].num_auxillaries * 2;
@@ -998,14 +998,14 @@ void battle_auto_resolve(void)
 
     random();   /* discarded */
 
-    their_str = army_list[their_battle_army].num_regulars + army_list[their_battle_army].num_irregulars
-              + army_list[their_battle_army].num_auxillaries + army_list[their_battle_army].num_horse
-              + army_list[their_battle_army].num_specials;
+    their_strength = army_list[their_battle_army].num_regulars + army_list[their_battle_army].num_irregulars
+                   + army_list[their_battle_army].num_auxillaries + army_list[their_battle_army].num_horse
+                   + army_list[their_battle_army].num_specials;
 
-    if      (their_str < 50)   their_score = army_list[their_battle_army].morale * 20;
-    else if (their_str <= 100) their_score = army_list[their_battle_army].morale * 50;
-    else if (their_str <= 200) their_score = army_list[their_battle_army].morale * 80;
-    else                       their_score = army_list[their_battle_army].morale * 100;
+    if      (their_strength < 50)   their_score = army_list[their_battle_army].morale * 20;
+    else if (their_strength <= 100) their_score = army_list[their_battle_army].morale * 50;
+    else if (their_strength <= 200) their_score = army_list[their_battle_army].morale * 80;
+    else                            their_score = army_list[their_battle_army].morale * 100;
     their_score += army_list[their_battle_army].num_regulars * 4;
     their_score += army_list[their_battle_army].num_irregulars * 3;
     their_score += army_list[their_battle_army].num_auxillaries;
@@ -1013,12 +1013,12 @@ void battle_auto_resolve(void)
     their_score += army_list[their_battle_army].num_specials * 10;
     their_score += rand128;
 
-    if      (their_str < 50)   their_score += (aggression - 1) * 10;
-    else if (their_str <= 100) their_score += (aggression - 1) * 20;
-    else if (their_str <= 200) their_score += (aggression - 1) * 30;
-    else if (their_str <= 400) their_score += (aggression - 1) * 40;
-    else if (their_str <= 600) their_score += (aggression - 1) * 50;
-    else                       their_score += (aggression - 1) * 60;
+    if      (their_strength < 50)   their_score += (aggression - 1) * 10;
+    else if (their_strength <= 100) their_score += (aggression - 1) * 20;
+    else if (their_strength <= 200) their_score += (aggression - 1) * 30;
+    else if (their_strength <= 400) their_score += (aggression - 1) * 40;
+    else if (their_strength <= 600) their_score += (aggression - 1) * 50;
+    else                            their_score += (aggression - 1) * 60;
 
     random();   /* discarded */
 
@@ -1027,31 +1027,31 @@ void battle_auto_resolve(void)
         battle_victor = 0;
         tune_mood     = 0x11;
 
-        if      (our_str >= their_str * 10) ratio_band = our_str / 20;
-        else if (our_str >= their_str *  5) ratio_band = our_str / 10;
-        else if (our_str >= their_str *  3) ratio_band = our_str /  5;
-        else if (our_str >= their_str *  2) ratio_band = our_str /  4;
-        else if (our_str >= their_str + their_str / 2) ratio_band = our_str /  3;
-        else if (our_str >= their_str)      ratio_band = our_str /  2;
-        else                                ratio_band = (our_str * 3) / 4;
+        if      (our_strength >= their_strength * 10) loss_base = our_strength / 20;
+        else if (our_strength >= their_strength *  5) loss_base = our_strength / 10;
+        else if (our_strength >= their_strength *  3) loss_base = our_strength /  5;
+        else if (our_strength >= their_strength *  2) loss_base = our_strength /  4;
+        else if (our_strength >= their_strength + their_strength / 2) loss_base = our_strength /  3;
+        else if (our_strength >= their_strength)      loss_base = our_strength /  2;
+        else                                          loss_base = (our_strength * 3) / 4;
 
-        if      (our_score > their_score * 5) ratio_band /= 5;
-        else if (our_score > their_score * 4) ratio_band /= 4;
-        else if (our_score > their_score * 3) ratio_band /= 3;
-        else if (our_score > their_score * 2) ratio_band /= 2;
+        if      (our_score > their_score * 5) loss_base /= 5;
+        else if (our_score > their_score * 4) loss_base /= 4;
+        else if (our_score > their_score * 3) loss_base /= 3;
+        else if (our_score > their_score * 2) loss_base /= 2;
 
-        ratio_band += rand128 & 7;
-        lose = valueDIVtotal(ratio_band, our_str);
-        lose += aggression;
-        if (their_str <= 0) lose = 0;
-        if (lose      <  0) lose = 0;
-        if (lose      >= 90) lose = 90;
-        pct = 100 - lose;
+        loss_base += rand128 & 7;
+        loss_percent = valueDIVtotal(loss_base, our_strength);
+        loss_percent += aggression;
+        if (their_strength <= 0) loss_percent = 0;
+        if (loss_percent      <  0) loss_percent = 0;
+        if (loss_percent      >= 90) loss_percent = 90;
+        survivor_percent = 100 - loss_percent;
 
-        army_list[our_battle_army].num_regulars = totalXpercent(army_list[our_battle_army].num_regulars, pct);
-        army_list[our_battle_army].num_irregulars = totalXpercent(army_list[our_battle_army].num_irregulars, pct);
-        army_list[our_battle_army].num_auxillaries = totalXpercent(army_list[our_battle_army].num_auxillaries, pct);
-        army_list[our_battle_army].num_specials = totalXpercent(army_list[our_battle_army].num_specials, pct);
+        army_list[our_battle_army].num_regulars = totalXpercent(army_list[our_battle_army].num_regulars, survivor_percent);
+        army_list[our_battle_army].num_irregulars = totalXpercent(army_list[our_battle_army].num_irregulars, survivor_percent);
+        army_list[our_battle_army].num_auxillaries = totalXpercent(army_list[our_battle_army].num_auxillaries, survivor_percent);
+        army_list[our_battle_army].num_specials = totalXpercent(army_list[our_battle_army].num_specials, survivor_percent);
 
         army_list[their_battle_army].num_regulars = 0; army_list[their_battle_army].num_irregulars = 0; army_list[their_battle_army].num_auxillaries = 0; army_list[their_battle_army].num_horse = 0; army_list[their_battle_army].num_specials = 0;
     } else {
@@ -1059,31 +1059,31 @@ void battle_auto_resolve(void)
         battle_victor = 1;
         tune_mood     = 0x12;
 
-        if      (their_str >= our_str * 10) ratio_band = their_str / 20;
-        else if (their_str >= our_str *  5) ratio_band = their_str / 10;
-        else if (their_str >= our_str *  3) ratio_band = their_str /  5;
-        else if (their_str >= our_str *  2) ratio_band = their_str /  4;
-        else if (their_str >= our_str + our_str / 2) ratio_band = their_str /  3;
-        else if (their_str >= our_str)      ratio_band = their_str /  2;
-        else                                ratio_band = (their_str * 3) / 4;
+        if      (their_strength >= our_strength * 10) loss_base = their_strength / 20;
+        else if (their_strength >= our_strength *  5) loss_base = their_strength / 10;
+        else if (their_strength >= our_strength *  3) loss_base = their_strength /  5;
+        else if (their_strength >= our_strength *  2) loss_base = their_strength /  4;
+        else if (their_strength >= our_strength + our_strength / 2) loss_base = their_strength /  3;
+        else if (their_strength >= our_strength)      loss_base = their_strength /  2;
+        else                                          loss_base = (their_strength * 3) / 4;
 
-        if      (their_score > our_score * 5) ratio_band /= 5;
-        else if (their_score > our_score * 4) ratio_band /= 4;
-        else if (their_score > our_score * 3) ratio_band /= 3;
-        else if (their_score > our_score * 2) ratio_band /= 2;
+        if      (their_score > our_score * 5) loss_base /= 5;
+        else if (their_score > our_score * 4) loss_base /= 4;
+        else if (their_score > our_score * 3) loss_base /= 3;
+        else if (their_score > our_score * 2) loss_base /= 2;
 
-        ratio_band += rand128 & 7;
-        lose = valueDIVtotal(ratio_band, their_str);
-        if (our_str <= 0) lose = 0;
-        if (lose      <  0) lose = 0;
-        if (lose      >= 90) lose = 90;
-        pct = 100 - lose;
+        loss_base += rand128 & 7;
+        loss_percent = valueDIVtotal(loss_base, their_strength);
+        if (our_strength <= 0) loss_percent = 0;
+        if (loss_percent      <  0) loss_percent = 0;
+        if (loss_percent      >= 90) loss_percent = 90;
+        survivor_percent = 100 - loss_percent;
 
-        army_list[their_battle_army].num_regulars = totalXpercent(army_list[their_battle_army].num_regulars, pct);
-        army_list[their_battle_army].num_irregulars = totalXpercent(army_list[their_battle_army].num_irregulars, pct);
-        army_list[their_battle_army].num_auxillaries = totalXpercent(army_list[their_battle_army].num_auxillaries, pct);
-        army_list[their_battle_army].num_horse = totalXpercent(army_list[their_battle_army].num_horse, pct);
-        army_list[their_battle_army].num_specials = totalXpercent(army_list[their_battle_army].num_specials, pct);
+        army_list[their_battle_army].num_regulars = totalXpercent(army_list[their_battle_army].num_regulars, survivor_percent);
+        army_list[their_battle_army].num_irregulars = totalXpercent(army_list[their_battle_army].num_irregulars, survivor_percent);
+        army_list[their_battle_army].num_auxillaries = totalXpercent(army_list[their_battle_army].num_auxillaries, survivor_percent);
+        army_list[their_battle_army].num_horse = totalXpercent(army_list[their_battle_army].num_horse, survivor_percent);
+        army_list[their_battle_army].num_specials = totalXpercent(army_list[their_battle_army].num_specials, survivor_percent);
 
         army_list[our_battle_army].num_regulars = 0; army_list[our_battle_army].num_irregulars = 0; army_list[our_battle_army].num_auxillaries = 0; army_list[our_battle_army].num_horse = 0; army_list[our_battle_army].num_specials = 0;
     }
@@ -1108,9 +1108,9 @@ void get_contenders(void)
 // Builds a temporary tribal militia for an undefended province.
 // FUNCTION: C2 0x54fed
 // FUNCTION: C2WIN 0x0047255b
-void get_villagers(int x_count)
+void get_villagers(int village_level)
 {
-    int   tribe;
+    int   tribe_idx;
 
     if (game_state == 4) return;
 
@@ -1122,17 +1122,17 @@ void get_villagers(int x_count)
     army_list[army_a].morale = 3;
     army_list[army_a].source_region = province_is;
 
-    army_list[army_a].total_troops = x_count * 200;
+    army_list[army_a].total_troops = village_level * 200;
 
     army_list[army_a].tribe_id = (unsigned char)tribe_type[province_is];
-    tribe = army_list[army_a].tribe_id;
+    tribe_idx = army_list[army_a].tribe_id;
 
-    if (tribe_battle_setup[tribe].u.f.middle_kind != 0) {
-        army_list[army_a].num_irregulars = x_count * 150;
-    } else if (tribe_battle_setup[tribe].u.f.rear_kind != 0) {
-        army_list[army_a].num_auxillaries = x_count * 150;
-    } else if (tribe_battle_setup[tribe].u.f.front_kind != 0) {
-        army_list[army_a].num_regulars = x_count * 150;
+    if (tribe_battle_setup[tribe_idx].u.f.middle_kind != 0) {
+        army_list[army_a].num_irregulars = village_level * 150;
+    } else if (tribe_battle_setup[tribe_idx].u.f.rear_kind != 0) {
+        army_list[army_a].num_auxillaries = village_level * 150;
+    } else if (tribe_battle_setup[tribe_idx].u.f.front_kind != 0) {
+        army_list[army_a].num_regulars = village_level * 150;
     }
 
     army_list[army_a].battle_disposition = 0xa;
@@ -1143,11 +1143,11 @@ void get_villagers(int x_count)
 // FUNCTION: C2WIN 0x0047274e
 void do_battle_victory(void)
 {
-    struct army_rec *our;
-    struct army_rec *their;
-    int   aux_loss;
-    int   spec_loss;
-    int   slot;
+    struct army_rec *our_army_ptr;
+    struct army_rec *their_army_ptr;
+    int   auxiliary_loss;
+    int   specialist_loss;
+    int   army_slot;
 
     if (battle_victor == 0) {
         /* We won. */
@@ -1187,20 +1187,20 @@ void do_battle_victory(void)
     }
 
     /* Settle specialist and auxiliary losses against their resource pools. */
-    aux_loss  = our_battle_auxs     - army_list[our_battle_army].num_auxillaries;
-    spec_loss = our_battle_specials - army_list[our_battle_army].num_specials;
+    auxiliary_loss  = our_battle_auxs     - army_list[our_battle_army].num_auxillaries;
+    specialist_loss = our_battle_specials - army_list[our_battle_army].num_specials;
 
-    mercs_in_army -= spec_loss;
+    mercs_in_army -= specialist_loss;
     if (mercs_in_army < 0) mercs_in_army = 0;
-    max_mercs_allowed -= spec_loss;
+    max_mercs_allowed -= specialist_loss;
     if (max_mercs_allowed < 0) max_mercs_allowed = 0;
 
-    if (aux_loss > slave_requirements[6].current) {
+    if (auxiliary_loss > slave_requirements[6].current) {
         slaves -= slave_requirements[6].current;
         slave_requirements[6].current = 0;
     } else {
-        slaves -= aux_loss;
-        slave_requirements[6].current -= aux_loss;
+        slaves -= auxiliary_loss;
+        slave_requirements[6].current -= auxiliary_loss;
     }
     if (slaves <= 0) slaves = 4;
 }

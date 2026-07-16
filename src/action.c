@@ -12,14 +12,14 @@ extern int colour_cycle_delay1();
 void save_a_game(void);
 void clear_landfill(void);
 int  pause_db(void);
-void helping(int msg_id);
+void helping(int help_page_id);
 void show_citymap(void);
 void show_regionmap(void);
 void show_battlemap(void);
 void region_map_screen(int do_black_out);
 void act_goto_message(void);
 void act_goto_city_map(void);
-void act_query_do_help(int idx);
+void act_query_do_help(int page_delta);
 void init_help_history(void);
 void rewind_help_history(void);
 void get_next_viewed_cohort(int dir);
@@ -34,7 +34,7 @@ void stop_db(void);
 
 void act_house1(void);
 
-int alter_slave_reqs(int kind, int delta);
+int alter_slave_reqs(int requirement_idx, int allocation_delta);
 
 void rotate_pm_clockwise(void);
 void rotate_pm_anticlockwise(void);
@@ -51,8 +51,8 @@ void goto_flag_marker_mode(void);
 // FUNCTION: C2WIN 0x004b0630
 void action(void)
 {
-    int icons_helped;       /* Index into the active map's icon-help table. */
-    int idx;                /* Preserves the region placement type across the selection dialog. */
+    int help_page_id;             /* Index into the active map's icon-help table. */
+    int saved_reg_placing_type;   /* Preserves the region placement type across the selection dialog. */
 
     old_scrolling = scrolling;
     scrolling = 0;
@@ -121,13 +121,13 @@ void action(void)
             act_query();
         } else if (last_icon_over != 0) {
             if (map_mode == 0) {
-                icons_helped = city_icons_to_help[last_icon_over];
+                help_page_id = city_icons_to_help[last_icon_over];
             } else {
-                icons_helped = region_icons_to_help[last_icon_over];
+                help_page_id = region_icons_to_help[last_icon_over];
             }
-            if (icons_helped != 0) {
+            if (help_page_id != 0) {
                 clear_mouse();
-                helping(icons_helped);
+                helping(help_page_id);
             }
         }
         goto end_of_action;
@@ -269,12 +269,12 @@ void action(void)
             redraw_icons = 1;
         } else if (last_icon_over != 0) {
             if (map_mode == 0) {
-                icons_helped = city_icons_to_help[last_icon_over];
+                help_page_id = city_icons_to_help[last_icon_over];
             } else {
-                icons_helped = region_icons_to_help[last_icon_over];
+                help_page_id = region_icons_to_help[last_icon_over];
             }
-            if (icons_helped != 0) {
-                helping(icons_helped);
+            if (help_page_id != 0) {
+                helping(help_page_id);
             }
             goto end_of_action;
         }
@@ -314,7 +314,7 @@ void action(void)
 
         if (reg_placing_type >= 0x25 && reg_placing_type <= 0x29) {
             if (industry_build_on != 0 && industry_build_ok == 0) {
-                idx = reg_placing_type;
+                saved_reg_placing_type = reg_placing_type;
                 if (reg_placing_type == 0x25) {
                     get_selection_goods_list(1);
                     control_selection(farm_selection, 5,
@@ -345,7 +345,7 @@ void action(void)
                 } else {
                     industry_build_on = 0;
                 }
-                reg_placing_type = idx;
+                reg_placing_type = saved_reg_placing_type;
             }
             if (industry_build_ok != 0) {
                 restore_region_from_undo_buffer();
@@ -618,29 +618,29 @@ void scroll(void)
 void mouse_follow_cohort(void)
 {
     static int cohort_tick_gate;
-    int dist;
-    int ax;
-    int ay;
+    int army_distance;
+    int army_screen_x;
+    int army_screen_y;
 
     if (map_mode != 1) { tracking_army = 0; return; }
     if (pointer_mode <= 1) { tracking_army = 0; return; }
     if (pointer_mode >= 4) return;
     if (pm_over == 0) { tracking_army = 0; pointer_mode = 2; return; }
 
-    if (pointer_mode == 2) dist = get_nearest_army_to_track(mouse_x, mouse_y);
-    else if (pointer_mode == 3) dist = get_tracking_army_distance(tracking_army, mouse_x, mouse_y);
+    if (pointer_mode == 2) army_distance = get_nearest_army_to_track(mouse_x, mouse_y);
+    else if (pointer_mode == 3) army_distance = get_tracking_army_distance(tracking_army, mouse_x, mouse_y);
 
-    if (dist >= 0x18) { tracking_army = 0; pointer_mode = 2; return; }
+    if (army_distance >= 0x18) { tracking_army = 0; pointer_mode = 2; return; }
 
 
     pointer_mode = 3;
     if (cohort_tick_gate >= 2) { cohort_tick_gate = 0; return; }
     cohort_tick_gate = cohort_tick_gate + 1;
-    ax = army_list[tracking_army].map_x; if (ax < mouse_x) { mse_x = (short)(mouse_x - 1); }
-    else if (ax > mouse_x) { mse_x = (short)(mouse_x + 1); }
+    army_screen_x = army_list[tracking_army].map_x; if (army_screen_x < mouse_x) { mse_x = (short)(mouse_x - 1); }
+    else if (army_screen_x > mouse_x) { mse_x = (short)(mouse_x + 1); }
     else { mse_x = mouse_x; }
-    ay = army_list[tracking_army].map_y; if (ay < mouse_y) { mse_y = (short)(mouse_y - 1); }
-    else if (ay > mouse_y) { mse_y = (short)(mouse_y + 1); }
+    army_screen_y = army_list[tracking_army].map_y; if (army_screen_y < mouse_y) { mse_y = (short)(mouse_y - 1); }
+    else if (army_screen_y > mouse_y) { mse_y = (short)(mouse_y + 1); }
     else { mse_y = mouse_y; }
     set_mouse();
 }
@@ -651,9 +651,9 @@ void mouse_follow_cohort(void)
 void mouse_hunt_enemies(void)
 {
     static int enemy_tick_gate;
-    int dist;
-    int ax;
-    int ay;
+    int enemy_distance;
+    int enemy_screen_x;
+    int enemy_screen_y;
 
     if (map_mode != 1) {
         hunting_army = 0;
@@ -672,8 +672,8 @@ void mouse_hunt_enemies(void)
         return;
     }
 
-    dist = get_nearest_enemy_to_track(mouse_x, mouse_y);
-    if (dist >= 0x18) {
+    enemy_distance = get_nearest_enemy_to_track(mouse_x, mouse_y);
+    if (enemy_distance >= 0x18) {
         hunting_army = 0;
         return;
     }
@@ -686,18 +686,18 @@ void mouse_hunt_enemies(void)
     }
     enemy_tick_gate = enemy_tick_gate + 1;
 
-    ax = army_list[hunting_army].map_x;
-    if (ax < mouse_x) {
+    enemy_screen_x = army_list[hunting_army].map_x;
+    if (enemy_screen_x < mouse_x) {
         mse_x = (short)(mouse_x - 1);
-    } else if (ax > mouse_x) {
+    } else if (enemy_screen_x > mouse_x) {
         mse_x = (short)(mouse_x + 1);
     } else {
         mse_x = mouse_x;
     }
-    ay = army_list[hunting_army].map_y;
-    if (ay < mouse_y) {
+    enemy_screen_y = army_list[hunting_army].map_y;
+    if (enemy_screen_y < mouse_y) {
         mse_y = (short)(mouse_y - 1);
-    } else if (ay > mouse_y) {
+    } else if (enemy_screen_y > mouse_y) {
         mse_y = (short)(mouse_y + 1);
     } else {
         mse_y = mouse_y;
@@ -713,7 +713,7 @@ void mouse_hunt_enemies(void)
 // FUNCTION: C2WIN 0x004b2362
 void show_latest_route(void)
 {
-    unsigned char terrain;
+    unsigned char place_state;
 
     if (pointer_mode < 6 || pointer_mode > 8) {
         return;
@@ -725,8 +725,8 @@ void show_latest_route(void)
     pointer_mode = 6;
     get_over_coords();
 
-    terrain = (*(struct region_cell *)((unsigned char *)region_map + (pm_over_cm_ptr))).place_state;
-    if (terrain > 0x20 || terrain < 1) {
+    place_state = (*(struct region_cell *)((unsigned char *)region_map + (pm_over_cm_ptr))).place_state;
+    if (place_state > 0x20 || place_state < 1) {
         return;
     }
 
@@ -744,9 +744,9 @@ void show_latest_route(void)
             pointer_mode = 6;
         }
     } else {
-        unsigned int flags =
+        unsigned int destination_flag =
             (unsigned char)((*(struct region_cell *)((unsigned char *)region_map + (pm_over_cm_ptr))).edge_bits & 0x80);
-        if (flags != 0) {
+        if (destination_flag != 0) {
             pointer_mode = 7;
         } else {
             pointer_mode = 6;
@@ -787,20 +787,20 @@ void prebuild_city_item(void)
 // FUNCTION: C2WIN 0x004b2585
 void build_city_item(void)
 {
-    int gfx_b_idx;
-    unsigned int house_gfx;
-    int gfx_a_idx;
-    int dy;
-    unsigned int tgfx_b;
-    unsigned int fountain_gfx;
-    int gfx_a;
-    int gfx_b;
-    int ok;
-    unsigned int building_gfx;
-    unsigned int shape;
-    unsigned int building_type;
+    int second_gfx_idx;
+    unsigned int house_gfx_idx;
+    int first_gfx_idx;
+    int second_y_offset;
+    unsigned int building_edge_bits;
+    unsigned int fountain_gfx_idx;
+    int first_base_kind;
+    int second_base_kind;
+    int placement_ok;
+    unsigned int building_gfx_idx;
+    unsigned int building_shape;
+    unsigned int base_kind;
     int has_cover;
-    int dx;
+    int second_x_offset;
 
     illegal_build = 2;
     CM_CELL(pm_over_cm_ptr).edge_bits |= 1;
@@ -844,8 +844,8 @@ void build_city_item(void)
                     confirm(10, 0xa0, 0xa0);
                     if (decision == 0) {
                         CM_CELL(pm_over_cm_ptr).terrain &= 0xdf;
-                        building_type = CM_CELL(pm_over_cm_ptr).base_kind;
-                        if (building_type == 0xd5) { CM_CELL(pm_over_cm_ptr).base_kind = 0xcf; CM_CELL(pm_over_cm_ptr).extra_edge = 0x79; }
+                        base_kind = CM_CELL(pm_over_cm_ptr).base_kind;
+                        if (base_kind == 0xd5) { CM_CELL(pm_over_cm_ptr).base_kind = 0xcf; CM_CELL(pm_over_cm_ptr).extra_edge = 0x79; }
                         else { CM_CELL(pm_over_cm_ptr).base_kind = 0xd0; CM_CELL(pm_over_cm_ptr).extra_edge = 0x76; }
                         aquaduct_ramifications(over_x, over_y);
                         setup_map_screen_refresh();
@@ -872,38 +872,38 @@ void build_city_item(void)
     /* Houses use the placement type to select their footprint and graphics. */
     if (placing_type >= 0x82 && placing_type <= 0xa1) {
         restore_city_from_undo_buffer();
-        building_type = placing_type;
-        house_gfx = house_gfxdat[building_type * 4 - 0x208];
-        shape = house_gfxdat[building_type * 4 - 0x207];
-        tgfx_b = house_gfxdat[building_type * 4 - 0x206];
+        base_kind = placing_type;
+        house_gfx_idx = house_gfxdat[base_kind * 4 - 0x208];
+        building_shape = house_gfxdat[base_kind * 4 - 0x207];
+        building_edge_bits = house_gfxdat[base_kind * 4 - 0x206];
         if (hot_key_out_off_build == 0) {
-            if (shape == 3) put_x3_area(over_x, over_y, building_type, tgfx_b, house_gfx);
-            else if (shape == 2) put_x2_area(over_x, over_y, building_type, tgfx_b, house_gfx);
-            else build_an_area(act_start_x, act_start_y, over_x, over_y, building_type, tgfx_b, house_gfx);
+            if (building_shape == 3) put_x3_area(over_x, over_y, base_kind, building_edge_bits, house_gfx_idx);
+            else if (building_shape == 2) put_x2_area(over_x, over_y, base_kind, building_edge_bits, house_gfx_idx);
+            else build_an_area(act_start_x, act_start_y, over_x, over_y, base_kind, building_edge_bits, house_gfx_idx);
         }
     }
 
     /* Forums use the placement type to select their footprint and graphics. */
     if (placing_type >= 0xae && placing_type <= 0xb9) {
         restore_city_from_undo_buffer();
-        building_type = placing_type;
-        building_gfx = forum_gfxdat[building_type * 4 - 0x2b8];
-        shape = forum_gfxdat[building_type * 4 - 0x2b7];
-        tgfx_b = forum_gfxdat[building_type * 4 - 0x2b6];
+        base_kind = placing_type;
+        building_gfx_idx = forum_gfxdat[base_kind * 4 - 0x2b8];
+        building_shape = forum_gfxdat[base_kind * 4 - 0x2b7];
+        building_edge_bits = forum_gfxdat[base_kind * 4 - 0x2b6];
         if (hot_key_out_off_build == 0) {
-            if (shape == 2) put_x2_area(over_x, over_y, building_type, tgfx_b, building_gfx);
-            else if (shape == 3) put_x3_area(over_x, over_y, building_type, tgfx_b, building_gfx);
-            else if (shape == 4) put_x4_area(over_x, over_y, building_type, tgfx_b, building_gfx);
+            if (building_shape == 2) put_x2_area(over_x, over_y, base_kind, building_edge_bits, building_gfx_idx);
+            else if (building_shape == 3) put_x3_area(over_x, over_y, base_kind, building_edge_bits, building_gfx_idx);
+            else if (building_shape == 4) put_x4_area(over_x, over_y, base_kind, building_edge_bits, building_gfx_idx);
         }
     }
 
     if (placing_type == 0xa) {  /* Baths */
         restore_city_from_undo_buffer();
         has_cover = affected_by_cover1(CM_CELL(pm_over_cm_ptr).b, 2, 4);
-        if (has_cover != 0) building_gfx = 0x20;
-        else building_gfx = 99;
+        if (has_cover != 0) building_gfx_idx = 0x20;
+        else building_gfx_idx = 99;
         if (hot_key_out_off_build == 0) {
-            put_x2_area(over_x, over_y, 0xdf, 8, building_gfx);
+            put_x2_area(over_x, over_y, 0xdf, 8, building_gfx_idx);
             CM_CELL(start_sptr).building = 0x0f;
         }
     }
@@ -987,45 +987,45 @@ void build_city_item(void)
     if (placing_type == 0x1b) {
         /* Circus: two 3x3 tiles, orientation chosen from map_direction. */
         restore_city_from_undo_buffer();
-        if (map_direction == 0) { gfx_a = 0xe9; gfx_b = 0xea; gfx_a_idx = 0; gfx_b_idx = 9; dx = 0; dy = 3; }
-        else if (map_direction == 4) { gfx_a = 0xe9; gfx_b = 0xea; gfx_a_idx = 9; gfx_b_idx = 0; dx = 0; dy = -3; }
-        else if (map_direction == 2) { gfx_a = 0xeb; gfx_b = 0xec; gfx_a_idx = 0x3b; gfx_b_idx = 0x32; dx = -3; dy = 0; }
-        else if (map_direction == 6) { gfx_a = 0xeb; gfx_b = 0xec; gfx_a_idx = 0x32; gfx_b_idx = 0x3b; dx = 3; dy = 0; }
+        if (map_direction == 0) { first_base_kind = 0xe9; second_base_kind = 0xea; first_gfx_idx = 0; second_gfx_idx = 9; second_x_offset = 0; second_y_offset = 3; }
+        else if (map_direction == 4) { first_base_kind = 0xe9; second_base_kind = 0xea; first_gfx_idx = 9; second_gfx_idx = 0; second_x_offset = 0; second_y_offset = -3; }
+        else if (map_direction == 2) { first_base_kind = 0xeb; second_base_kind = 0xec; first_gfx_idx = 0x3b; second_gfx_idx = 0x32; second_x_offset = -3; second_y_offset = 0; }
+        else if (map_direction == 6) { first_base_kind = 0xeb; second_base_kind = 0xec; first_gfx_idx = 0x32; second_gfx_idx = 0x3b; second_x_offset = 3; second_y_offset = 0; }
         if (hot_key_out_off_build == 0) {
-            ok = 1;
-            if (put_x3_area(over_x, over_y, gfx_a, 0x14, gfx_a_idx) == 0) ok = 0;
-            if (put_x3_area(over_x + dx, over_y + dy, gfx_b, 0x14, gfx_b_idx) == 0) ok = 0;
-            if (ok == 0) { restore_city_from_undo_buffer(); particles_built = 0; }
+            placement_ok = 1;
+            if (put_x3_area(over_x, over_y, first_base_kind, 0x14, first_gfx_idx) == 0) placement_ok = 0;
+            if (put_x3_area(over_x + second_x_offset, over_y + second_y_offset, second_base_kind, 0x14, second_gfx_idx) == 0) placement_ok = 0;
+            if (placement_ok == 0) { restore_city_from_undo_buffer(); particles_built = 0; }
             else particles_built = 1;
             set_map_ref(over_x, over_y, 3);
-            set_map_ref(over_x + dx, over_y + dy, 3);
+            set_map_ref(over_x + second_x_offset, over_y + second_y_offset, 3);
         }
     }
 
     if (placing_type == 0x1c) {
         /* Circus Maximus: two 4x4 tiles, orientation from map_direction. */
         restore_city_from_undo_buffer();
-        if (map_direction == 0) { gfx_a = 0xed; gfx_b = 0xee; gfx_a_idx = 0x12; gfx_b_idx = 0x22; dx = 0; dy = 4; }
-        else if (map_direction == 4) { gfx_a = 0xed; gfx_b = 0xee; gfx_a_idx = 0x22; gfx_b_idx = 0x12; dx = 0; dy = -4; }
-        else if (map_direction == 2) { gfx_a = 0xef; gfx_b = 0xf0; gfx_a_idx = 0x54; gfx_b_idx = 0x44; dx = -4; dy = 0; }
-        else if (map_direction == 6) { gfx_a = 0xef; gfx_b = 0xf0; gfx_a_idx = 0x44; gfx_b_idx = 0x54; dx = 4; dy = 0; }
+        if (map_direction == 0) { first_base_kind = 0xed; second_base_kind = 0xee; first_gfx_idx = 0x12; second_gfx_idx = 0x22; second_x_offset = 0; second_y_offset = 4; }
+        else if (map_direction == 4) { first_base_kind = 0xed; second_base_kind = 0xee; first_gfx_idx = 0x22; second_gfx_idx = 0x12; second_x_offset = 0; second_y_offset = -4; }
+        else if (map_direction == 2) { first_base_kind = 0xef; second_base_kind = 0xf0; first_gfx_idx = 0x54; second_gfx_idx = 0x44; second_x_offset = -4; second_y_offset = 0; }
+        else if (map_direction == 6) { first_base_kind = 0xef; second_base_kind = 0xf0; first_gfx_idx = 0x44; second_gfx_idx = 0x54; second_x_offset = 4; second_y_offset = 0; }
         if (hot_key_out_off_build == 0) {
-            ok = 1;
-            if (put_x4_area(over_x, over_y, gfx_a, 0x14, gfx_a_idx) == 0) ok = 0;
-            if (put_x4_area(over_x + dx, over_y + dy, gfx_b, 0x14, gfx_b_idx) == 0) ok = 0;
-            if (ok == 0) { restore_city_from_undo_buffer(); particles_built = 0; }
+            placement_ok = 1;
+            if (put_x4_area(over_x, over_y, first_base_kind, 0x14, first_gfx_idx) == 0) placement_ok = 0;
+            if (put_x4_area(over_x + second_x_offset, over_y + second_y_offset, second_base_kind, 0x14, second_gfx_idx) == 0) placement_ok = 0;
+            if (placement_ok == 0) { restore_city_from_undo_buffer(); particles_built = 0; }
             else particles_built = 1;
             set_map_ref(over_x, over_y, 4);
-            set_map_ref(over_x + dx, over_y + dy, 4);
+            set_map_ref(over_x + second_x_offset, over_y + second_y_offset, 4);
         }
     }
 
     if (placing_type == 0xbf) {  /* Tower */
         restore_city_from_undo_buffer();
-        building_type = placing_type;
+        base_kind = placing_type;
         if (hot_key_out_off_build == 0) {
             CM_CELL(pm_over_cm_ptr).terrain &= 0xfd;
-            if (put_x1_area(over_x, over_y, building_type, 8, 0x94) == 0) {
+            if (put_x1_area(over_x, over_y, base_kind, 8, 0x94) == 0) {
                 restore_city_from_undo_buffer();
             }
             if (wall_ramifications(over_x, over_y) == 0) {
@@ -1036,10 +1036,10 @@ void build_city_item(void)
 
     if (placing_type == 0xbe) {  /* Reservoir */
         restore_city_from_undo_buffer();
-        building_type = placing_type;
+        base_kind = placing_type;
         if (hot_key_out_off_build == 0) {
             CM_CELL(pm_over_cm_ptr).terrain &= 0xbf;
-            if (put_x1_area(over_x, over_y, building_type, 0, 0x5a) == 0) {
+            if (put_x1_area(over_x, over_y, base_kind, 0, 0x5a) == 0) {
                 restore_city_from_undo_buffer();
             }
             if (aquaduct_ramifications(over_x, over_y) == 0) {
@@ -1060,11 +1060,11 @@ void build_city_item(void)
 
     if (placing_type == 0xc) {  /* Fountain */
         restore_city_from_undo_buffer();
-        building_type = 0xdb;
-        fountain_gfx = fountain_gfxdat[building_type - 0xdb];
-        if ((CM_CELL(pm_over_cm_ptr).education & 4) != 0) fountain_gfx++;
+        base_kind = 0xdb;
+        fountain_gfx_idx = fountain_gfxdat[base_kind - 0xdb];
+        if ((CM_CELL(pm_over_cm_ptr).education & 4) != 0) fountain_gfx_idx++;
         if (hot_key_out_off_build == 0) {
-            if (put_x1_area(over_x, over_y, building_type, 8, fountain_gfx) == 0) {
+            if (put_x1_area(over_x, over_y, base_kind, 8, fountain_gfx_idx) == 0) {
                 restore_city_from_undo_buffer();
             } else { CM_CELL(pm_over_cm_ptr).building = 0x0f; }
         }
@@ -1321,13 +1321,13 @@ void build_region_item(void)
                     put_message(0x5a, 0, 0);
                 }
             } else if (create_army(1, over_x, over_y, 0) != 0) {
-                int new_no = created_army_no;
-                army_list[new_no].state_idx = 1;
-                army_list[new_no].saved_state_idx = 1;
-                army_list[new_no].exists = 2;
-                army_list[new_no].cohort_id = next_cohort_free;
-                army_list[new_no].departure_year = year;
-                army_list[new_no].morale_timer = 2;
+                int new_army_idx = created_army_no;
+                army_list[new_army_idx].state_idx = 1;
+                army_list[new_army_idx].saved_state_idx = 1;
+                army_list[new_army_idx].exists = 2;
+                army_list[new_army_idx].cohort_id = next_cohort_free;
+                army_list[new_army_idx].departure_year = year;
+                army_list[new_army_idx].morale_timer = 2;
             }
         } else {
             restore_region_from_undo_buffer();
@@ -1344,35 +1344,35 @@ void build_region_item(void)
 // FUNCTION: C2WIN 0x004b3fd6
 void act_select_farm(void)
 {
-    int off = get_region_2x2_start(pm_over_cm_ptr);
-    (*(struct region_cell *)((unsigned char *)region_map + (off))).occupant &= 0x0f;
+    int origin_rm_ptr = get_region_2x2_start(pm_over_cm_ptr);
+    (*(struct region_cell *)((unsigned char *)region_map + (origin_rm_ptr))).occupant &= 0x0f;
     para1 <<= 4;
-    (*(struct region_cell *)((unsigned char *)region_map + (off))).occupant |= (unsigned char)para1;
+    (*(struct region_cell *)((unsigned char *)region_map + (origin_rm_ptr))).occupant |= (unsigned char)para1;
 }
 
-// Returns the origin-cell pointer for the 2x2 region building containing `cm_ptr`.
+// Returns the origin-cell pointer for the 2x2 region building containing `rm_ptr`.
 // FUNCTION: C2 0x3166c
 // FUNCTION: C2WIN 0x004b402d
-int get_region_2x2_start(int cm_ptr)
+int get_region_2x2_start(int rm_ptr)
 {
-    int row;
-    int col;
-    int divisor;
+    int row_offset;
+    int col_offset;
+    int footprint_width;
 
-    if ((*(struct region_cell *)((unsigned char *)region_map + (cm_ptr))).base_kind == 0xd4) {
-        row = 0;
-        col = 0;
+    if ((*(struct region_cell *)((unsigned char *)region_map + (rm_ptr))).base_kind == 0xd4) {
+        row_offset = 0;
+        col_offset = 0;
     } else {
-        row = (*(struct region_cell *)((unsigned char *)region_map + (cm_ptr))).occupant & 3;
-        col = row;
+        row_offset = (*(struct region_cell *)((unsigned char *)region_map + (rm_ptr))).occupant & 3;
+        col_offset = row_offset;
     }
 
-    divisor = 2;
-    col = col % divisor;
-    row = row / divisor;
-    cm_ptr = cm_ptr - col * 8;
-    cm_ptr = cm_ptr - row * 480;
-    return cm_ptr;
+    footprint_width = 2;
+    col_offset = col_offset % footprint_width;
+    row_offset = row_offset / footprint_width;
+    rm_ptr = rm_ptr - col_offset * 8;
+    rm_ptr = rm_ptr - row_offset * 480;
+    return rm_ptr;
 }
 
 // Determine which icon (if any) is under the mouse pointer.
@@ -1380,12 +1380,12 @@ int get_region_2x2_start(int cm_ptr)
 // FUNCTION: C2WIN 0x004b40c5
 void get_icon_over(void)
 {
-    int bot;
-    int i;
-    short x;
-    short y;
-    short w;
-    short h;
+    int icon_bottom;
+    int icon_idx;
+    short icon_x;
+    short icon_y;
+    short icon_width;
+    short icon_height;
 
     last_icon_over = 0;
 
@@ -1395,14 +1395,14 @@ void get_icon_over(void)
     }
 
     if (mouse_x >= com_x && (com_x + com_w) > mouse_x) {
-        bot = com_y + com_h;
+        icon_bottom = com_y + com_h;
         if (map_mode == 0) {
-            if (com_y - 0x18 <= mouse_y && bot > mouse_y) {
+            if (com_y - 0x18 <= mouse_y && icon_bottom > mouse_y) {
                 last_icon_over = 2;
                 return;
             }
         } else {
-            if (mouse_y >= com_y && mouse_y < bot) {
+            if (mouse_y >= com_y && mouse_y < icon_bottom) {
                 last_icon_over = 2;
                 return;
             }
@@ -1414,29 +1414,29 @@ void get_icon_over(void)
     }
 
     if (map_mode == 0) {
-        for (i = 4; i < 0x1c; i++) {
-            if (tutorial_mode == 0 || city_icon_allowed(i - 4) != 0) {
-                w = int_city_header[i * 8 + 4];
-                h = int_city_header[i * 8 + 5];
-                x = int_city_header[i * 8 + 8] + 0xee;
-                y = int_city_header[i * 8 + 9];
-                if (mouse_in_area((unsigned short)x, (unsigned short)y,
-                                  (unsigned short)w, (unsigned short)h) != 0) {
-                    last_icon_over = i;
+        for (icon_idx = 4; icon_idx < 0x1c; icon_idx++) {
+            if (tutorial_mode == 0 || city_icon_allowed(icon_idx - 4) != 0) {
+                icon_width = int_city_header[icon_idx * 8 + 4];
+                icon_height = int_city_header[icon_idx * 8 + 5];
+                icon_x = int_city_header[icon_idx * 8 + 8] + 0xee;
+                icon_y = int_city_header[icon_idx * 8 + 9];
+                if (mouse_in_area((unsigned short)icon_x, (unsigned short)icon_y,
+                                  (unsigned short)icon_width, (unsigned short)icon_height) != 0) {
+                    last_icon_over = icon_idx;
                     return;
                 }
             }
         }
     } else {
-        for (i = 4; i < 0x17; i++) {
-            if (tutorial_mode == 0 || region_icon_allowed(i - 4) != 0) {
-                w = int_region_header[i * 8 + 4];
-                h = int_region_header[i * 8 + 5];
-                x = int_region_header[i * 8 + 8] + 0xee;
-                y = int_region_header[i * 8 + 9];
-                if (mouse_in_area((unsigned short)x, (unsigned short)y,
-                                  (unsigned short)w, (unsigned short)h) != 0) {
-                    last_icon_over = i;
+        for (icon_idx = 4; icon_idx < 0x17; icon_idx++) {
+            if (tutorial_mode == 0 || region_icon_allowed(icon_idx - 4) != 0) {
+                icon_width = int_region_header[icon_idx * 8 + 4];
+                icon_height = int_region_header[icon_idx * 8 + 5];
+                icon_x = int_region_header[icon_idx * 8 + 8] + 0xee;
+                icon_y = int_region_header[icon_idx * 8 + 9];
+                if (mouse_in_area((unsigned short)icon_x, (unsigned short)icon_y,
+                                  (unsigned short)icon_width, (unsigned short)icon_height) != 0) {
+                    last_icon_over = icon_idx;
                     return;
                 }
             }
@@ -1444,38 +1444,38 @@ void get_icon_over(void)
     }
 }
 
-// "Is the cursor over icon `idx`?". Returns 1 if the mouse is in the icon's box (or if `idx==2`,
+// "Is the cursor over icon `icon_idx`?". Returns 1 if the mouse is in the icon's box (or if `icon_idx==2`,
 // which always returns 1 — the command-strip area is special-cased by the caller).
 // FUNCTION: C2 0x31850
 // FUNCTION: C2WIN 0x004b437f
-int is_icon_over(int idx)
+int is_icon_over(int icon_idx)
 {
-    short x;
-    short y;
-    short w;
-    short h;
+    short icon_x;
+    short icon_y;
+    short icon_width;
+    short icon_height;
 
     if (mouse_x < 0x1e0) {
         return 0;
     }
 
     if (map_mode == 0) {
-        w = int_city_header[idx * 8 + 4];
-        h = int_city_header[idx * 8 + 5];
-        x = int_city_header[idx * 8 + 8] + 0xee;
-        y = int_city_header[idx * 8 + 9];
+        icon_width = int_city_header[icon_idx * 8 + 4];
+        icon_height = int_city_header[icon_idx * 8 + 5];
+        icon_x = int_city_header[icon_idx * 8 + 8] + 0xee;
+        icon_y = int_city_header[icon_idx * 8 + 9];
     } else {
-        w = int_region_header[idx * 8 + 4];
-        h = int_region_header[idx * 8 + 5];
-        x = int_region_header[idx * 8 + 8] + 0xee;
-        y = int_region_header[idx * 8 + 9];
+        icon_width = int_region_header[icon_idx * 8 + 4];
+        icon_height = int_region_header[icon_idx * 8 + 5];
+        icon_x = int_region_header[icon_idx * 8 + 8] + 0xee;
+        icon_y = int_region_header[icon_idx * 8 + 9];
     }
 
-    if (mouse_in_area((unsigned short)x, (unsigned short)y,
-                      (unsigned short)w, (unsigned short)h) != 0) {
+    if (mouse_in_area((unsigned short)icon_x, (unsigned short)icon_y,
+                      (unsigned short)icon_width, (unsigned short)icon_height) != 0) {
         return 1;
     }
-    if (idx == 2) {
+    if (icon_idx == 2) {
         return 1;
     }
     return 0;
@@ -1488,9 +1488,9 @@ int is_icon_over(int idx)
 // FUNCTION: C2WIN 0x004b44b1
 int use_city_overmap_to_move(void)
 {
-    int dx;
-    int dy;
-    int ptr;
+    int map_x;
+    int map_y;
+    int target_cm_ptr;
 
     if (mouse_left_preclick == 0) {
         return 0;
@@ -1508,10 +1508,10 @@ int use_city_overmap_to_move(void)
         return 0;
     }
 
-    dx = (mouse_x - com_x) / 2;
-    dy = (mouse_y - com_y) / 4 * 2;
-    ptr = (dy * map_actual_width + dx) * map_actual_atom;
-    if (jump_to_citymap_ptr(ptr) != 0) {
+    map_x = (mouse_x - com_x) / 2;
+    map_y = (mouse_y - com_y) / 4 * 2;
+    target_cm_ptr = (map_y * map_actual_width + map_x) * map_actual_atom;
+    if (jump_to_citymap_ptr(target_cm_ptr) != 0) {
         return 1;
     }
     return 0;
@@ -1522,9 +1522,9 @@ int use_city_overmap_to_move(void)
 // FUNCTION: C2WIN 0x004b459d
 int use_region_overmap_to_move(void)
 {
-    int dx;
-    int dy;
-    int ptr;
+    int map_x;
+    int map_y;
+    int target_rm_ptr;
 
     if (mouse_left_preclick == 0) {
         return 0;
@@ -1533,25 +1533,25 @@ int use_region_overmap_to_move(void)
         return 0;
     }
 
-    dx = (mouse_x - com_x) / 2;
-    dy = (mouse_y - com_y) / 4 * 2;
-    ptr = (dy * map_actual_width + dx) * map_actual_atom;
-    if (jump_to_regionmap_ptr(ptr) != 0) {
+    map_x = (mouse_x - com_x) / 2;
+    map_y = (mouse_y - com_y) / 4 * 2;
+    target_rm_ptr = (map_y * map_actual_width + map_x) * map_actual_atom;
+    if (jump_to_regionmap_ptr(target_rm_ptr) != 0) {
         return 1;
     }
     return 0;
 }
 
-// Re-centre the city view on the cell whose pseudo_map[] entry matches `target_ptr`. If we're
+// Re-centre the city view on the cell whose pseudo_map[] entry matches `target_cm_ptr`. If we're
 // currently on the region map (map_mode==1), first restore the saved city rotation/zoom and switch
 // back to the city map (map_mode=0).
 // FUNCTION: C2 0x31a0a
 // FUNCTION: C2WIN 0x004b463e
-int jump_to_citymap_ptr(int target_ptr)
+int jump_to_citymap_ptr(int target_cm_ptr)
 {
-    int y;
-    int x;
-    int switched = 0;
+    int row;
+    int col;
+    int map_switched = 0;
 
     if (map_mode != 0) {
         prov_rotation = map_direction;
@@ -1560,21 +1560,21 @@ int jump_to_citymap_ptr(int target_ptr)
         zoom_level = city_zoom_level;
         map_mode = 0;
         act_correct_map();
-        switched = 1;
+        map_switched = 1;
     }
 
     /* Linear search of pseudo_map for the target cell pointer. */
-    for (y = 0; y < 0xa1; y++) {
-        for (x = 0; x < 0x51; x++) {
-            if (pseudo_map[y][x] == target_ptr) {
+    for (row = 0; row < 0xa1; row++) {
+        for (col = 0; col < 0x51; col++) {
+            if (pseudo_map[row][col] == target_cm_ptr) {
                 goto found;
             }
         }
     }
     return 0;
 found:
-    pm_x = x;
-    pm_y = y & 0xfffe;
+    pm_x = col;
+    pm_y = row & 0xfffe;
     if (zoom_level == 0) {
         pm_x += -4;
         pm_y += -0xc;
@@ -1588,20 +1588,20 @@ found:
     pm_limits();
     scrolling = 1;
     update_map = 1;
-    if (switched) {
+    if (map_switched) {
         return 1;
     }
     return 2;
 }
 
-// Switches to the region map if needed and recentres it on `target_ptr`.
+// Switches to the region map if needed and recentres it on `target_rm_ptr`.
 // FUNCTION: C2 0x31b1b
 // FUNCTION: C2WIN 0x004b47ba
-int jump_to_regionmap_ptr(int target_ptr)
+int jump_to_regionmap_ptr(int target_rm_ptr)
 {
-    int x;
-    int y;
-    int switched = 0;
+    int col;
+    int row;
+    int map_switched = 0;
 
     if (map_mode != 1) {
         city_rotation = map_direction;
@@ -1610,20 +1610,20 @@ int jump_to_regionmap_ptr(int target_ptr)
         zoom_level = prov_zoom_level;
         map_mode = 1;
         act_correct_map();
-        switched = 1;
+        map_switched = 1;
     }
 
-    for (y = 0; y < 0xa1; y++) {
-        for (x = 0; x < 0x51; x++) {
-            if (pseudo_map[y][x] == target_ptr) {
+    for (row = 0; row < 0xa1; row++) {
+        for (col = 0; col < 0x51; col++) {
+            if (pseudo_map[row][col] == target_rm_ptr) {
                 goto found;
             }
         }
     }
     return 0;
 found:
-    pm_x = x;
-    pm_y = y & 0xfffe;
+    pm_x = col;
+    pm_y = row & 0xfffe;
     if (zoom_level == 0) {
         pm_x += -4;
         pm_y += -0xc;
@@ -1637,7 +1637,7 @@ found:
     pm_limits();
     scrolling = 1;
     update_map = 1;
-    if (switched) {
+    if (map_switched) {
         return 1;
     }
     return 2;
@@ -1648,7 +1648,7 @@ found:
 // FUNCTION: C2WIN 0x004b4937
 int perform_city_strip_action(void)
 {
-    int zero;
+    int cleared_selection;
 
     if (mouse_left_preclick == 0) {
         return 0;
@@ -1657,9 +1657,9 @@ int perform_city_strip_action(void)
         return 0;
     }
 
-    zero = 0;
-    selected_icon_no   = zero;
-    selected_icon_text = zero;
+    cleared_selection = 0;
+    selected_icon_no   = cleared_selection;
+    selected_icon_text = cleared_selection;
     icon_strip_toggle  = 0x1f;
 
     ((void (**)(void))((char *)rome2_buttons + 0x3a))[last_icon_over]();
@@ -1676,7 +1676,7 @@ int perform_city_strip_action(void)
 // FUNCTION: C2WIN 0x004b49d3
 int perform_region_strip_action(void)
 {
-    int zero;
+    int cleared_selection;
 
     if (mouse_left_preclick == 0) {
         return 0;
@@ -1685,9 +1685,9 @@ int perform_region_strip_action(void)
         return 0;
     }
 
-    zero = 0;
-    selected_icon_no   = zero;
-    selected_icon_text = zero;
+    cleared_selection = 0;
+    selected_icon_no   = cleared_selection;
+    selected_icon_text = cleared_selection;
     icon_strip_toggle  = 0x1f;
 
     ((void (**)(void))((char *)city_actions + 0x50))[last_icon_over]();
@@ -1711,32 +1711,32 @@ void act_null(void)
 // FUNCTION: C2WIN 0x004b4a6f REORDERED
 int perform_battle_strip_action(void)
 {
-    int i;
-    short x;
-    short y;
-    short w;
-    short h;
+    int icon_idx;
+    short icon_x;
+    short icon_y;
+    short icon_width;
+    short icon_height;
 
     last_icon_over = 0;
     if (mouse_y < 0x168) {
         return 0;
     }
 
-    for (i = 4; i < 0x15; i++) {
-        w = int_battle_header[i * 8 + 4];
-        h = int_battle_header[i * 8 + 5];
-        x = int_battle_header[i * 8 + 8];
-        y = int_battle_header[i * 8 + 9] + 0xc8;
-        if (mouse_in_area((unsigned short)x, (unsigned short)y,
-                          (unsigned short)w, (unsigned short)h) != 0) {
-            last_icon_over = i;
+    for (icon_idx = 4; icon_idx < 0x15; icon_idx++) {
+        icon_width = int_battle_header[icon_idx * 8 + 4];
+        icon_height = int_battle_header[icon_idx * 8 + 5];
+        icon_x = int_battle_header[icon_idx * 8 + 8];
+        icon_y = int_battle_header[icon_idx * 8 + 9] + 0xc8;
+        if (mouse_in_area((unsigned short)icon_x, (unsigned short)icon_y,
+                          (unsigned short)icon_width, (unsigned short)icon_height) != 0) {
+            last_icon_over = icon_idx;
             if (mouse_left_preclick == 0) {
                 return 0;
             }
-            region_actions[0xf + i]();
-            update_icon = i;
-            if (i >= 9) {
-                last_icon_used = i;
+            region_actions[0xf + icon_idx]();
+            update_icon = icon_idx;
+            if (icon_idx >= 9) {
+                last_icon_used = icon_idx;
             }
             return 1;
         }
@@ -1751,8 +1751,8 @@ int perform_battle_strip_action(void)
 // FUNCTION: C2WIN 0x004b4b98
 int perform_cohort_box_action(void)
 {
-    int idx;
-    int h;
+    int army_record_offset;
+    int button_size;
 
     if (exit_screen() != 0) {
         pointer_mode = 0;
@@ -1760,7 +1760,7 @@ int perform_cohort_box_action(void)
         setup_map_screen_refresh();
         return 1;
     }
-    idx = tracking_army * 0xaf;
+    army_record_offset = tracking_army * 0xaf;
     if (army_list[tracking_army].type != 1) {
         return 0;
     }
@@ -1771,16 +1771,16 @@ int perform_cohort_box_action(void)
     }
 
     /* Three 34x34 buttons at the bottom of the cohort box. */
-    h = 0x22;
-    if (mouse_in_area(0x28, 0x126, h, h) != 0) {
+    button_size = 0x22;
+    if (mouse_in_area(0x28, 0x126, button_size, button_size) != 0) {
         act_set_patrol_markers();
         return 1;
     }
-    if (mouse_in_area(0xb8, 0x126, h, h) != 0) {
+    if (mouse_in_area(0xb8, 0x126, button_size, button_size) != 0) {
         act_set_return_home();
         return 1;
     }
-    if (mouse_in_area(0x148, 0x126, h, h) != 0) {
+    if (mouse_in_area(0x148, 0x126, button_size, button_size) != 0) {
         act_set_patrol_stop();
         return 1;
     }
@@ -1933,13 +1933,13 @@ void act_dont_exit(void)
 // FUNCTION: C2WIN 0x004b4f73
 void act_toggle_tunes(void)
 {
-    int t = tutorial_mode;
-    if (t != 0) {
+    int tutorial_active = tutorial_mode;
+    if (tutorial_active != 0) {
         click_warning(2, 0x50, 0xa0);
         return;
     }
     show_fx_box(0);
-    out1 = t;
+    out1 = tutorial_active;
     while (out1 == 0) {
         tune_game_loop();
     }
@@ -1983,13 +1983,13 @@ void act_tunes_level(void)
 // FUNCTION: C2WIN 0x004b5086
 void act_toggle_sound_fx(void)
 {
-    int t = tutorial_mode;
-    if (t != 0) {
+    int tutorial_active = tutorial_mode;
+    if (tutorial_active != 0) {
         click_warning(2, 0x50, 0xa0);
         return;
     }
     show_fx_box(1);
-    out1 = t;
+    out1 = tutorial_active;
     while (out1 == 0) {
         samples_game_loop();
     }
@@ -2053,8 +2053,8 @@ void act_nof_samples(void)
 // FUNCTION: C2WIN 0x004b5210
 void act_toggle_anims(void)
 {
-    int t = tutorial_mode;
-    if (t != 0) {
+    int tutorial_active = tutorial_mode;
+    if (tutorial_active != 0) {
         click_warning(2, 0x50, 0xa0);
         return;
     }
@@ -2063,7 +2063,7 @@ void act_toggle_anims(void)
         return;
     }
     show_fx_box(2);
-    out1 = t;
+    out1 = tutorial_active;
     while (out1 == 0) {
         tog_anims_game_loop();
     }
@@ -2084,13 +2084,13 @@ void act_tog_anims(void)
 // FUNCTION: C2WIN 0x004b52af
 void act_toggle_year_end(void)
 {
-    int t = tutorial_mode;
-    if (t != 0) {
+    int tutorial_active = tutorial_mode;
+    if (tutorial_active != 0) {
         click_warning(2, 0x50, 0xa0);
         return;
     }
     show_fx_box(3);
-    out1 = t;
+    out1 = tutorial_active;
     while (out1 == 0) {
         tog_yearend_game_loop();
     }
@@ -2202,15 +2202,15 @@ void act_about(void)
     setup_whole_screen_refresh();
 }
 
-// Pop the in-game help/topics modal for `msg_id`, then refresh whichever main screen we came from
+// Pop the in-game help/topics modal for `help_page_id`, then refresh whichever main screen we came from
 // (city / region / battle) so the help overlay is wiped. Saves and restores `pointer_mode` across
 // the call.
 // FUNCTION: C2 0x32409 REORDERED
-void helping(int msg_id)
+void helping(int help_page_id)
 {
-    int saved_mode = pointer_mode;
+    int saved_pointer_mode = pointer_mode;
     pointer_mode = 0;
-    launch_help(msg_id);
+    launch_help(help_page_id);
     if (map_mode == 0) {
         city_map_screen(1);
     } else if (map_mode == 1) {
@@ -2219,7 +2219,7 @@ void helping(int msg_id)
         battle_screen(1);
     }
     flush_sb_buffer();
-    pointer_mode = saved_mode;
+    pointer_mode = saved_pointer_mode;
 }
 
 // Help modal: rewind history and signal the modal to redisplay (out2 = 10).
@@ -2920,8 +2920,8 @@ void act_order_cohort(void)
 // FUNCTION: C2WIN 0x004b6837
 void act_set_patrol_markers(void)
 {
-    int seg;
-    int j;
+    int route_row;
+    int point_idx;
 
     if ((army_list[tracking_army].total_troops == 0
             && army_list[tracking_army].morale_timer != 0)
@@ -2940,17 +2940,17 @@ void act_set_patrol_markers(void)
     unflag_all_rm_xwarehouse();
 
     /* Clear all 10 patrol-route slots' 15 entries. */
-    for (seg = 0; seg < 10; seg++) {
-        for (j = 0; j < 15; j++) {
+    for (route_row = 0; route_row < 10; route_row++) {
+        for (point_idx = 0; point_idx < 15; point_idx++) {
             army_routes[(signed char)
                 army_list[tracking_army].cohort_id]
-                .points[seg][j].x = 0;
+                .points[route_row][point_idx].x = 0;
             army_routes[(signed char)
                 army_list[tracking_army].cohort_id]
-                .points[seg][j].y = 0;
+                .points[route_row][point_idx].y = 0;
         }
     }
-    for (seg = 0; seg < 10; seg++) army_routes[(signed char)army_list[tracking_army].cohort_id].row_len[seg] = 0;
+    for (route_row = 0; route_row < 10; route_row++) army_routes[(signed char)army_list[tracking_army].cohort_id].row_len[route_row] = 0;
 
     this_route_number = 0;
     over_x = army_list[tracking_army].x;
@@ -2971,18 +2971,18 @@ void act_set_patrol_markers(void)
 // FUNCTION: C2 0x3329b
 void act_set_return_home(void)
 {
-    int q;
-    int r;
-    int i;
+    int fortress_cell_idx;
+    int fortress_x;
+    int route_row;
 
     pointer_mode = 0;
     army_list[tracking_army].dest_y = 0;
     army_list[tracking_army].dest_x = 0;
     unflag_all_rm_xwarehouse();
 
-    for (i = 0; i < 10; i++) {
+    for (route_row = 0; route_row < 10; route_row++) {
         army_routes[(signed char)
-            army_list[tracking_army].cohort_id].row_len[i] = 0;
+            army_list[tracking_army].cohort_id].row_len[route_row] = 0;
     }
     army_routes[(signed char)
         army_list[tracking_army].cohort_id].row_count = 0;
@@ -2991,10 +2991,10 @@ void act_set_return_home(void)
     army_routes[(signed char)
         army_list[tracking_army].cohort_id].target_army = 0;
 
-    q = army_list[tracking_army].fort_ref / 8;
-    r = q % 60;
-    army_list[tracking_army].target_x = r;
-    army_list[tracking_army].target_y = (q / 60);
+    fortress_cell_idx = army_list[tracking_army].fort_ref / 8;
+    fortress_x = fortress_cell_idx % 60;
+    army_list[tracking_army].target_x = fortress_x;
+    army_list[tracking_army].target_y = (fortress_cell_idx / 60);
     army_list[tracking_army].state_idx = 5;
     army_list[tracking_army].flags &= ~2;
     army_list[tracking_army].order_progress = 1;
@@ -3007,17 +3007,17 @@ void act_set_return_home(void)
 // FUNCTION: C2WIN 0x004b6ce8
 void act_set_patrol_stop(void)
 {
-    int i;
-    int st;
+    int route_row;
+    int army_state;
 
     pointer_mode = 0;
     army_list[tracking_army].dest_y = 0;
     army_list[tracking_army].dest_x = 0;
     unflag_all_rm_xwarehouse();
 
-    for (i = 0; i < 10; i++) {
+    for (route_row = 0; route_row < 10; route_row++) {
         army_routes[(signed char)
-            army_list[tracking_army].cohort_id].row_len[i] = 0;
+            army_list[tracking_army].cohort_id].row_len[route_row] = 0;
     }
     army_routes[(signed char)
         army_list[tracking_army].cohort_id].row_count = 0;
@@ -3030,8 +3030,8 @@ void act_set_patrol_stop(void)
         army_list[tracking_army].x;
     army_list[tracking_army].target_y =
         army_list[tracking_army].y;
-    st = (signed char)army_list[tracking_army].state_idx;
-    if (st == 4 || st == 8) {
+    army_state = (signed char)army_list[tracking_army].state_idx;
+    if (army_state == 4 || army_state == 8) {
         army_list[tracking_army].order_progress = 1;
     } else {
         army_list[tracking_army].order_progress = 0;
@@ -3090,12 +3090,12 @@ void act_zoom_out(void)
 // Zoom out one step. At zoom 2 nothing happens.
 // FUNCTION: C2 0x33485
 // FUNCTION: C2WIN 0x004b7001
-void do_act_zoom_out(int decayed)
+void do_act_zoom_out(int decayed_click)
 {
     if (zoom_level == 2) {
         return;
     }
-    if (zoom_level == 1 || decayed != 0) {
+    if (zoom_level == 1 || decayed_click != 0) {
         pm_x -= 0xc;
         pm_y -= 0x28;
         refresh_zoom_mode(2);
@@ -3139,12 +3139,12 @@ void act_zoom_in(void)
     }
 }
 
-// Zoom in one step. At zoom 1 we always shift; at zoom 0 we shift only if `decayed==1`.
+// Zoom in one step. At zoom 1 we always shift; at zoom 0 we shift only if `decayed_click==1`.
 // FUNCTION: C2 0x33583
 // FUNCTION: C2WIN 0x004b72fc
-void do_act_zoom_in(int decayed)
+void do_act_zoom_in(int decayed_click)
 {
-    if (zoom_level == 1 || decayed == 1) {
+    if (zoom_level == 1 || decayed_click == 1) {
         pm_x = pm_x_coord + pm_x - 4;
         pm_y = ((pm_y_coord + pm_y) & 0xfffe) - 0xe;
         refresh_zoom_mode(0);
@@ -3430,7 +3430,7 @@ void act_set_marker2(void)
 // FUNCTION: C2WIN 0x004b7dc7
 void act_set_marker3(void)
 {
-    int target;
+    int target_map_ptr;
 
     pointer_mode = 0;
     placing_type = 0;
@@ -3444,11 +3444,11 @@ void act_set_marker3(void)
         goto_flag_marker_mode();
         flag_mode_decay_count = 0xa;
     }
-    target = danger_flag_list[last_danger_flag];
+    target_map_ptr = danger_flag_list[last_danger_flag];
     if (danger_flag_map_mode == 0) {
-        jump_to_citymap_ptr(target);
+        jump_to_citymap_ptr(target_map_ptr);
     } else {
-        jump_to_regionmap_ptr(target);
+        jump_to_regionmap_ptr(target_map_ptr);
     }
 }
 
@@ -3493,9 +3493,9 @@ void act_forum(void)
         if (mouse_y >= 0x198) forum_dept_over = (char)over_forum_menu();
         else if (mouse_y >= 0xb0) {
             /* Pixel-pick from the dept-strip lookup table. */
-            unsigned char *strip;
-            strip = scratch_buffer; strip += mouse_x / 8;
-            forum_dept_over = strip[(mouse_y - 0xb0) / 8 * 0x50 + 0x1d4c0];
+            unsigned char *dept_strip_ptr;
+            dept_strip_ptr = scratch_buffer; dept_strip_ptr += mouse_x / 8;
+            forum_dept_over = dept_strip_ptr[(mouse_y - 0xb0) / 8 * 0x50 + 0x1d4c0];
         } else forum_dept_over = FORUM_DEPT_OVERVIEW;
 
         if (mouse_left_preclick == 0) continue;
@@ -3521,17 +3521,17 @@ void act_forum(void)
 // FUNCTION: C2WIN 0x004b7e89
 void forum_game_loop(void)
 {
-    int d = forum_dept;
-    if (d == FORUM_DEPT_ADMIN) { forum_admin_game_loop();    return; }
-    if (d == FORUM_DEPT_CAREER) { forum_career_game_loop();   return; }
-    if (d == FORUM_DEPT_ROME) { forum_rome_game_loop();     return; }
-    if (d == FORUM_DEPT_CLERKS) { forum_clerks_game_loop();   return; }
-    if (d == FORUM_DEPT_ARMY) { forum_army_game_loop();     return; }
-    if (d == FORUM_DEPT_INDUSTRY) { forum_industry_game_loop(); return; }
-    if (d == FORUM_DEPT_SLAVES) { forum_slaves_game_loop();   return; }
-    if (d == FORUM_DEPT_EXIT) { out1 = 1; return; }
-    if (d == FORUM_DEPT_TEMPLE) { forum_temple_game_loop();  return; }
-    if (d == FORUM_DEPT_EMPIRE) { forum_empire_game_loop();  return; }
+    int dept = forum_dept;
+    if (dept == FORUM_DEPT_ADMIN) { forum_admin_game_loop();    return; }
+    if (dept == FORUM_DEPT_CAREER) { forum_career_game_loop();   return; }
+    if (dept == FORUM_DEPT_ROME) { forum_rome_game_loop();     return; }
+    if (dept == FORUM_DEPT_CLERKS) { forum_clerks_game_loop();   return; }
+    if (dept == FORUM_DEPT_ARMY) { forum_army_game_loop();     return; }
+    if (dept == FORUM_DEPT_INDUSTRY) { forum_industry_game_loop(); return; }
+    if (dept == FORUM_DEPT_SLAVES) { forum_slaves_game_loop();   return; }
+    if (dept == FORUM_DEPT_EXIT) { out1 = 1; return; }
+    if (dept == FORUM_DEPT_TEMPLE) { forum_temple_game_loop();  return; }
+    if (dept == FORUM_DEPT_EMPIRE) { forum_empire_game_loop();  return; }
     forum_idle_game_loop();
 }
 
@@ -3550,7 +3550,7 @@ void act_goto_message(void)
 // FUNCTION: C2WIN 0x004b7fa2
 void show_forum_screen(void)
 {
-    int d;
+    int dept;
 
     if (last_forum_dept == FORUM_DEPT_TEMPLE) {
         black_out();
@@ -3559,17 +3559,17 @@ void show_forum_screen(void)
         black_out();
     }
 
-    d = forum_dept;
-    if (d == FORUM_DEPT_ADMIN) { forum_admin_screen();    return; }
-    if (d == FORUM_DEPT_CAREER) { forum_career_screen();   return; }
-    if (d == FORUM_DEPT_ROME) { forum_rome_screen();     return; }
-    if (d == FORUM_DEPT_CLERKS) { forum_clerks_screen();   return; }
-    if (d == FORUM_DEPT_ADVISOR) { forum_advisor_screen();  return; }
-    if (d == FORUM_DEPT_ARMY) { forum_army_screen();     return; }
-    if (d == FORUM_DEPT_INDUSTRY) { forum_industry_screen(); return; }
-    if (d == FORUM_DEPT_SLAVES) { forum_slaves_screen();   return; }
-    if (d == FORUM_DEPT_TEMPLE) { forum_temple_screen();  return; }
-    if (d == FORUM_DEPT_EMPIRE) { forum_empire_screen();  return; }
+    dept = forum_dept;
+    if (dept == FORUM_DEPT_ADMIN) { forum_admin_screen();    return; }
+    if (dept == FORUM_DEPT_CAREER) { forum_career_screen();   return; }
+    if (dept == FORUM_DEPT_ROME) { forum_rome_screen();     return; }
+    if (dept == FORUM_DEPT_CLERKS) { forum_clerks_screen();   return; }
+    if (dept == FORUM_DEPT_ADVISOR) { forum_advisor_screen();  return; }
+    if (dept == FORUM_DEPT_ARMY) { forum_army_screen();     return; }
+    if (dept == FORUM_DEPT_INDUSTRY) { forum_industry_screen(); return; }
+    if (dept == FORUM_DEPT_SLAVES) { forum_slaves_screen();   return; }
+    if (dept == FORUM_DEPT_TEMPLE) { forum_temple_screen();  return; }
+    if (dept == FORUM_DEPT_EMPIRE) { forum_empire_screen();  return; }
     forum_empty_screen();
 }
 
@@ -3580,12 +3580,12 @@ void show_forum_screen(void)
 // FUNCTION: C2WIN 0x004b80ef
 int over_forum_menu(void)
 {
-    int i;
-    for (i = 0; i < FORUM_DEPT_END; i++) {
-        int x = forum_menu[i].x;
-        int y = forum_menu[i].y;
-        if (mouse_in_area(x, y, 0xa0, 0x18) != 0) {
-            return i;
+    int dept;
+    for (dept = 0; dept < FORUM_DEPT_END; dept++) {
+        int menu_x = forum_menu[dept].x;
+        int menu_y = forum_menu[dept].y;
+        if (mouse_in_area(menu_x, menu_y, 0xa0, 0x18) != 0) {
+            return dept;
         }
     }
     return 0;
@@ -3596,34 +3596,34 @@ int over_forum_menu(void)
 // FUNCTION: C2WIN 0x004b8163
 void get_region_over(void)
 {
-    int rx;
-    int i;
-    int h;
-    int w;
-    int bmp_off;
-    int ry;
-    unsigned char c;
+    int region_x;
+    int region_idx;
+    int region_height;
+    int region_width;
+    int bitmap_offset;
+    int region_y;
+    unsigned char pixel;
 
     region_over = 0;
-    for (i = 0; i < 0x2c; i++) {
-        data_ptr = i * 16 + 8;
+    for (region_idx = 0; region_idx < 0x2c; region_idx++) {
+        data_ptr = region_idx * 16 + 8;
 
-        w = ((scratch_buffer)[data_ptr + 1] << 8) + (scratch_buffer)[data_ptr];
-        h = (scratch_buffer)[data_ptr + 2] + ((scratch_buffer)[data_ptr + 3] << 8);
-        rx = empire_positions[i].x;
-        ry = empire_positions[i].y;
-        bmp_off = (scratch_buffer)[data_ptr + 4] + ((scratch_buffer)[data_ptr + 5] << 8)
+        region_width = ((scratch_buffer)[data_ptr + 1] << 8) + (scratch_buffer)[data_ptr];
+        region_height = (scratch_buffer)[data_ptr + 2] + ((scratch_buffer)[data_ptr + 3] << 8);
+        region_x = empire_positions[region_idx].x;
+        region_y = empire_positions[region_idx].y;
+        bitmap_offset = (scratch_buffer)[data_ptr + 4] + ((scratch_buffer)[data_ptr + 5] << 8)
                 + (scratch_buffer)[data_ptr + 6] * 0x10000;
 
-        if (mouse_x < rx) continue;
-        if (ry > mouse_y) continue;
-        if (((rx) + (w)) <= mouse_x) continue;
-        if ((h + ry) <= mouse_y) continue;
+        if (mouse_x < region_x) continue;
+        if (region_y > mouse_y) continue;
+        if (((region_x) + (region_width)) <= mouse_x) continue;
+        if ((region_height + region_y) <= mouse_y) continue;
 
-        rx = mouse_x - rx; ry = mouse_y - ry;
-        c = *(scratch_buffer + bmp_off + rx + ry * w);
-        if (c != 0) {
-            region_over = i + 1; return;
+        region_x = mouse_x - region_x; region_y = mouse_y - region_y;
+        pixel = *(scratch_buffer + bitmap_offset + region_x + region_y * region_width);
+        if (pixel != 0) {
+            region_over = region_idx + 1; return;
         }
     }
 }
@@ -3826,22 +3826,22 @@ void act_prev_cohort(void)
 // FUNCTION: C2WIN 0x004b8771
 void act_demob_cohort(void)
 {
-    short idx = (short)get_actual_viewed_army();
-    temp_army = idx;
+    short army_idx = (short)get_actual_viewed_army();
+    temp_army = army_idx;
 
-    if (army_list[idx].cohort_size_class == 0) {
-        army_list[idx].cohort_size_class = 1;
+    if (army_list[army_idx].cohort_size_class == 0) {
+        army_list[army_idx].cohort_size_class = 1;
     } else {
-        unsigned int s = army_list[idx].cohort_size_class;
-        if (s == 1) {
-            army_list[idx].cohort_size_class = 2;
-        } else if (s == 2) {
-            army_list[idx].cohort_size_class = 3;
-            army_list[idx].saved_state_idx = army_list[idx].state_idx;
-            army_list[idx].state_idx = 0xa;
+        unsigned int size_class = army_list[army_idx].cohort_size_class;
+        if (size_class == 1) {
+            army_list[army_idx].cohort_size_class = 2;
+        } else if (size_class == 2) {
+            army_list[army_idx].cohort_size_class = 3;
+            army_list[army_idx].saved_state_idx = army_list[army_idx].state_idx;
+            army_list[army_idx].state_idx = 0xa;
         } else {
-            army_list[idx].cohort_size_class = 0;
-            army_list[idx].state_idx = army_list[idx].saved_state_idx;
+            army_list[army_idx].cohort_size_class = 0;
+            army_list[army_idx].state_idx = army_list[army_idx].saved_state_idx;
         }
     }
     gen_refresh1 = 1;
@@ -3871,9 +3871,9 @@ void act_more_mercs(void)
 void act_less_mercs(void)
 {
     if (mercs_in_army > 0) {
-        int rem = mercs_in_army % 0x32;
-        if (rem != 0) {
-            mercs_in_army -= rem;
+        int remainder = mercs_in_army % 0x32;
+        if (remainder != 0) {
+            mercs_in_army -= remainder;
         } else {
             mercs_in_army -= 0x32;
         }
@@ -3959,20 +3959,20 @@ void act_slave_reg_upkeep_down(void){ if (!c2inf.peace_mode) { alter_slave_reqs(
 // Moves a slave-work category's allocation toward its required level.
 // FUNCTION: C2 0x345f6
 // FUNCTION: C2WIN 0x004b8bc5
-void act_set_slaves_to_need_level(int kind)
+void act_set_slaves_to_need_level(int requirement_idx)
 {
-    int delta;
+    int allocation_delta;
 
-    while (slave_requirements[kind].current
-            != slave_requirements[kind].max) {
-        if (slave_requirements[kind].current
-                < slave_requirements[kind].max) {
-            delta = 1;
-        } else if (slave_requirements[kind].current
-                > slave_requirements[kind].max) {
-            delta = -1;
+    while (slave_requirements[requirement_idx].current
+            != slave_requirements[requirement_idx].max) {
+        if (slave_requirements[requirement_idx].current
+                < slave_requirements[requirement_idx].max) {
+            allocation_delta = 1;
+        } else if (slave_requirements[requirement_idx].current
+                > slave_requirements[requirement_idx].max) {
+            allocation_delta = -1;
         }
-        if (alter_slave_reqs(kind, delta) == 0) {
+        if (alter_slave_reqs(requirement_idx, allocation_delta) == 0) {
             break;
         }
     }
@@ -3982,31 +3982,31 @@ void act_set_slaves_to_need_level(int kind)
 // Adjusts one slave-work category while conserving the total through the free-slave pool.
 // FUNCTION: C2 0x3463a
 // FUNCTION: C2WIN 0x004b8c5d
-int alter_slave_reqs(int kind, int delta)
+int alter_slave_reqs(int requirement_idx, int allocation_delta)
 {
-    int k;
+    int donor_idx;
 
-    if (delta == -1) {
-        if (slave_requirements[kind].current <= 0) {
+    if (allocation_delta == -1) {
+        if (slave_requirements[requirement_idx].current <= 0) {
             return 0;
         }
-        slave_requirements[kind].current -= 1;
+        slave_requirements[requirement_idx].current -= 1;
         slave_requirements[7].current += 1;
         return 1;
     }
 
-    if (delta == 1) {
+    if (allocation_delta == 1) {
         if (slave_requirements[7].current != 0) {
-            slave_requirements[kind].current += 1;
+            slave_requirements[requirement_idx].current += 1;
             slave_requirements[7].current -= 1;
             return 1;
         }
         /* Take from another category, kinds 6 → 1. */
-        for (k = 6; k > 0; k--) {
-            if (k == kind) continue;
-            if (slave_requirements[k].current == 0) continue;
-            slave_requirements[kind].current += 1;
-            slave_requirements[k].current -= 1;
+        for (donor_idx = 6; donor_idx > 0; donor_idx--) {
+            if (donor_idx == requirement_idx) continue;
+            if (slave_requirements[donor_idx].current == 0) continue;
+            slave_requirements[requirement_idx].current += 1;
+            slave_requirements[donor_idx].current -= 1;
             return 1;
         }
         return 0;
@@ -4486,12 +4486,12 @@ void act_census(void)
 // FUNCTION: C2WIN 0x004b97d7
 void act_query(void)
 {
-    int saved_pm;
+    int saved_pointer_mode;
     if (map_mode > 1) {
         return;
     }
     get_pm_over_diamond(1);
-    saved_pm = pointer_mode;
+    saved_pointer_mode = pointer_mode;
     pointer_mode = 0;
     act_start_pm_ptr = pm_over_cm_ptr;
     act_start_ptr = pm_over_cm_ptr / map_actual_atom;
@@ -4515,8 +4515,8 @@ void act_query(void)
         query_mode = last_house_query_mode;
         queery_buttons[last_house_query_mode + 3].state = 1;
     } else {
-        unsigned int flag20 = q_flag & 0x20;
-        if (flag20 != 0) {
+        unsigned int people_query_flag = q_flag & 0x20;
+        if (people_query_flag != 0) {
             query_mode = 1;
             queery_buttons[4].state = 1;
         } else {
@@ -4549,7 +4549,7 @@ void act_query(void)
     }
     setup_map_screen_refresh();
     update_map = 1;
-    pointer_mode = saved_pm;
+    pointer_mode = saved_pointer_mode;
     clear_mouse();
 }
 
@@ -4632,49 +4632,49 @@ void act_query_history(void)
     act_query_do_help(2);
 }
 
-// Pop a help-page modal for the current query. Adds `delta` to `this_help_page` (so help-cursor
+// Pop a help-page modal for the current query. Adds `page_delta` to `this_help_page` (so help-cursor
 // arrows page through topics), then routes through three redirect tables (temple-tips,
 // temple-history, ent-history) before checking the debar list.
 // FUNCTION: C2 0x3506e
 // FUNCTION: C2WIN 0x004b9b12
-void act_query_do_help(int delta)
+void act_query_do_help(int page_delta)
 {
-    int debarred;
-    int i;
+    int is_debarred;
+    int redirect_idx;
 
-    this_help_page += delta;
-    debarred = 0;
+    this_help_page += page_delta;
+    is_debarred = 0;
 
     /* Temple-tips redirect: 2 entries, page 0xec is the canonical. */
-    for (i = 0; i < 2; i++) {
-        if (this_help_page == help_redir_temple_tips[i]) {
+    for (redirect_idx = 0; redirect_idx < 2; redirect_idx++) {
+        if (this_help_page == help_redir_temple_tips[redirect_idx]) {
             this_help_page = 0xec;
         }
     }
 
     /* Temple-history redirect: 2 entries, page 0xed canonical. */
-    for (i = 0; i < 2; i++) {
-        if (this_help_page == help_redir_temple_history[i]) {
+    for (redirect_idx = 0; redirect_idx < 2; redirect_idx++) {
+        if (this_help_page == help_redir_temple_history[redirect_idx]) {
             this_help_page = 0xed;
         }
     }
 
     /* Entertainment-history redirect: 5 pairs (page → replacement). */
-    for (i = 0; i < 5; i++) {
-        if (this_help_page == help_redir_ent_history[i].page) {
-            this_help_page = help_redir_ent_history[i].replacement;
+    for (redirect_idx = 0; redirect_idx < 5; redirect_idx++) {
+        if (this_help_page == help_redir_ent_history[redirect_idx].page) {
+            this_help_page = help_redir_ent_history[redirect_idx].replacement;
         }
     }
 
     /* Debar list — empty by default. */
-    for (i = 0; i < 0; i++) {
-        if (this_help_page == help_debar[i]) {
-            debarred = 1;
-            this_help_page -= delta;
+    for (redirect_idx = 0; redirect_idx < 0; redirect_idx++) {
+        if (this_help_page == help_debar[redirect_idx]) {
+            is_debarred = 1;
+            this_help_page -= page_delta;
         }
     }
 
-    if (!debarred) {
+    if (!is_debarred) {
         launch_help(this_help_page);
         if (map_mode == 0) {
             city_map_screen(1);
@@ -4705,7 +4705,7 @@ void act_query_mode(void)
 // FUNCTION: C2WIN 0x004b9ca2
 void act_do_year_end(void)
 {
-    int saved_pm;
+    int saved_pointer_mode;
 
     if (tutorial_mode != 0) {
         return;
@@ -4723,7 +4723,7 @@ void act_do_year_end(void)
         return;
     }
 
-    saved_pm = pointer_mode;
+    saved_pointer_mode = pointer_mode;
     turbo_mode = 0;
     local_time = time_is;
     pointer_mode = 0;
@@ -4751,7 +4751,7 @@ void act_do_year_end(void)
         region_map_screen(1);
     }
     flush_sb_buffer();
-    pointer_mode = saved_pm;
+    pointer_mode = saved_pointer_mode;
     if (turbo_mode != 0) {
         act_init_turbo_mode();
     }
