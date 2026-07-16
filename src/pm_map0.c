@@ -7,19 +7,19 @@
 // Finds an actual map offset in the pseudo-map and stores its row and column in x and y.
 // FUNCTION: C2 0x352aa
 // FUNCTION: C2WIN 0x00484250
-void get_pm_from_actual(int actual)
+void get_pm_from_actual(int actual_offset)
 {
-    int row;
-    int col;
+    int row_idx;
+    int col_idx;
 
     x = 0;
     y = 0;
-    for (row = 0; row < 0xa1; row++) {
-        for (col = 0; col < 0x51; col++) {
-            if (!(pseudo_map[row][col] >= 0x0FFF0000U))
-                if (actual == pseudo_map[row][col]) {
-                    x = row;
-                    y = col;
+    for (row_idx = 0; row_idx < 0xa1; row_idx++) {
+        for (col_idx = 0; col_idx < 0x51; col_idx++) {
+            if (!(pseudo_map[row_idx][col_idx] >= 0x0FFF0000U))
+                if (actual_offset == pseudo_map[row_idx][col_idx]) {
+                    x = row_idx;
+                    y = col_idx;
                     return;
                 }
         }
@@ -34,36 +34,36 @@ void get_pseudo_map(int direction)
     int col_x2_step;
     int x2_step;
     int start_row;
-    int row;
+    int row_idx;
     int start_x2;
     int col_row_step;
     int col_edge;
     int row_step;
-    int pr;
+    int pseudo_row;
     int row_edge;
-    int px2;
-    int col;
+    int pseudo_x2;
+    int col_idx;
 
-    for (row = 0; row < 0xa1; row++) {
-        for (col = 0; col < 0x51; col++) {
-            if (row <= 0x50) row_edge = row; else row_edge = 0xa0 - row;
-            if (col <= 0x28) col_edge = col; else col_edge = 0x50 - col;
+    for (row_idx = 0; row_idx < 0xa1; row_idx++) {
+        for (col_idx = 0; col_idx < 0x51; col_idx++) {
+            if (row_idx <= 0x50) row_edge = row_idx; else row_edge = 0xa0 - row_idx;
+            if (col_idx <= 0x28) col_edge = col_idx; else col_edge = 0x50 - col_idx;
             if (col_edge < 4 && row_edge < 8) {
-                pseudo_map[row][col] = 0x0FFF0000;
+                pseudo_map[row_idx][col_idx] = 0x0FFF0000;
             } else if (col_edge < 8 && row_edge < 0x10) {
-                pseudo_map[row][col] = 0x0FFF0000 | 1;
+                pseudo_map[row_idx][col_idx] = 0x0FFF0000 | 1;
             } else if (col_edge < 0xc && row_edge < 0x18) {
-                pseudo_map[row][col] = 0x0FFF0000 | 2;
+                pseudo_map[row_idx][col_idx] = 0x0FFF0000 | 2;
             } else if (col_edge < 0x10 && row_edge < 0x20) {
-                pseudo_map[row][col] = 0x0FFF0000 | 3;
+                pseudo_map[row_idx][col_idx] = 0x0FFF0000 | 3;
             } else if (col_edge < 0x13 && row_edge < 0x28) {
-                pseudo_map[row][col] = 0x0FFF0000 | 4;
+                pseudo_map[row_idx][col_idx] = 0x0FFF0000 | 4;
             } else if (col_edge < 0x1c && row_edge < 0x14) {
-                pseudo_map[row][col] = 0x0FFF0000 | 5;
+                pseudo_map[row_idx][col_idx] = 0x0FFF0000 | 5;
             } else if (col_edge < 8 && row_edge < 0x3c) {
-                pseudo_map[row][col] = 0x0FFF0000 | 6;
+                pseudo_map[row_idx][col_idx] = 0x0FFF0000 | 6;
             } else {
-                pseudo_map[row][col] = 0x0FFF0000 | 7;
+                pseudo_map[row_idx][col_idx] = 0x0FFF0000 | 7;
             }
         }
     }
@@ -99,13 +99,13 @@ void get_pseudo_map(int direction)
         col_x2_step = -1;
     }
 
-    for (row = 0; row < map_actual_height; row++) {
-        pr = start_row;
-        px2 = start_x2;
-        for (col = 0; col < map_actual_width; col++) {
-            pseudo_map[pr][px2 / 2] = map_actual_atom * (map_actual_width * row + col);
-            pr += col_row_step;
-            px2 += col_x2_step;
+    for (row_idx = 0; row_idx < map_actual_height; row_idx++) {
+        pseudo_row = start_row;
+        pseudo_x2 = start_x2;
+        for (col_idx = 0; col_idx < map_actual_width; col_idx++) {
+            pseudo_map[pseudo_row][pseudo_x2 / 2] = map_actual_atom * (map_actual_width * row_idx + col_idx);
+            pseudo_row += col_row_step;
+            pseudo_x2 += col_x2_step;
         }
         start_row += row_step;
         start_x2 += x2_step;
@@ -113,32 +113,32 @@ void get_pseudo_map(int direction)
 
     start_row = map_height_reduction * 2 + 1;
     start_x2 = 0x50;
-    for (row = 0; row < 0x50 - map_height_reduction * 2; row++) {
-        pr = start_row;
-        px2 = start_x2;
-        for (col = 0; col < map_actual_width; col++) {
-            pr++;
-            px2++;
+    for (row_idx = 0; row_idx < 0x50 - map_height_reduction * 2; row_idx++) {
+        pseudo_row = start_row;
+        pseudo_x2 = start_x2;
+        for (col_idx = 0; col_idx < map_actual_width; col_idx++) {
+            pseudo_row++;
+            pseudo_x2++;
         }
-        pseudo_map[pr][px2 / 2] = 0x0FFF0000 | 0x9;
+        pseudo_map[pseudo_row][pseudo_x2 / 2] = 0x0FFF0000 | 0x9;
         start_row++;
         start_x2--;
     }
     if (map_mode > 0) {
-        pr = start_row;
-        px2 = start_x2;
-        for (col = 0; col < map_actual_width; col++) {
-            pr++;
-            px2++;
+        pseudo_row = start_row;
+        pseudo_x2 = start_x2;
+        for (col_idx = 0; col_idx < map_actual_width; col_idx++) {
+            pseudo_row++;
+            pseudo_x2++;
         }
-        pseudo_map[pr][px2 / 2] = 0x0FFF0000 | 0xa;
+        pseudo_map[pseudo_row][pseudo_x2 / 2] = 0x0FFF0000 | 0xa;
     }
-    pr = start_row;
-    px2 = start_x2;
-    for (col = 0; col < 0x50 - map_width_reduction * 2; col++) {
-        pseudo_map[pr][px2 / 2] = 0x0FFF0000 | 0x8;
-        pr++;
-        px2++;
+    pseudo_row = start_row;
+    pseudo_x2 = start_x2;
+    for (col_idx = 0; col_idx < 0x50 - map_width_reduction * 2; col_idx++) {
+        pseudo_map[pseudo_row][pseudo_x2 / 2] = 0x0FFF0000 | 0x8;
+        pseudo_row++;
+        pseudo_x2++;
     }
 }
 
@@ -147,13 +147,13 @@ void get_pseudo_map(int direction)
 // FUNCTION: C2WIN 0x00484805
 void pm_limits(void)
 {
-    int max;
+    int max_coord;
     if (pm_x < 0) pm_x = 0;
     if (pm_y < 0) pm_y = 0;
-    max = 0x50 - pm_screen_width;
-    if (max <= pm_x) pm_x = max;
-    max = 0xa0 - pm_screen_height;
-    if (max <= pm_y) pm_y = max;
+    max_coord = 0x50 - pm_screen_width;
+    if (max_coord <= pm_x) pm_x = max_coord;
+    max_coord = 0xa0 - pm_screen_height;
+    if (max_coord <= pm_y) pm_y = max_coord;
 }
 
 // Resolves the mouse position to a visible pseudo-map diamond and updates the selection globals.
@@ -174,7 +174,7 @@ int get_pm_over_diamond(int force_zero_offset)
     int tile_y;
     int next_x;
     int next_y;
-    int yodd;
+    int odd_row;
 
     if (mouse_x < pm_screen_x_start) return 0;
     if (pm_screen_x_start + pm_screen_width * pm_diamond_width <= mouse_x) return 0;
@@ -240,9 +240,9 @@ int get_pm_over_diamond(int force_zero_offset)
         }
     }
 
-    yodd = pm_y_coord & 1;
+    odd_row = pm_y_coord & 1;
     pm_over_x = pm_screen_x_start + pm_x_coord * pm_diamond_width;
-    if (yodd)
+    if (odd_row)
         pm_over_x -= pm_diamond_half_width;
     pm_over_y = pm_screen_y_start + pm_y_coord * pm_diamond_half_height;
     pm_over_cm_ptr = pseudo_map[(pm_y_coord + pm_y)][pm_x_coord + pm_x];
@@ -255,7 +255,7 @@ int get_pm_over_diamond(int force_zero_offset)
     } else if (pm_y_coord >= pm_screen_height) {
         pm_y_edge = 1;
     }
-    if (yodd) {
+    if (odd_row) {
         if (pm_x_coord == 0) {
             pm_x_edge = 2;
         } else if (pm_x_coord >= pm_screen_width) {
@@ -270,29 +270,29 @@ int get_pm_over_diamond(int force_zero_offset)
 // FUNCTION: C2WIN 0x00484cb9
 void rotate_pm_clockwise(void)
 {
-    int nx;
-    int ny;
+    int next_x;
+    int next_y;
 
     map_direction += 2;
     if (map_direction > 6) map_direction = 0;
     get_pseudo_map(map_direction);
 
     if (zoom_level == 0) {
-        nx = (pm_y + 0xe) / 2;
-        ny = (0x50 - (pm_x + 4)) * 2;
-        pm_x = nx - 4;
-        pm_y = ny - 0xe;
+        next_x = (pm_y + 0xe) / 2;
+        next_y = (0x50 - (pm_x + 4)) * 2;
+        pm_x = next_x - 4;
+        pm_y = next_y - 0xe;
     } else if (zoom_level == 1) {
         if (map_mode == 2) {
-            nx = (pm_y + 0x16) / 2;
-            ny = (0x50 - (pm_x + 0xb)) * 2;
-            pm_x = nx - 0xb;
-            pm_y = ny - 0x16;
+            next_x = (pm_y + 0x16) / 2;
+            next_y = (0x50 - (pm_x + 0xb)) * 2;
+            pm_x = next_x - 0xb;
+            pm_y = next_y - 0x16;
         } else {
-            nx = (pm_y + 0x1e) / 2;
-            ny = (0x50 - (pm_x + 8)) * 2;
-            pm_x = nx - 8;
-            pm_y = ny - 0x1e;
+            next_x = (pm_y + 0x1e) / 2;
+            next_y = (0x50 - (pm_x + 8)) * 2;
+            pm_x = next_x - 8;
+            pm_y = next_y - 0x1e;
         }
     } else if (zoom_level == 2) {
         if (map_mode == 2) {
@@ -300,10 +300,10 @@ void rotate_pm_clockwise(void)
             pm_y = 0x18;
             return;
         }
-        nx = (pm_y + 0x46) / 2;
-        ny = (0x50 - (pm_x + 0xa)) * 2;
-        pm_x = nx - 0x14;
-        pm_y = ny - 0x46;
+        next_x = (pm_y + 0x46) / 2;
+        next_y = (0x50 - (pm_x + 0xa)) * 2;
+        pm_x = next_x - 0x14;
+        pm_y = next_y - 0x46;
     }
 }
 
@@ -312,29 +312,29 @@ void rotate_pm_clockwise(void)
 // FUNCTION: C2WIN 0x00484e82
 void rotate_pm_anticlockwise(void)
 {
-    int nx;
-    int ny;
+    int next_x;
+    int next_y;
 
     map_direction -= 2;
     if (map_direction < 0) map_direction = 6;
     get_pseudo_map(map_direction);
 
     if (zoom_level == 0) {
-        nx = (0xa1 - (pm_y + 0xe)) / 2;
-        ny = (pm_x + 4) * 2;
-        pm_x = nx - 4;
-        pm_y = ny - 0xe;
+        next_x = (0xa1 - (pm_y + 0xe)) / 2;
+        next_y = (pm_x + 4) * 2;
+        pm_x = next_x - 4;
+        pm_y = next_y - 0xe;
     } else if (zoom_level == 1) {
         if (map_mode == 2) {
-            nx = (0xa1 - (pm_y + 0x16)) / 2;
-            ny = (pm_x + 0xb) * 2;
-            pm_x = nx - 0xb;
-            pm_y = ny - 0x16;
+            next_x = (0xa1 - (pm_y + 0x16)) / 2;
+            next_y = (pm_x + 0xb) * 2;
+            pm_x = next_x - 0xb;
+            pm_y = next_y - 0x16;
         } else {
-            nx = (0xa1 - (pm_y + 0x1e)) / 2;
-            ny = (pm_x + 8) * 2;
-            pm_x = nx - 8;
-            pm_y = ny - 0x1e;
+            next_x = (0xa1 - (pm_y + 0x1e)) / 2;
+            next_y = (pm_x + 8) * 2;
+            pm_x = next_x - 8;
+            pm_y = next_y - 0x1e;
         }
     } else if (zoom_level == 2) {
         if (map_mode == 2) {
@@ -342,10 +342,10 @@ void rotate_pm_anticlockwise(void)
             pm_y = 0x18;
             return;
         }
-        nx = (0xa1 - (pm_y + 0x46)) / 2;
-        ny = (pm_x + 0x14) * 2;
-        pm_x = nx - 0x14;
-        pm_y = ny - 0x46;
+        next_x = (0xa1 - (pm_y + 0x46)) / 2;
+        next_y = (pm_x + 0x14) * 2;
+        pm_x = next_x - 0x14;
+        pm_y = next_y - 0x46;
     }
 }
 
@@ -354,14 +354,14 @@ void rotate_pm_anticlockwise(void)
 // FUNCTION: C2WIN 0x0048504c
 void show_diamond_ptr(void)
 {
-    int parity = (pm_y_coord & 1) != 0;
+    int odd_row = (pm_y_coord & 1) != 0;
 
     if (pm_build_shape == 0) {
         show_one_ptr(pm_x_coord, pm_y_coord);
     } else if (pm_build_shape == 1) {
         show_one_ptr(pm_x_coord, pm_y_coord);
-        show_one_ptr(pm_x_coord - parity, pm_y_coord + 1);
-        show_one_ptr(pm_x_coord - parity + 1, pm_y_coord + 1);
+        show_one_ptr(pm_x_coord - odd_row, pm_y_coord + 1);
+        show_one_ptr(pm_x_coord - odd_row + 1, pm_y_coord + 1);
         show_one_ptr(pm_x_coord, pm_y_coord + 2);
     } else if (pm_build_shape == 2) {
         three_by_three(pm_x_coord, pm_y_coord);
@@ -369,7 +369,7 @@ void show_diamond_ptr(void)
         four_by_four(pm_x_coord, pm_y_coord);
     } else if (pm_build_shape == 4) {
         three_by_three(pm_x_coord, pm_y_coord);
-        if (parity) three_by_three(pm_x_coord - 2, pm_y_coord + 3);
+        if (odd_row) three_by_three(pm_x_coord - 2, pm_y_coord + 3);
         else        three_by_three(pm_x_coord - 1, pm_y_coord + 3);
     } else if (pm_build_shape == 5) {
         four_by_four(pm_x_coord, pm_y_coord);
@@ -380,95 +380,95 @@ void show_diamond_ptr(void)
 // Draws a nine-tile isometric pointer footprint centered at (x, y).
 // FUNCTION: C2 0x35dc0
 // FUNCTION: C2WIN 0x00485206
-void three_by_three(int x, int y)
+void three_by_three(int center_x, int center_y)
 {
-    int parity = (y & 1) != 0;
+    int odd_row = (center_y & 1) != 0;
 
-    show_one_ptr(x, y);
-    show_one_ptr(x - parity, y + 1);
-    show_one_ptr(x - parity + 1, y + 1);
-    show_one_ptr(x - 1, y + 2);
-    show_one_ptr(x, y + 2);
-    show_one_ptr(x + 1, y + 2);
-    show_one_ptr(x - parity, y + 3);
-    show_one_ptr(x - parity + 1, y + 3);
-    show_one_ptr(x, y + 4);
+    show_one_ptr(center_x, center_y);
+    show_one_ptr(center_x - odd_row, center_y + 1);
+    show_one_ptr(center_x - odd_row + 1, center_y + 1);
+    show_one_ptr(center_x - 1, center_y + 2);
+    show_one_ptr(center_x, center_y + 2);
+    show_one_ptr(center_x + 1, center_y + 2);
+    show_one_ptr(center_x - odd_row, center_y + 3);
+    show_one_ptr(center_x - odd_row + 1, center_y + 3);
+    show_one_ptr(center_x, center_y + 4);
 }
 
 // Draws a sixteen-tile isometric pointer footprint centered at (x, y).
 // FUNCTION: C2 0x35e3f
 // FUNCTION: C2WIN 0x004852e5
-void four_by_four(int x, int y)
+void four_by_four(int center_x, int center_y)
 {
-    int parity = (y & 1) != 0;
+    int odd_row = (center_y & 1) != 0;
 
-    show_one_ptr(x, y);
-    show_one_ptr(x - parity, y + 1);
-    show_one_ptr(x - parity + 1, y + 1);
-    show_one_ptr(x - 1, y + 2);
-    show_one_ptr(x, y + 2);
-    show_one_ptr(x + 1, y + 2);
-    show_one_ptr(x - parity - 1, y + 3);
-    show_one_ptr(x - parity, y + 3);
-    show_one_ptr(x - parity + 1, y + 3);
-    show_one_ptr(x - parity + 2, y + 3);
-    show_one_ptr(x - 1, y + 4);
-    show_one_ptr(x, y + 4);
-    show_one_ptr(x + 1, y + 4);
-    show_one_ptr(x - parity, y + 5);
-    show_one_ptr(x - parity + 1, y + 5);
-    show_one_ptr(x, y + 6);
+    show_one_ptr(center_x, center_y);
+    show_one_ptr(center_x - odd_row, center_y + 1);
+    show_one_ptr(center_x - odd_row + 1, center_y + 1);
+    show_one_ptr(center_x - 1, center_y + 2);
+    show_one_ptr(center_x, center_y + 2);
+    show_one_ptr(center_x + 1, center_y + 2);
+    show_one_ptr(center_x - odd_row - 1, center_y + 3);
+    show_one_ptr(center_x - odd_row, center_y + 3);
+    show_one_ptr(center_x - odd_row + 1, center_y + 3);
+    show_one_ptr(center_x - odd_row + 2, center_y + 3);
+    show_one_ptr(center_x - 1, center_y + 4);
+    show_one_ptr(center_x, center_y + 4);
+    show_one_ptr(center_x + 1, center_y + 4);
+    show_one_ptr(center_x - odd_row, center_y + 5);
+    show_one_ptr(center_x - odd_row + 1, center_y + 5);
+    show_one_ptr(center_x, center_y + 6);
 }
 
 // Marks one map cell and draws its clipped pointer diamond at the current zoom level.
 // FUNCTION: C2 0x35f0f
 // FUNCTION: C2WIN 0x0048545c
-void show_one_ptr(int x, int y)
+void show_one_ptr(int screen_cell_x, int screen_cell_y)
 {
-    int cell_y;
-    int cell_x;
-    int pm_val;
+    int map_cell_y;
+    int map_cell_x;
+    int cell_offset;
 
-    cell_y = pm_y + y;
-    if (cell_y < 0 || cell_y >= 0xa1) return;
-    cell_x = pm_x + x;
-    if (cell_x < 0 || cell_x >= 0x51) return;
+    map_cell_y = pm_y + screen_cell_y;
+    if (map_cell_y < 0 || map_cell_y >= 0xa1) return;
+    map_cell_x = pm_x + screen_cell_x;
+    if (map_cell_x < 0 || map_cell_x >= 0x51) return;
 
-    pm_val = pseudo_map[cell_y][cell_x];
-    if (pm_val >= 0x0FFF0000) return;
+    cell_offset = pseudo_map[map_cell_y][map_cell_x];
+    if (cell_offset >= 0x0FFF0000) return;
 
     if (map_mode == 0) {
-        CM_CELL(pm_val).edge_bits |= 1;
+        CM_CELL(cell_offset).edge_bits |= 1;
     } else if (map_mode == 1) {
-        RM_CELL(pm_val).edge_bits |= 1;
+        RM_CELL(cell_offset).edge_bits |= 1;
     }
 
-    lib_para1 = pm_screen_x_start + pm_diamond_width * x;
-    if (y & 1) lib_para1 -= pm_diamond_half_width;
-    lib_para2 = pm_screen_y_start + pm_diamond_half_height * y;
+    lib_para1 = pm_screen_x_start + pm_diamond_width * screen_cell_x;
+    if (screen_cell_y & 1) lib_para1 -= pm_diamond_half_width;
+    lib_para2 = pm_screen_y_start + pm_diamond_half_height * screen_cell_y;
 
     pm_y_edge = 0;
     pm_x_edge = 0;
-    if (y == 0) {
+    if (screen_cell_y == 0) {
         pm_y_edge = 2;
-    } else if (y < 0) {
+    } else if (screen_cell_y < 0) {
         return;
-    } else if (y == pm_screen_height) {
+    } else if (screen_cell_y == pm_screen_height) {
         pm_y_edge = 1;
-    } else if (y > pm_screen_height) {
+    } else if (screen_cell_y > pm_screen_height) {
         return;
     }
 
-    if (x < 0) return;
-    if (y & 1) {
-        if (x == 0) {
+    if (screen_cell_x < 0) return;
+    if (screen_cell_y & 1) {
+        if (screen_cell_x == 0) {
             pm_x_edge = 2;
-        } else if (x == pm_screen_width) {
+        } else if (screen_cell_x == pm_screen_width) {
             pm_x_edge = 1;
-        } else if (x > pm_screen_width) {
+        } else if (screen_cell_x > pm_screen_width) {
             return;
         }
-    } else if (x >= pm_screen_width) {
+    } else if (screen_cell_x >= pm_screen_width) {
         return;
     }
 

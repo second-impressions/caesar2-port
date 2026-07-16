@@ -184,9 +184,9 @@ void show_help_page(void)
 {
     int  text_lines;
     int  text_x;
-    int  text_w;
-    int  left_ok;
-    int  right_ok;
+    int  text_width;
+    int  left_loaded;
+    int  right_loaded;
 
     /* Use each illustration's matching .256 palette file. */
     my_strcpy("256", extension, 4);
@@ -208,41 +208,41 @@ void show_help_page(void)
     text_pointer = format_buffer;
 
     text_x     = 0x28;
-    text_w     = 0x190;
+    text_width     = 0x190;
     text_lines = 1;
 
     /* Optional left illustration ---------------------------------- */
-    left_ok = 0;
+    left_loaded = 0;
     if (media_left_image) {
-        left_ok = readfile(this_media_entry.left_file,
+        left_loaded = readfile(this_media_entry.left_file,
                            ((void *)scratch_buffer), 0x186a0, 0);
         my_strcpy(this_media_entry.left_file, help_palname, 0xd);
         my_strcpy("256", extension, 4);
         put_filename_extension(help_palname);
         readfile(help_palname, temp_palette, 0x300, 0);
-        if (left_ok) {
-            int cap;
+        if (left_loaded) {
+            int line_capacity;
             general_sprite(this_media_entry.left_sprite, 0x1e, 0x38);
             draw_a_dias(0x1d, 0x37, sprite_width + 2, sprite_height + 2);
             draw_a_dias(0x1c, 0x36, sprite_width + 4, sprite_height + 4);
-            text_w -= sprite_width + 8;
+            text_width -= sprite_width + 8;
             text_x  = sprite_width + 0x28;
-            cap     = (sprite_height - 0x18) / 0x10;
-            if (cap > text_lines) text_lines = cap;
+            line_capacity     = (sprite_height - 0x18) / 0x10;
+            if (line_capacity > text_lines) text_lines = line_capacity;
         }
     }
 
     /* Optional right illustration --------------------------------- */
-    right_ok = 0;
+    right_loaded = 0;
     if (media_right_image) {
-        right_ok = readfile(this_media_entry.right_file,
+        right_loaded = readfile(this_media_entry.right_file,
                             ((void *)scratch_buffer), 0x186a0, 0);
         my_strcpy(this_media_entry.right_file, help_palname, 0xd);
         my_strcpy("256", extension, 4);
         put_filename_extension(help_palname);
         readfile(help_palname, temp_palette, 0x300, 0);
-        if (right_ok) {
-            int cap;
+        if (right_loaded) {
+            int line_capacity;
             get_general_sprite_sizes(this_media_entry.right_sprite);
             general_sprite(this_media_entry.right_sprite,
                            0x1b8 - sprite_width + 6, 0x38);
@@ -250,14 +250,14 @@ void show_help_page(void)
                         sprite_width + 2, sprite_height + 2);
             draw_a_dias(0x1b8 - sprite_width + 4, 0x36,
                         sprite_width + 4, sprite_height + 4);
-            text_w -= sprite_width + 8;
-            cap     = (sprite_height - 0x18) / 0x10;
-            if (cap > text_lines) text_lines = cap;
+            text_width -= sprite_width + 8;
+            line_capacity     = (sprite_height - 0x18) / 0x10;
+            if (line_capacity > text_lines) text_lines = line_capacity;
         }
     }
 
     put_a_font_string(text_pointer, text_x, 0x38, font2, 0x10);
-    media_text_place(text_x, 0x5a, text_w, text_lines,
+    media_text_place(text_x, 0x5a, text_width, text_lines,
                      0x28, 0x190, font1);
 
     refresh_svga_screen();
@@ -274,14 +274,14 @@ void media_text_place(int x, int y, int width, int line_count,
     int    i;
     int    escape_flag;
     int    line_idx;
-    int    cur_y;
-    int    alt_off;
+    int    current_y;
+    int    alt_offset;
     int    loop_active;
     int    line_width;
-    int    buf_pos;
+    int    buffer_pos;
     int    skip_leading;
-    signed char c;
-    int    edx_count;
+    signed char character;
+    int    character_idx;
 
     this_spot        = 0;
     linked_text_flag = 0;
@@ -301,39 +301,39 @@ void media_text_place(int x, int y, int width, int line_count,
     font_screen_limit = 0;
     loop_active = 1;
     line_idx    = 0;
-    cur_y       = y;
+    current_y       = y;
     escape_flag = 0;
 
     while (loop_active) {
         for (i = 0; i < 200; i++) media_line_buffer[i] = 0;
         line_width  = 0;
-        buf_pos     = 0;
+        buffer_pos     = 0;
         skip_leading = 1;
 
         if (escape_flag) {
-            alt_off     = 0;
+            alt_offset     = 0;
             escape_flag = 0;
         } else {
-            alt_off = 0;
+            alt_offset = 0;
         }
 
-        while (loop_active && line_width < width - alt_off) {
+        while (loop_active && line_width < width - alt_offset) {
             line_width += get_next_word_length(text_pointer, font);
-            if (line_width >= width - alt_off) continue;
+            if (line_width >= width - alt_offset) continue;
 
-            for (edx_count = 0; edx_count < char_count; ) {
-                c = *text_pointer++;
-                if (skip_leading && c == ' ') {
+            for (character_idx = 0; character_idx < char_count; ) {
+                character = *text_pointer++;
+                if (skip_leading && character == ' ') {
                     /* drop */
-                } else if (c == '$') {
+                } else if (character == '$') {
                     escape_flag = 1;
                     line_width  = width;
                     break;
                 } else {
-                    media_line_buffer[buf_pos++] = c;
+                    media_line_buffer[buffer_pos++] = character;
                     skip_leading = 0;
                 }
-                edx_count++;
+                character_idx++;
             }
             if (*text_pointer == 0) {
                 loop_active = 0;
@@ -344,9 +344,9 @@ void media_text_place(int x, int y, int width, int line_count,
         insert_place  = 1;
         x_is          = 0;
         allow_padding = 1;
-        put_a_media_string(media_line_buffer, x + alt_off, cur_y);
+        put_a_media_string(media_line_buffer, x + alt_offset, current_y);
         line_idx++;
-        cur_y += 0x12;
+        current_y += 0x12;
 
         if (line_idx >= line_count) {
             /* Switch over to the continuation rectangle. */
@@ -361,17 +361,17 @@ void media_text_place(int x, int y, int width, int line_count,
 // FUNCTION: C2WIN 0x00452c66
 void put_a_media_string(char *text, int x, int y)
 {
-    char c;
-    int  width;
+    char character;
+    int  character_width;
 
     sprite_x   = x;
     font_style = 0;
-    c = *text;
+    character = *text;
     if (linked_text_flag)
         help_page_hot_spots[this_spot].x3 = sprite_x;
-    while (c != 0) {
+    while (character != 0) {
         sprite_y = y;
-        if (c == '#') {
+        if (character == '#') {
             if (linked_text_flag) {
                 /* Closing tag: write the right edge into either
                  * the primary or the continuation slot, depending
@@ -401,23 +401,23 @@ void put_a_media_string(char *text, int x, int y)
                         text += 3;
                 }
             }
-            c = 1;
+            character = 1;
         }
-        if (c >= 0x20) {
+        if (character >= 0x20) {
             if (linked_text_flag)
                 sprite_colour = 0x0d;
             else
                 sprite_colour = 0x10;
-            c -= 0x20;
-            if (letter_table[c] > 0)
-                width = one_letter(font1, c);
+            character -= 0x20;
+            if (letter_table[character] > 0)
+                character_width = one_letter(font1, character);
             else
-                width = 4;
-            sprite_x += width;
-            x_is     += width;
+                character_width = 4;
+            sprite_x += character_width;
+            x_is     += character_width;
         }
         text++;
-        c = *text;
+        character = *text;
     }
     if (linked_text_flag)
         help_page_hot_spots[this_spot].x2 = sprite_x;
@@ -430,21 +430,21 @@ void put_a_media_string(char *text, int x, int y)
 int get_linked_page(void)
 {
     int i;
-    int x_w;
-    int y_top;
+    int hotspot_width;
+    int hotspot_y;
 
     for (i = 0; i < nof_hot_spots; i++) {
-        x_w   = help_page_hot_spots[i].x2 - help_page_hot_spots[i].x1;
-        y_top = help_page_hot_spots[i].y;
-        if (mouse_in_area(help_page_hot_spots[i].x1, y_top, x_w, 0x12)) {
+        hotspot_width   = help_page_hot_spots[i].x2 - help_page_hot_spots[i].x1;
+        hotspot_y = help_page_hot_spots[i].y;
+        if (mouse_in_area(help_page_hot_spots[i].x1, hotspot_y, hotspot_width, 0x12)) {
             push_forward_help_history();
             this_help_page = help_page_hot_spots[i].page;
             return 1;
         }
 
         if (help_page_hot_spots[i].x3 == 0) continue;
-        x_w = help_page_hot_spots[i].x4 - help_page_hot_spots[i].x3;
-        if (mouse_in_area(help_page_hot_spots[i].x3, y_top += 0x12, x_w, 0x12)) {
+        hotspot_width = help_page_hot_spots[i].x4 - help_page_hot_spots[i].x3;
+        if (mouse_in_area(help_page_hot_spots[i].x3, hotspot_y += 0x12, hotspot_width, 0x12)) {
             push_forward_help_history();
             this_help_page = help_page_hot_spots[i].page;
             return 1;
@@ -542,9 +542,9 @@ void do_a_tutorial_page(void)
 {
     char *image_path;
     char *pal_path;
-    int x;
-    int y;
-    int w;
+    int text_x;
+    int text_y;
+    int text_width;
 
     image_path = tut_files[tutorial_page].name;
     pal_path   = tut_palfiles[tutorial_page].name;
@@ -562,11 +562,11 @@ void do_a_tutorial_page(void)
     load_media_entry();
     text_pointer = format_buffer;
 
-    x = this_media_entry.left_sprite;
-    y = this_media_entry.right_sprite;
-    w = this_media_entry.width;
-    put_a_font_string(text_pointer, x, y, font2, 0x10);
-    media_text_place(x, y + 0x1e, w, 1, x, w, font1);
+    text_x = this_media_entry.left_sprite;
+    text_y = this_media_entry.right_sprite;
+    text_width = this_media_entry.width;
+    put_a_font_string(text_pointer, text_x, text_y, font2, 0x10);
+    media_text_place(text_x, text_y + 0x1e, text_width, 1, text_x, text_width, font1);
 
     /* Bottom-row navigation arrows */
     font_list(0x31, 1, 0xa0, 0x1a0, font1, 0x10);
@@ -637,20 +637,20 @@ void do_a_tutorial_page(void)
 // FUNCTION: C2WIN 0x004537a1
 void tutorial_test_for_forum_access(void)
 {
-    int y;
-    int x;
-    unsigned char kind;
+    int cell_y;
+    int cell_x;
+    unsigned char building_kind;
 
     if (tutorial_level != 3) return;
     if (tutorial_timer % 50 != 0) return;
     if (tutorial_correct) return;
 
     cm_sptr = 0;
-    y = 0;
-    for ( ; y < 80; y++) {
-    for (x = 0; x < 80; x++, cm_sptr += 20) {
-        kind = CM_CELL(cm_sptr).base_kind;
-        if (kind >= 0x82 && kind <= 0xa1
+    cell_y = 0;
+    for ( ; cell_y < 80; cell_y++) {
+    for (cell_x = 0; cell_x < 80; cell_x++, cm_sptr += 20) {
+        building_kind = CM_CELL(cm_sptr).base_kind;
+        if (building_kind >= 0x82 && building_kind <= 0xa1
             && (CM_CELL(cm_sptr).range_flag & 0x0c) != 0) {
             tutorial_correct_timer = 50;
             tutorial_correct       = 1;
@@ -665,20 +665,20 @@ void tutorial_test_for_forum_access(void)
 // FUNCTION: C2WIN 0x00453897
 void tutorial_test_for_water_distribution(void)
 {
-    int y;
-    int x;
-    unsigned char kind;
+    int cell_y;
+    int cell_x;
+    unsigned char building_kind;
 
     if (tutorial_level != 2) return;
     if (tutorial_timer % 50 != 0) return;
     if (tutorial_correct) return;
 
     cm_sptr = 0;
-    y = 0;
-    for ( ; y < 80; y++) {
-    for (x = 0; x < 80; x++, cm_sptr += 20) {
-        kind = CM_CELL(cm_sptr).base_kind;
-        if (kind >= 0x82 && kind <= 0xa1
+    cell_y = 0;
+    for ( ; cell_y < 80; cell_y++) {
+    for (cell_x = 0; cell_x < 80; cell_x++, cm_sptr += 20) {
+        building_kind = CM_CELL(cm_sptr).base_kind;
+        if (building_kind >= 0x82 && building_kind <= 0xa1
             && (CM_CELL(cm_sptr).education & 0x01) != 0) {
             tutorial_correct = 1;
             return;
@@ -753,17 +753,17 @@ void act_forward_tutorial_page(void)
 // Return whether the current tutorial stage permits a city-map icon.
 // FUNCTION: C2 0x5900d
 // FUNCTION: C2WIN 0x00453b88
-int city_icon_allowed(int idx)
+int city_icon_allowed(int icon_idx)
 {
-    return (unsigned char)city_tutorial_icons[idx] <= tutorial_level;
+    return (unsigned char)city_tutorial_icons[icon_idx] <= tutorial_level;
 }
 
 // Return whether the current tutorial stage permits a region-map icon.
 // FUNCTION: C2 0x59027
 // FUNCTION: C2WIN 0x00453bbb
-int region_icon_allowed(int idx)
+int region_icon_allowed(int icon_idx)
 {
-    return (unsigned char)region_tutorial_icons[idx] <= tutorial_level;
+    return (unsigned char)region_tutorial_icons[icon_idx] <= tutorial_level;
 }
 
 // Grey out city-map controls that the current tutorial stage has not unlocked.
@@ -771,22 +771,22 @@ int region_icon_allowed(int idx)
 // FUNCTION: C2WIN 0x00453bee
 void grey_city_map_parts(void)
 {
-    int i;
-    int off;
-    unsigned short w;
-    unsigned short h;
-    unsigned short x;
-    unsigned short y;
+    int icon_idx;
+    int header_offset;
+    unsigned short icon_width;
+    unsigned short icon_height;
+    unsigned short icon_x;
+    unsigned short icon_y;
 
     if (tutorial_mode == 0) return;
-    for (i = 4; i < 0x1c; i++) {
-        if (city_icon_allowed(i - 4) == 0) {
-            off = i * 8;
-            w = int_city_header[off + 4];
-            h = int_city_header[off + 5];
-            x = int_city_header[off + 8] + 0xee;
-            y = int_city_header[off + 9];
-            draw_a_rect(x, y, w, h, 0x1a);
+    for (icon_idx = 4; icon_idx < 0x1c; icon_idx++) {
+        if (city_icon_allowed(icon_idx - 4) == 0) {
+            header_offset = icon_idx * 8;
+            icon_width = int_city_header[header_offset + 4];
+            icon_height = int_city_header[header_offset + 5];
+            icon_x = int_city_header[header_offset + 8] + 0xee;
+            icon_y = int_city_header[header_offset + 9];
+            draw_a_rect(icon_x, icon_y, icon_width, icon_height, 0x1a);
         }
     }
 }
@@ -796,23 +796,23 @@ void grey_city_map_parts(void)
 // FUNCTION: C2WIN 0x00453c56
 void grey_region_map_parts(void)
 {
-    int i;
-    int off;
+    int icon_idx;
+    int header_offset;
 
-    unsigned short w;
-    unsigned short h;
-    unsigned short x;
-    unsigned short y;
+    unsigned short icon_width;
+    unsigned short icon_height;
+    unsigned short icon_x;
+    unsigned short icon_y;
 
     if (tutorial_mode == 0) return;
-    for (i = 4; i < 0x17; i++) {
-        if (region_icon_allowed(i - 4) == 0) {
-            off = i * 8;
-            w = int_region_header[off + 4];
-            h = int_region_header[off + 5];
-            x = int_region_header[off + 8] + 0xee;
-            y = int_region_header[off + 9];
-            draw_a_rect(x, y, w, h, 0x1a);
+    for (icon_idx = 4; icon_idx < 0x17; icon_idx++) {
+        if (region_icon_allowed(icon_idx - 4) == 0) {
+            header_offset = icon_idx * 8;
+            icon_width = int_region_header[header_offset + 4];
+            icon_height = int_region_header[header_offset + 5];
+            icon_x = int_region_header[header_offset + 8] + 0xee;
+            icon_y = int_region_header[header_offset + 9];
+            draw_a_rect(icon_x, icon_y, icon_width, icon_height, 0x1a);
         }
     }
 }

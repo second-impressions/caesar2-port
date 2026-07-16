@@ -52,8 +52,8 @@ char __far *start_samples(void);
 #pragma aux start_samples modify exact [eax gs];
 char __far *start_sequences(void);
 #pragma aux start_sequences modify exact [eax gs];
-char __far *start_sound(char *buf, int loop_count);
-char __far *start_tune(unsigned char *seq_arg, int sequence_num, int slot);
+char __far *start_sound(char *sample_data, int loop_count);
+char __far *start_tune(unsigned char *sequence_data, int sequence_num, int sequence_idx);
 void init_ss_entires(void);
 
 void free(void *p);
@@ -92,7 +92,7 @@ void stop_sounds(void)
 // FUNCTION: C2WIN 0x00401085
 char __far *start_samples(void)
 {
-    char __far *rc;
+    char __far *result;
 
     if (!samples_running)
     if (c2inf.samples_on) {
@@ -104,7 +104,7 @@ char __far *start_samples(void)
         samples_running = 1;
         init_ss_entires();
     }
-    return rc;
+    return result;
 }
 
 // Install the MIDI driver, allocate sequence handles, and reset music mood state.
@@ -112,7 +112,7 @@ char __far *start_samples(void)
 // FUNCTION: C2WIN 0x00401250
 char __far *start_sequences(void)
 {
-    char __far *rc;
+    char __far *result;
 
     if (!sequences_running && c2inf.tunes_on) {
         AIL_set_GTL_filename_prefix("CAESAR");
@@ -131,7 +131,7 @@ char __far *start_sequences(void)
         last_city_mood = 0;
         sequences_running = 1;
     }
-    return rc;
+    return result;
 }
 
 // Stop all active digital samples and clear streaming playback state.
@@ -178,82 +178,82 @@ void set_samples_volume(void)
 // FUNCTION: C2WIN 0x00401515
 void set_sequences_volume(void)
 {
-    int vol;
+    int volume;
 
     if (c2inf.tunes_on == 0)     return;
     if (sequences_running == 0)  return;
-    vol = totalXpercent(0x7f, c2inf.tunes_level);
-    AIL_set_sequence_volume(S_mdi[tune1], vol, 0);
-    AIL_set_sequence_volume(S_mdi[tune2], vol, 0);
+    volume = totalXpercent(0x7f, c2inf.tunes_level);
+    AIL_set_sequence_volume(S_mdi[tune1], volume, 0);
+    AIL_set_sequence_volume(S_mdi[tune2], volume, 0);
 }
 
 // Fade a MIDI sequence up to the configured music volume over one second.
 // FUNCTION: C2 0x11ae9
 // FUNCTION: C2WIN 0x0040158e
-void fade_sequence_in(int idx)
+void fade_sequence_in(int sequence_idx)
 {
-    int vol;
+    int volume;
 
     if (c2inf.tunes_on == 0)     return;
     if (sequences_running == 0)  return;
-    vol = totalXpercent(0x7f, c2inf.tunes_level);
-    AIL_set_sequence_volume(S_mdi[idx],   0, 0);
-    AIL_set_sequence_volume(S_mdi[idx], vol, 1000);
+    volume = totalXpercent(0x7f, c2inf.tunes_level);
+    AIL_set_sequence_volume(S_mdi[sequence_idx],   0, 0);
+    AIL_set_sequence_volume(S_mdi[sequence_idx], volume, 1000);
 }
 
 // Fade a MIDI sequence to silence over one second.
 // FUNCTION: C2 0x11b4b
 // FUNCTION: C2WIN 0x00401604
-void fade_sequences_out(int idx)
+void fade_sequences_out(int sequence_idx)
 {
     if (c2inf.tunes_on == 0)      return;
     if (sequences_running == 0)   return;
-    AIL_set_sequence_volume(S_mdi[idx], 0, 1000);
+    AIL_set_sequence_volume(S_mdi[sequence_idx], 0, 1000);
 }
 
 // Load or reuse a cached sample and start its playback when a voice is available.
 // FUNCTION: C2 0x11b7b
 // FUNCTION: C2WIN 0x0040164d
-void set_sound(char *fname, int arg2)
+void set_sound(char *filename, int loop_count)
 {
     if (c2inf.samples_on == 0) return;
     if (samples_running == 0) return;
-    if (*fname == 0) return;
+    if (*filename == 0) return;
     if (check_for_free_slot() == 0) return;
-    if (check_old_sslots(fname) == 0) {
-        get_new_sslot(fname);
-        if (readfile(fname, sample_buffer + sslot * 0x4e20,
+    if (check_old_sslots(filename) == 0) {
+        get_new_sslot(filename);
+        if (readfile(filename, sample_buffer + sslot * 0x4e20,
                      0x4e20, 0) == 0) {
             free_up_sslot(sslot);
             return;
         }
     }
-    start_sound(sample_buffer + sslot * 0x4e20, arg2);
+    start_sound(sample_buffer + sslot * 0x4e20, loop_count);
 }
 
 // Load or reuse a cached sample and request playback without checking for a free voice first.
 // FUNCTION: C2 0x11c35
 // FUNCTION: C2WIN 0x00401734
-void set_pri_sound(char *fname, int arg2)
+void set_pri_sound(char *filename, int loop_count)
 {
     if (c2inf.samples_on == 0) return;
     if (samples_running == 0) return;
-    if (*fname == 0) return;
-    if (check_old_sslots(fname) == 0) {
-        get_new_sslot(fname);
-        if (readfile(fname, sample_buffer + sslot * 0x4e20,
+    if (*filename == 0) return;
+    if (check_old_sslots(filename) == 0) {
+        get_new_sslot(filename);
+        if (readfile(filename, sample_buffer + sslot * 0x4e20,
                      0x4e20, 0) == 0) {
             free_up_sslot(sslot);
             return;
         }
     }
-    start_sound(sample_buffer + sslot * 0x4e20, arg2);
+    start_sound(sample_buffer + sslot * 0x4e20, loop_count);
 }
 
 // Select a digital voice, configure its sample data and loop count, and start playback.
 // FUNCTION: C2 0x11ce2
 // FUNCTION: C2WIN 0x00401809
-char __far *start_sound(char *buf, int loop_count)
+char __far *start_sound(char *sample_data, int loop_count)
 {
     for (ds = 0; ds < c2inf.max_samples; ds++) {
         dig_status = AIL_sample_status(S_dig[ds]);
@@ -268,7 +268,7 @@ char __far *start_sound(char *buf, int loop_count)
     dig_status = AIL_sample_status(S_dig[ds]);
     if (dig_status == 4) AIL_end_sample(S_dig[ds]);
     AIL_init_sample(S_dig[ds]);
-    if (AIL_set_sample_file(S_dig[ds], buf, -1) == 0) return (char __far *)3;
+    if (AIL_set_sample_file(S_dig[ds], sample_data, -1) == 0) return (char __far *)3;
     AIL_set_sample_loop_count(S_dig[ds], loop_count);
     return AIL_start_sample(S_dig[ds]);
 }
@@ -329,31 +329,31 @@ void neg_sound(void)
 
 // Refill the next available half of an AIL double-buffered sample stream.
 // FUNCTION: C2 0x11fb9
-void serve_sample(int sample_handle, unsigned char **buf, int size)
+void serve_sample(int sample_handle, unsigned char **buffers, int buffer_size)
 {
-    int slot;
-    int n;
+    int buffer_idx;
+    int bytes_read;
 
-    slot = AIL_sample_buffer_ready(sample_handle);
-    if (slot == -1) return;
-    n = read(db_handle, buf[slot], size);
-    AIL_load_sample_buffer(sample_handle, slot, buf[slot], n);
+    buffer_idx = AIL_sample_buffer_ready(sample_handle);
+    if (buffer_idx == -1) return;
+    bytes_read = read(db_handle, buffers[buffer_idx], buffer_size);
+    AIL_load_sample_buffer(sample_handle, buffer_idx, buffers[buffer_idx], bytes_read);
 }
 
 // Open a speech sample and prepare the dedicated double-buffered streaming voice.
 // FUNCTION: C2 0x12003
 // FUNCTION: C2WIN 0x00401c57
-void set_db_sound(char *fname)
+void set_db_sound(char *filename)
 {
     if (c2inf.samples_on == 0)   return;
     if (c2inf.speech_on == 0)    return;
     if (samples_running == 0)    return;
     if (db_playing != 0)         return;
-    if (*fname == 0)             return;
-    if (check_file_exists(fname) == 0) return;
+    if (*filename == 0)             return;
+    if (check_file_exists(filename) == 0) return;
 
-    db_file = fname;
-    cd_path(fname);
+    db_file = filename;
+    cd_path(filename);
     db_handle = open(db_file, O_RDONLY | O_BINARY);
     db_playing = 1;
 
@@ -421,36 +421,36 @@ int pause_db(void)
 
 // Load and start an XMI tune unless music or the sequence engine is disabled.
 // FUNCTION: C2 0x12279
-void play_tune(char *fname, int loops)
+void play_tune(char *filename, int loop_count)
 {
     if (c2inf.tunes_on == 0) return;
     if (sequences_running == 0) return;
-    if (*fname == 0) return;
-    if (readfile(fname, tune_buffer, 0x6b6c, 0) == 0) return;
-    start_tune(tune_buffer, 0, loops);
+    if (*filename == 0) return;
+    if (readfile(filename, tune_buffer, 0x6b6c, 0) == 0) return;
+    start_tune(tune_buffer, 0, loop_count);
 }
 
 // Initialize, fade in, and start a MIDI sequence on the selected slot.
 // FUNCTION: C2 0x122bc
-char __far *start_tune(unsigned char *seq_arg, int sequence_num, int slot)
+char __far *start_tune(unsigned char *sequence_data, int sequence_num, int sequence_idx)
 {
-    int rc;
+    int result;
 
-    if (slot == 0) AIL_end_sequence(S_mdi[1]);
-    else if (slot == 1) AIL_stop_sequence(S_mdi[0]);
+    if (sequence_idx == 0) AIL_end_sequence(S_mdi[1]);
+    else if (sequence_idx == 1) AIL_stop_sequence(S_mdi[0]);
 
-    mdi_status = AIL_sequence_status(S_mdi[slot]);
-    if (mdi_status == 4) AIL_end_sequence(S_mdi[slot]);
+    mdi_status = AIL_sequence_status(S_mdi[sequence_idx]);
+    if (mdi_status == 4) AIL_end_sequence(S_mdi[sequence_idx]);
     else if (mdi_status == 8) {
-        return AIL_resume_sequence(S_mdi[slot]);
+        return AIL_resume_sequence(S_mdi[sequence_idx]);
     }
 
-    rc = AIL_init_sequence(S_mdi[slot], seq_arg, sequence_num);
-    AIL_register_trigger_callback(S_mdi[slot], (void (*)())mood_modfication);
-    if (rc < 0) return (char __far *)MK_FP(3, 1);
-    if (rc == 0) return (char __far *)MK_FP(4, 1);
-    fade_sequence_in(slot);
-    return AIL_start_sequence(S_mdi[slot]);
+    result = AIL_init_sequence(S_mdi[sequence_idx], sequence_data, sequence_num);
+    AIL_register_trigger_callback(S_mdi[sequence_idx], (void (*)())mood_modfication);
+    if (result < 0) return (char __far *)MK_FP(3, 1);
+    if (result == 0) return (char __far *)MK_FP(4, 1);
+    fade_sequence_in(sequence_idx);
+    return AIL_start_sequence(S_mdi[sequence_idx]);
 }
 
 // Stop the primary tune and end the secondary tune when they are playing.
@@ -473,13 +473,13 @@ void stop_tune0(void)
 
 // Recalculate the current music mood and branch the active sequence.
 // FUNCTION: C2 0x12424
-void __cdecl mood_modfication(int seq)
+void __cdecl mood_modfication(int sequence_handle)
 {
     tune_mood_hold = 0;
     tune_branch_count++;
     if (map_mode == 2) get_battle_mood();
     else               get_city_mood();
-    AIL_branch_index(seq, tune_branch);
+    AIL_branch_index(sequence_handle, tune_branch);
 }
 
 // Restore and return the last music mood for the current map mode.
@@ -560,10 +560,10 @@ void get_battle_mood(void)
 // Alternate battle-music branches within a mood group.
 // FUNCTION: C2 0x128ad
 // FUNCTION: C2WIN 0x00402888
-void choose_odd_tune(int x)
+void choose_odd_tune(int branch_base)
 {
     if (odd_battle_tune) {
-        tune_branch = x + (rand128 & 6);
+        tune_branch = branch_base + (rand128 & 6);
         odd_battle_tune = 0;
     } else {
         tune_branch += 1;
@@ -594,40 +594,40 @@ void init_ss_entires(void)
 // Choose a cached-sample slot for a new file and update its replacement state.
 // FUNCTION: C2 0x12953
 // FUNCTION: C2WIN 0x00402959
-void get_new_sslot(char *fname)
+void get_new_sslot(char *filename)
 {
-    int max_c = 0;
-    int best  = 0;
+    int highest_hit_count = 0;
+    int replacement_idx  = 0;
     int i;
     for (i = 0; i < 10; i++) {
         ++ss_entries[i].hits;
-        if (max_c <= ss_entries[i].hits) {
-            best  = i;
-            max_c = ss_entries[i].hits;
+        if (highest_hit_count <= ss_entries[i].hits) {
+            replacement_idx  = i;
+            highest_hit_count = ss_entries[i].hits;
         }
     }
-    sslot = best;
-    ss_entries[best].hits = 0;
-    strcpy(ss_entries[best].name, fname);
+    sslot = replacement_idx;
+    ss_entries[replacement_idx].hits = 0;
+    strcpy(ss_entries[replacement_idx].name, filename);
 }
 
 // Mark a cached-sample slot unused so it will be replaced next.
 // FUNCTION: C2 0x129b1
 // FUNCTION: C2WIN 0x00402a06
-void free_up_sslot(int slot)
+void free_up_sslot(int slot_idx)
 {
-    ss_entries[slot].hits = 1000;
-    strcpy(ss_entries[slot].name, "unused.wav");
+    ss_entries[slot_idx].hits = 1000;
+    strcpy(ss_entries[slot_idx].name, "unused.wav");
 }
 
 // Find a cached sample by filename and mark its slot recently used.
 // FUNCTION: C2 0x129db
 // FUNCTION: C2WIN 0x00402a41
-int check_old_sslots(char *fname)
+int check_old_sslots(char *filename)
 {
     int i;
     for (i = 0; i < 10; i++) {
-        if (strcmp(ss_entries[i].name, fname) == 0) {
+        if (strcmp(ss_entries[i].name, filename) == 0) {
             ss_entries[i].hits = 0;
             sslot = i;
             return 1;
@@ -641,10 +641,10 @@ int check_old_sslots(char *fname)
 // FUNCTION: C2WIN 0x00402abd
 int link_to_smacker(void)
 {
-    int o;
+    int driver_flag;
     if (smacker_open) return 1;
-    o = smacker_open;
-    SetSmackAILDigDriver(dig, o);
+    driver_flag = smacker_open;
+    SetSmackAILDigDriver(dig, driver_flag);
     smacker_open = 1;
     return 1;
 }
@@ -660,60 +660,60 @@ int allow_samples(void)
 // Flag ambient slot `idx` for playback on the next play_ambient_fx tick.
 // FUNCTION: C2 0x12a6c
 // FUNCTION: C2WIN 0x00402b2a
-void set_this_ambient(int idx)
+void set_this_ambient(int ambient_idx)
 {
-    ambient_list[idx].active = 1;
+    ambient_list[ambient_idx].active = 1;
 }
 
 // Raise an ambient slot's delay counter to the requested minimum.
 // FUNCTION: C2 0x12a77
 // FUNCTION: C2WIN 0x00402b4a
-void set_ambient_minimum(int idx, int min)
+void set_ambient_minimum(int ambient_idx, int minimum_delay)
 {
-    if (ambient_list[idx].delay_counter < min)
-        ambient_list[idx].delay_counter = min;
+    if (ambient_list[ambient_idx].delay_counter < minimum_delay)
+        ambient_list[ambient_idx].delay_counter = minimum_delay;
 }
 
 // Activate the ambient sound associated with a city building type.
 // FUNCTION: C2 0x12a8f
 // FUNCTION: C2WIN 0x00402b8b
-void set_city_ambient(int kind)
+void set_city_ambient(int building_kind)
 {
-    int slot;
-    unsigned char temp;
+    int ambient_idx;
+    unsigned char building_variant;
 
-    if (kind < 0x78) return;
-    if      (kind < 0x7c) slot = 1;
-    else if (kind < 0x82) slot = 0xe;
-    else if (kind < 0xa2) return;
-    else if (kind < 0xae) slot = 0x12;
-    else if (kind < 0xbc) slot = 7;
-    else if (kind < 0xbe) slot = 0x11;
-    else if (kind < 0xbf) slot = 0x10;
-    else if (kind < 0xcb) return;
-    else if (kind < 0xd7) slot = 0x11;
-    else if (kind < 0xdb) slot = 0xf;
-    else if (kind < 0xdf) slot = 8;
-    else if (kind < 0xe3) slot = 4;
-    else if (kind < 0xe4) slot = 0x17;
-    else if (kind < 0xe5) slot = 3;
-    else if (kind < 0xe7) slot = 0x13;
-    else if (kind < 0xe9) slot = 5;
-    else if (kind < 0xf3) slot = 2;
-    else if (kind < 0xf4) slot = 0xa;
-    else if (kind < 0xf5) slot = 0xb;
-    else if (kind < 0xfa) return;
-    else if (kind < 0xfb) {
-        temp = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).building & 0xf0;
-        temp >>= 4;
-        slot = temp;
-        if (slot > 3) slot = 0x14;
-        else          slot = 0x15;
-    } else if (kind < 0xfc) slot = 0x16;
-    else if (kind < 0xfe) slot = 0xd;
-    else slot = 0xc;
+    if (building_kind < 0x78) return;
+    if      (building_kind < 0x7c) ambient_idx = 1;
+    else if (building_kind < 0x82) ambient_idx = 0xe;
+    else if (building_kind < 0xa2) return;
+    else if (building_kind < 0xae) ambient_idx = 0x12;
+    else if (building_kind < 0xbc) ambient_idx = 7;
+    else if (building_kind < 0xbe) ambient_idx = 0x11;
+    else if (building_kind < 0xbf) ambient_idx = 0x10;
+    else if (building_kind < 0xcb) return;
+    else if (building_kind < 0xd7) ambient_idx = 0x11;
+    else if (building_kind < 0xdb) ambient_idx = 0xf;
+    else if (building_kind < 0xdf) ambient_idx = 8;
+    else if (building_kind < 0xe3) ambient_idx = 4;
+    else if (building_kind < 0xe4) ambient_idx = 0x17;
+    else if (building_kind < 0xe5) ambient_idx = 3;
+    else if (building_kind < 0xe7) ambient_idx = 0x13;
+    else if (building_kind < 0xe9) ambient_idx = 5;
+    else if (building_kind < 0xf3) ambient_idx = 2;
+    else if (building_kind < 0xf4) ambient_idx = 0xa;
+    else if (building_kind < 0xf5) ambient_idx = 0xb;
+    else if (building_kind < 0xfa) return;
+    else if (building_kind < 0xfb) {
+        building_variant = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).building & 0xf0;
+        building_variant >>= 4;
+        ambient_idx = building_variant;
+        if (ambient_idx > 3) ambient_idx = 0x14;
+        else          ambient_idx = 0x15;
+    } else if (building_kind < 0xfc) ambient_idx = 0x16;
+    else if (building_kind < 0xfe) ambient_idx = 0xd;
+    else ambient_idx = 0xc;
 
-    ambient_list[slot].active = 1;
+    ambient_list[ambient_idx].active = 1;
 }
 
 // Activate the ambient sound associated with a province event.
@@ -740,15 +740,15 @@ void set_prov_ambient(int event)
 // FUNCTION: C2WIN 0x00402f45
 void set_battle_death_fx(int unit_type)
 {
-    int idx = 0;
+    int ambient_idx = 0;
 
-    if      (unit_type <=  3) idx = 0xc;
-    else if (unit_type <= 14) idx = 0xd;
-    else if (unit_type <= 15) idx = 0xe;
-    else if (unit_type <= 17) idx = 0xd;
+    if      (unit_type <=  3) ambient_idx = 0xc;
+    else if (unit_type <= 14) ambient_idx = 0xd;
+    else if (unit_type <= 15) ambient_idx = 0xe;
+    else if (unit_type <= 17) ambient_idx = 0xd;
 
-    ambient_list[idx].active = 1;
-    ambient_list[idx].delay_counter = 0xc8;
+    ambient_list[ambient_idx].active = 1;
+    ambient_list[ambient_idx].delay_counter = 0xc8;
 }
 
 // Schedule a unit-march sound for the given unit-type id.
@@ -756,18 +756,18 @@ void set_battle_death_fx(int unit_type)
 // FUNCTION: C2WIN 0x00402fd9
 void set_battle_march_fx(int unit_type)
 {
-    int idx = 0;
-    int min;
+    int ambient_idx = 0;
+    int minimum_delay;
 
-    if      (unit_type <=  3) idx = 15;
-    else if (unit_type <= 10) idx = 15;
-    else if (unit_type <= 15) idx = 16;
-    else if (unit_type <= 17) idx = 15;
+    if      (unit_type <=  3) ambient_idx = 15;
+    else if (unit_type <= 10) ambient_idx = 15;
+    else if (unit_type <= 15) ambient_idx = 16;
+    else if (unit_type <= 17) ambient_idx = 15;
 
-    ambient_list[idx].active = 1;
-    if (marching_fx == 0) min = 0xc7;
-    else                  min = 0xb9;
-    set_ambient_minimum(idx, min);
+    ambient_list[ambient_idx].active = 1;
+    if (marching_fx == 0) minimum_delay = 0xc7;
+    else                  minimum_delay = 0xb9;
+    set_ambient_minimum(ambient_idx, minimum_delay);
     marching_fx = 10;
 }
 
@@ -776,20 +776,20 @@ void set_battle_march_fx(int unit_type)
 // FUNCTION: C2WIN 0x00403094
 void set_battle_fight_fx(int event)
 {
-    int slot = 0;
+    int ambient_idx = 0;
 
-    if      (event <= 2)    slot = 8;
-    else if (event <= 3)    slot = 9;
-    else if (event <= 5)    slot = 8;
-    else if (event <= 6)    slot = 0xa;
-    else if (event <= 7)    slot = 7;
-    else if (event <= 8)    slot = 0xa;
-    else if (event <= 0xa)  slot = 9;
-    else if (event <= 0xd)  slot = 8;
-    else if (event <= 0x11) slot = 9;
+    if      (event <= 2)    ambient_idx = 8;
+    else if (event <= 3)    ambient_idx = 9;
+    else if (event <= 5)    ambient_idx = 8;
+    else if (event <= 6)    ambient_idx = 0xa;
+    else if (event <= 7)    ambient_idx = 7;
+    else if (event <= 8)    ambient_idx = 0xa;
+    else if (event <= 0xa)  ambient_idx = 9;
+    else if (event <= 0xd)  ambient_idx = 8;
+    else if (event <= 0x11) ambient_idx = 9;
 
-    ambient_list[slot].active = 1;
-    ambient_list[slot].delay_counter += 0x19;
+    ambient_list[ambient_idx].active = 1;
+    ambient_list[ambient_idx].delay_counter += 0x19;
 }
 
 // Schedule the missile-impact sound associated with a battle event.
@@ -797,16 +797,16 @@ void set_battle_fight_fx(int event)
 // FUNCTION: C2WIN 0x004031ac
 void set_missile_fight_fx(int event)
 {
-    int slot = 0;
+    int ambient_idx = 0;
 
-    if      (event <= 3)    slot = 6;
-    else if (event <= 9)    slot = 0xb;
-    else if (event <= 0xa)  slot = 6;
-    else if (event <= 0x10) slot = 3;
-    else if (event <= 0x11) slot = 0xb;
+    if      (event <= 3)    ambient_idx = 6;
+    else if (event <= 9)    ambient_idx = 0xb;
+    else if (event <= 0xa)  ambient_idx = 6;
+    else if (event <= 0x10) ambient_idx = 3;
+    else if (event <= 0x11) ambient_idx = 0xb;
 
-    ambient_list[slot].active = 1;
-    ambient_list[slot].delay_counter += 0x19;
+    ambient_list[ambient_idx].active = 1;
+    ambient_list[ambient_idx].delay_counter += 0x19;
 }
 
 // Schedule the launch sound associated with a missile type.
@@ -814,16 +814,16 @@ void set_missile_fight_fx(int event)
 // FUNCTION: C2WIN 0x0040326c
 void set_missile_fire_fx(int missile_type)
 {
-    int idx = 0;
+    int ambient_idx = 0;
 
-    if      (missile_type <=  3) idx = 4;
-    else if (missile_type <=  9) idx = 0;
-    else if (missile_type <= 10) idx = 4;
-    else if (missile_type <= 16) idx = 1;
-    else if (missile_type <= 17) idx = 0;
+    if      (missile_type <=  3) ambient_idx = 4;
+    else if (missile_type <=  9) ambient_idx = 0;
+    else if (missile_type <= 10) ambient_idx = 4;
+    else if (missile_type <= 16) ambient_idx = 1;
+    else if (missile_type <= 17) ambient_idx = 0;
 
-    ambient_list[idx].active = 1;
-    ambient_list[idx].delay_counter += 0x28;
+    ambient_list[ambient_idx].active = 1;
+    ambient_list[ambient_idx].delay_counter += 0x28;
 }
 
 // Play eligible ambient sounds and rotate through each slot's sample names.
@@ -1050,11 +1050,11 @@ void init_battle_ambients(void)
 // Allocate storage for the requested number of cached 20,000-byte samples.
 // FUNCTION: C2 0x13546
 // FUNCTION: C2WIN 0x00403fd7
-int init_sample_buffer(int n)
+int init_sample_buffer(int sample_count)
 {
     sample_buffer = 0;
     if (samples_running != 0 && c2inf.samples_on != 0) {
-        sample_buffer = malloc(n * 20000);
+        sample_buffer = malloc(sample_count * 20000);
         if (sample_buffer == 0) return 0;
     }
     return 1;
@@ -1062,7 +1062,7 @@ int init_sample_buffer(int n)
 
 // Release the cached-sample storage.
 // FUNCTION: C2 0x1358a
-void free_sample_buffer(int n)
+void free_sample_buffer(int sample_count)
 {
     if (sample_buffer != 0) free(sample_buffer);
 }
