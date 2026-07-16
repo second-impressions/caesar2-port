@@ -116,7 +116,7 @@ char *speech_filaname;
 // Selects an indexed speech sample and passes it to the streaming audio player.
 // FUNCTION: C2 0x135a4
 // FUNCTION: C2WIN 0x00482a90
-void play_speech(int param_1) {
-    speech_filaname = speech_files[param_1].name;
+void play_speech(int speech_idx) {
+    speech_filaname = speech_files[speech_idx].name;
     set_db_sound(speech_filaname);
 }
