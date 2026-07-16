@@ -7,10 +7,10 @@ extern int colour_cycle_delay1();
 extern int colour_cycle_delay2();
 
 
-extern void put_a_font_string(char *str, int x, int y, unsigned char *font, int color);
-extern void font_list(int idx, int word_count, int x, int y, unsigned char *font, int color);
-extern int  get_fb_width(unsigned char *font);
-extern void show_cursor(unsigned char *font);
+extern void put_a_font_string(char *text, int text_x, int text_y, unsigned char *font_ptr, int color);
+extern void font_list(int string_idx, int word_count, int list_x, int list_y, unsigned char *font_ptr, int color);
+extern int  get_fb_width(unsigned char *font_ptr);
+extern void show_cursor(unsigned char *font_ptr);
 
 extern void exit_screen_void(void);
 
@@ -75,18 +75,18 @@ void floop_end(void)
 // FUNCTION: C2WIN 0x0040fb4a
 void main_game_loop(void)
 {
-    int sub_loops;
-    int i;
+    int simulation_step_count;
+    int simulation_step_idx;
 
     cycle_count++;
     button_time_flag = running_delay1();
 
     if (game_speed() != 0) {
         if (turbo_mode != 0)
-            sub_loops = 4;
+            simulation_step_count = 4;
         else
-            sub_loops = 1;
-        for (i = 0; i < sub_loops; i++) {
+            simulation_step_count = 1;
+        for (simulation_step_idx = 0; simulation_step_idx < simulation_step_count; simulation_step_idx++) {
             do_32_count();
             random();
             citymap_evolution();
@@ -425,7 +425,7 @@ void gift_game_loop(int gift_index)
 // FUNCTION: C2WIN 0x00410736
 void forum_temple_game_loop(void)
 {
-    int i;
+    int temple_idx;
 
     gloop_start();
     if (gen_refresh1) {
@@ -434,9 +434,9 @@ void forum_temple_game_loop(void)
     }
     gloop_end();
     if (mouse_left_preclick) {
-        for (i = 0; i < 4; i++) {
-            if (mouse_in_area(i * 160 + 10, 0x164, 0x8c, 0x21)) {
-                act_set_temple_tips(i);
+        for (temple_idx = 0; temple_idx < 4; temple_idx++) {
+            if (mouse_in_area(temple_idx * 160 + 10, 0x164, 0x8c, 0x21)) {
+                act_set_temple_tips(temple_idx);
                 break;
             }
         }
@@ -600,7 +600,7 @@ void forum_industry_game_loop(void)
 // FUNCTION: C2WIN 0x00410c24
 void forum_slaves_game_loop(void)
 {
-    int i;
+    int need_level;
 
     gloop_start();
     if (gen_refresh1) {
@@ -617,9 +617,9 @@ void forum_slaves_game_loop(void)
     control_buttons(0x1ae, 0x26, slave2_buttons, 0xc);
     floop_end();
     if (mouse_left_preclick) {
-        for (i = 1; i < 7; i++) {
-            if (mouse_in_area(0x216, i * 24 + 18, 0x50, 0x14)) {
-                act_set_slaves_to_need_level(i);
+        for (need_level = 1; need_level < 7; need_level++) {
+            if (mouse_in_area(0x216, need_level * 24 + 18, 0x50, 0x14)) {
+                act_set_slaves_to_need_level(need_level);
                 break;
             }
         }
@@ -648,34 +648,34 @@ void forum_idle_game_loop(void)
 // FUNCTION: C2WIN 0x00410d82
 void explain_forum(void)
 {
-    int i;
+    int department_idx;
 
     if (out1 == 1) return;
-    for (i = 0; i < FORUM_DEPT_END; i++) {
-        if (i == forum_dept_over)
-            forum_explanations(i, 1);
+    for (department_idx = 0; department_idx < FORUM_DEPT_END; department_idx++) {
+        if (department_idx == forum_dept_over)
+            forum_explanations(department_idx, 1);
         else
-            forum_explanations(i, 0);
+            forum_explanations(department_idx, 0);
     }
 }
 
 // Draws one forum-department label at its menu position, using the highlighted color when selected.
 // FUNCTION: C2 0x3e227
 // FUNCTION: C2WIN 0x00410df1
-void forum_explanations(int idx, int hilite)
+void forum_explanations(int department_idx, int highlight_flag)
 {
-    int x;
-    int y;
+    int label_x;
+    int label_y;
 
-    x = forum_menu[idx].x + 8;
-    y = forum_menu[idx].y + 5;
+    label_x = forum_menu[department_idx].x + 8;
+    label_y = forum_menu[department_idx].y + 5;
     stone_random_count = 0xb;
-    show_a_mosaic_blank(x, y, 9, 1);
-    if (hilite == 0)
-        font_list(0x1d, idx, x + 4, y + 2, font1, 0x10);
+    show_a_mosaic_blank(label_x, label_y, 9, 1);
+    if (highlight_flag == 0)
+        font_list(0x1d, department_idx, label_x + 4, label_y + 2, font1, 0x10);
     else
-        font_list(0x1d, idx, x + 4, y + 2, font1, 0xb);
-    setup_refresh_area(x, y, 0xa, 2, 1);
+        font_list(0x1d, department_idx, label_x + 4, label_y + 2, font1, 0xb);
+    setup_refresh_area(label_x, label_y, 0xa, 2, 1);
 }
 
 // Polls input and refreshes one otherwise idle year-end frame.
@@ -846,7 +846,7 @@ end:;
 // FUNCTION: C2WIN 0x004112b7
 void new_name_game_loop(void)
 {
-    int y;
+    int field_y;
 
     hold_hot_keys = 1;
     gloop_start();
@@ -857,12 +857,12 @@ void new_name_game_loop(void)
     got_cursx = 0;
     cursor_x = 0;
     fb_count = 0;
-    y = 0xe0;
-    cursor_y = y;
+    field_y = 0xe0;
+    cursor_y = field_y;
     allow_padding = 1;
     x_is = 0;
-    show_a_system_blank(y, 0xd8, 0xc, 2);
-    put_a_font_string(c2inf.player_name, 0xe2, y, font1, 0x10);
+    show_a_system_blank(field_y, 0xd8, 0xc, 2);
+    put_a_font_string(c2inf.player_name, 0xe2, field_y, font1, 0x10);
     fb_max_width_reached = (get_fb_width(font1) > fb_line_length);
     if (got_cursx == 0) {
         cursor_x = x_is;
@@ -921,20 +921,20 @@ void promotion_game_loop(void)
 // FUNCTION: C2WIN 0x00411562
 int game_speed(void)
 {
-    int q;
+    int speed_delay;
 
     cmu_count[1] += button_time_flag;
     if (turbo_mode > 1)
         return 1;
 
-    q = (100 - c2inf.game_speed) / 10;
-    if (q < 10) {
+    speed_delay = (100 - c2inf.game_speed) / 10;
+    if (speed_delay < 10) {
         if (!c2inf.paused) {
             if (!scrolling) {
                 if (flag_mode == 0) {
                     if (pointer_mode < 5) {
                         if (!mouse_left_button) {
-                            if (q * 50 + 50 <= cmu_count[1]) {
+                            if (speed_delay * 50 + 50 <= cmu_count[1]) {
                                 cmu_count[1] = flag_mode;
                                 return 1;
                             }
@@ -952,12 +952,12 @@ int game_speed(void)
 // FUNCTION: C2WIN 0x00411657
 int scroll_speed(void)
 {
-    int q;
+    int scroll_delay;
 
     cmu_count[2] += button_time_flag;
-    q = (100 - c2inf.scroll_speed) / 10;
-    if (q < 10) {
-        if (q * 50 + 20 <= cmu_count[2]) {
+    scroll_delay = (100 - c2inf.scroll_speed) / 10;
+    if (scroll_delay < 10) {
+        if (scroll_delay * 50 + 20 <= cmu_count[2]) {
             cmu_count[2] = 0;
             return 1;
         }

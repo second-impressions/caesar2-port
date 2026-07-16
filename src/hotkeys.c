@@ -257,20 +257,20 @@ char sim_mouse(void)
 
 // Captures the current screen to an image file.
 // FUNCTION: C2 0x28e13
-void capture_shot(char *fname)
+void capture_shot(char *filename)
 {
-    int fd;
+    int screenshot_fd;
 
     go_16m_palette(&current_palette);
-    fd = open(fname,
+    screenshot_fd = open(filename,
               O_BINARY | O_TRUNC | O_CREAT | O_WRONLY,
               S_IRUSR | S_IWUSR);
-    if (fd != -1) {
-        write(fd, &LBM_HEADER1, 0x30);
-        write(fd, &current_palette, 0x300);
-        write(fd, &LBM_HEADER2, 8);
-        write(fd, internal_screen, 0x4b000);
-        close(fd);
+    if (screenshot_fd != -1) {
+        write(screenshot_fd, &LBM_HEADER1, 0x30);
+        write(screenshot_fd, &current_palette, 0x300);
+        write(screenshot_fd, &LBM_HEADER2, 8);
+        write(screenshot_fd, internal_screen, 0x4b000);
+        close(screenshot_fd);
         go_64k_palette(&current_palette);
     }
 }

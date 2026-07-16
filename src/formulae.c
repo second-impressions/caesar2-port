@@ -38,7 +38,7 @@ void check_game_over(void) {
 // FUNCTION: C2 0x5539d
 // FUNCTION: C2WIN 0x00454d39
 void check_for_promotion(void) {
-    int level;
+    int promotion_level;
     adjust_culture_criteria();
     adjust_proserity_criteria();
     if (c2inf.peace_mode == 0) {
@@ -54,13 +54,13 @@ void check_for_promotion(void) {
                 if (average_rating < promotion_av_levels[c2inf.skill_level][completed_provinces]) return;
             }
             promotion_cheat = 0;
-            level = province_completion_to_promotion[c2inf.skill_level][completed_provinces];
+            promotion_level = province_completion_to_promotion[c2inf.skill_level][completed_provinces];
             empire_won[province_is] = years_elapsed_in_region + 1;
-            if (want_promotion(level) != 0) {
+            if (want_promotion(promotion_level) != 0) {
                 completed_provinces++;
                 if (completed_provinces > 19) completed_provinces = 19;
-                if (level == 0) assign_to_new_province();
-                else do_promotion(level);
+                if (promotion_level == 0) assign_to_new_province();
+                else do_promotion(promotion_level);
             }
         }
     }
@@ -70,18 +70,18 @@ void check_for_promotion(void) {
 // FUNCTION: C2 0x554f3
 // FUNCTION: C2WIN 0x00454f27
 void adjust_peace_criteria(void) {
-    int orig;
-    int adj;
-    int t;
+    int uncapped_rating;
+    int capped_rating;
+    int peace_points;
     pax_romanum += 2;
     if (pax_romanum > 1000) pax_romanum = 1000;
     if (pax_romanum < 0)    pax_romanum = 0;
-    t = pax_romanum;
-    peace_rating = t / 10;
-    orig = peace_rating;
-    adj = city_pop_limit_10_to_1(orig, 1);
-    peace_rating = adj;
-    peace_rating_pop_limit = (orig > adj);
+    peace_points = pax_romanum;
+    peace_rating = peace_points / 10;
+    uncapped_rating = peace_rating;
+    capped_rating = city_pop_limit_10_to_1(uncapped_rating, 1);
+    peace_rating = capped_rating;
+    peace_rating_pop_limit = (uncapped_rating > capped_rating);
     if (population < 10)
         peace_rating_pop_limit = 0;
 }
@@ -90,9 +90,9 @@ void adjust_peace_criteria(void) {
 // FUNCTION: C2 0x55573
 // FUNCTION: C2WIN 0x00454fdb
 void adjust_culture_criteria(void) {
-    int divisor;
-    int orig;
-    int adj;
+    int population_divisor;
+    int uncapped_rating;
+    int capped_rating;
     entertainment_level  = theatre_culture_count * 5;
     entertainment_level += odium_culture_count * 8;
     entertainment_level += arena_culture_count * 12;
@@ -110,18 +110,18 @@ void adjust_culture_criteria(void) {
     utility_level += accessed_hospitals_count * 10;
     utility_level += accessed_libraries_count * 20;
     utility_level *= 100;
-    divisor = population / 16 + 2;
-    entertainment_level /= divisor;
-    religion_level /= divisor;
-    utility_level /= divisor;
+    population_divisor = population / 16 + 2;
+    entertainment_level /= population_divisor;
+    religion_level /= population_divisor;
+    utility_level /= population_divisor;
     if (entertainment_level > 100) entertainment_level = 100;
     if (religion_level > 100) religion_level = 100;
     if (utility_level > 100) utility_level = 100;
     culture_rating = (entertainment_level + religion_level + utility_level) / 3;
-    orig = culture_rating;
-    adj = city_pop_limit_10_to_1(culture_rating, 3);
-    culture_rating = adj;
-    culture_rating_pop_limit = (orig > adj);
+    uncapped_rating = culture_rating;
+    capped_rating = city_pop_limit_10_to_1(culture_rating, 3);
+    culture_rating = capped_rating;
+    culture_rating_pop_limit = (uncapped_rating > capped_rating);
     if (population < 10) culture_rating_pop_limit = 0;
 }
 
@@ -129,21 +129,21 @@ void adjust_culture_criteria(void) {
 // FUNCTION: C2 0x557af
 // FUNCTION: C2WIN 0x00455201
 void adjust_proserity_criteria(void) {
-    int pop_cap;
-    int rating;
+    int population_rating;
+    int uncapped_rating;
     current_gdp = average_pop_tax_denariis * 100 + average_pop_tax_asses;
     current_gdp /= 4;
     if (current_gdp > 60) current_gdp = 60;
-    pop_cap = population;
-    if (pop_cap > 2000) pop_cap = 2000;
-    pop_cap /= 60;
+    population_rating = population;
+    if (population_rating > 2000) population_rating = 2000;
+    population_rating /= 60;
     if (month == 11) rolling_profit += account_total;
     if (rolling_profit < -5000) rolling_profit = -5000;
     if (rolling_profit > 5000) rolling_profit = 5000;
-    prosperity_rating = current_gdp + pop_cap + rolling_profit / 200;
-    rating = prosperity_rating;
-    prosperity_rating = city_pop_limit_10_to_1(rating, 4);
-    prosperity_rating_pop_limit = (rating > prosperity_rating);
+    prosperity_rating = current_gdp + population_rating + rolling_profit / 200;
+    uncapped_rating = prosperity_rating;
+    prosperity_rating = city_pop_limit_10_to_1(uncapped_rating, 4);
+    prosperity_rating_pop_limit = (uncapped_rating > prosperity_rating);
     if (population < 10) prosperity_rating_pop_limit = 0;
 }
 
@@ -151,8 +151,8 @@ void adjust_proserity_criteria(void) {
 // FUNCTION: C2 0x558a0
 // FUNCTION: C2WIN 0x00455342
 void adjust_empire_criteria(void) {
-    int orig;
-    int adj;
+    int uncapped_rating;
+    int capped_rating;
     empire_rating  = (imperial_favour - 80) / 10;
     empire_rating += no_of_empire_connections * 15;
     empire_rating += no_of_connected_towns * 5;
@@ -162,36 +162,36 @@ void adjust_empire_criteria(void) {
     empire_rating += no_of_mines;
     empire_rating += no_of_quarrys;
     empire_rating += no_of_trading_posts * 2;
-    orig = empire_rating;
-    adj = city_pop_limit_10_to_1(empire_rating, 1);
-    empire_rating = adj;
-    empire_rating_pop_limit = (orig > adj);
+    uncapped_rating = empire_rating;
+    capped_rating = city_pop_limit_10_to_1(empire_rating, 1);
+    empire_rating = capped_rating;
+    empire_rating_pop_limit = (uncapped_rating > capped_rating);
     if (population < 10) empire_rating_pop_limit = 0;
 }
 
 // Caps a rating according to the city's current population tier.
 // FUNCTION: C2 0x55992
 // FUNCTION: C2WIN 0x00455432
-int city_pop_limit_10_to_1(int value, int factor) {
-    int counter;
-    if (value < 0) value = 0;
-    if (value > 100) value = 100;
-    for (counter = 0; counter < 100; counter++) {
-        if (counter * 10 * factor >= population) {
-            if (value > counter) value = counter;
+int city_pop_limit_10_to_1(int rating, int population_factor) {
+    int rating_limit;
+    if (rating < 0) rating = 0;
+    if (rating > 100) rating = 100;
+    for (rating_limit = 0; rating_limit < 100; rating_limit++) {
+        if (rating_limit * 10 * population_factor >= population) {
+            if (rating > rating_limit) rating = rating_limit;
             break;
         }
     }
-    return value;
+    return rating;
 }
 
 // Asks whether the player accepts an offered promotion.
 // FUNCTION: C2 0x559d5
 // FUNCTION: C2WIN 0x004554ba
-int want_promotion(int level) {
-    int top_rank;
+int want_promotion(int promotion_level) {
+    int promoted_rank;
     pointer_mode = 0;
-    show_want_promotion_box(player_rank + level);
+    show_want_promotion_box(player_rank + promotion_level);
     clear_mouse();
     out2 = 0;
     decision = 0;
@@ -200,8 +200,8 @@ int want_promotion(int level) {
     }
     flush_sb_buffer();
     stop_db();
-    top_rank = level + player_rank;
-    if (top_rank >= 10 && decision == 1) {
+    promoted_rank = promotion_level + player_rank;
+    if (promoted_rank >= 10 && decision == 1) {
         if (c2inf.skill_level < 2) {
             make_emperor();
             return 0;
@@ -264,12 +264,12 @@ void assign_to_new_province(void) {
 // Applies a rank promotion and returns to province selection.
 // FUNCTION: C2 0x55b1e
 // FUNCTION: C2WIN 0x00455768
-void do_promotion(int level) {
+void do_promotion(int promotion_level) {
     game_state = 3;
     if (player_rank < 10) {
-        level += player_rank;
-        if (level <= 10) {
-            player_rank = level;
+        promotion_level += player_rank;
+        if (promotion_level <= 10) {
+            player_rank = promotion_level;
         }
     }
 }
@@ -286,7 +286,7 @@ void make_emperor(void) {
 // FUNCTION: C2 0x55b52
 // FUNCTION: C2WIN 0x004557c9
 void init_legion(void) {
-    int s;
+    int special_count;
     army_wage_level = 0;
     conscription_rate = 2;
     mercs_in_army = 0;
@@ -303,9 +303,9 @@ void init_legion(void) {
     needed_no_of_auxillaries = 0;
     needed_no_of_irregulars = 0;
     needed_no_of_regulars = 0;
-    s = needed_no_of_specials;
-    current_no_of_specials = s;
-    total_no_of_specials = s;
+    special_count = needed_no_of_specials;
+    current_no_of_specials = special_count;
+    total_no_of_specials = special_count;
     extra_auxillaries = 0;
     lacking_auxillaries = 0;
     extra_irregulars = 0;
@@ -323,7 +323,7 @@ void init_legion(void) {
 // FUNCTION: C2 0x55c0b
 // FUNCTION: C2WIN 0x004558f1
 void train_soldiers(void) {
-    int mercs_cost;
+    int mercenary_cost;
     if (c2inf.peace_mode != 0) return;
     get_cohorts_in_action();
     get_current_cohort_totals();
@@ -332,10 +332,10 @@ void train_soldiers(void) {
     fill_cohort_centuries();
     get_morale_and_readiness();
     current_operating_cost += army_wage_level;
-    mercs_cost = (mercs_in_army / 50) * mercs_cost_per_50;
-    current_operating_cost += mercs_cost;
+    mercenary_cost = (mercs_in_army / 50) * mercs_cost_per_50;
+    current_operating_cost += mercenary_cost;
     denarii -= army_wage_level;
-    denarii -= mercs_cost;
+    denarii -= mercenary_cost;
 }
 
 // Recalculates readiness for each active cohort and updates the army-wide averages.
@@ -394,13 +394,13 @@ void get_current_cohort_totals(void) {
 // FUNCTION: C2 0x55e1d
 // FUNCTION: C2WIN 0x00455cce
 void set_current_cohort_totals(void) {
-    int count;
+    int iteration_count;
     int i;
-    int n;
-    int needed_spe;
-    int needed_reg;
-    int needed_aux;
-    int needed_irr;
+    int troops_per_pass;
+    int needed_specials;
+    int needed_regulars;
+    int needed_auxillaries;
+    int needed_irregulars;
 
     if (no_of_cohorts_in_action <= 0) {
         current_no_of_soldiers = 0;
@@ -410,26 +410,26 @@ void set_current_cohort_totals(void) {
         return;
     }
 
-    count = 0;
+    iteration_count = 0;
     temp_army = last_adjusted_cohort;
 
     // Reconcile auxiliaries.
     while (lacking_auxillaries > 0) {
-        count++;
-        if (count >= 40000) break;
+        iteration_count++;
+        if (iteration_count >= 40000) break;
         if (get_next_temp_cohort(0) == 0) break;
         if (army_list[temp_army].num_auxillaries == 0) continue;
         army_list[temp_army].num_auxillaries--;
         lacking_auxillaries--;
     }
     while (extra_auxillaries > 0) {
-        count++;
-        if (count >= 40000) break;
+        iteration_count++;
+        if (iteration_count >= 40000) break;
         if (get_next_temp_cohort(1) == 0) break;
-        if (army_list[temp_army].cohort_size_class == 0)      n = 2;
-        else if (army_list[temp_army].cohort_size_class == 2) n = 4;
-        else                                                  n = 1;
-        for (i = 0; i < n; i++) {
+        if (army_list[temp_army].cohort_size_class == 0)      troops_per_pass = 2;
+        else if (army_list[temp_army].cohort_size_class == 2) troops_per_pass = 4;
+        else                                                  troops_per_pass = 1;
+        for (i = 0; i < troops_per_pass; i++) {
             if (extra_auxillaries == 0) break;
             army_list[temp_army].num_auxillaries++;
             extra_auxillaries--;
@@ -438,21 +438,21 @@ void set_current_cohort_totals(void) {
 
     // Reconcile irregulars.
     while (lacking_irregulars > 0) {
-        count++;
-        if (count >= 40000) break;
+        iteration_count++;
+        if (iteration_count >= 40000) break;
         if (get_next_temp_cohort(0) == 0) break;
         if (army_list[temp_army].num_irregulars == 0) continue;
         army_list[temp_army].num_irregulars--;
         lacking_irregulars--;
     }
     while (extra_irregulars > 0) {
-        count++;
-        if (count >= 40000) break;
+        iteration_count++;
+        if (iteration_count >= 40000) break;
         if (get_next_temp_cohort(1) == 0) break;
-        if (army_list[temp_army].cohort_size_class == 0)      n = 2;
-        else if (army_list[temp_army].cohort_size_class == 2) n = 4;
-        else                                                  n = 1;
-        for (i = 0; i < n; i++) {
+        if (army_list[temp_army].cohort_size_class == 0)      troops_per_pass = 2;
+        else if (army_list[temp_army].cohort_size_class == 2) troops_per_pass = 4;
+        else                                                  troops_per_pass = 1;
+        for (i = 0; i < troops_per_pass; i++) {
             if (extra_irregulars == 0) break;
             army_list[temp_army].num_irregulars++;
             extra_irregulars--;
@@ -461,21 +461,21 @@ void set_current_cohort_totals(void) {
 
     // Reconcile regulars.
     while (lacking_regulars > 0) {
-        count++;
-        if (count >= 40000) break;
+        iteration_count++;
+        if (iteration_count >= 40000) break;
         if (get_next_temp_cohort(0) == 0) break;
         if (army_list[temp_army].num_regulars == 0) continue;
         army_list[temp_army].num_regulars--;
         lacking_regulars--;
     }
     while (extra_regulars > 0) {
-        count++;
-        if (count >= 40000) break;
+        iteration_count++;
+        if (iteration_count >= 40000) break;
         if (get_next_temp_cohort(1) == 0) break;
-        if (army_list[temp_army].cohort_size_class == 0)      n = 2;
-        else if (army_list[temp_army].cohort_size_class == 2) n = 4;
-        else                                                  n = 1;
-        for (i = 0; i < n; i++) {
+        if (army_list[temp_army].cohort_size_class == 0)      troops_per_pass = 2;
+        else if (army_list[temp_army].cohort_size_class == 2) troops_per_pass = 4;
+        else                                                  troops_per_pass = 1;
+        for (i = 0; i < troops_per_pass; i++) {
             if (extra_regulars == 0) break;
             army_list[temp_army].num_regulars++;
             extra_regulars--;
@@ -484,21 +484,21 @@ void set_current_cohort_totals(void) {
 
     // Reconcile special troops.
     while (lacking_specials > 0) {
-        count++;
-        if (count >= 40000) break;
+        iteration_count++;
+        if (iteration_count >= 40000) break;
         if (get_next_temp_cohort(0) == 0) break;
         if (army_list[temp_army].num_specials == 0) continue;
         army_list[temp_army].num_specials--;
         lacking_specials--;
     }
     while (extra_specials > 0) {
-        count++;
-        if (count >= 40000) break;
+        iteration_count++;
+        if (iteration_count >= 40000) break;
         if (get_next_temp_cohort(1) == 0) break;
-        if (army_list[temp_army].cohort_size_class == 0)      n = 2;
-        else if (army_list[temp_army].cohort_size_class == 2) n = 4;
-        else                                                  n = 1;
-        for (i = 0; i < n; i++) {
+        if (army_list[temp_army].cohort_size_class == 0)      troops_per_pass = 2;
+        else if (army_list[temp_army].cohort_size_class == 2) troops_per_pass = 4;
+        else                                                  troops_per_pass = 1;
+        for (i = 0; i < troops_per_pass; i++) {
             if (extra_specials == 0) break;
             army_list[temp_army].num_specials++;
             extra_specials--;
@@ -520,32 +520,32 @@ void set_current_cohort_totals(void) {
     }
 
     // Distribute remaining reinforcement needs among active cohorts.
-    needed_aux = needed_no_of_auxillaries;
-    needed_irr = needed_no_of_irregulars;
-    needed_reg = needed_no_of_regulars;
-    needed_spe = needed_no_of_specials;
+    needed_auxillaries = needed_no_of_auxillaries;
+    needed_irregulars = needed_no_of_irregulars;
+    needed_regulars = needed_no_of_regulars;
+    needed_specials = needed_no_of_specials;
 
-    while (needed_aux-- > 0) {
-        count++;
-        if (count >= 40000) break;
+    while (needed_auxillaries-- > 0) {
+        iteration_count++;
+        if (iteration_count >= 40000) break;
         if (get_next_temp_cohort(1) == 0) break;
         army_list[temp_army].assigned_needs++;
     }
-    while (needed_irr-- > 0) {
-        count++;
-        if (count >= 40000) break;
+    while (needed_irregulars-- > 0) {
+        iteration_count++;
+        if (iteration_count >= 40000) break;
         if (get_next_temp_cohort(1) == 0) break;
         army_list[temp_army].assigned_needs++;
     }
-    while (needed_reg-- > 0) {
-        count++;
-        if (count >= 40000) break;
+    while (needed_regulars-- > 0) {
+        iteration_count++;
+        if (iteration_count >= 40000) break;
         if (get_next_temp_cohort(1) == 0) break;
         army_list[temp_army].assigned_needs++;
     }
-    while (needed_spe-- > 0) {
-        count++;
-        if (count >= 40000) break;
+    while (needed_specials-- > 0) {
+        iteration_count++;
+        if (iteration_count >= 40000) break;
         if (get_next_temp_cohort(1) == 0) break;
         army_list[temp_army].assigned_needs++;
     }
@@ -555,68 +555,68 @@ void set_current_cohort_totals(void) {
 // FUNCTION: C2 0x56322
 // FUNCTION: C2WIN 0x00456551
 void fill_cohort_centuries(void) {
-    int aux;
-    int irr;
-    int reg;
+    int auxillaries;
+    int irregulars;
+    int regulars;
     int i;
-    int spe;
+    int specials;
 
     for (temp_army = 1; temp_army < 26; temp_army++) {
         if (army_list[temp_army].exists == 0) continue;
         if (army_list[temp_army].type != 1) continue;
 
         army_list[temp_army].num_centuries = 0;
-        aux = army_list[temp_army].num_auxillaries;
-        irr = army_list[temp_army].num_irregulars;
-        reg = army_list[temp_army].num_regulars;
-        spe = army_list[temp_army].num_specials;
-        army_list[temp_army].total_troops = aux + irr + reg + spe;
+        auxillaries = army_list[temp_army].num_auxillaries;
+        irregulars = army_list[temp_army].num_irregulars;
+        regulars = army_list[temp_army].num_regulars;
+        specials = army_list[temp_army].num_specials;
+        army_list[temp_army].total_troops = auxillaries + irregulars + regulars + specials;
 
         // Pass 1: re-stock existing centuries by type.
         for (i = 0; i < 14; i++) {
             if (army_list[temp_army].centuries[i].type == 1) {                       // regulars
-                if (reg <= 0) {
+                if (regulars <= 0) {
                     army_list[temp_army].centuries[i].type = 0;
-                } else if (reg >= 60) {
-                    reg -= 60;
+                } else if (regulars >= 60) {
+                    regulars -= 60;
                     if (army_list[temp_army].centuries[i].damaged == 0)
                         army_list[temp_army].centuries[i].damaged = 1;
                 } else {
                     army_list[temp_army].centuries[i].damaged = 0;
-                    reg = 0;
+                    regulars = 0;
                 }
             } else if (army_list[temp_army].centuries[i].type == 2) {                // irregulars
-                if (irr <= 0) {
+                if (irregulars <= 0) {
                     army_list[temp_army].centuries[i].type = 0;
-                } else if (irr >= 60) {
-                    irr -= 60;
+                } else if (irregulars >= 60) {
+                    irregulars -= 60;
                     if (army_list[temp_army].centuries[i].damaged == 0)
                         army_list[temp_army].centuries[i].damaged = 1;
                 } else {
                     army_list[temp_army].centuries[i].damaged = 0;
-                    irr = 0;
+                    irregulars = 0;
                 }
             } else if (army_list[temp_army].centuries[i].type == 3) {                // auxillaries
-                if (aux <= 0) {
+                if (auxillaries <= 0) {
                     army_list[temp_army].centuries[i].type = 0;
-                } else if (aux >= 60) {
-                    aux -= 60;
+                } else if (auxillaries >= 60) {
+                    auxillaries -= 60;
                     if (army_list[temp_army].centuries[i].damaged == 0)
                         army_list[temp_army].centuries[i].damaged = 1;
                 } else {
                     army_list[temp_army].centuries[i].damaged = 0;
-                    aux = 0;
+                    auxillaries = 0;
                 }
             } else if (army_list[temp_army].centuries[i].type == 4) {                // specials
-                if (spe <= 0) {
+                if (specials <= 0) {
                     army_list[temp_army].centuries[i].type = 0;
-                } else if (spe >= 60) {
-                    spe -= 60;
+                } else if (specials >= 60) {
+                    specials -= 60;
                     if (army_list[temp_army].centuries[i].damaged == 0)
                         army_list[temp_army].centuries[i].damaged = 1;
                 } else {
                     army_list[temp_army].centuries[i].damaged = 0;
-                    spe = 0;
+                    specials = 0;
                 }
             }
         }
@@ -624,36 +624,36 @@ void fill_cohort_centuries(void) {
         // Pass 2: fill empty centuries from leftovers.
         for (i = 0; i < 14; i++) {
             if (army_list[temp_army].centuries[i].type != 0) continue;
-            if (reg >= 60) {
-                reg -= 60;
+            if (regulars >= 60) {
+                regulars -= 60;
                 army_list[temp_army].centuries[i].type = 1;
                 army_list[temp_army].centuries[i].damaged = 1;
-            } else if (irr >= 60) {
-                irr -= 60;
+            } else if (irregulars >= 60) {
+                irregulars -= 60;
                 army_list[temp_army].centuries[i].type = 2;
                 army_list[temp_army].centuries[i].damaged = 1;
-            } else if (aux >= 60) {
-                aux -= 60;
+            } else if (auxillaries >= 60) {
+                auxillaries -= 60;
                 army_list[temp_army].centuries[i].type = 3;
                 army_list[temp_army].centuries[i].damaged = 1;
-            } else if (spe >= 60) {
-                spe -= 60;
+            } else if (specials >= 60) {
+                specials -= 60;
                 army_list[temp_army].centuries[i].type = 4;
                 army_list[temp_army].centuries[i].damaged = 1;
-            } else if (reg != 0) {
-                reg = 0;
+            } else if (regulars != 0) {
+                regulars = 0;
                 army_list[temp_army].centuries[i].type = 1;
                 army_list[temp_army].centuries[i].damaged = 0;
-            } else if (irr != 0) {
-                irr = 0;
+            } else if (irregulars != 0) {
+                irregulars = 0;
                 army_list[temp_army].centuries[i].type = 2;
                 army_list[temp_army].centuries[i].damaged = 0;
-            } else if (aux != 0) {
-                aux = 0;
+            } else if (auxillaries != 0) {
+                auxillaries = 0;
                 army_list[temp_army].centuries[i].type = 3;
                 army_list[temp_army].centuries[i].damaged = 0;
-            } else if (spe != 0) {
-                spe = 0;
+            } else if (specials != 0) {
+                specials = 0;
                 army_list[temp_army].centuries[i].type = 4;
                 army_list[temp_army].centuries[i].damaged = 0;
             }
@@ -790,51 +790,51 @@ void init_slaves(void) {
 // FUNCTION: C2 0x569a1
 // FUNCTION: C2WIN 0x00457258
 void slave_welfare(void) {
-    int orig_slaves = slaves;
-    int standard    = main_paras[0] - province_difficulty / 3;
-    int quality     = valueDIVtotal(standard * slave_welfare_bill, orig_slaves);
-    int growth_pct;
-    int mortality_pct;
-    int growth_amt;
-    int mortality_amt;
+    int old_slave_count = slaves;
+    int welfare_standard    = main_paras[0] - province_difficulty / 3;
+    int welfare_quality     = valueDIVtotal(welfare_standard * slave_welfare_bill, old_slave_count);
+    int growth_percent;
+    int mortality_percent;
+    int growth_count;
+    int mortality_count;
 
-    if      (quality <   10) { mortality_pct = 50; growth_pct =   1; }
-    else if (quality <   25) { mortality_pct = 30; growth_pct =   2; }
-    else if (quality <   50) { mortality_pct = 20; growth_pct =   3; }
-    else if (quality <   75) { mortality_pct = 15; growth_pct =   4; }
-    else if (quality <   95) { mortality_pct =  9; growth_pct =   5; }
-    else if (quality > 2000) { mortality_pct =    2; growth_pct = 200; }
-    else if (quality > 1500) { mortality_pct =    2; growth_pct = 150; }
-    else if (quality > 1000) { mortality_pct =    2; growth_pct = 100; }
-    else if (quality >  750) { mortality_pct =    2; growth_pct =  60; }
-    else if (quality >  500) { mortality_pct =    2; growth_pct =  40; }
-    else if (quality >  300) { mortality_pct =    2; growth_pct =  20; }
-    else if (quality >  200) { mortality_pct =    3; growth_pct =  15; }
-    else if (quality >  150) { mortality_pct =    4; growth_pct =  11; }
-    else if (quality >  125) { mortality_pct =    5; growth_pct =   9; }
-    else if (quality >  105) { mortality_pct =    6; growth_pct =   8; }
+    if      (welfare_quality <   10) { mortality_percent = 50; growth_percent =   1; }
+    else if (welfare_quality <   25) { mortality_percent = 30; growth_percent =   2; }
+    else if (welfare_quality <   50) { mortality_percent = 20; growth_percent =   3; }
+    else if (welfare_quality <   75) { mortality_percent = 15; growth_percent =   4; }
+    else if (welfare_quality <   95) { mortality_percent =  9; growth_percent =   5; }
+    else if (welfare_quality > 2000) { mortality_percent =    2; growth_percent = 200; }
+    else if (welfare_quality > 1500) { mortality_percent =    2; growth_percent = 150; }
+    else if (welfare_quality > 1000) { mortality_percent =    2; growth_percent = 100; }
+    else if (welfare_quality >  750) { mortality_percent =    2; growth_percent =  60; }
+    else if (welfare_quality >  500) { mortality_percent =    2; growth_percent =  40; }
+    else if (welfare_quality >  300) { mortality_percent =    2; growth_percent =  20; }
+    else if (welfare_quality >  200) { mortality_percent =    3; growth_percent =  15; }
+    else if (welfare_quality >  150) { mortality_percent =    4; growth_percent =  11; }
+    else if (welfare_quality >  125) { mortality_percent =    5; growth_percent =   9; }
+    else if (welfare_quality >  105) { mortality_percent =    6; growth_percent =   8; }
     else {
         // A balanced welfare level leaves the slave population unchanged.
         slave_population_change = 0;
         return;
     }
 
-    growth_amt    = totalXpercent(slaves, growth_pct);
-    mortality_amt = totalXpercent(slaves, mortality_pct);
-    growth_amt++;
-    slaves += growth_amt;
-    slaves -= mortality_amt;
+    growth_count    = totalXpercent(slaves, growth_percent);
+    mortality_count = totalXpercent(slaves, mortality_percent);
+    growth_count++;
+    slaves += growth_count;
+    slaves -= mortality_count;
     if (slaves < 1) slaves = 1;
-    slave_population_change = slaves - orig_slaves;
+    slave_population_change = slaves - old_slave_count;
 }
 
 // Charges the monthly slave welfare bill to the provincial treasury.
 // FUNCTION: C2 0x56b5a
 // FUNCTION: C2WIN 0x004574e1
 void slave_costs(void) {
-    int bill = slave_welfare_bill;
-    denarii -= bill;
-    current_operating_cost += bill;
+    int welfare_cost = slave_welfare_bill;
+    denarii -= welfare_cost;
+    current_operating_cost += welfare_cost;
 }
 
 // Estimate short- and long-term slave populations without changing the live simulation state.
@@ -861,40 +861,40 @@ void slave_estimate(void) {
 // FUNCTION: C2 0x56bb5
 // FUNCTION: C2WIN 0x00457571
 void adjust_slave_usage(void) {
-    int pool = slaves;
+    int available_slaves = slaves;
     int i;
 
     slave_requirements[0].current = slave_requirements[0].max;
 
     for (i = 0; i < 7; i++) {
-        if (pool >= slave_requirements[i].current) {
-            pool -= slave_requirements[i].current;
+        if (available_slaves >= slave_requirements[i].current) {
+            available_slaves -= slave_requirements[i].current;
         } else {
-            slave_requirements[i].current = pool;
-            pool = 0;
+            slave_requirements[i].current = available_slaves;
+            available_slaves = 0;
         }
     }
-    slave_requirements[i].current = pool;              /* Unassigned workforce. */
+    slave_requirements[i].current = available_slaves;              /* Unassigned workforce. */
 }
 
 // Draw and apply a skill-dependent random province event for the current turn.
 // FUNCTION: C2 0x56bf6
 // FUNCTION: C2WIN 0x004575f9
 void random_event(void) {
-    int event;
+    int event_kind;
     int temple_score;
     int denarii_per_temple;
-    int bonus;
-    int temple_w;
-    int rob_w;
+    int robbery_bonus;
+    int temple_weight;
+    int robbery_weight;
 
     // Draw an event from the current difficulty's event table.
-    event = (unsigned char)events[c2inf.skill_level][rand128 & 63];
+    event_kind = (unsigned char)events[c2inf.skill_level][rand128 & 63];
 
     plague_accident = 999999;
     revolt_accident = 999999;
 
-    if (event == 0) {
+    if (event_kind == 0) {
         // Convert a favorable roll into a robbery check when the city is wealthy enough.
         if (denarii < 1000) return;
         if (population < 100) return;
@@ -903,26 +903,26 @@ void random_event(void) {
                      + small_temples_count;
         if (temple_score == 0) temple_score = 1;
         denarii_per_temple = denarii / temple_score;
-        if (denarii_per_temple >= 20000) bonus = 20;
-        if      (denarii_per_temple >= 10000) bonus =  20;
-        else if (denarii_per_temple >=  4000) bonus =  14;
-        else if (denarii_per_temple >=  2000) bonus =   8;
-        else if (denarii_per_temple >=  1000) bonus =   4;
-        else if (denarii_per_temple >=   500) bonus =   0;
-        else                                  bonus =  -4;
-        if (c2inf.skill_level + bonus <= rand128) return;
+        if (denarii_per_temple >= 20000) robbery_bonus = 20;
+        if      (denarii_per_temple >= 10000) robbery_bonus =  20;
+        else if (denarii_per_temple >=  4000) robbery_bonus =  14;
+        else if (denarii_per_temple >=  2000) robbery_bonus =   8;
+        else if (denarii_per_temple >=  1000) robbery_bonus =   4;
+        else if (denarii_per_temple >=   500) robbery_bonus =   0;
+        else                                  robbery_bonus =  -4;
+        if (c2inf.skill_level + robbery_bonus <= rand128) return;
         robbery_count = 1;
-        event = 3;
+        event_kind = 3;
     }
 
     // Schedule a plague accident.
-    if (event == 4) {
+    if (event_kind == 4) {
         if (plague_running_count < 4) return;
         plague_accident = get_rand_max(plague_running_count);
     }
 
     // Warn about temple neglect, then take a quarter of the treasury on recurrence.
-    if (event == 2) {
+    if (event_kind == 2) {
         if (denarii < 1000)   return;
         if (population < 100) return;
         if (temples_count == 0) {
@@ -938,7 +938,7 @@ void random_event(void) {
         // Cities with temples continue into the robbery calculation.
     }
 
-    if (event != 3) return;
+    if (event_kind != 3) return;
     if (denarii < 1000)   return;
     if (population < 100) return;
     if (temples_count == 0) {
@@ -953,13 +953,13 @@ void random_event(void) {
         return;
     }
     if (robbery_count == 0) return;
-    temple_w = large_temples_count * 4
+    temple_weight = large_temples_count * 4
              + med_temples_count   * 2
              + small_temples_count;
-    rob_w = (large_robbery_count * 4
+    robbery_weight = (large_robbery_count * 4
            + med_robbery_count   * 2
            + small_robbery_count) / robbery_count;
-    temple_score = valueDIVtotal(rob_w, temple_w);
+    temple_score = valueDIVtotal(robbery_weight, temple_weight);
     if (temple_score < 10)  temple_score = 10;
     if (temple_score > 80)  temple_score = 80;
     stolen_denarii = totalXpercent(denarii / 4, temple_score);
@@ -972,10 +972,10 @@ void random_event(void) {
 // FUNCTION: C2 0x56eb8
 // FUNCTION: C2WIN 0x00457984
 void pay_salary(void) {
-    int sal = players_salary;
-    current_operating_cost += sal;
-    players_denarii += sal;
-    denarii -= sal;
+    int salary = players_salary;
+    current_operating_cost += salary;
+    players_denarii += salary;
+    denarii -= salary;
 }
 
 // Updates population growth pressure from taxes, employment, difficulty, and tutorial mode.
@@ -1095,14 +1095,14 @@ void get_estimates(void) {
 // FUNCTION: C2 0x57356
 // FUNCTION: C2WIN 0x00457ec2
 void get_pop_tax_estimate(void) {
-    int projected = 0;
+    int projected_tax = 0;
     if (pop_tax_counts < 12) {
         int months_left = 12 - pop_tax_counts;
-        projected = totalXpercent(pop_tax_last_count * income_multiple, pop_tax_rate);
-        projected *= months_left;
+        projected_tax = totalXpercent(pop_tax_last_count * income_multiple, pop_tax_rate);
+        projected_tax *= months_left;
     }
-    projected += pop_tax_running_total;
-    estimate_pop_tax  = projected / 12;
+    projected_tax += pop_tax_running_total;
+    estimate_pop_tax  = projected_tax / 12;
     estimate_pop_tax /= 100;
 }
 
@@ -1110,14 +1110,14 @@ void get_pop_tax_estimate(void) {
 // FUNCTION: C2 0x573b5
 // FUNCTION: C2WIN 0x00457f44
 void get_ind_tax_estimate(void) {
-    int projected = 0;
+    int projected_tax = 0;
     if (ind_tax_counts < 12) {
         int months_left = 12 - ind_tax_counts;
-        projected = totalXpercent(ind_tax_last_count * income_multiple, ind_tax_rate);
-        projected *= months_left;
+        projected_tax = totalXpercent(ind_tax_last_count * income_multiple, ind_tax_rate);
+        projected_tax *= months_left;
     }
-    projected += ind_tax_running_total;
-    estimate_ind_tax  = projected / 12;
+    projected_tax += ind_tax_running_total;
+    estimate_ind_tax  = projected_tax / 12;
     estimate_ind_tax /= 100;
 }
 
@@ -1161,21 +1161,21 @@ void get_average_ind_tax(void) {
 // FUNCTION: C2 0x574e8
 // FUNCTION: C2WIN 0x004580c6
 void get_new_tribute(void) {
-    int delta;
-    int cp;
-    int amount;
+    int favour_delta;
+    int province_count;
+    int request_amount;
     last_tribute = tribute;
 
-    delta = rand128 & 7;
-    delta -= 3;
-    delta -= c2inf.skill_level;
-    if      (imperial_favour <  25) delta += 2;
-    else if (imperial_favour <  70) delta += 1;
-    else if (imperial_favour > 175) delta -= 2;
-    else if (imperial_favour > 120) delta -= 1;
+    favour_delta = rand128 & 7;
+    favour_delta -= 3;
+    favour_delta -= c2inf.skill_level;
+    if      (imperial_favour <  25) favour_delta += 2;
+    else if (imperial_favour <  70) favour_delta += 1;
+    else if (imperial_favour > 175) favour_delta -= 2;
+    else if (imperial_favour > 120) favour_delta -= 1;
 
-    if (population < 50) delta = 0;
-    imperial_favour += delta;
+    if (population < 50) favour_delta = 0;
+    imperial_favour += favour_delta;
     if (imperial_favour <   0) imperial_favour =   0;
     if (imperial_favour > 200) imperial_favour = 200;
 
@@ -1192,7 +1192,7 @@ void get_new_tribute(void) {
         if (max_population < 2000) { imperial_request = 2;
         } else if (imperial_request == 0) {
                 imperial_req_goods  = province_industries[rand128 & 3].kind;
-                amount = c2inf.skill_level + 1 + completed_provinces / 2; amount += years_elapsed_in_region / 10; amount += rand128 & 1; imperial_req_amount = amount;
+                request_amount = c2inf.skill_level + 1 + completed_provinces / 2; request_amount += years_elapsed_in_region / 10; request_amount += rand128 & 1; imperial_req_amount = request_amount;
                 put_message(135, 0, 10);
             } else if (imperial_request == -1) { put_message(136, 0, 11);
             } else if (imperial_request == -2) { put_message(137, 0, 14);
@@ -1230,19 +1230,19 @@ void get_new_tribute(void) {
     }
 
     imperial_tax -= 1; if (imperial_tax <= 0) {
-        imperial_tax = main_paras[5] + (rand8 & 3); cp = completed_provinces;
+        imperial_tax = main_paras[5] + (rand8 & 3); province_count = completed_provinces;
         if (players_denarii >= tax_triggers[0]) {
-            last_imperial_tax_percent = tax_rates[cp];
+            last_imperial_tax_percent = tax_rates[province_count];
             last_imperial_tax_amount = totalXpercent(players_denarii, last_imperial_tax_percent);
             total_imperial_taxes += last_imperial_tax_amount;
             put_message(146, 0, 14);
         } else if (players_denarii >= tax_triggers[1]) {
-            last_imperial_tax_percent = tax_rates[20 + cp];
+            last_imperial_tax_percent = tax_rates[20 + province_count];
             last_imperial_tax_amount = totalXpercent(players_denarii, last_imperial_tax_percent);
             total_imperial_taxes += last_imperial_tax_amount;
             put_message(145, 0, 14);
         } else if (players_denarii >= tax_triggers[2]) {
-            last_imperial_tax_percent = tax_rates[40 + cp];
+            last_imperial_tax_percent = tax_rates[40 + province_count];
             last_imperial_tax_amount = totalXpercent(players_denarii, last_imperial_tax_percent);
             total_imperial_taxes += last_imperial_tax_amount;
             put_message(144, 0, 14);
@@ -1271,18 +1271,18 @@ void init_tribute(void) {
 // Selects and speaks a rating-specific temple advisor tip.
 // FUNCTION: C2 0x579b1
 // FUNCTION: C2WIN 0x0045873d
-void get_temple_tip(int param_1) {
-    if (param_1 == 0) {
+void get_temple_tip(int rating_kind) {
+    if (rating_kind == 0) {
         if (empire_rating_pop_limit != 0) { current_temple_tip = 1; play_speech(31); return; }
         if (imperial_favour < 80)         { current_temple_tip = 2; play_speech(32); return; }
         if (no_of_empire_connections == 0){ current_temple_tip = 3; play_speech(33); return; }
                                             current_temple_tip = 4; play_speech(34); return;
     }
-    if (param_1 == 1) {
+    if (rating_kind == 1) {
         if (peace_rating_pop_limit != 0)  { current_temple_tip = 5; play_speech(35); return; }
                                             current_temple_tip = 6; play_speech(36); return;
     }
-    if (param_1 == 2) {
+    if (rating_kind == 2) {
         if (prosperity_rating_pop_limit != 0) { current_temple_tip =  9; play_speech(37); return; }
         if (rolling_profit < 0)               { current_temple_tip = 10; play_speech(38); return; }
         if (current_gdp < 10)                 { current_temple_tip = 11; play_speech(39); return; }
