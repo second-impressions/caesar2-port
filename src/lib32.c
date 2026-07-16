@@ -353,29 +353,29 @@ void get_directory(char *pattern)
 // Switch to the CD drive and media subdirectory selected by the file extension.
 // FUNCTION: C2 0x2426e
 // FUNCTION: C2WIN 0x0044a8ae
-void cd_path(const char *fname)
+void cd_path(const char *filename)
 {
-    char *buf = "c:\\";
-    int matched;
-    char *p;
+    char *path_buffer = "c:\\";
+    int extension_unmatched;
+    char *path_ptr;
     unsigned saved_drive;
 
-    p = buf;
+    path_ptr = path_buffer;
     if (c2inf.drive_init != 1) return;
 
-    get_filename_extension(fname);
+    get_filename_extension(filename);
     string_to_upper(extension);
 
-    matched = 1;
-    if (strcmp("PL8", extension) == 0) matched = 0;
-    else if (strcmp("RAW", extension) == 0) matched = 0;
-    else if (strcmp("XMI", extension) == 0) matched = 0;
-    else if (strcmp("SMK", extension) == 0) matched = 0;
-    if (matched) return;
+    extension_unmatched = 1;
+    if (strcmp("PL8", extension) == 0) extension_unmatched = 0;
+    else if (strcmp("RAW", extension) == 0) extension_unmatched = 0;
+    else if (strcmp("XMI", extension) == 0) extension_unmatched = 0;
+    else if (strcmp("SMK", extension) == 0) extension_unmatched = 0;
+    if (extension_unmatched) return;
 
     _dos_setdrive(c2inf.cd_letter - 0x40, &saved_drive);
-    p[0] = c2inf.cd_letter;
-    chdir(p);
+    path_ptr[0] = c2inf.cd_letter;
+    chdir(path_ptr);
 
     if      (strcmp("PL8", extension) == 0) chdir("pl8");
     else if (strcmp("RAW", extension) == 0) chdir("raw");
@@ -389,9 +389,9 @@ void cd_path(const char *fname)
 // FUNCTION: C2WIN 0x0044aa77
 void main_path(void)
 {
-    unsigned total;
+    unsigned drive_count;
     if (c2inf.drive_init == 1) {
-        _dos_setdrive(drive_name - 0x40, &total);
+        _dos_setdrive(drive_name - 0x40, &drive_count);
         chdir(path_name);
     }
 }
@@ -400,61 +400,61 @@ void main_path(void)
 // Walk past the filename to the '.' separator and copy the 3-char extension into the global
 // `extension[]` buffer (NUL-terminated).
 // FUNCTION: C2 0x243b0
-void get_filename_extension(const char *fname)
+void get_filename_extension(const char *filename)
 {
-    char c;
+    char character;
     do {
-        c = *fname;
-        fname++;
-    } while (c != '.' && c != 0);
-    if (c != '.')
+        character = *filename;
+        filename++;
+    } while (character != '.' && character != 0);
+    if (character != '.')
         return;
-    extension[0] = *fname++;
-    extension[1] = *fname++;
-    extension[2] = *fname;
+    extension[0] = *filename++;
+    extension[1] = *filename++;
+    extension[2] = *filename;
     extension[3] = 0;
 }
 
 // Walk past the filename to the '.' separator and overwrite the 3-char extension with the global
 // `extension[]` (NUL-terminated).
 // FUNCTION: C2 0x243ef
-void put_filename_extension(char *fname)
+void put_filename_extension(char *filename)
 {
-    char c;
+    char character;
     do {
-        c = *fname;
-        fname++;
-    } while (c != '.' && c != 0);
-    if (c != '.')
+        character = *filename;
+        filename++;
+    } while (character != '.' && character != 0);
+    if (character != '.')
         return;
-    *fname++ = extension[0];
-    *fname++ = extension[1];
-    *fname++ = extension[2];
-    *fname   = 0;
+    *filename++ = extension[0];
+    *filename++ = extension[1];
+    *filename++ = extension[2];
+    *filename   = 0;
 }
 
 // Length of a filename up to (and including) the first '.' or '\0'.
 // FUNCTION: C2 0x2442b
-char get_filename_length(char *s)
+char get_filename_length(char *filename)
 {
-    char len = 0;
-    char c;
+    char length = 0;
+    char character;
     do {
-        c = *s++;
-        len++;
-    } while (c != '.' && c != 0);
-    return len;
+        character = *filename++;
+        length++;
+    } while (character != '.' && character != 0);
+    return length;
 }
 
 // Try to open `fname` (after cd_path) and report whether it exists. Always restores the working
 // directory via main_path before returning.
 // FUNCTION: C2 0x24446
-int check_file_exists(char *fname)
+int check_file_exists(char *filename)
 {
     int fd;
     int found = 0;
-    cd_path(fname);
-    fd = open(fname, 0x200);
+    cd_path(filename);
+    fd = open(filename, 0x200);
     if (fd >= 0) {
         found = 1;
         close(fd);
@@ -466,11 +466,11 @@ int check_file_exists(char *fname)
 // Variant of check_file_exists that doesn't cd_path/main_path — just opens the file at its given
 // path.
 // FUNCTION: C2 0x24477
-int is_file_on_harddrive(char *fname)
+int is_file_on_harddrive(char *filename)
 {
     int fd;
     int found = 0;
-    fd = open(fname, 0x202);
+    fd = open(filename, 0x202);
     if (fd >= 0) {
         found = 1;
         close(fd);
@@ -481,157 +481,157 @@ int is_file_on_harddrive(char *fname)
 // Read `size` bytes from `fname` at byte `offset` into `buf`. Returns the number of bytes actually
 // read, or 0 if both the hard-drive and CD attempts failed to read anything.
 // FUNCTION: C2 0x2449a
-int readfile(const char *fname, void *buf, int size, int offset)
+int readfile(const char *filename, void *buffer, int size, int offset)
 {
     int fd;
-    int n;
+    int bytes_read;
 
-    n = 0;
-    fd = open(fname, 0x200);
+    bytes_read = 0;
+    fd = open(filename, 0x200);
     if (fd != -1) {
         if (_lseek(fd, offset, 0) != -1) {
-            n = read(fd, buf, size);
+            bytes_read = read(fd, buffer, size);
         }
         close(fd);
     }
 
-    if (n <= 0) {
-        cd_path(fname);
-        fd = open(fname, 0x200);
+    if (bytes_read <= 0) {
+        cd_path(filename);
+        fd = open(filename, 0x200);
         if (fd != -1) {
             if (_lseek(fd, offset, 0) != -1) {
-                n = read(fd, buf, size);
+                bytes_read = read(fd, buffer, size);
             }
             close(fd);
         }
         main_path();
     }
 
-    return n;
+    return bytes_read;
 }
 
 // open() the named file (creating it 0644), write `size` bytes, close. Returns the number written,
 // or 0 on open failure.
 // FUNCTION: C2 0x24541
-int writefile(const char *fname, char *buf, int size)
+int writefile(const char *filename, char *buffer, int size)
 {
     int fd;
-    int n;
-    fd = open(fname, 0x261, 0x180);
+    int bytes_written;
+    fd = open(filename, 0x261, 0x180);
     if (fd == -1)
         return 0;
-    n = write(fd, buf, size);
+    bytes_written = write(fd, buffer, size);
     close(fd);
-    return n;
+    return bytes_written;
 }
 
 // Write `size` bytes at `offset` in `fname`; returns zero on open or seek failure.
 // FUNCTION: C2 0x24572
-int write_to_file(char *fname, char *buf, int size, int offset)
+int write_to_file(char *filename, char *buffer, int size, int offset)
 {
     int fd;
-    int n;
-    fd = open(fname, 0x221, 0x180);
+    int bytes_written;
+    fd = open(filename, 0x221, 0x180);
     if (fd == -1)
         return 0;
     if (_lseek(fd, offset, 0) == -1)
         return 0;
-    n = write(fd, buf, size);
+    bytes_written = write(fd, buffer, size);
     close(fd);
-    return n;
+    return bytes_written;
 }
 
 // Read the "resaud" value from a key-value configuration file.
 // FUNCTION: C2 0x245be
-char read_config(char *fname, char *buf)
+char read_config(char *filename, char *buffer)
 {
-    char *p;
-    int n;
+    char *search_ptr;
+    int search_remaining;
 
-    p = buf;
-    n = 1000;
-    if (readfile(fname, p, n, 0) == 0) return 1;
+    search_ptr = buffer;
+    search_remaining = 1000;
+    if (readfile(filename, search_ptr, search_remaining, 0) == 0) return 1;
 
-    while (n > 0) {
-        if (my_strcmp(p, "resaud", 6) == 0) break;
-        n--;
-        p++;
+    while (search_remaining > 0) {
+        if (my_strcmp(search_ptr, "resaud", 6) == 0) break;
+        search_remaining--;
+        search_ptr++;
     }
-    if (n <= 0) return 0;
+    if (search_remaining <= 0) return 0;
 
-    p += 7;
-    return *p;
+    search_ptr += 7;
+    return *search_ptr;
 }
 
 // Decode an IFF ILBM image into a palette and raster buffer.
 // FUNCTION: C2 0x2460f
 int convert_lbm_file(unsigned char *src, unsigned char *dst, char *pal, int length)
 {
-    int a;
+    int body_size_high_byte;
     short width;
     int i;
     unsigned char tag;
     unsigned char run;
-    unsigned char *p;
-    int chunk_search;
-    int b;
-    int c;
+    unsigned char *chunk_ptr;
+    int search_remaining;
+    int body_size_mid_byte;
+    int body_size;
     int k;
 
-    p = (unsigned char *)&i;
-    p = src;
-    chunk_search = 0x64;
-    while (chunk_search > 0) {
-        if (my_strcmp((char *)p, "BMHD", 4) == 0) break;
-        chunk_search--; p++;
+    chunk_ptr = (unsigned char *)&i;
+    chunk_ptr = src;
+    search_remaining = 0x64;
+    while (search_remaining > 0) {
+        if (my_strcmp((char *)chunk_ptr, "BMHD", 4) == 0) break;
+        search_remaining--; chunk_ptr++;
     }
-    if (chunk_search <= 0) return 2;
+    if (search_remaining <= 0) return 2;
 
-    p += 8;
-    width = (*p++ << 8) + *p++;
-    p += 2;
+    chunk_ptr += 8;
+    width = (*chunk_ptr++ << 8) + *chunk_ptr++;
+    chunk_ptr += 2;
     if (width == 0x140) screen_mode = 1;
     else if (width == 0x280) screen_mode = 2;
     else return 4;
-    p += 5;
-    if ((*p++ & 0xff) == 1) return 3;
+    chunk_ptr += 5;
+    if ((*chunk_ptr++ & 0xff) == 1) return 3;
 
-    chunk_search = length;
-    while (chunk_search > 0) {
-        if (my_strcmp((char *)p, "CMAP", 4) == 0) break;
-        chunk_search--; p++;
+    search_remaining = length;
+    while (search_remaining > 0) {
+        if (my_strcmp((char *)chunk_ptr, "CMAP", 4) == 0) break;
+        search_remaining--; chunk_ptr++;
     }
-    if (chunk_search <= 0) return 6;
+    if (search_remaining <= 0) return 6;
     i = 0;
-    p += 8;
+    chunk_ptr += 8;
     do {
-        *pal++ = (*p++ & 0xff) >> 2;
+        *pal++ = (*chunk_ptr++ & 0xff) >> 2;
         i++;
     } while (i < 0x300);
 
-    chunk_search = length;
-    while (chunk_search > 0) {
-        if (my_strcmp((char *)p, "BODY", 4) == 0) break;
-        chunk_search--; p++;
+    search_remaining = length;
+    while (search_remaining > 0) {
+        if (my_strcmp((char *)chunk_ptr, "BODY", 4) == 0) break;
+        search_remaining--; chunk_ptr++;
     }
-    if (chunk_search <= 0) return 7;
-    p += 5;
-    a = *p++;
-    b = *p++;
-    c = *p++;
-    c += (a << 16) + (b << 8);
-    if (c > length) return 8;
+    if (search_remaining <= 0) return 7;
+    chunk_ptr += 5;
+    body_size_high_byte = *chunk_ptr++;
+    body_size_mid_byte = *chunk_ptr++;
+    body_size = *chunk_ptr++;
+    body_size += (body_size_high_byte << 16) + (body_size_mid_byte << 8);
+    if (body_size > length) return 8;
 
-    for (i = 0; i < c; ++i)
+    for (i = 0; i < body_size; ++i)
     {
-        tag = *p++;
+        tag = *chunk_ptr++;
         if (tag > 0x80) {
-            run = *p++;
+            run = *chunk_ptr++;
             for (k = 0; k < 0x100 - tag + 1; k++) *dst++ = run;
             ++i;
         }
         else {
-            for (k = 0; k < tag + 1; k++) *dst++ = *p++;
+            for (k = 0; k < tag + 1; k++) *dst++ = *chunk_ptr++;
             i += tag + 1;
         }
     }
@@ -646,11 +646,11 @@ int set_svga_640_480(int mode)
 {
     union REGS r;
     struct SREGS sr;
-    int sel;
+    int selector;
     int mode_id;
     int height;
-    int vmask;
-    int seg;
+    int mode_granularity;
+    int segment;
 
     if (mode == 0) {
         mode_id = 0x101;
@@ -666,14 +666,14 @@ int set_svga_640_480(int mode)
     r.w.ax = 0x100;
     r.w.bx = 0x10;
     int386(0x31, &r, &r);
-    sel = r.w.ax;
-    seg = r.w.dx;
-    VesaInfo.selector = seg;
+    selector = r.w.ax;
+    segment = r.w.dx;
+    VesaInfo.selector = segment;
     VesaInfo.offset   = 0;
-    _fmemset(MK_FP(seg, 0), 0xaa, 0x100);
+    _fmemset(MK_FP(segment, 0), 0xaa, 0x100);
     memset(&RMI, 0, 0x32);
     RMI.eax = 0x4f00;
-    RMI.es = sel;
+    RMI.es = selector;
     RMI.edx = 0;
     r.w.ax = 0x300;
     r.h.bl = 0x10;
@@ -685,7 +685,7 @@ int set_svga_640_480(int mode)
     _fmemcpy((void __far *)&vesa_info, *(void __far **)&VesaInfo, 0x100);
     vid_memory = (short)vesa_info.total_memory << 6;
     r.w.ax = 0x101;
-    r.w.bx = seg;
+    r.w.bx = segment;
     int386(0x31, &r, &r);
     if (RMI.eax != 0x4f) return 1;
 
@@ -694,15 +694,15 @@ int set_svga_640_480(int mode)
     r.w.ax = 0x100;
     r.w.bx = 0x10;
     int386(0x31, &r, &r);
-    sel = r.w.ax;
-    seg = r.w.dx;
-    VesaModeInfo.selector = seg;
+    selector = r.w.ax;
+    segment = r.w.dx;
+    VesaModeInfo.selector = segment;
     VesaModeInfo.offset   = 0;
-    _fmemset(MK_FP(seg, 0), 0xaa, 0x100);
+    _fmemset(MK_FP(segment, 0), 0xaa, 0x100);
     memset(&RMI, 0, 0x32);
     RMI.eax = 0x4f01;
     RMI.ecx = mode_id;
-    RMI.es = sel;
+    RMI.es = selector;
     RMI.edx = 0;
     r.w.ax = 0x300;
     r.h.bl = 0x10;
@@ -714,7 +714,7 @@ int set_svga_640_480(int mode)
     _fmemcpy((void __far *)&vesa_mode_info, *(void __far **)&VesaModeInfo, 0x100);
     bank_ptr = (vesa_mode_info.win_func_seg << 4) + vesa_mode_info.win_func_off;
     r.w.ax = 0x101;
-    r.w.bx = seg;
+    r.w.bx = segment;
     int386(0x31, &r, &r);
     recognise_card();
     get_video_technique();
@@ -727,14 +727,14 @@ int set_svga_640_480(int mode)
     screen_width = 0x280;
     screen_height = height;
     screen_size = height * 0x280;
-    vmask = vesa_mode_info.win_granularity;
-    if (vmask == 0x40)      granularity = 0;
-    else if (vmask == 0x20) granularity = 1;
-    else if (vmask == 0x10) granularity = 2;
-    else if (vmask == 8)    granularity = 3;
-    else if (vmask == 4)    granularity = 4;
-    else if (vmask == 2)    granularity = 5;
-    else if (vmask == 1)    granularity = 6;
+    mode_granularity = vesa_mode_info.win_granularity;
+    if (mode_granularity == 0x40)      granularity = 0;
+    else if (mode_granularity == 0x20) granularity = 1;
+    else if (mode_granularity == 0x10) granularity = 2;
+    else if (mode_granularity == 8)    granularity = 3;
+    else if (mode_granularity == 4)    granularity = 4;
+    else if (mode_granularity == 2)    granularity = 5;
+    else if (mode_granularity == 1)    granularity = 6;
     set_bank(0);
     return 0;
 }
@@ -768,7 +768,7 @@ void recognise_card(void)
 // FUNCTION: C2 0x24b69
 int check_for_Trident(void)
 {
-    int rv;
+    int unused_result;
 
     /* Save current SR0E, write 0, read back the low nibble. */
     outp(0x3c4, 0x0e);
@@ -822,7 +822,7 @@ void get_video_technique(void)
 // FUNCTION: C2 0x24c7f
 void print_vesa_info(void)
 {
-    int oem;
+    int oem_string_addr;
 
     printf("\n--------------------------------------------------------\n");
     if (vid_error == 1) printf("Vesa SVGA not supported by this graphics card.\n");
@@ -832,8 +832,8 @@ void print_vesa_info(void)
     printf("--------------------------------------------------------\n");
     if (vid_error != 0) return;
 
-    oem = (vesa_info.oem_string_seg << 4) + vesa_info.oem_string_off;
-    printf("OEM string      : %s \n", (char *)oem);
+    oem_string_addr = (vesa_info.oem_string_seg << 4) + vesa_info.oem_string_off;
+    printf("OEM string      : %s \n", (char *)oem_string_addr);
     printf("VESA Version    : %d.%d,",
            ((short)vesa_info.version & 0xff00) >> 8,
            (short)vesa_info.version & 0xff);
@@ -1305,13 +1305,13 @@ void convert256_to_256xscreen(unsigned char *src, unsigned char *dst)
 
 // Dispatch on screen_mode to the right physical-screen blitter.
 // FUNCTION: C2 0x256f8
-void copy_to_physical_screen(int p1, int p2)
+void copy_to_physical_screen(int source_addr, int screen_offset)
 {
     if (screen_mode == 1) {
-        convert_and_copy_to_256xscreen(p1, p2);
+        convert_and_copy_to_256xscreen(source_addr, screen_offset);
         return;
     }
-    copy_to_640_480_screen(p1);
+    copy_to_640_480_screen(source_addr);
 }
 
 // Clear all mode-X pages, or the active linear framebuffer in an SVGA mode.
@@ -1360,7 +1360,7 @@ void clear_a_screen(void)
 void grey_a_screen(void)
 {
     int i;
-    int n;
+    int palette_offset;
     int total;
     int idx;
 
@@ -1369,9 +1369,9 @@ void grey_a_screen(void)
 
     for (i = 0; i < 0x100; i++)
     {
-        n = i * 3; total = (unsigned char)current_palette[n];
-        total += (unsigned char)current_palette[n];
-        total += (unsigned char)current_palette[n]; total /= 3;
+        palette_offset = i * 3; total = (unsigned char)current_palette[palette_offset];
+        total += (unsigned char)current_palette[palette_offset];
+        total += (unsigned char)current_palette[palette_offset]; total /= 3;
         greying_data[i] = (unsigned char)(0x3f - (total >> 1));
     }
 
@@ -1627,7 +1627,7 @@ void set_mouse(void)
 // FUNCTION: C2WIN 0x0044c216
 void get_mouse(void)
 {
-    int one;
+    int button_state;
 
     if (sim_mouse() == 0) {
         read_mouse();
@@ -1654,10 +1654,10 @@ void get_mouse(void)
     if (old_mouse_y != mouse_y) mouse_movement = 1;
 
     if (mouse_left_button != old_mouse_lb) {
-        one = 1;
-        mouse_movement   = one;
-        mouse_was_pressed = one;
-        if (mouse_left_button == one) {
+        button_state = 1;
+        mouse_movement   = button_state;
+        mouse_was_pressed = button_state;
+        if (mouse_left_button == button_state) {
             mouse_left_preclick = 1;
         } else if (mouse_left_button == 0) {
             mouse_left_click = 1;
@@ -1665,10 +1665,10 @@ void get_mouse(void)
     }
 
     if (mouse_right_button != old_mouse_rb) {
-        one = 1;
-        mouse_movement   = one;
-        mouse_was_pressed = one;
-        if (mouse_right_button == one) {
+        button_state = 1;
+        mouse_movement   = button_state;
+        mouse_was_pressed = button_state;
+        if (mouse_right_button == button_state) {
             mouse_right_preclick = 1;
         } else if (mouse_right_button == 0) {
             mouse_right_click = 1;
@@ -1681,9 +1681,9 @@ void get_mouse(void)
 // Mouse-cursor variant of write_image().
 // FUNCTION: C2 0x25e33
 // FUNCTION: C2WIN 0x0044c3d3
-void show_mouse(int id)
+void show_mouse(int image_idx)
 {
-    data_ptr = id * 16 + 8;
+    data_ptr = image_idx * 16 + 8;
 
     sprite_width  = mice[data_ptr]     + (mice[data_ptr + 1] << 8);
     sprite_height = mice[data_ptr + 2] + (mice[data_ptr + 3] << 8);
@@ -1916,7 +1916,7 @@ void strip_spaces(char *s)
 {
     int len;
     int i;
-    int prev_was_nonspace = 0;
+    int previous_was_space = 0;
 
     for (i = 0; i < 0xfa00; i++) {
         if (s[i] == 0) {
@@ -1927,14 +1927,14 @@ void strip_spaces(char *s)
     for (i = 0; i < len; i++) {
         if (s[i] == 0) return;
         if ((signed char)s[i] == ' ') {
-            if (prev_was_nonspace) {
+            if (previous_was_space) {
                 i--;
                 pull_string_left(s + i, s + len);
             } else {
-                prev_was_nonspace = 1;
+                previous_was_space = 1;
             }
         } else {
-            prev_was_nonspace = 0;
+            previous_was_space = 0;
         }
     }
 }
@@ -1945,19 +1945,19 @@ void strip_spaces(char *s)
 int get_string_width(char *src, unsigned char *font)
 {
     int total;
-    int count;
-    char c;
+    int remaining_chars;
+    char character;
 
-    count = 0x2710;
+    remaining_chars = 0x2710;
     total = 0;
-    while (count > 0) {
-        c = *src;
+    while (remaining_chars > 0) {
+        character = *src;
         src++;
-        if (c == 0) return total;
-        if (c == ' ') {
+        if (character == 0) return total;
+        if (character == ' ') {
             total += 4;
         } else {
-            sprite_image_no = letter_table[c - ' '];
+            sprite_image_no = letter_table[character - ' '];
             if (sprite_image_no != 0) {
                 sprite_image_no--;
                 data_ptr = sprite_image_no * 16 + 8;
@@ -1965,7 +1965,7 @@ int get_string_width(char *src, unsigned char *font)
                 total++;
             }
         }
-        count--;
+        remaining_chars--;
     }
     return total;
 }
@@ -1975,21 +1975,21 @@ int get_string_width(char *src, unsigned char *font)
 // FUNCTION: C2WIN 0x0044cc2a
 int get_letter_width(int letter, unsigned char *font)
 {
-    char c;
-    int result;
-    c = (char)letter;
-    if (c == 0) result = 0;
-    else if (c == ' ') result = 4;
+    char character;
+    int width;
+    character = (char)letter;
+    if (character == 0) width = 0;
+    else if (character == ' ') width = 4;
     else {
-        sprite_image_no = letter_table[c - 0x20];
-        if (sprite_image_no == 0) result = 0;
+        sprite_image_no = letter_table[character - 0x20];
+        if (sprite_image_no == 0) width = 0;
         else {
             sprite_image_no = sprite_image_no - 1;
             data_ptr = sprite_image_no * 16 + 8;
-            result = (font[data_ptr] + font[data_ptr + 1] * 0x100) + 1;
+            width = (font[data_ptr] + font[data_ptr + 1] * 0x100) + 1;
         }
     }
-    return result;
+    return width;
 }
 
 // Parse a leading run of ASCII digits from `text` and return its decimal value. Walks the text
@@ -1999,24 +1999,24 @@ int get_letter_width(int letter, unsigned char *font)
 // FUNCTION: C2WIN 0x0044ccd7
 int get_number_from_text(char *text)
 {
-    char *p;
+    char *digit_ptr;
     int total;
     int digits;
 
-    p = text;
+    digit_ptr = text;
     total = 0;
     digits = 0;
-    while (*p >= '0' && *p <= '9') {
+    while (*digit_ptr >= '0' && *digit_ptr <= '9') {
         digits = digits + 1;
-        p = p + 1;
+        digit_ptr = digit_ptr + 1;
     }
-    p = text;
+    digit_ptr = text;
     while (digits != 0) {
-        int d;
+        int digit_value;
         digits = digits - 1;
-        d = (unsigned char)(*p) - '0';
-        total = total + d * multiples[digits];
-        p = p + 1;
+        digit_value = (unsigned char)(*digit_ptr) - '0';
+        total = total + digit_value * multiples[digits];
+        digit_ptr = digit_ptr + 1;
     }
     return total;
 }
@@ -2026,22 +2026,22 @@ int get_number_from_text(char *text)
 // text_buffer[0x1c + offset].
 // FUNCTION: C2 0x263af
 // FUNCTION: C2WIN 0x0044cd64
-void load_to_text_buffer(char *src, int idx, int n, int copy_len)
+void load_to_text_buffer(char *src, int entry_idx, int word_count, int copy_len)
 {
-    int off;
+    int buffer_offset;
     char *dst;
     char i;
-    unsigned char c;
+    unsigned char offset_byte;
 
-    c = text_buffer[idx * 4 + 0x1e];
-    off  = c;
-    off  = off << 8;
-    c = text_buffer[idx * 4 + 0x1f];
-    off  = off + c;
-    dst  = &text_buffer[0x1c + off];
-    while (n > 0) {
+    offset_byte = text_buffer[entry_idx * 4 + 0x1e];
+    buffer_offset  = offset_byte;
+    buffer_offset  = buffer_offset << 8;
+    offset_byte = text_buffer[entry_idx * 4 + 0x1f];
+    buffer_offset  = buffer_offset + offset_byte;
+    dst  = &text_buffer[0x1c + buffer_offset];
+    while (word_count > 0) {
         if (*dst == 0 && (signed char)*(dst - 1) >= ' ')
-            n--;
+            word_count--;
         dst++;
     }
     while ((signed char)*dst < ' ')
@@ -2053,22 +2053,22 @@ void load_to_text_buffer(char *src, int idx, int n, int copy_len)
 // Copy bytes from a selected word position in a text-buffer entry into `dst`.
 // FUNCTION: C2 0x2641a
 // FUNCTION: C2WIN 0x0044ce30
-void load_from_text_buffer(char *dst, int idx, int n, int copy_len)
+void load_from_text_buffer(char *dst, int entry_idx, int word_count, int copy_len)
 {
-    int off;
+    int buffer_offset;
     char *src;
     char i;
-    unsigned char c;
+    unsigned char offset_byte;
 
-    c = text_buffer[idx * 4 + 0x1e];
-    off  = c;
-    off  = off << 8;
-    c = text_buffer[idx * 4 + 0x1f];
-    off  = off + c;
-    src  = &text_buffer[0x1c + off];
-    while (n > 0) {
+    offset_byte = text_buffer[entry_idx * 4 + 0x1e];
+    buffer_offset  = offset_byte;
+    buffer_offset  = buffer_offset << 8;
+    offset_byte = text_buffer[entry_idx * 4 + 0x1f];
+    buffer_offset  = buffer_offset + offset_byte;
+    src  = &text_buffer[0x1c + buffer_offset];
+    while (word_count > 0) {
         if (*src == 0 && (signed char)*(src - 1) >= ' ')
-            n--;
+            word_count--;
         src++;
     }
     while ((signed char)*src < ' ')
@@ -2081,37 +2081,37 @@ void load_from_text_buffer(char *dst, int idx, int n, int copy_len)
 // low.
 // FUNCTION: C2 0x26485
 // FUNCTION: C2WIN 0x0044cefc
-int get_buffer_ofset(int idx)
+int get_buffer_ofset(int entry_idx)
 {
-    int off = idx * 4;
-    int r;
-    int t;
+    int table_offset = entry_idx * 4;
+    int buffer_offset;
+    int offset_byte;
 
-    t  = (unsigned char)text_buffer[off + 0xa];
-    t <<= 16;
-    r  = t;
-    t  = (unsigned char)text_buffer[off + 9];
-    t <<= 8;
-    r += t;
-    t  = (unsigned char)text_buffer[off + 8];
-    r += t;
-    return r;
+    offset_byte  = (unsigned char)text_buffer[table_offset + 0xa];
+    offset_byte <<= 16;
+    buffer_offset  = offset_byte;
+    offset_byte  = (unsigned char)text_buffer[table_offset + 9];
+    offset_byte <<= 8;
+    buffer_offset += offset_byte;
+    offset_byte  = (unsigned char)text_buffer[table_offset + 8];
+    buffer_offset += offset_byte;
+    return buffer_offset;
 }
 
 // Walk the text buffer from the entry's offset, skipping `word_count` tokens (anything preceded by
 // a NUL terminator), then strip leading control characters. Returns the resulting `text_pointer`.
 // FUNCTION: C2 0x264bd
 // FUNCTION: C2WIN 0x0044cf59
-void get_text_pointer(int idx, int word_count)
+void get_text_pointer(int entry_idx, int word_count)
 {
-    char *p;
+    char *scan_ptr;
 
     text_pointer = text_buffer;
-    text_pointer += get_buffer_ofset(idx);
+    text_pointer += get_buffer_ofset(entry_idx);
 
     while (word_count > 0) {
-        p = text_pointer;
-        if (*p == 0 && (*(p - 1) >= ' ' || *(p - 1) == 0)) word_count--;
+        scan_ptr = text_pointer;
+        if (*scan_ptr == 0 && (*(scan_ptr - 1) >= ' ' || *(scan_ptr - 1) == 0)) word_count--;
         text_pointer++;
     }
 
@@ -2209,8 +2209,8 @@ int edit_format_buffer(void)
 // FUNCTION: C2WIN 0x0044d41a
 void to_fb(void)
 {
-    int p;
-    int len;
+    int cursor_idx;
+    int last_idx;
 
     if (fb_limit == 2) { if (this_letter > fb_current_char_length) return;
     } else {
@@ -2223,19 +2223,19 @@ void to_fb(void)
         if (fb_current_char_length >= fb_max_char_length) return;
         push_string_right(&format_buffer[this_letter],
                           &format_buffer[fb_current_char_length + 1]);
-        p = this_letter; format_buffer[p] = key_ascii; this_letter = p + 1;
+        cursor_idx = this_letter; format_buffer[cursor_idx] = key_ascii; this_letter = cursor_idx + 1;
     } else {
         /* Overwrite the current character and advance when space permits. */
-        int next;
-        p = this_letter; format_buffer[p] = key_ascii;
-        if (fb_max_width_reached) return; next = p + 1;
+        int next_idx;
+        cursor_idx = this_letter; format_buffer[cursor_idx] = key_ascii;
+        if (fb_max_width_reached) return; next_idx = cursor_idx + 1;
         if (fb_current_char_length >= fb_max_char_length) {
-            if (p >= fb_current_char_length) return; this_letter = next; return;
+            if (cursor_idx >= fb_current_char_length) return; this_letter = next_idx; return;
         }
         if (fb_limit != 2) {
-            len = fb_current_char_length - 1; if (p >= len) return;
+            last_idx = fb_current_char_length - 1; if (cursor_idx >= last_idx) return;
         }
-        this_letter = next;
+        this_letter = next_idx;
     }
 }
 
@@ -2379,17 +2379,17 @@ int get_fb_lines(void)
 // copies the source string into it (NUL-terminator excluded).
 // FUNCTION: C2 0x26a8d
 // FUNCTION: C2WIN 0x0044d88b
-void in_format_buffer(char *src, int max_char, int line_len, int limit)
+void in_format_buffer(char *src, int max_chars, int line_width, int edit_limit)
 {
     int i;
-    char c;
+    char unused_char;
 
     for (i = 0x7cf; i >= 0; i--) format_buffer[i] = 0;
     while (*src) format_buffer[++i] = *src++;
     fb_current_char_length = i + 1;
-    fb_max_char_length = max_char;
-    fb_line_length = line_len;
-    fb_limit = limit;
+    fb_max_char_length = max_chars;
+    fb_line_length = line_width;
+    fb_limit = edit_limit;
     fb_max_width_reached = 0;
     cursor_y = 0;
 }
@@ -2412,18 +2412,18 @@ void out_format_buffer(char *out)
 // then load 0x7D0 bytes from (offset + 0x1C) into format_buffer.
 // FUNCTION: C2 0x26b1a
 // FUNCTION: C2WIN 0x0044d964
-void load_format_buffer_from_disk(char *fname, int idx)
+void load_format_buffer_from_disk(char *filename, int entry_idx)
 {
     int word_value;
     char *p;
 
-    readfile(fname, (char *)&word_value, 2, idx * 4 + 0x1e);
+    readfile(filename, (char *)&word_value, 2, entry_idx * 4 + 0x1e);
 
     /* Byte-swap the 16-bit word (BE on disk → LE in memory). */
     word_value = ((word_value & 0xff) << 8)
                + ((word_value & 0xff00) >> 8);
 
-    readfile(fname, format_buffer, 0x7d0, word_value + 0x1c);
+    readfile(filename, format_buffer, 0x7d0, word_value + 0x1c);
 
     fb_max_char_length = 0;
     p = format_buffer;
@@ -2442,13 +2442,13 @@ void load_format_buffer_from_disk(char *fname, int idx)
 // (offset + 0x1C).
 // FUNCTION: C2 0x26bab
 // FUNCTION: C2WIN 0x0044da0c
-void save_format_buffer_to_disk(char *fname, int idx)
+void save_format_buffer_to_disk(char *filename, int entry_idx)
 {
     int word_value;
     int i;
     int found_zero;
 
-    readfile(fname, (char *)&word_value, 2, idx * 4 + 0x1e);
+    readfile(filename, (char *)&word_value, 2, entry_idx * 4 + 0x1e);
 
     /* Byte-swap the 16-bit word (BE on disk → LE in memory). */
     word_value = ((word_value & 0xff) << 8)
@@ -2465,7 +2465,7 @@ void save_format_buffer_to_disk(char *fname, int idx)
         i++;
     }
 
-    write_to_file(fname, format_buffer,
+    write_to_file(filename, format_buffer,
                   fb_max_char_length, word_value + 0x1c);
 }
 
@@ -2620,19 +2620,19 @@ char get_insert_letter(void)
 // Select a text-buffer substring, center it within `total_width`, and render it.
 // FUNCTION: C2 0x26f2e
 // FUNCTION: C2WIN 0x0044df23
-void font_centre(int idx, int word_count, int x_left, int arg4,
-                 int total_width, unsigned char *font, int p7)
+void font_centre(int entry_idx, int word_count, int x_left, int y,
+                 int total_width, unsigned char *font, int color)
 {
-    char *p;
+    char *scan_ptr;
     int width;
     int offset;
 
     text_pointer = text_buffer;
-    text_pointer += get_buffer_ofset(idx);
+    text_pointer += get_buffer_ofset(entry_idx);
 
     while (word_count > 0) {
-        p = text_pointer;
-        if (*p == 0 && (*(p - 1) >= ' ' || *(p - 1) == 0)) word_count--;
+        scan_ptr = text_pointer;
+        if (*scan_ptr == 0 && (*(scan_ptr - 1) >= ' ' || *(scan_ptr - 1) == 0)) word_count--;
         text_pointer++;
     }
 
@@ -2644,23 +2644,23 @@ void font_centre(int idx, int word_count, int x_left, int arg4,
     if (offset < 0)
         offset = 0;
 
-    put_a_font_string(text_pointer, x_left + offset, arg4, font, p7);
+    put_a_font_string(text_pointer, x_left + offset, y, font, color);
     font_screen_limit = 0;
 }
 
 // Select a text-buffer substring and render it at the requested position.
 // FUNCTION: C2 0x26fcf
 // FUNCTION: C2WIN 0x0044e018
-void font_list(int idx, int word_count, int x, int y, unsigned char *font, int color)
+void font_list(int entry_idx, int word_count, int x, int y, unsigned char *font, int color)
 {
-    char *p;
+    char *scan_ptr;
 
     text_pointer = text_buffer;
-    text_pointer += get_buffer_ofset(idx);
+    text_pointer += get_buffer_ofset(entry_idx);
 
     while (word_count > 0) {
-        p = text_pointer;
-        if (*p == 0 && (*(p - 1) >= ' ' || *(p - 1) == 0)) word_count--;
+        scan_ptr = text_pointer;
+        if (*scan_ptr == 0 && (*(scan_ptr - 1) >= ' ' || *(scan_ptr - 1) == 0)) word_count--;
         text_pointer++;
     }
 
@@ -2679,41 +2679,41 @@ void font_list(int idx, int word_count, int x, int y, unsigned char *font, int c
 void font_no(int value, char pad_char, char *suffix, int x,
              int y, unsigned char *font, int color)
 {
-    char *buf = "                ";  /* 16 spaces plus NUL */
-    char *bufp;
+    char *buffer = "                ";  /* 16 spaces plus NUL */
+    char *buffer_ptr;
     int i;
     char had_zero;
 
     had_zero = 0;
-    bufp = buf;
+    buffer_ptr = buffer;
     if (pad_char != 0) {
         for (i = 9; i >= 0; i--)
-            bufp[i] = pad_char;
+            buffer_ptr[i] = pad_char;
     }
 
     i = 10;
     while (*suffix != 0) {
-        bufp[i] = *suffix++;
+        buffer_ptr[i] = *suffix++;
         i++;
         if (i >= 16) break;
     }
-    bufp[i] = 0;
+    buffer_ptr[i] = 0;
 
     for (i = 9; i >= 0; i--) {
         if (value <= 0 && i != 9 && !had_zero) {
             had_zero = 1; goto next;
         }
         if (value <= 0 && i != 9 && had_zero) {
-            bufp[i] = ' ';
+            buffer_ptr[i] = ' ';
         } else {
-            bufp[i] = (char)((value % 10) + '0');
+            buffer_ptr[i] = (char)((value % 10) + '0');
         }
     next:
         value = value / 10;
     }
 
-    strip_leading_space((signed char *)bufp);
-    put_a_font_string(bufp, x, y, font, color);
+    strip_leading_space((signed char *)buffer_ptr);
+    put_a_font_string(buffer_ptr, x, y, font, color);
     font_screen_limit = 0;
 }
 
@@ -2921,19 +2921,19 @@ int running_delay1(void)
 {
     static int running_delay_last;
     struct timeb tb;
-    int t;
-    int dt;
+    int current_time_ms;
+    int elapsed_ms;
 
     ftime(&tb);
     time_is = tb.time;
-    t = tb.time * 1000;
-    t = t + tb.millitm;
-    if (t >= running_delay_last)
-        dt = t - running_delay_last;
+    current_time_ms = tb.time * 1000;
+    current_time_ms = current_time_ms + tb.millitm;
+    if (current_time_ms >= running_delay_last)
+        elapsed_ms = current_time_ms - running_delay_last;
     else
-        dt = 999;
-    running_delay_last = t;
-    return dt;
+        elapsed_ms = 999;
+    running_delay_last = current_time_ms;
+    return elapsed_ms;
 }
 
 // Report when `delay_ms` has elapsed since this palette-cycle gate last fired.
@@ -3044,11 +3044,11 @@ void low_beep(void)
 // Emit `n` high beeps with a 1-tick delay between each.
 // FUNCTION: C2 0x275d0
 // FUNCTION: C2WIN 0x0044ea28
-void no_high_beeps(int n)
+void no_high_beeps(int count)
 {
-    while (n != 0) {
+    while (count != 0) {
         high_beep();
-        n--;
+        count--;
         do_delay(1);
     }
 }
@@ -3056,11 +3056,11 @@ void no_high_beeps(int n)
 // Emit `n` low beeps with a 1-tick delay between each.
 // FUNCTION: C2 0x275f7
 // FUNCTION: C2WIN 0x0044ea54
-void no_low_beeps(int n)
+void no_low_beeps(int count)
 {
-    while (n != 0) {
+    while (count != 0) {
         low_beep();
-        n--;
+        count--;
         do_delay(1);
     }
 }
@@ -3168,49 +3168,49 @@ void draw_a_2point(int x, int y, int colour)
 // FUNCTION: C2WIN 0x0044ed47
 void draw_a_line(int x1, int y1, int x2, int y2, int colour)
 {
-    int lx;
-    int ly;
+    int line_x;
+    int line_y;
 
     get_longest_side(x1, y1, x2, y2);
-    ly = iy;
-    lx = ix;
+    line_y = iy;
+    line_x = ix;
 
     if (x1 == x2) {
-        while (ly <= ey) {
-            draw_a_point(x1, ly, colour);
-            ly++;
+        while (line_y <= ey) {
+            draw_a_point(x1, line_y, colour);
+            line_y++;
         }
         return;
     }
 
     if (y1 == y2) {
-        while (lx <= ex) {
-            draw_a_point(lx, y1, colour);
-            lx++;
+        while (line_x <= ex) {
+            draw_a_point(line_x, y1, colour);
+            line_x++;
         }
         return;
     }
 
     if (dy > dx) {
         D = 2 * dx - dy;
-        for ( ; ly <= ey; ly++) {
-            draw_a_point(lx, ly, colour);
+        for ( ; line_y <= ey; line_y++) {
+            draw_a_point(line_x, line_y, colour);
             Bresenham_decision(1);
             dy--;
             if (D >= 1) {
                 dx--;
-                lx += gx;
+                line_x += gx;
             }
         }
     } else {
         D = 2 * dy - dx;
-        for ( ; lx <= ex; lx++) {
-            draw_a_point(lx, ly, colour);
+        for ( ; line_x <= ex; line_x++) {
+            draw_a_point(line_x, line_y, colour);
             Bresenham_decision(0);
             dx--;
             if (D >= 1) {
                 dy--;
-                ly += gy;
+                line_y += gy;
             }
         }
     }
@@ -3374,14 +3374,14 @@ void draw_a_rect(int x, int y, int w, int h, int colour)
 // descriptors (width at +0, height at +2, pixel-data byte-offset at +4..+6 all LE).
 // FUNCTION: C2 0x27cb3
 // FUNCTION: C2WIN 0x0044f3e9
-void write_image(unsigned char *buf, int id, int x, int y)
+void write_image(unsigned char *sprite_data, int image_idx, int x, int y)
 {
-    data_ptr = id * 16 + 8;
+    data_ptr = image_idx * 16 + 8;
 
-    sprite_width  = buf[data_ptr]     + (buf[data_ptr + 1] << 8);
-    sprite_height = buf[data_ptr + 2] + (buf[data_ptr + 3] << 8);
-    sprite_start  = buf[data_ptr + 4] + (buf[data_ptr + 5] << 8)
-                  + (buf[data_ptr + 6] << 16);
+    sprite_width  = sprite_data[data_ptr]     + (sprite_data[data_ptr + 1] << 8);
+    sprite_height = sprite_data[data_ptr + 2] + (sprite_data[data_ptr + 3] << 8);
+    sprite_start  = sprite_data[data_ptr + 4] + (sprite_data[data_ptr + 5] << 8)
+                  + (sprite_data[data_ptr + 6] << 16);
     sprite_x = x;
     sprite_y = y;
 
@@ -3391,11 +3391,11 @@ void write_image(unsigned char *buf, int id, int x, int y)
     if (yclipped == 5) return;
 
     if (xclipped == 1) {
-        write_i_left_sprite(buf);
+        write_i_left_sprite(sprite_data);
     } else if (xclipped == 2) {
-        write_i_right_sprite(buf);
+        write_i_right_sprite(sprite_data);
     } else {
-        write_i_sprite(buf);
+        write_i_sprite(sprite_data);
     }
 }
 
@@ -3403,24 +3403,24 @@ void write_image(unsigned char *buf, int id, int x, int y)
 // window.
 // FUNCTION: C2 0x27d7f
 // FUNCTION: C2WIN 0x0044f521
-void write_clipped_image(unsigned char *buf, int id, int x, int y,
+void write_clipped_image(unsigned char *sprite_data, int image_idx, int x, int y,
                          int clip_x_lo, int clip_x_hi,
                          int clip_y_lo, int clip_y_hi)
 {
-    unsigned char *p;
-    data_ptr = id * 16 + 8;
-    p = buf + data_ptr;
-    sprite_width  = p[0] + (p[1] << 8);
-    sprite_height = p[2] + (p[3] << 8);
-    sprite_start  = p[4] + (p[5] << 8) + (p[6] << 16);
+    unsigned char *sprite_ptr;
+    data_ptr = image_idx * 16 + 8;
+    sprite_ptr = sprite_data + data_ptr;
+    sprite_width  = sprite_ptr[0] + (sprite_ptr[1] << 8);
+    sprite_height = sprite_ptr[2] + (sprite_ptr[3] << 8);
+    sprite_start  = sprite_ptr[4] + (sprite_ptr[5] << 8) + (sprite_ptr[6] << 16);
     sprite_x = x;
     sprite_y = y;
     xclip(clip_x_lo, clip_y_lo);
     yclip(clip_x_hi, clip_y_hi);
     if (yclipped == 5) return;
-    if (xclipped == 1) { write_i_left_sprite(buf); return; }
-    if (xclipped == 2) { write_i_right_sprite(buf); return; }
-    write_i_sprite(buf);
+    if (xclipped == 1) { write_i_left_sprite(sprite_data); return; }
+    if (xclipped == 2) { write_i_right_sprite(sprite_data); return; }
+    write_i_sprite(sprite_data);
 }
 
 // Clip a sprite's horizontal extent against the [clip_left, clip_right] window. Reads sprite_x /
@@ -3568,35 +3568,35 @@ void scatter(void)
 // reseed rand32000) if the masked sample exceeds max.
 // FUNCTION: C2 0x2817b
 // FUNCTION: C2WIN 0x0044fad0
-int get_rand_max(int max)
+int get_rand_max(int max_value)
 {
     int i;
     int mask;
-    int v;
+    int value;
 
-    if (max <= 0) return 0;
+    if (max_value <= 0) return 0;
 
-    if      (max <=     1) mask =     1;
-    else if (max <=     3) mask =     3;
-    else if (max <=     7) mask =     7;
-    else if (max <=   0xf) mask =   0xf;
-    else if (max <=  0x1f) mask =  0x1f;
-    else if (max <=  0x3f) mask =  0x3f;
-    else if (max <=  0x7f) mask =  0x7f;
-    else if (max <=  0xff) mask =  0xff;
-    else if (max <= 0x1ff) mask = 0x1ff;
-    else if (max <= 0x3ff) mask = 0x3ff;
-    else if (max <= 0x7ff) mask = 0x7ff;
-    else if (max <= 0xfff) mask = 0xfff;
-    else if (max <= 0x1fff) mask = 0x1fff;
-    else if (max <= 0x3fff) mask = 0x3fff;
-    else if (max <= 0x7fff) mask = 0x7fff;
+    if      (max_value <=     1) mask =     1;
+    else if (max_value <=     3) mask =     3;
+    else if (max_value <=     7) mask =     7;
+    else if (max_value <=   0xf) mask =   0xf;
+    else if (max_value <=  0x1f) mask =  0x1f;
+    else if (max_value <=  0x3f) mask =  0x3f;
+    else if (max_value <=  0x7f) mask =  0x7f;
+    else if (max_value <=  0xff) mask =  0xff;
+    else if (max_value <= 0x1ff) mask = 0x1ff;
+    else if (max_value <= 0x3ff) mask = 0x3ff;
+    else if (max_value <= 0x7ff) mask = 0x7ff;
+    else if (max_value <= 0xfff) mask = 0xfff;
+    else if (max_value <= 0x1fff) mask = 0x1fff;
+    else if (max_value <= 0x3fff) mask = 0x3fff;
+    else if (max_value <= 0x7fff) mask = 0x7fff;
     else                   mask = 0xffff;
 
     i = 0;
     while (i++ < 10) {
-        v = rand32000 & mask;
-        if (v <= max) return v;
+        value = rand32000 & mask;
+        if (value <= max_value) return value;
         random();
     }
     return 0;
@@ -3605,21 +3605,21 @@ int get_rand_max(int max)
 // Returns (a * b) / 100.
 // FUNCTION: C2 0x28298
 // FUNCTION: C2WIN 0x0044fca2
-int totalXpercent(int a, int b)
+int totalXpercent(int total, int percent)
 {
-    a *= b;
-    a = a / 100;
-    return a;
+    total *= percent;
+    total = total / 100;
+    return total;
 }
 
 // Returns (a * b) / 10000.
 // FUNCTION: C2 0x282ba
 // FUNCTION: C2WIN 0x0044fccd
-int totalXpercentX100(int a, int b)
+int totalXpercentX100(int total, int percent_x100)
 {
-    a *= b;
-    a = a / 10000;
-    return a;
+    total *= percent_x100;
+    total = total / 10000;
+    return total;
 }
 
 // Percentage helper: (value * 100) / total, with a guard for total==0.
@@ -3658,16 +3658,16 @@ int get_longest_distance(int x1, int y1, int x2, int y2)
 {
     int dx;
     int dy;
-    int r;
+    int distance;
     if (x1 > x2)      dx = x1 - x2;
     else if (x1 < x2) dx = x2 - x1;
     else              dx = 0;
     if (y1 > y2)      dy = y1 - y2;
     else if (y1 < y2) dy = y2 - y1;
     else              dy = 0;
-    if (dx < dy) r = dy;
-    else         r = dx;
-    return r;
+    if (dx < dy) distance = dy;
+    else         distance = dx;
+    return distance;
 }
 
 // min(|dx|, |dy|) — the shortest leg of the bounding rectangle.
@@ -3677,16 +3677,16 @@ int get_shortest_distance(int x1, int y1, int x2, int y2)
 {
     int dx;
     int dy;
-    int r;
+    int distance;
     if (x1 > x2)      dx = x1 - x2;
     else if (x1 < x2) dx = x2 - x1;
     else              dx = 0;
     if (y1 > y2)      dy = y1 - y2;
     else if (y1 < y2) dy = y2 - y1;
     else              dy = 0;
-    if (dx < dy) r = dx;
-    else         r = dy;
-    return r;
+    if (dx < dy) distance = dx;
+    else         distance = dy;
+    return distance;
 }
 
 #ifdef __WATCOMC__
@@ -3695,14 +3695,14 @@ int get_shortest_distance(int x1, int y1, int x2, int y2)
 // nonzero on success (carry clear).
 // FUNCTION: C2 0x2839e
 // FUNCTION: C2WIN 0x0044ff09
-int lock_region(unsigned int addr, unsigned int size)
+int lock_region(unsigned int address, unsigned int size)
 {
     union REGS r;
     unsigned int hi;
     r.w.ax = 0x600;
-    hi = addr >> 16;
+    hi = address >> 16;
     r.w.bx = hi;
-    r.w.cx = addr;
+    r.w.cx = address;
     hi = size >> 16;
     r.w.si = hi;
     r.w.di = size;
@@ -3820,15 +3820,15 @@ void free_scratch_buffer(void)
 // FUNCTION: C2 0x28672
 void get_free_memory(void)
 {
-    void *p;
-    int n;
+    void *block_ptr;
+    int block_size;
 
     allocable_memory = 0x400;
-    n = allocable_memory;
-    while ((p = malloc(n)) != NULL) {
-        free(p);
+    block_size = allocable_memory;
+    while ((block_ptr = malloc(block_size)) != NULL) {
+        free(block_ptr);
         allocable_memory += 0x400;
-        n = allocable_memory;
+        block_size = allocable_memory;
     }
     allocable_memory -= 0x400;
     allocable_memory = allocable_memory / 0x400;

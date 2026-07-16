@@ -60,16 +60,16 @@ void get_no_ov_image(void)
 // FUNCTION: C2WIN 0x0049d447
 void get_landval_ov_image(void)
 {
-    signed char val;
-    int n;
+    signed char land_value;
+    int land_value_int;
 
-    val = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).land_value;
-    if (val < 0) val = 0;
-    else if (val >= 0x40) val = 0x40;
+    land_value = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).land_value;
+    if (land_value < 0) land_value = 0;
+    else if (land_value >= 0x40) land_value = 0x40;
 
-    if (val > 0) {
-        n = val;
-        landfill_pool[cm_dptr] = (unsigned char)((n / 8) * 3 + 0x7e);
+    if (land_value > 0) {
+        land_value_int = land_value;
+        landfill_pool[cm_dptr] = (unsigned char)((land_value_int / 8) * 3 + 0x7e);
     } else {
         landfill_pool[cm_dptr] = 0;
     }
@@ -83,19 +83,19 @@ void get_landval_ov_image(void)
 void get_water_ov_image(void)
 {
     unsigned char terrain;
-    unsigned char flags;
+    unsigned char water_flags;
     unsigned char water;
     unsigned char fountain;
-    unsigned char kind;
+    unsigned char building_kind;
 
     terrain = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain;
-    kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
-    flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).education;
-    fountain = flags & 4;
-    water = flags & 3;
+    building_kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+    water_flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).education;
+    fountain = water_flags & 4;
+    water = water_flags & 3;
 
     if ((terrain & 0xc0) != 0) { landfill_pool[cm_dptr] = 0x96; return; }
-    if (kind >= 0xd7 && kind <= 0xde) { landfill_pool[cm_dptr] = 0x96; return; }
+    if (building_kind >= 0xd7 && building_kind <= 0xde) { landfill_pool[cm_dptr] = 0x96; return; }
     if (water != 0 && fountain != 0) { landfill_pool[cm_dptr] = 0x87; return; }
     if (water != 0) { landfill_pool[cm_dptr] = 0x84; return; }
     if (fountain != 0) { landfill_pool[cm_dptr] = 0x8d; return; }
@@ -109,12 +109,12 @@ void get_water_ov_image(void)
 // FUNCTION: C2WIN 0x0049d5d3
 void get_admin_ov_image(void)
 {
-    unsigned char kind;
+    unsigned char building_kind;
     unsigned char admin;
 
-    kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+    building_kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
     admin = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0xc;
-    if (kind >= 0xae && kind <= 0xb9) {
+    if (building_kind >= 0xae && building_kind <= 0xb9) {
         landfill_pool[cm_dptr] = 0x96;
     } else if (admin != 0) {
         if (admin == 4) landfill_pool[cm_dptr] = 0x93;
@@ -133,11 +133,11 @@ void get_security_ov_image(void)
     unsigned char terrain;
     unsigned char security;
     signed char crime;
-    unsigned char kind;
+    unsigned char building_kind;
     unsigned char level;
 
     terrain = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain;
-    kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+    building_kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
     crime = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).security;
     security = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0x30;
 
@@ -146,9 +146,9 @@ void get_security_ov_image(void)
     if (security != 0) level++;
 
     if ((terrain & 6) != 0) { landfill_pool[cm_dptr] = 0x96; return; }
-    if (kind >= 0x1e && kind <= 0x51) { landfill_pool[cm_dptr] = 0x96; return; }
-    if (kind == 0xe3) { landfill_pool[cm_dptr] = 0x96; return; }
-    if (kind == 0xe4) { landfill_pool[cm_dptr] = 0x96; return; }
+    if (building_kind >= 0x1e && building_kind <= 0x51) { landfill_pool[cm_dptr] = 0x96; return; }
+    if (building_kind == 0xe3) { landfill_pool[cm_dptr] = 0x96; return; }
+    if (building_kind == 0xe4) { landfill_pool[cm_dptr] = 0x96; return; }
     if (level != 0) {
         if (level == 2) { landfill_pool[cm_dptr] = 0x8d; return; }
         if (security != 0) { landfill_pool[cm_dptr] = 0x93; return; }
@@ -183,16 +183,16 @@ void get_health_ov_image(void)
 // FUNCTION: C2WIN 0x0049d8bc
 void get_education_ov_image(void)
 {
-    unsigned char flags;
+    unsigned char education_flags;
     unsigned char school;
     unsigned char academy;
-    unsigned char kind;
+    unsigned char building_kind;
 
-    kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
-    flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).education;
-    school = flags & 0x10;
-    academy = flags & 0x20;
-    if (kind >= 0xf3 && kind <= 0xf5) { landfill_pool[cm_dptr] = 0x96; return; }
+    building_kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+    education_flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).education;
+    school = education_flags & 0x10;
+    academy = education_flags & 0x20;
+    if (building_kind >= 0xf3 && building_kind <= 0xf5) { landfill_pool[cm_dptr] = 0x96; return; }
     if (school != 0 && academy != 0) { landfill_pool[cm_dptr] = 0x87; return; }
     if (school != 0) { landfill_pool[cm_dptr] = 0x8d; return; }
     if (academy != 0) { landfill_pool[cm_dptr] = 0x84; return; }
@@ -208,16 +208,16 @@ void get_entertainment_ov_image(void)
     unsigned char arena;
     unsigned char colosseum;
     unsigned char total;
-    unsigned char kind;
-    unsigned char flags;
+    unsigned char building_kind;
+    unsigned char entertainment_flags;
 
-    kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
-    flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).entertainment;
-    theatre = flags & 3;
-    arena = (flags & 0xc) >> 2;
-    colosseum = (flags & 0x30) >> 4;
+    building_kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+    entertainment_flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).entertainment;
+    theatre = entertainment_flags & 3;
+    arena = (entertainment_flags & 0xc) >> 2;
+    colosseum = (entertainment_flags & 0x30) >> 4;
     total = theatre + arena + colosseum;
-    if (kind >= 0xe5 && kind <= 0xf0) { landfill_pool[cm_dptr] = 0x96; return; }
+    if (building_kind >= 0xe5 && building_kind <= 0xf0) { landfill_pool[cm_dptr] = 0x96; return; }
     if (total == 0) landfill_pool[cm_dptr] = 0;
     else landfill_pool[cm_dptr] = (total - 1) * 3 + 0x7e;
 }
@@ -230,11 +230,11 @@ void get_entertainment_ov_image(void)
 void get_industry_ov_image(void)
 {
     unsigned char industry;
-    unsigned char kind;
-    kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+    unsigned char building_kind;
+    building_kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
     industry = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 0xc0;
-    if (kind >= 0xfc && kind <= 0xff) landfill_pool[cm_dptr] = 0x96;
-    else if (kind == 0xfa) landfill_pool[cm_dptr] = 0x96;
+    if (building_kind >= 0xfc && building_kind <= 0xff) landfill_pool[cm_dptr] = 0x96;
+    else if (building_kind == 0xfa) landfill_pool[cm_dptr] = 0x96;
     else if (industry != 0) {
         if (industry == 0x40) landfill_pool[cm_dptr] = 0x93;
         else if (industry == 0x80) landfill_pool[cm_dptr] = 0x90;
@@ -267,47 +267,47 @@ void get_unrest_ov_image(void)
 // FUNCTION: C2WIN 0x0049dc0e
 int get_reg_geog_ov_image(void)
 {
-    unsigned char kind;
-    unsigned char flags;
+    unsigned char region_kind;
+    unsigned char overlay_flag;
 
-    kind = ((unsigned char *)region_map)[cm_sptr];
-    flags = ((unsigned char *)region_map)[cm_sptr + 3] & 2;
+    region_kind = ((unsigned char *)region_map)[cm_sptr];
+    overlay_flag = ((unsigned char *)region_map)[cm_sptr + 3] & 2;
     ((unsigned char *)region_map)[cm_sptr + 3] &= 0xfd;
-    if (flags != 0) sprite_image_no = 0x93;
-    else if (kind < 4) sprite_image_no = 0xb4;
-    else if (kind < 8) sprite_image_no = 0xb5;
-    else if (kind < 0xc) sprite_image_no = 0xb6;
-    else if (kind < 0x10) sprite_image_no = 0xb7;
-    else if (kind < 0x20) sprite_image_no = (kind & 7) + 0x10;
-    else if (kind < 0x7c) sprite_image_no = (kind & 7) + 0xb8;
-    else if (kind >= 0x7d && kind < 0x85) sprite_image_no = (kind & 7) + 0xc0;
-    else if (kind >= 0x85 && kind < 0x8d) sprite_image_no = (kind & 3) + 0xc8;
-    else if (kind >= 0x8d && kind < 0x91) sprite_image_no = (kind & 3) + 0xd1;
-    else if (kind == 0x91) sprite_image_no = 0xd5;
-    else if (kind == 0x92) sprite_image_no = 0xcc;
-    else if (kind >= 0x93 && kind <= 0x96) sprite_image_no = 0x48;
-    else if (kind >= 0x97 && kind <= 0x9b) sprite_image_no = 0x4a;
-    else if (kind >= 0x9c && kind <= 0x9f) sprite_image_no = 0xb8;
-    else if (kind >= 0xa0 && kind <= 0xaa) sprite_image_no = lf_tiles[kind - 0x4e];
-    else if (kind >= 0xb7 && kind <= 0xc0) sprite_image_no = lf_tiles[kind + 0xa];
-    else if (kind == 0xd5) sprite_image_no = 0xce;
-    else if (kind >= 0xdc && kind <= 0xe7) sprite_image_no = 0xcf;
-    else if (kind >= 0xe8 && kind <= 0xeb) sprite_image_no = 0xd0;
-    else if (kind >= 0xec && kind <= 0xef) sprite_image_no = 0xcd;
+    if (overlay_flag != 0) sprite_image_no = 0x93;
+    else if (region_kind < 4) sprite_image_no = 0xb4;
+    else if (region_kind < 8) sprite_image_no = 0xb5;
+    else if (region_kind < 0xc) sprite_image_no = 0xb6;
+    else if (region_kind < 0x10) sprite_image_no = 0xb7;
+    else if (region_kind < 0x20) sprite_image_no = (region_kind & 7) + 0x10;
+    else if (region_kind < 0x7c) sprite_image_no = (region_kind & 7) + 0xb8;
+    else if (region_kind >= 0x7d && region_kind < 0x85) sprite_image_no = (region_kind & 7) + 0xc0;
+    else if (region_kind >= 0x85 && region_kind < 0x8d) sprite_image_no = (region_kind & 3) + 0xc8;
+    else if (region_kind >= 0x8d && region_kind < 0x91) sprite_image_no = (region_kind & 3) + 0xd1;
+    else if (region_kind == 0x91) sprite_image_no = 0xd5;
+    else if (region_kind == 0x92) sprite_image_no = 0xcc;
+    else if (region_kind >= 0x93 && region_kind <= 0x96) sprite_image_no = 0x48;
+    else if (region_kind >= 0x97 && region_kind <= 0x9b) sprite_image_no = 0x4a;
+    else if (region_kind >= 0x9c && region_kind <= 0x9f) sprite_image_no = 0xb8;
+    else if (region_kind >= 0xa0 && region_kind <= 0xaa) sprite_image_no = lf_tiles[region_kind - 0x4e];
+    else if (region_kind >= 0xb7 && region_kind <= 0xc0) sprite_image_no = lf_tiles[region_kind + 0xa];
+    else if (region_kind == 0xd5) sprite_image_no = 0xce;
+    else if (region_kind >= 0xdc && region_kind <= 0xe7) sprite_image_no = 0xcf;
+    else if (region_kind >= 0xe8 && region_kind <= 0xeb) sprite_image_no = 0xd0;
+    else if (region_kind >= 0xec && region_kind <= 0xef) sprite_image_no = 0xcd;
     else sprite_image_no = 0x96;
     return 0;
 }
 
 // Draw the city or region overlay for the active map mode.
 // FUNCTION: C2 0x3f187
-void show_landfill(int p1, int p2)
+void show_landfill(int x_start, int y_start)
 {
     if (map_mode == 0) {
-        show_city_landfill(p1, p2);
+        show_city_landfill(x_start, y_start);
         return;
     }
     if (map_mode == 1) {
-        show_region_landfill(p1, p2);
+        show_region_landfill(x_start, y_start);
     }
 }
 
@@ -316,11 +316,11 @@ void show_landfill(int p1, int p2)
 // FUNCTION: C2WIN 0x0049e068
 void show_city_landfill(int x_start, int y_start)
 {
-    unsigned char kind;
-    int block;
-    unsigned char edge;
-    unsigned char overlay;
-    unsigned char terrain;
+    unsigned char building_kind;
+    int block_idx;
+    unsigned char activity_flag;
+    unsigned char overlay_flag;
+    unsigned char terrain_flag;
     int pool_idx;
     unsigned char in_range;
 
@@ -332,38 +332,38 @@ void show_city_landfill(int x_start, int y_start)
     sprite_x = x_start;
     cm_x = 0;
     do {
-        kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
-        edge = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).activity_a & 0xf;
-        terrain = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain & 1;
-        if (kind >= 0x82 && kind <= 0xa1) in_range = 1;
+        building_kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+        activity_flag = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).activity_a & 0xf;
+        terrain_flag = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain & 1;
+        if (building_kind >= 0x82 && building_kind <= 0xa1) in_range = 1;
         else in_range = 0;
-        overlay = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).edge_bits & 2;
+        overlay_flag = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).edge_bits & 2;
         (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).edge_bits &= 0xfd;
-        block = 0;
-        if (overlay != 0) {
+        block_idx = 0;
+        if (overlay_flag != 0) {
             sprite_image_no = 0x93;
         } else if (landfill_pool[pool_idx] != 0) {
             sprite_image_no = (unsigned char)landfill_pool[pool_idx];
             if (in_range) {
                 if (sprite_image_no >= 0x7e) sprite_image_no += 2;
-            } else if (terrain != 0) {
+            } else if (terrain_flag != 0) {
                 sprite_image_no++;
             }
         } else {
-                if (edge != 0 && terrain != 0) goto next_cell;
-                sprite_image_no = lf_tiles[kind];
-                if (kind >= 0xe9 && kind <= 0xf0) get_circus_bodge(kind);
-                if (sprite_image_no < 0x5a) block = 0;
-                else if (sprite_image_no < 0x63) block = 1;
-                else if (sprite_image_no < 0x71) block = 2;
-                else block = 3;
+                if (activity_flag != 0 && terrain_flag != 0) goto next_cell;
+                sprite_image_no = lf_tiles[building_kind];
+                if (building_kind >= 0xe9 && building_kind <= 0xf0) get_circus_bodge(building_kind);
+                if (sprite_image_no < 0x5a) block_idx = 0;
+                else if (sprite_image_no < 0x63) block_idx = 1;
+                else if (sprite_image_no < 0x71) block_idx = 2;
+                else block_idx = 3;
             }
             sprite_start = landfill[sprite_image_no * 16 + 0xc]
                        + (landfill[sprite_image_no * 16 + 0xd] << 8);
-            if (block == 0) place_2x2_block(landfill + sprite_start, sprite_x + sprite_y);
-            else if (block == 1) place_4x4_block(landfill + sprite_start, sprite_x + sprite_y);
-            else if (block == 2) place_6x6_block(landfill + sprite_start, sprite_x + sprite_y);
-            else if (block == 3) place_8x8_block(landfill + sprite_start, sprite_x + sprite_y);
+            if (block_idx == 0) place_2x2_block(landfill + sprite_start, sprite_x + sprite_y);
+            else if (block_idx == 1) place_4x4_block(landfill + sprite_start, sprite_x + sprite_y);
+            else if (block_idx == 2) place_6x6_block(landfill + sprite_start, sprite_x + sprite_y);
+            else if (block_idx == 3) place_8x8_block(landfill + sprite_start, sprite_x + sprite_y);
 next_cell:
             cm_x++;
             pool_idx++;
@@ -377,18 +377,18 @@ next_cell:
 // Select the individual circus-footprint sprite when activity_b bit 5 is clear.
 // FUNCTION: C2 0x3f3cb
 // FUNCTION: C2WIN 0x0049e741
-void get_circus_bodge(unsigned char kind)
+void get_circus_bodge(unsigned char building_kind)
 {
-    unsigned char m = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).activity_b & 0x20;
-    if (m != 0) return;
-    if (kind == 0xe9) sprite_image_no = 0x6d;
-    if (kind == 0xea) sprite_image_no = 0x6e;
-    if (kind == 0xeb) sprite_image_no = 0x6f;
-    if (kind == 0xec) sprite_image_no = 0x70;
-    if (kind == 0xed) sprite_image_no = 0x72;
-    if (kind == 0xee) sprite_image_no = 0x73;
-    if (kind == 0xef) sprite_image_no = 0x74;
-    if (kind == 0xf0) sprite_image_no = 0x75;
+    unsigned char activity_flag = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).activity_b & 0x20;
+    if (activity_flag != 0) return;
+    if (building_kind == 0xe9) sprite_image_no = 0x6d;
+    if (building_kind == 0xea) sprite_image_no = 0x6e;
+    if (building_kind == 0xeb) sprite_image_no = 0x6f;
+    if (building_kind == 0xec) sprite_image_no = 0x70;
+    if (building_kind == 0xed) sprite_image_no = 0x72;
+    if (building_kind == 0xee) sprite_image_no = 0x73;
+    if (building_kind == 0xef) sprite_image_no = 0x74;
+    if (building_kind == 0xf0) sprite_image_no = 0x75;
 }
 
 // Draw the 60x60 region overlay, skipping hidden footprint cells and coastal large sprites.
@@ -396,10 +396,10 @@ void get_circus_bodge(unsigned char kind)
 // FUNCTION: C2WIN 0x0049e844
 void show_region_landfill(int x_start, int y_start)
 {
-    unsigned char coast;
-    unsigned char kind;
-    unsigned char flags;
-    int block;
+    unsigned char corner_flags;
+    unsigned char region_kind;
+    unsigned char region_gfx_idx;
+    int block_idx;
 
     sprite_y = y_start * screen_width;
     cm_y = 0; cm_sptr = 0;
@@ -407,28 +407,28 @@ void show_region_landfill(int x_start, int y_start)
     sprite_x = x_start;
     cm_x = 0;
     do {
-        coast = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).occupant & 3;
-        kind = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).base_kind;
-        flags = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).gfx;
-        if (kind == 0x92 && (flags & 3) != 0) goto reg_next;
-        if (kind >= 0x85 && kind < 0x8d && (flags & 3) != 0) goto reg_next;
-        if (kind == 0x8d && flags != 0x28) goto reg_next;
-        if (kind == 0x8e && flags != 0x31) goto reg_next;
-        if (kind == 0x8f && flags != 0x3a) goto reg_next;
-        if (kind == 0x90 && flags != 0x43) goto reg_next;
-        if (kind == 0x91 && flags != 0x4c) goto reg_next;
+        corner_flags = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).occupant & 3;
+        region_kind = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).base_kind;
+        region_gfx_idx = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).gfx;
+        if (region_kind == 0x92 && (region_gfx_idx & 3) != 0) goto reg_next;
+        if (region_kind >= 0x85 && region_kind < 0x8d && (region_gfx_idx & 3) != 0) goto reg_next;
+        if (region_kind == 0x8d && region_gfx_idx != 0x28) goto reg_next;
+        if (region_kind == 0x8e && region_gfx_idx != 0x31) goto reg_next;
+        if (region_kind == 0x8f && region_gfx_idx != 0x3a) goto reg_next;
+        if (region_kind == 0x90 && region_gfx_idx != 0x43) goto reg_next;
+        if (region_kind == 0x91 && region_gfx_idx != 0x4c) goto reg_next;
         get_reg_geog_ov_image();
-        if (sprite_image_no < 0xc8) block = 0;
-        else if (sprite_image_no < 0xd1) block = 1;
-        else if (sprite_image_no < 0xd5) block = 2;
-        else block = 3;
-        if (block > 0 && coast != 0) goto reg_next;
+        if (sprite_image_no < 0xc8) block_idx = 0;
+        else if (sprite_image_no < 0xd1) block_idx = 1;
+        else if (sprite_image_no < 0xd5) block_idx = 2;
+        else block_idx = 3;
+        if (block_idx > 0 && corner_flags != 0) goto reg_next;
         sprite_start = landfill[sprite_image_no * 16 + 0xc]
                      + (landfill[sprite_image_no * 16 + 0xd] << 8);
-        if (block == 0) place_2x2_block(landfill + sprite_start, sprite_x + sprite_y);
-        else if (block == 1) place_4x4_block(landfill + sprite_start, sprite_x + sprite_y);
-        else if (block == 2) place_6x6_block(landfill + sprite_start, sprite_x + sprite_y);
-        else if (block == 3) place_8x8_block(landfill + sprite_start, sprite_x + sprite_y);
+        if (block_idx == 0) place_2x2_block(landfill + sprite_start, sprite_x + sprite_y);
+        else if (block_idx == 1) place_4x4_block(landfill + sprite_start, sprite_x + sprite_y);
+        else if (block_idx == 2) place_6x6_block(landfill + sprite_start, sprite_x + sprite_y);
+        else if (block_idx == 3) place_8x8_block(landfill + sprite_start, sprite_x + sprite_y);
 reg_next:
         cm_x++;
         cm_sptr += 8;
@@ -443,21 +443,21 @@ reg_next:
 // FUNCTION: C2WIN 0x0049ef17
 void show_battle_landfill(int start_row, int row_count, int screen_x, int screen_y)
 {
-    int col;
-    int bptr;
-    int row;
-    unsigned char b;
+    int col_idx;
+    int battle_offset;
+    int row_idx;
+    unsigned char terrain_kind;
 
-    bptr = start_row * BATTLE_ROW;
+    battle_offset = start_row * BATTLE_ROW;
     sprite_y = (screen_y + start_row * 2) * screen_width;
-    row = start_row;
-    for ( ; row < (start_row + row_count); row++, sprite_y += 0x500) {
+    row_idx = start_row;
+    for ( ; row_idx < (start_row + row_count); row_idx++, sprite_y += 0x500) {
     sprite_x = screen_x;
-    col = 0;
+    col_idx = 0;
     do {
-        b = ((unsigned char *)battle_map)[bptr];
-        temp_figure = ((unsigned char *)battle_map)[bptr + 1];
-        sprite_image_no = (b & 7) + 0x10;
+        terrain_kind = ((unsigned char *)battle_map)[battle_offset];
+        temp_figure = ((unsigned char *)battle_map)[battle_offset + 1];
+        sprite_image_no = (terrain_kind & 7) + 0x10;
         if (temp_figure != 0) {
             if (figure_list[temp_figure].state_idx == 2) goto battle_next;
             if (figure_list[temp_figure].owner != 0) sprite_image_no = 0x8a;
@@ -467,10 +467,10 @@ void show_battle_landfill(int start_row, int row_count, int screen_x, int screen
                      + (landfill[sprite_image_no * 16 + 0xd] << 8);
         place_2x2_block(landfill + sprite_start, sprite_x + sprite_y);
 battle_next:
-        col++;
-        bptr += BATTLE_CELL_BYTES;
+        col_idx++;
+        battle_offset += BATTLE_CELL_BYTES;
         sprite_x += 2;
-    } while (col < BATTLE_W);
+    } while (col_idx < BATTLE_W);
     }
 
     setup_refresh_area(screen_x, screen_y + (start_row * 2), 8, ((start_row * 2) / 16) + 2, 1);
@@ -498,23 +498,23 @@ void update_battle_landfill(void)
 // FUNCTION: C2WIN 0x0049f284
 void show_cohort_landfill(int army_idx, int x_start, int y_start)
 {
-    int colour;
-    unsigned char kind;
+    int terrain_colour;
+    unsigned char terrain_kind;
 
     cm_y = 0;
     cm_sptr = 0;
     for ( ; cm_y < 60; cm_y++) {
     cm_x = 0;
     do {
-        kind = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).base_kind;
-            if (kind < 0x20) colour = 2;
-            else if (kind < 0x7c) colour = 1;
-            else if (kind >= 0x7d && kind < 0x85) colour = 0x30;
-            else if (kind >= 0x85 && kind < 0x8d) colour = 0x2a;
-            else if (kind >= 0x8d && kind < 0x91) colour = 0x24;
-            else if (kind == 0x91) colour = 0x20;
-            else colour = 2;
-            draw_a_point(x_start + cm_x, y_start + cm_y, colour);
+        terrain_kind = (*(struct region_cell *)((unsigned char *)region_map + (cm_sptr))).base_kind;
+            if (terrain_kind < 0x20) terrain_colour = 2;
+            else if (terrain_kind < 0x7c) terrain_colour = 1;
+            else if (terrain_kind >= 0x7d && terrain_kind < 0x85) terrain_colour = 0x30;
+            else if (terrain_kind >= 0x85 && terrain_kind < 0x8d) terrain_colour = 0x2a;
+            else if (terrain_kind >= 0x8d && terrain_kind < 0x91) terrain_colour = 0x24;
+            else if (terrain_kind == 0x91) terrain_colour = 0x20;
+            else terrain_colour = 2;
+            draw_a_point(x_start + cm_x, y_start + cm_y, terrain_colour);
             cm_x++;
         cm_sptr += 8;
     } while (cm_x < 60);
