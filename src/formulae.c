@@ -782,8 +782,8 @@ void init_slaves(void) {
 // FUNCTION: C2WIN 0x00457258
 void slave_welfare(void) {
     int old_slave_count = slaves;
-    int welfare_standard    = main_paras[0] - province_difficulty / 3;
-    int welfare_quality     = valueDIVtotal(welfare_standard * slave_welfare_bill, old_slave_count);
+    int welfare_standard    = (main_paras[0] - province_difficulty / 3) * slave_welfare_bill;
+    int welfare_quality     = valueDIVtotal(welfare_standard, slaves);
     int growth_percent;
     int mortality_percent;
     int growth_count;
@@ -812,8 +812,7 @@ void slave_welfare(void) {
 
     growth_count    = totalXpercent(slaves, growth_percent);
     mortality_count = totalXpercent(slaves, mortality_percent);
-    growth_count++;
-    slaves += growth_count;
+    slaves += growth_count + 1;
     slaves -= mortality_count;
     if (slaves < 1) slaves = 1;
     slave_population_change = slaves - old_slave_count;
@@ -823,9 +822,8 @@ void slave_welfare(void) {
 // FUNCTION: C2 0x56b5a
 // FUNCTION: C2WIN 0x004574e1
 void slave_costs(void) {
-    int welfare_cost = slave_welfare_bill;
-    denarii -= welfare_cost;
-    current_operating_cost += welfare_cost;
+    denarii -= slave_welfare_bill;
+    current_operating_cost += slave_welfare_bill;
 }
 
 // Estimate short- and long-term slave populations without changing the live simulation state.
@@ -963,10 +961,9 @@ void random_event(void) {
 // FUNCTION: C2 0x56eb8
 // FUNCTION: C2WIN 0x00457984
 void pay_salary(void) {
-    int salary = players_salary;
-    current_operating_cost += salary;
-    players_denarii += salary;
-    denarii -= salary;
+    current_operating_cost += players_salary;
+    players_denarii += players_salary;
+    denarii -= players_salary;
 }
 
 // Updates population growth pressure from taxes, employment, difficulty, and tutorial mode.
@@ -989,7 +986,7 @@ void get_industry_growth_factor(void) {
     ind_growth_future += ind_tax_to_growth_data[ind_tax_rate];
     if (ind_growth_future >  36) ind_growth_future =  36;
     if (ind_growth_future < -36) ind_growth_future = -36;
-    if (business_count == 0) ind_growth_future = business_count;
+    if (business_count == 0) ind_growth_future = 0;
     ind_growth_factor = ind_growth_future / 8;
 }
 
@@ -1039,26 +1036,26 @@ void year_end_accounts(void) {
 // FUNCTION: C2 0x57200
 // FUNCTION: C2WIN 0x00457d4d
 void collect_pop_tax(void) {
-    if (pop_tax_counts != 0) {
-        account_pop_tax       = pop_tax_running_total / pop_tax_counts;
-        account_pop_tax      /= 100;
-        denarii              += account_pop_tax;
-        pop_tax_running_total = 0;
-        pop_tax_counts        = 0;
-    }
+    if (pop_tax_counts == 0)
+        return;
+    account_pop_tax       = pop_tax_running_total / pop_tax_counts;
+    account_pop_tax      /= 100;
+    denarii              += account_pop_tax;
+    pop_tax_running_total = 0;
+    pop_tax_counts        = 0;
 }
 
 // Collects industry tax and records the assessed and paid amounts.
 // FUNCTION: C2 0x5724d
 // FUNCTION: C2WIN 0x00457dac
 void collect_ind_tax(void) {
-    if (ind_tax_counts != 0) {
-        account_ind_tax       = ind_tax_running_total / ind_tax_counts;
-        account_ind_tax      /= 100;
-        denarii              += account_ind_tax;
-        ind_tax_running_total = 0;
-        ind_tax_counts        = 0;
-    }
+    if (ind_tax_counts == 0)
+        return;
+    account_ind_tax       = ind_tax_running_total / ind_tax_counts;
+    account_ind_tax      /= 100;
+    denarii              += account_ind_tax;
+    ind_tax_running_total = 0;
+    ind_tax_counts        = 0;
 }
 
 // Projects the current year's income, expenses, tribute, and final balance.
@@ -1117,16 +1114,13 @@ void get_ind_tax_estimate(void) {
 // FUNCTION: C2WIN 0x00457fc6
 void get_average_pop_tax(void) {
     int per_person;
-    int denarii_part;
     if (population == 0) {
-        average_pop_tax_asses    = 0;
-        average_pop_tax_denariis = 0;
+        average_pop_tax_denariis = average_pop_tax_asses = 0;
         return;
     }
-    per_person       = totalXpercent(pop_tax_last_count * income_multiple, pop_tax_rate)
-                       / population;
-    denarii_part              = per_person / 100;
-    average_pop_tax_denariis  = denarii_part;
+    per_person = totalXpercent(pop_tax_last_count * income_multiple, pop_tax_rate);
+    per_person = per_person / population;
+    average_pop_tax_denariis  = per_person / 100;
     average_pop_tax_asses     = per_person % 100;
 }
 
@@ -1135,16 +1129,13 @@ void get_average_pop_tax(void) {
 // FUNCTION: C2WIN 0x00458046
 void get_average_ind_tax(void) {
     int per_business;
-    int denarii_part;
     if (business_count == 0) {
-        average_ind_tax_asses    = 0;
-        average_ind_tax_denariis = 0;
+        average_ind_tax_denariis = average_ind_tax_asses = 0;
         return;
     }
-    per_business     = totalXpercent(ind_tax_last_count * income_multiple, ind_tax_rate)
-                       / business_count;
-    denarii_part              = per_business / 100;
-    average_ind_tax_denariis  = denarii_part;
+    per_business = totalXpercent(ind_tax_last_count * income_multiple, ind_tax_rate);
+    per_business = per_business / business_count;
+    average_ind_tax_denariis  = per_business / 100;
     average_ind_tax_asses     = per_business % 100;
 }
 
@@ -1246,7 +1237,7 @@ void get_new_tribute(void) {
 // FUNCTION: C2WIN 0x004586ae
 void init_tribute(void) {
     imperial_favour         = 110;
-    tribute                 = 45;
+    tribute                 = (200 - imperial_favour) / 2;
     moving_tribute          = 0;
     last_tribute            = 0;
     total_amount_of_bribes  = 0;
@@ -1263,27 +1254,31 @@ void init_tribute(void) {
 // FUNCTION: C2 0x579b1
 // FUNCTION: C2WIN 0x0045873d
 void get_temple_tip(int rating_kind) {
+    int i, j, k;
     if (rating_kind == 0) {
-        if (empire_rating_pop_limit != 0) { current_temple_tip = 1; play_speech(31); return; }
-        if (imperial_favour < 80)         { current_temple_tip = 2; play_speech(32); return; }
-        if (no_of_empire_connections == 0){ current_temple_tip = 3; play_speech(33); return; }
-                                            current_temple_tip = 4; play_speech(34); return;
+        if (empire_rating_pop_limit != 0)       { current_temple_tip = 1; play_speech(31); }
+        else if (imperial_favour < 80)          { current_temple_tip = 2; play_speech(32); }
+        else if (no_of_empire_connections == 0) { current_temple_tip = 3; play_speech(33); }
+        else                                    { current_temple_tip = 4; play_speech(34); }
+        return;
     }
     if (rating_kind == 1) {
-        if (peace_rating_pop_limit != 0)  { current_temple_tip = 5; play_speech(35); return; }
-                                            current_temple_tip = 6; play_speech(36); return;
+        if (peace_rating_pop_limit != 0) { current_temple_tip = 5; play_speech(35); }
+        else                             { current_temple_tip = 6; play_speech(36); }
+        return;
     }
     if (rating_kind == 2) {
-        if (prosperity_rating_pop_limit != 0) { current_temple_tip =  9; play_speech(37); return; }
-        if (rolling_profit < 0)               { current_temple_tip = 10; play_speech(38); return; }
-        if (current_gdp < 10)                 { current_temple_tip = 11; play_speech(39); return; }
-                                                current_temple_tip = 12; play_speech(40); return;
+        if (prosperity_rating_pop_limit != 0) { current_temple_tip =  9; play_speech(37); }
+        else if (rolling_profit < 0)          { current_temple_tip = 10; play_speech(38); }
+        else if (current_gdp < 10)            { current_temple_tip = 11; play_speech(39); }
+        else                                  { current_temple_tip = 12; play_speech(40); }
+        return;
     }
     // Culture advice identifies the weakest service category.
-    if (culture_rating_pop_limit != 0) { current_temple_tip = 13; play_speech(41); return; }
-    if (entertainment_level <= religion_level && entertainment_level <= utility_level)
-                                       { current_temple_tip = 14; play_speech(42); return; }
-    if (religion_level <= entertainment_level && religion_level <= utility_level)
-                                       { current_temple_tip = 15; play_speech(43); return; }
-                                         current_temple_tip = 16; play_speech(44); return;
+    if (culture_rating_pop_limit != 0) { current_temple_tip = 13; play_speech(41); }
+    else if (entertainment_level <= religion_level && entertainment_level <= utility_level)
+                                       { current_temple_tip = 14; play_speech(42); }
+    else if (religion_level <= entertainment_level && religion_level <= utility_level)
+                                       { current_temple_tip = 15; play_speech(43); }
+    else                               { current_temple_tip = 16; play_speech(44); }
 }
