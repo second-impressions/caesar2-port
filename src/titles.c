@@ -4,6 +4,9 @@
 
 extern void font_list(int idx, int word_count, int x, int y, unsigned char *font, int color);
 extern void font_format_split(int idx, int word_skip, int x, int y_start, int max_width, int line_limit, int x_overflow, int max_width_overflow, unsigned char *font, int color);
+/* Forward declarations (functions defined later in this file). */
+void lose_game_screen(void);
+
 
 // Shows the defeat screen, waits for a right click, then plays the defeat animation.
 // FUNCTION: C2 0x59f76

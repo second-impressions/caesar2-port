@@ -4,6 +4,24 @@
 
 /* Per-industry demand counts accumulated during a census sweep. */
 int temp_demand_count[16];
+/* Forward declarations (functions defined later in this file). */
+void get_census(int quiet);
+void take_census(int row_count);
+void fire_trouble(void);
+void road_trouble(void);
+void water_trouble(void);
+void wall_trouble(void);
+void get_fire_cover(void);
+void get_road_cover(void);
+void get_wall_cover(void);
+void get_water_cover(void);
+void hospital_coverage(void);
+void library_coverage(void);
+void employment(void);
+void running_pop_tax(void);
+void running_ind_tax(void);
+void region_census(void);
+
 
 // Refresh census, coverage, regional, and rating data without triggering accidents.
 // FUNCTION: C2 0x441c9

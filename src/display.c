@@ -15,6 +15,10 @@ extern void write_i_sprite(unsigned char *sprite_data_ptr);   /* sprites.asm */
 extern void write_i_left_sprite(unsigned char *sprite_data_ptr);
 extern void write_i_right_sprite(unsigned char *sprite_data_ptr);
 
+/* Forward declarations (functions defined later in this file). */
+void show_a_mosaic_frame(int window_x, int window_y, int column_count, int row_count);
+void show_a_mosaic_blank(int window_x, int window_y, int column_count, int row_count);
+
 
 // Load rows of PL8 pixels into the internal screen, skipping the file header.
 // FUNCTION: C2 0x5a25c
@@ -38,7 +42,9 @@ int display_pl8file(char *pl8_filename, char *palette_filename)
         return 0;
     if (readfile(palette_filename, &temp_palette, 0x300, 0) == 0)
         return 0;
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     refresh_svga_screen();
     fade_to_palette(temp_palette);
     return 1;

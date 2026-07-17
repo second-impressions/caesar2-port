@@ -13,6 +13,27 @@ int city_test_for_road(int cell_x, int cell_y, int cell_offset, signed char head
 
 extern void fill_warehouses_with(int cell_x, int cell_y, int amount,
                                  int goods_kind, int refresh_flag);
+/* Forward declarations (functions defined later in this file). */
+void get_movement_image(int image_base);
+void get_army_ship_image(int image_base);
+void get_rioter_image(int image_base);
+void get_barbarian_image(void);
+void get_enemy_image(void);
+void get_cohort_image(void);
+void get_dirc_from_citizen_wf_run(void);
+void copy_ferret_run_to_citizen(void);
+void handle_collision(int other_idx);
+void fight_centurian(int other_idx);
+void fight_barbarian(int other_idx);
+void move_citizen(void);
+void change_citizen_targs(int target_delta);
+void random_target(void);
+void target_from_dirc(int direction);
+void get_dirc_from_army_wf_run(void);
+void copy_ferret_run_to_army(void);
+void move_army(void);
+void get_population_and_industry_count(int radius, int demand_mode);
+
 // Per-tick AI dispatch for all 201 citizen slots.
 // FUNCTION: C2 0x45eb5
 // FUNCTION: C2WIN 0x004040b0
@@ -1702,7 +1723,9 @@ int try_this_citymap_square(int cell_offset, int movement_kind, int unused_arg)
         cell_x = cell_idx % 80;
         cell_y = cell_idx / 80;
         clear_an_area(cell_x, cell_y, cell_x, cell_y);
+#if C2_FEAT_TILE_REFRESH
         setup_map_screen_refresh();
+#endif
         particles_cleared = 0;
         citizen_list[citizen_no].state_idx = 1;
         citizen_list[citizen_no].wait_count = 0x20;

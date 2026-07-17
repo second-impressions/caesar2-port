@@ -14,9 +14,16 @@ int web_ptr;
 int web_start_y;
 int web_start_x;
 int web_node;
-char web_from;
-char web_dirc;
-char web_directions;
+unsigned char web_from;
+unsigned char web_dirc;
+unsigned char web_directions;
+/* Forward declarations (functions defined later in this file). */
+void init_web(void);
+void put_new_node(void);
+void set_first_nodes_values(int pressure_mask);
+void push_nodes_values(char pressure, int source_nodes_only);
+void push_node_value(char pressure_value);
+
 
 // Starts a regional-road traversal and marks the source cell as visited.
 // FUNCTION: C2 0x29a68

@@ -25,8 +25,8 @@
  * are `__cdecl` (underscore prefix, caller-pop), matching their PS.EXE
  * `add esp, N` epilogues.
  *
- * Including this header in both the calling translation unit and the
- * auto-generated stubs.c keeps the link symbols and call sites in sync.
+ * Include this header in every translation unit that calls into the
+ * library so link symbols and call-site conventions stay in sync.
  */
 
 #ifndef SMACKER_H

@@ -12,6 +12,14 @@ extern void font_format_split(int idx, int word_skip, int x, int y_start, int ma
 extern void place_16x16_block(unsigned char *panel_addr);
 extern void place_24x24_block(unsigned char *panel_addr);
 extern void place_32x32_block(unsigned char *panel_addr);
+/* Forward declarations (functions defined later in this file). */
+void show_buttons(int x, int y, struct button_rec *button_list, int button_count);
+void show_an_exit_button(int x, int y);
+void mid_slider_var(struct slider_rec *slider_ptr, int track_position);
+void down_slider_var(struct slider_rec *slider_ptr);
+void up_slider_var(struct slider_rec *slider_ptr);
+void de_toggle_all_icons(struct icon_rec *icon_list, int icon_count);
+
 
 // Draw the top-bar menus, record their horizontal hit boxes, and mark the strip for refresh.
 // FUNCTION: C2 0x2d4a5
@@ -224,7 +232,10 @@ int check_selection_goods_list(short goods_kind)
 // FUNCTION: C2WIN 0x004207cf
 int check_highlight_list(short goods_kind)
 {
-    return highlight_goods_list[goods_kind] != 0;
+    if (highlight_goods_list[goods_kind] != 0) {
+        return 1;
+    }
+    return 0;
 }
 
 // Draw the visible selection choices, including costs and selection or highlight colours.

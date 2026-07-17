@@ -104,9 +104,7 @@ extern          int  pseudo_map[PM_H][PM_W];
  *   battle_map[(off) + N]  /  ((struct battle_cell *)&battle_map[off])->f
  *
  * The cell-offset itself is written explicitly per site as the
- * column-first `(x + y*W)*CELL_BYTES`, matching PS's lea base/index
- * order (Rule 113); the former CM_OFF/RM_OFF/BM_OFF/PM_OFF constructors
- * hard-coded the row-first order and were removed. */
+ * column-first `(x + y*W)*CELL_BYTES`. */
 
 /* region_map (REGION_CELL_BYTES = 8) */
 struct region_cell_fields {
@@ -202,24 +200,24 @@ extern struct battle_cell battle_map[BATTLE_W * BATTLE_H];
  *   tutorial / "peace" flag is set.
  */
 struct c2inf_rec {
-    char  cd_letter;          /* +0x00  CD-ROM drive letter (ASCII)    */
+    unsigned char cd_letter;  /* +0x00  CD-ROM drive letter (ASCII)    */
                               /*        Saved/restored across load_inf */
-    char  drive_init;         /* +0x01  flag: CD path resolved          */
+    unsigned char drive_init; /* +0x01  flag: CD path resolved          */
                               /*        Saved/restored across load_inf */
     char  _unk02;             /* +0x02  unused                          */
-    char  speech_on;          /* +0x03  bool — Latin speech enabled    */
+    unsigned char speech_on;  /* +0x03  bool — Latin speech enabled    */
                               /*        toggled by act_tog_speech       */
     int   game_speed;         /* +0x04  default 100; act_game_speed     */
     int   scroll_speed;       /* +0x08  default 100; act_scroll_speed   */
-    char  samples_on;         /* +0x0C  bool; act_tog_samples           */
-    char  tunes_on;           /* +0x0D  bool; act_tog_tunes             */
+    unsigned char samples_on; /* +0x0C  bool; act_tog_samples           */
+    unsigned char tunes_on;   /* +0x0D  bool; act_tog_tunes             */
     int   samples_level;      /* +0x0E  0..100; act_samples_level       */
                               /*        UNALIGNED int — Watcom -zp1     */
     int   tunes_level;        /* +0x12  0..100; act_tunes_level         */
                               /*        UNALIGNED int — Watcom -zp1     */
     short starting_year;      /* +0x16  default 0x7d5 = 2005            */
-    char  paused;             /* +0x18  bool; act_pause / act_stop_go   */
-    char  anims_on;           /* +0x19  bool; act_tog_anims             */
+    unsigned char paused;     /* +0x18  bool; act_pause / act_stop_go   */
+    unsigned char anims_on;   /* +0x19  bool; act_tog_anims             */
     char  player_name[26];    /* +0x1A  null-terminated ("Octavian")    */
                               /*        25-char buffer + null;          */
                               /*        basic_inf_settings strcpy len   */
@@ -231,12 +229,12 @@ struct c2inf_rec {
     char  _unused_writeonly36;             /* +0x36  init=1, only basic_inf_settings */
                               /*        writes; never read.  Mac PPC build */
                               /*        also only stores it -> dead both.  */
-    char  config37;           /* +0x37  config byte; load_inf reads     */
+    unsigned char config37;   /* +0x37  config byte; load_inf reads     */
     char  _unused_writeonly38;             /* +0x38  init=0; only load_inf stores it; */
                               /*        no reader in PS or Mac build.    */
-    char  yearend_on;         /* +0x39  bool; act_do_year_end / tog     */
-    char  ambients_on;        /* +0x3A  bool; act_tog_ambients          */
-    char  autosave_on;        /* +0x3B  bool; act_tog_autosave          */
+    unsigned char yearend_on; /* +0x39  bool; act_do_year_end / tog     */
+    unsigned char ambients_on;/* +0x3A  bool; act_tog_ambients          */
+    unsigned char autosave_on;/* +0x3B  bool; act_tog_autosave          */
     int   max_samples;        /* +0x3C  default 4 (concurrent voices);  */
                               /*        act_nof_samples                 */
     /* DOS struct ENDS at 0x40 (negative_buffer follows at c2inf+0x40).   */

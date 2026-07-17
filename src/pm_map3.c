@@ -8,6 +8,18 @@ extern void font_no(int value, char pad_char, char *suffix, int x, int y, unsign
 extern void write_i_sprite(unsigned char *sprite_addr);
 extern void write_i_left_sprite(unsigned char *sprite_addr);
 extern void write_i_right_sprite(unsigned char *sprite_addr);
+/* Forward declarations (functions defined later in this file). */
+void show_battlemap_base(void);
+void show_battlemap_top(void);
+void mid3_line_no_sides_base(void);
+void mid3_line_with_sides_base(void);
+void mid3_line_no_sides_top(void);
+void mid3_line_with_sides_top(void);
+void bottom3_line_with_sides(void);
+void bottom3_line_no_sides(void);
+void place3_sprite(int edge_style);
+void print3_test_info(void);
+
 
 // Render the battle pseudo-map, its figure and arrow overlays, zoom-one top clipping strip,
 // pending cell updates, and the active battle-setup dialog.

@@ -1,5 +1,6 @@
 
 #include <stdlib.h>
+#include <fcntl.h>             /* O_BINARY */
 
 #include "c2_data.h"
 
@@ -209,10 +210,8 @@ extern void *malloc(unsigned int size);
 extern void  printf(const char *fmt, ...);
 extern void  exit(int status);
 
-#ifndef _MSC_VER
 extern int read_config();
 extern int to_upper();
-#endif
 
 extern int   _getdrive(void);
 extern int   getch(void);
@@ -225,6 +224,18 @@ extern unsigned _dos_getdrive(unsigned *drive);
 extern int      chdir(const char *path);
 extern int      open(const char *path, int flags, ...);
 extern int      close(int fd);
+/* Forward declarations (functions defined later in this file). */
+void deal_with_battles(void);
+void start_a_new_game(void);
+void start_a_promotion(void);
+void new_province(void);
+void setup_game(void);
+void init_map_gfx_buffers(void);
+void clear_map_gfx_buffers(void);
+void init_battle_gfx_buffers(void);
+void clear_battle_gfx_buffers(void);
+void flush_sb_buffer(void);
+
 
 // Initializes the game, runs campaign sessions until exit, then releases resources.
 // FUNCTION: C2 0x10010
@@ -421,7 +432,8 @@ void start_a_new_game(void)
     if (pre_loaded_status)        return;
     if (continue_tutorial_status) return;
     start_year = year = -300;          /* 300 BC */
-    week = month = 0;
+    month = 0;
+    week = 0;
     years_elapsed = 0;
     completed_provinces = 0;
     province_is = 0;
@@ -941,7 +953,7 @@ int test_cd_drive(void)
 
     getcwd(path_name, 0x50);
 
-    cd_fd = open("cd.dat", 0x200);
+    cd_fd = open("cd.dat", O_BINARY);
     if (cd_fd >= 0) {
         close(cd_fd);
     } else {

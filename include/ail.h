@@ -8,8 +8,8 @@
  * to re-add the mangled `_` prefix (matching the PS.EXE symbol) and to
  * select cdecl-style stack parameter passing.
  *
- * Including this header in both the calling translation unit and the
- * auto-generated stubs.c keeps the link symbols and call sites in sync.
+ * Include this header in every translation unit that calls into the
+ * library so link symbols and call-site conventions stay in sync.
  */
 
 #ifndef AIL_H
@@ -51,35 +51,45 @@
 #pragma aux AIL_register_trigger_callback  "_*" parm caller [] modify [eax ebx ecx edx]
 #pragma aux AIL_allocate_sample_handle     "_*" parm caller [] modify [eax ebx ecx edx]
 
-void AIL_shutdown(void);
-int  AIL_sample_status  (int handle);
-void AIL_end_sample     (int handle);
-int  AIL_sequence_status(int handle);
-void AIL_end_sequence   (int handle);
-void AIL_stop_sequence  (int handle);
-void AIL_set_sequence_volume(int handle, int volume, int ms);
-void AIL_set_digital_master_volume(int dig, int volume);
-int  AIL_startup(void);
-void AIL_stop_sample  (int handle);
-void AIL_resume_sample(int handle);
-int  AIL_sample_buffer_ready(int handle);
-void AIL_load_sample_buffer(int handle, int slot, void *buf, int size);
-void AIL_set_GTL_filename_prefix(char *prefix);
-int  AIL_install_MDI_INI(int *mdi_handle_out);
-int  AIL_allocate_sequence_handle(int mdi);
-void AIL_branch_index(int seq, int marker);
-void AIL_init_sample(int sample);
-int  AIL_set_sample_file(int sample, void *buf, int block);
-void AIL_set_sample_loop_count(int sample, int loops);
-char __far *AIL_start_sample(int sample);
-void AIL_set_sample_type(int sample, int format, int flags);
-void AIL_set_sample_playback_rate(int sample, int rate_hz);
-int  AIL_minimum_sample_buffer_size(int dig, int rate_hz, int bits);
-int  AIL_install_DIG_INI(int *dig_handle_out);
-int  AIL_init_sequence(int seq, void *bytes, int sequence_num);
-char __far *AIL_start_sequence(int seq);
-char __far *AIL_resume_sequence(int seq);
-void AIL_register_trigger_callback(int seq, void (*cb)());
-int  AIL_allocate_sample_handle(int dig);
+/* The Windows build links the Miles library as wail32.dll: every AIL
+ * entry point is a DLL import, so CAESAR2.EXE call sites are indirect
+ * (`call [__imp_...]`).  MSVC reproduces that with dllimport. */
+#include "c2_target.h"
+#if C2_TARGET_WIN
+#define AILIMPORT __declspec(dllimport)
+#else
+#define AILIMPORT
+#endif
+
+AILIMPORT void AIL_shutdown(void);
+AILIMPORT int  AIL_sample_status  (int handle);
+AILIMPORT void AIL_end_sample     (int handle);
+AILIMPORT int  AIL_sequence_status(int handle);
+AILIMPORT void AIL_end_sequence   (int handle);
+AILIMPORT void AIL_stop_sequence  (int handle);
+AILIMPORT void AIL_set_sequence_volume(int handle, int volume, int ms);
+AILIMPORT void AIL_set_digital_master_volume(int dig, int volume);
+AILIMPORT int  AIL_startup(void);
+AILIMPORT void AIL_stop_sample  (int handle);
+AILIMPORT void AIL_resume_sample(int handle);
+AILIMPORT int  AIL_sample_buffer_ready(int handle);
+AILIMPORT void AIL_load_sample_buffer(int handle, int slot, void *buf, int size);
+AILIMPORT void AIL_set_GTL_filename_prefix(char *prefix);
+AILIMPORT int  AIL_install_MDI_INI(int *mdi_handle_out);
+AILIMPORT int  AIL_allocate_sequence_handle(int mdi);
+AILIMPORT void AIL_branch_index(int seq, int marker);
+AILIMPORT void AIL_init_sample(int sample);
+AILIMPORT int  AIL_set_sample_file(int sample, void *buf, int block);
+AILIMPORT void AIL_set_sample_loop_count(int sample, int loops);
+AILIMPORT char __far *AIL_start_sample(int sample);
+AILIMPORT void AIL_set_sample_type(int sample, int format, int flags);
+AILIMPORT void AIL_set_sample_playback_rate(int sample, int rate_hz);
+AILIMPORT int  AIL_minimum_sample_buffer_size(int dig, int rate_hz, int bits);
+AILIMPORT int  AIL_install_DIG_INI(int *dig_handle_out);
+AILIMPORT int  AIL_init_sequence(int seq, void *bytes, int sequence_num);
+AILIMPORT char __far *AIL_start_sequence(int seq);
+AILIMPORT char __far *AIL_resume_sequence(int seq);
+AILIMPORT void AIL_register_trigger_callback(int seq, void (*cb)());
+AILIMPORT int  AIL_allocate_sample_handle(int dig);
 
 #endif /* AIL_H */

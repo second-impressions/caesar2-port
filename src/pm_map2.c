@@ -9,6 +9,21 @@ extern void font_no(int value, char pad_char, char *suffix, int x, int y, unsign
 extern void write_i_sprite(unsigned char *sprite_addr);
 extern void write_i_left_sprite(unsigned char *sprite_addr);
 extern void write_i_right_sprite(unsigned char *sprite_addr);
+/* Forward declarations (functions defined later in this file). */
+void show_regionmap_base(void);
+void show_regionmap_top(void);
+void mid2_line_no_sides_base(void);
+void mid2_line_with_sides_base(void);
+void mid2_line_no_sides_top(void);
+void mid2_line_with_sides_top(void);
+void bottom2_line_with_sides(void);
+void bottom2_line_no_sides(void);
+void place2_a_building_base(int draw_style);
+void place2_a_building_top(int draw_style);
+void place2_a_building_roof(int draw_style);
+void place2_sprite(int draw_style);
+void print2_test_info(void);
+
 
 // Draw the region map's terrain and object layers with a fresh sprite-error count.
 // FUNCTION: C2 0x39411

@@ -22,6 +22,9 @@ extern void __cdecl code_01871D(void);
 extern void __cdecl code_018738(void);
 extern void __cdecl code_0187A9(void);
 extern void __cdecl code_0187BF(void);
+/* Forward declarations (functions defined later in this file). */
+void capture_shot(char *filename);
+
 
 // Translate keyboard shortcuts into the same actions as mouse/UI input.
 // FUNCTION: C2 0x2881b

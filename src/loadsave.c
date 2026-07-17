@@ -1,4 +1,5 @@
 
+#include <fcntl.h>       /* O_BINARY: 0x200 under Watcom, 0x8000 under MSVC */
 #include "c2_data.h"
 #include "c2_types.h"
 
@@ -555,6 +556,13 @@ int dummy_sav;
 extern void font_list(int idx, int word_count, int x, int y, unsigned char *font, int color);
 
 extern int read(int fd, void *buf, unsigned int size);
+/* Forward declarations (functions defined later in this file). */
+void set_language(int language);
+void test_inf_settings(void);
+void basic_inf_settings(void);
+void clear_huts(void);
+void put_a_hut(int hut_x, int hut_y, int hut_kind);
+
 // Open the load dialog, validate the selected .SAV file, and load it before restarting the game.
 // FUNCTION: C2 0x70461
 // FUNCTION: C2WIN 0x00482ac0
@@ -760,7 +768,7 @@ int savegame(char *save_filename)
     save_fd = open(save_filename, 0x261, 0x180);
     if (save_fd == -1) return 0;
 
-    history_fd = open("history.dat", 0x200);
+    history_fd = open("history.dat", O_BINARY);
     if (history_fd == -1) {
         close(save_fd);
         return 0;
@@ -795,7 +803,7 @@ int loadgame(char *save_filename)
     file_loaded_status = 0;
     clear_messages();
 
-    save_fd = open(save_filename, 0x200);
+    save_fd = open(save_filename, O_BINARY);
     if (save_fd == -1) return 0;
 
     history_fd = open("history.dat", 0x261, 0x180);
@@ -950,17 +958,17 @@ void basic_inf_settings(void)
 // FUNCTION: C2WIN 0x00483834
 int loadmodel(char *model_filename)
 {
-    int model_fd;
+    int model_file;
     int i;
 
-    model_fd = open(model_filename, 0x200);
-    if (model_fd == -1) return 0;
+    model_file = open(model_filename, O_BINARY);
+    if (model_file == -1) return 0;
 
     for (i = 0; i < 100; i++) {
         if (model_entries[i].size == 0) break;
-        read(model_fd, model_entries[i].buf, model_entries[i].size);
+        read(model_file, model_entries[i].buf, model_entries[i].size);
     }
-    close(model_fd);
+    close(model_file);
     return 1;
 }
 
@@ -1198,7 +1206,7 @@ void get_history_in_buffer(int *history_buf)
 {
     int history_fd;
 
-    history_fd = open("history.dat", 0x200);
+    history_fd = open("history.dat", O_BINARY);
     if (history_fd != -1) {
         read(history_fd, history_buf, 0xfa0);
         close(history_fd);

@@ -4,10 +4,8 @@
 
 int history_graph_years[5] = { 10, 20, 50, 100, 200 };
 
-#ifndef _MSC_VER
 extern int affected_by_cover1();
 extern int affected_by_cover2();
-#endif
 
 
 extern void put_a_font_string(char *str, int x, int y, unsigned char *font, int color);
@@ -15,6 +13,53 @@ extern void font_list(int idx, int word_count, int x, int y, unsigned char *font
 extern void font_no(int value, char pad_char, char *suffix, int x, int y, unsigned char *font, int color);
 extern void font_format_split(int idx, int word_skip, int x, int y_start, int max_width, int line_limit, int x_overflow, int max_width_overflow, unsigned char *font, int color);
 extern void show_cursor(unsigned char *font);
+/* Forward declarations (functions defined later in this file). */
+void clip_zoom_level1(void);
+void clip_battle_zoom_level2(void);
+void clip_map_bottom(void);
+void redraw_icon_bits(void);
+void show_tribunes_report(int army_idx, int panel_x, int panel_y, int sprite_mode);
+void reshow_initreg_box(void);
+void show_name_choice(void);
+void show_peace_level(void);
+void show_skill_level(void);
+void show_directory(int scroll_top);
+void background_screen(void);
+void show_tax_rates(void);
+void show_accounts(void);
+void show_estimate(void);
+void show_personal_cash_stats(void);
+void show_donation_level(void);
+void show_gift_amount(int gift_index);
+void basic_temple_screen(void);
+void show_temple_tip(void);
+void history_selection(void);
+void history_graphs(void);
+void basic_empire_screen(void);
+void show_regions_in_empire(void);
+void show_regions_on_offer(void);
+void show_empire_top_slab(void);
+void show_empire_bottom_slab(void);
+void show_mercs(void);
+void show_this_tribune(void);
+void update_tribune_flag(int mode);
+void show_recruitment(void);
+void show_slave_welfare_bill(void);
+void show_slave_allocation(void);
+void show_top_line(void);
+void place_3_legend_blocks(int caption_idx, int top_gfx_idx, int middle_gfx_idx, int bottom_gfx_idx);
+void place_3x_legend_blocks(int caption_idx, int top_gfx_idx, int middle_gfx_idx, int bottom_gfx_idx);
+void place_9_legend_blocks(void);
+void place_legend_block(int sprite_idx, int x, int y);
+void show_date(int year, int x, int y, int mode);
+void show_query_panel_heading(int y);
+void show_general_query_panel(void);
+void show_query_house_advice(void);
+void show_query_business_advice(void);
+void show_people_query_panel(void);
+void show_detailed_query_panel(void);
+void show_region_query_panel(int y);
+
 
 // Redraw the complete city screen, including map, controls, overlays, status bar, and palette.
 // FUNCTION: C2 0x5b181
@@ -443,8 +488,10 @@ void redraw_icon_bits(void)
             if (update_icon > 0xb) draw_battle_part(update_icon);
         }
     }
+#if C2_FEAT_TILE_REFRESH
 
     setup_whole_screen_refresh();
+#endif
     flush_sb_buffer();
 }
 
@@ -663,7 +710,9 @@ void show_no_provinces_box(void)
     font_format_split(0x4e, 2, 0xb0, 0xd0, 0x120, 0x64, 0, 0,
                       font1, 0x10);
     font_list(9, 1, 0x100, 0x130, font1, 0x10);
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     hold_mouse_replace = 1;
 }
 
@@ -679,7 +728,9 @@ void show_first_region_box(void)
     font_format_split(0x30, 2, 0xb0, 0xd0, 0x120, 0x64, 0, 0,
                       font1, 0x10);
     font_list(9, 1, 0x100, 0x130, font1, 0x10);
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     hold_mouse_replace = 1;
 }
 
@@ -752,7 +803,9 @@ void show_skill1_box(void)
     cover_mouse_droppings();
     background_screen();
     show_a_system_window(0x50, 0x50, 0x1e, 0x14);
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     font_list(0x2b, 0, 0x70, 0x68, font2, 0x10);
     font_list(0x2b, 0xd, 0x9a, 0xbe, font1, 0x10);
     font_list(0x2b, 0xc, 0x9a, 0xee, font1, 0x10);
@@ -769,7 +822,9 @@ void show_skill2_box(void)
     cover_mouse_droppings();
     background_screen();
     show_a_system_window(0x50, 0x50, 0x1e, 0x16);
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     font_list(0x2b, 0x10, 0x70, 0x68, font2, 0x10);
     font_list(0x2b, 0x11, 0x6a, 0x156, font1, 0x10);
     font_list(0x2b, 0x12, 0x6a, 0x186, font1, 0x10);
@@ -860,7 +915,9 @@ void show_about_box(void)
     write_image(logos, 0, 0x150, 0x78);
     font_list(9, 1, 0xc0, 0xc0, font1, 0x10);
     show_an_exit_button(0x194, 0xb4);
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     refresh_svga_screen();
     hold_mouse_replace = 1;
 }
@@ -906,7 +963,9 @@ void show_new_name_box(void)
 {
     cover_mouse_droppings();
     show_a_system_window(0xd0, 0xd0, 0x11, 5);
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     put_a_font_string(c2inf.player_name, 0xe2, 0xe0, font1, 0x10);
     font_list(0x2b, 0xe, 0xe0, 0x100, font1, 0x10);
     hold_mouse_replace = 1;
@@ -919,7 +978,9 @@ void show_exit_box(void)
 {
     cover_mouse_droppings();
     show_a_system_window(0x80, 0xa0, 0xe, 9);
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     font_list(0x4d, 9, 0x90, 0xb8, font1, 0x10);
     font_list(0x4d, 0xa, 0x90, 0xe0, font1, 0x10);
     font_list(0x4d, 0xb, 0x90, 0x108, font1, 0x10);
@@ -933,7 +994,9 @@ void show_loadsave_box(int title_id)
 {
     cover_mouse_droppings();
     show_a_system_window(0x20, 0x50, 0x19, 0x14);
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     font_list(title_id, 0, 0x30, 0x60, font2, 0x10);
     draw_a_box(0x30, 0x88, 0x170, 0x100, 0x10);
     draw_a_box(0x38, 0x90, 0xc0, 0x20, 0x10);
@@ -1029,7 +1092,9 @@ void background_screen(void)
     black_out();
     readfile("backgrnd.256", temp_palette, 0x300, 0);
     show_pl8file("backgrnd.pl8", 0x1e0);
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     refresh_svga_screen();
     set_palette(temp_palette);
     hold_mouse_replace = 1;
@@ -1043,7 +1108,9 @@ void forum_empty_screen(void)
     int i;
 
     cover_mouse_droppings();
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     show_pl8file("forum.pl8", 0x1e0);
     for (i = 0; i < 12; i++) {
         forum_explanations(i, 0);
@@ -1059,7 +1126,9 @@ void forum_empty_screen(void)
 void forum_city_only_screen(void)
 {
     cover_mouse_droppings();
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     if (forum_repapering[last_forum_dept] != 0) {
         show_pl8file("forum.pl8", forum_repapering[last_forum_dept]);
     }
@@ -1080,7 +1149,9 @@ void forum_city_only_screen(void)
 void forum_admin_screen(void)
 {
     cover_mouse_droppings();
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
 
     if (forum_repapering[last_forum_dept] != 0) {
         show_pl8file("forum.pl8",
@@ -1267,7 +1338,9 @@ void show_estimate(void)
 void forum_career_screen(void)
 {
     cover_mouse_droppings();
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
 
     if (forum_repapering[last_forum_dept] != 0) {
         show_pl8file("forum.pl8",
@@ -1336,7 +1409,9 @@ void show_personal_cash_stats(void)
 void show_donation_box(void)
 {
     cover_mouse_droppings();
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     stone_random_count = 0x10;
     show_a_mosaic_window(0xa0, 0x20, 0x11, 9);
     show_donation_level();
@@ -1431,7 +1506,9 @@ void forum_rome_screen(void)
 void show_final_bribe_box(void)
 {
     cover_mouse_droppings();
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     stone_random_count = 0x14;
     show_a_mosaic_window(0xa0, 0x80, 0x16, 0xe);
     font_list(0x26, 0x27, 0xc0, 0x98, font1, 0x10);
@@ -1456,7 +1533,9 @@ void show_final_bribe_box(void)
 void show_gift_box(void)
 {
     cover_mouse_droppings();
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     show_a_mosaic_frame(0xa0, 0x20, 0x16, 8);
     stone_random_count = 0x14;
     show_a_mosaic_blank(0xb0, 0x30, 0x14, 6);
@@ -1490,7 +1569,9 @@ void forum_advisor_screen(void)
 {
     black_out();
     cover_mouse_droppings();
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     show_pl8file("forum.pl8", 0x1e0);
     readfile("forum.256", temp_palette, 0x300, 0);
     explain_forum();
@@ -1840,7 +1921,9 @@ void basic_empire_screen(void)
     show_empire_bottom_slab();
     font_list(0x22, 1, 0xbe, 0x19e, font1, 0x3f);
     font_list(0x22, 3, 0xd0, 0x1ce, font1, 0x20);
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     hold_mouse_replace = 1;
     refresh_svga_screen();
 }
@@ -1928,7 +2011,9 @@ void forum_army_screen(void)
     total_no_of_cohorts = no_of_cohorts_in_action;
 
     cover_mouse_droppings();
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
 
     if (forum_repapering[last_forum_dept] != 0) {
         show_pl8file("forum.pl8",
@@ -2807,7 +2892,9 @@ void show_census_panel(void)
     stone_random_count = 0x1c;
 
     show_a_mosaic_window(0x50, 0x60, 0x14, 0xb);
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     show_an_exit_button(0x160, 0xe0);
 
     font_list(0x4b, 0,    0x70, 0x78, font2, 0x10);
@@ -2840,7 +2927,9 @@ void show_turbo_panel(void)
 
     stone_random_count = 0x1c;
     show_a_mosaic_window(0x50, 0x60, 0x14, 0xb);
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     show_an_exit_button(0x160, 0xe0);
     font_list(0x4c, 0, 0x70, 0x78, font2, 0x10);
     font_format_split(0x4c, 1, 0x70, 0xa0, 0xf0, 0x64, 0, 0, font1, 0x10);

@@ -7,6 +7,16 @@ int barb_ptr;
 int barb_entry_count;
 int barb_x;
 int barb_y;
+/* Forward declarations (functions defined later in this file). */
+void get_random_start_points_from_dirc(int direction, int map_size, int random_mask);
+void do_land_trade(int direction, int cargo, int border_x, int border_y);
+void battle_intro(void);
+void battle_outtro(void);
+void we_surrender(void);
+void we_retreat(void);
+void battle_auto_resolve(void);
+void do_battle_victory(void);
+
 // No-op hook for city-specific trouble.
 // FUNCTION: C2 0x52e1b
 // FUNCTION: C2WIN 0x00401384

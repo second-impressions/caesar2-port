@@ -27,6 +27,14 @@ char smacks[40][14] = {
 // ── External functions ────────────────────────────────────────────────────────
 extern void region_map_screen(int flag);
 
+/* Forward declarations (functions defined later in this file). */
+void clear_messages(void);
+void message(int message_idx, int is_emperor, int message_param);
+void show_basic_message(int message_idx, int message_param);
+void show_emperor_message(int message_idx, int is_emperor);
+void show_request_amount(void);
+void request_outcome(void);
+
 
 // Resets message and imperial-request state and queues the opening message.
 // FUNCTION: C2 0x5910f

@@ -2,10 +2,8 @@
 #include "c2_data.h"
 #include "c2_types.h"
 
-#ifndef _MSC_VER
 extern int affected_by_cover1();
 extern int colour_cycle_delay1();
-#endif
 
 
 /* Local helper declarations. */
@@ -44,6 +42,31 @@ void clear_edge_info(void);
 void general_reform(int kind);
 void select_all_figures(void);
 void goto_flag_marker_mode(void);
+/* Forward declarations (functions defined later in this file). */
+void scroll(void);
+void mouse_follow_cohort(void);
+void mouse_hunt_enemies(void);
+void show_latest_route(void);
+void prebuild_city_item(void);
+void build_city_item(void);
+void prebuild_region_item(void);
+void build_region_item(void);
+void get_icon_over(void);
+void act_exit_turbo_mode(void);
+void act_show_ov_legend(void);
+void act_select_ov_map(void);
+void act_rm_warehouse(void);
+void act_rm_workhouse(void);
+void act_set_patrol_markers(void);
+void act_set_return_home(void);
+void act_set_patrol_stop(void);
+void do_act_zoom_out(int decayed_click);
+void do_act_zoom_in(int decayed_click);
+void act_correct_map(void);
+void forum_game_loop(void);
+void show_forum_screen(void);
+void act_query(void);
+
 
 // Main per-frame action dispatcher. Snapshots `scrolling`, dispatches based on `pointer_mode` and
 // the various mouse-button flags, then triggers sounds and the scrolling-stop hook on exit.
@@ -778,6 +801,7 @@ void prebuild_city_item(void)
         get_wall_elastic();
     } else if (placing_type == 4) {
         get_aquaduct_elastic();
+        return;
     }
 }
 
@@ -1792,12 +1816,15 @@ int perform_cohort_box_action(void)
 // FUNCTION: C2WIN 0x004b4cb6
 void act_init_turbo_mode(void)
 {
-    if (map_mode != 2) {
-        turbo_mode   = 1;
-        pointer_mode = 0;
-        setup_whole_screen_refresh();
-        update_map = 1;
+    if (map_mode == 2) {
+        return;
     }
+    turbo_mode   = 1;
+    pointer_mode = 0;
+#if C2_FEAT_TILE_REFRESH
+    setup_whole_screen_refresh();
+#endif
+    update_map = 1;
 }
 
 // Leave turbo mode and request a full-screen repaint.
@@ -1806,7 +1833,9 @@ void act_init_turbo_mode(void)
 void act_exit_turbo_mode(void)
 {
     turbo_mode = 0;
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     update_map = 1;
 }
 
@@ -1896,7 +1925,9 @@ void act_exit_game(void)
             battle_state = 0xa;
         }
     }
+#if C2_FEAT_TILE_REFRESH
     setup_map_screen_refresh();
+#endif
     update_map = 1;
 }
 
@@ -2199,7 +2230,9 @@ void act_about(void)
         }
     }
     clear_mouse();
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
 }
 
 // Pop the in-game help/topics modal for `help_page_id`, then refresh whichever main screen we came from
@@ -2329,13 +2362,16 @@ void act_exclaim(void)
 // FUNCTION: C2WIN 0x004b5754
 void act_undo_cm(void)
 {
-    if (!sb_cm_undo_flushed) {
-        restore_city_from_undo_buffer();
-        setup_map_screen_refresh();
-        placing_type   = 0xFF;
-        placing_flags  = 0;
-        pm_build_shape = 0;
+    if (sb_cm_undo_flushed) {
+        return;
     }
+    restore_city_from_undo_buffer();
+#if C2_FEAT_TILE_REFRESH
+    setup_map_screen_refresh();
+#endif
+    placing_type   = 0xFF;
+    placing_flags  = 0;
+    pm_build_shape = 0;
 }
 
 // Pop the houses selection list (or open act_house1 directly when the housing cheat is off).
@@ -3051,14 +3087,22 @@ void act_rotate_clockwise(void)
     rotate_pm_anticlockwise();
     if (map_mode == 2) {
         if (c2inf.paused) figure_images();
+#if C2_FEAT_TILE_REFRESH
         setup_battle_screen_refresh();
-    } else {
+#endif
+    }
+#if C2_FEAT_TILE_REFRESH
+    else {
         setup_map_screen_refresh();
     }
+#endif
     clear_edge_info();
     update_landfill = 1;
     update_map      = 1;
     pointer_mode    = 0;
+#if C2_FEAT_ROTATE_PM_LIMITS
+    pm_limits();
+#endif
 }
 
 // Rotate the map view counter-clockwise by 90 degrees and refresh.
@@ -3069,14 +3113,22 @@ void act_rotate_anticlockwise(void)
     rotate_pm_clockwise();
     if (map_mode == 2) {
         if (c2inf.paused) figure_images();
+#if C2_FEAT_TILE_REFRESH
         setup_battle_screen_refresh();
-    } else {
+#endif
+    }
+#if C2_FEAT_TILE_REFRESH
+    else {
         setup_map_screen_refresh();
     }
+#endif
     clear_edge_info();
     update_landfill = 1;
     update_map      = 1;
     pointer_mode    = 0;
+#if C2_FEAT_ROTATE_PM_LIMITS
+    pm_limits();
+#endif
 }
 
 // Handles a zoom-out click.
@@ -3580,12 +3632,15 @@ void show_forum_screen(void)
 // FUNCTION: C2WIN 0x004b80ef
 int over_forum_menu(void)
 {
-    int dept;
-    for (dept = 0; dept < FORUM_DEPT_END; dept++) {
-        int menu_x = forum_menu[dept].x;
-        int menu_y = forum_menu[dept].y;
+    int menu_x;
+    int menu_y;
+    int i;
+    int j;
+    for (i = 0; i < FORUM_DEPT_END; i++) {
+        menu_x = forum_menu[i].x;
+        menu_y = forum_menu[i].y;
         if (mouse_in_area(menu_x, menu_y, 0xa0, 0x18) != 0) {
-            return dept;
+            return i;
         }
     }
     return 0;
@@ -3773,7 +3828,7 @@ void act_army_box_help(void)
 {
     launch_help(0xb);
     forum_dept = 6;
-    last_forum_dept = FORUM_DEPT_ARMY;
+    last_forum_dept = forum_dept;
     forum_constant_screen();
     show_forum_screen();
     hold_mouse_replace = 0;
@@ -4090,7 +4145,9 @@ void act_zoom_level1(void)
     pm_x = 0x1c;
     pm_y = 0x38;
     refresh_battle_zoom_mode(1);
+#if C2_FEAT_TILE_REFRESH
     setup_battle_screen_refresh();
+#endif
     clear_edge_info();
     update_landfill = 1;
     update_map = 1;
@@ -4111,7 +4168,9 @@ void act_zoom_level2(void)
     pm_x = 0xd;
     pm_y = 0x18;
     refresh_battle_zoom_mode(2);
+#if C2_FEAT_TILE_REFRESH
     setup_battle_screen_refresh();
+#endif
     clear_edge_info();
     update_landfill = 1;
     update_map = 1;
@@ -4187,11 +4246,14 @@ void act_battle_autocalc(void)   { confirm(7, 0xA0, 0xA0); if (decision == 1) ba
 // FUNCTION: C2WIN 0x004b9117
 void act_battle_select_all(void)
 {
-    if (zoom_level != 2) {
-        select_all_figures();
-        setup_whole_screen_refresh();
-        update_map = 1;
+    if (zoom_level == 2) {
+        return;
     }
+    select_all_figures();
+#if C2_FEAT_TILE_REFRESH
+    setup_whole_screen_refresh();
+#endif
+    update_map = 1;
 }
 
 // Battle: launch help topic 0x33.
@@ -4351,7 +4413,9 @@ void this_region(void)
     else if (decision == 1) { out2 = 1; }
     clear_mouse(); out1 = 0;
     stop_db();
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
 }
 
 // Run a tutorial-mode game once (`do_tutorial`). After it returns, either go to the skill1 dialog
@@ -4385,8 +4449,8 @@ void act_dos(void)
 void act_skill_up(void)
 {
     if (c2inf.skill_level < 4) {
-        gen_refresh1 = 1;
         c2inf.skill_level++;
+        gen_refresh1 = 1;
     }
 }
 
@@ -4396,8 +4460,8 @@ void act_skill_up(void)
 void act_skill_down(void)
 {
     if (c2inf.skill_level > 0) {
-        gen_refresh1 = 1;
         c2inf.skill_level--;
+        gen_refresh1 = 1;
     }
 }
 
@@ -4425,7 +4489,9 @@ void act_choose_name(void)
         new_name_game_loop();
     }
     show_skill2_box();
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
 }
 
 // Close the current modal back to the new-game front panel (out1 = 1066).
@@ -4450,7 +4516,9 @@ void act_preload(void)
         out1 = 0;
         show_skill1_box();
     }
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     hold_mouse_replace = 1;
 }
 

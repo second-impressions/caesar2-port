@@ -136,11 +136,24 @@ The inferred source-style guide (`observed-source-style.md`) and the
 [watcom10.0a](../../ReverseEngineering/watcom10.0a) sibling repo's `docs/`;
 the game's data structures are documented in `include/entities.h`.
 
-Two tracked file groups are **frozen generated artifacts** (generators
-retired 2026-07-15, recoverable from git history): `include/c2_data.h` /
-`c2_funcs.h` (do not patch by hand; `c2_funcs.h` must not be included
-broadly — prototype visibility changes Watcom call-site codegen) and the
-8 `.asm` modules in `src/`.
+Every tracked source is an ordinary, hand-editable file under that same
+invariant — including `include/c2_data.h` (which began as generator
+output; the generators were retired 2026-07-15 and remain recoverable
+from git history) and the 8 `.asm` modules in `src/`.  Function
+prototype visibility is deliberately **per translation unit**: each
+`.c` file carries exactly the forward declarations its call sites were
+compiled against (some intentionally K&R / implicit-int — e.g.
+`colour_cycle_delay1`, `get_heading` — because PS.EXE call sites test
+EAX where the definition returns char).  Do not centralize prototypes
+into a shared header; widening visibility changes Watcom call-site
+codegen and the byte-exact rebuild will catch it.
+
+Cross-build differences (DOS release vs the Windows build-A witness)
+are guarded by the target/feature macros in `include/c2_target.h`
+(`C2_TARGET_DOS` / `C2_TARGET_WIN`, `C2_FEAT_*`, with `C2_PATCHLEVEL`
+reserved for future per-platform patchlevels) — never by raw compiler
+macros.  `grep C2_FEAT_ include src` lists the verified difference
+classes.
 
 ## Running the game
 

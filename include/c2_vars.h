@@ -30,14 +30,14 @@ extern short created_arrow_no;
 extern short created_army_no;
 extern short temp_army;
 extern short army_no;
-extern char warned_of_emperor_reply_level;
+extern unsigned char warned_of_emperor_reply_level;
 extern char warned_of_free4;
 extern char warned_of_free5;
 extern char warned_of_fire;
-extern char warned_of_robbery;
+extern unsigned char warned_of_robbery;
 extern unsigned char warned_of_emperor_reply_month;
-extern char put_a_message;
-extern char warned_of_emperor;
+extern unsigned char put_a_message;
+extern unsigned char warned_of_emperor;
 extern char warned_of_cutbacks;
 extern struct byte_delta_rec gmn_ofsets[];
 extern int steves_security_real[];
@@ -56,14 +56,14 @@ extern char region_palette[];
 extern char city_palette[];
 extern short figure_no;
 extern char old_zoom_level;
-extern char old_scrolling;
-extern char sb_rm_undo_flushed;
-extern char sb_cm_undo_flushed;
-extern char update_landfill;
+extern unsigned char old_scrolling;
+extern unsigned char sb_rm_undo_flushed;
+extern unsigned char sb_cm_undo_flushed;
+extern unsigned char update_landfill;
 extern unsigned char redraw_icons;
-extern char gen_refresh1;
-extern char gen_refresh3;
-extern char gen_refresh2;
+extern unsigned char gen_refresh1;
+extern unsigned char gen_refresh3;
+extern unsigned char gen_refresh2;
 extern char gen_refresh4;
 extern char stopped_scrolling;
 extern char old_map_mode;
@@ -172,10 +172,10 @@ extern short unit_no;
 extern short arrow_no;
 extern short temp_figure;
 extern unsigned char zoom_level;
-extern char scrolling;
-extern char map_mode;
-extern char update_map;
-extern char zoom_in_decay_count;
+extern unsigned char scrolling;
+extern unsigned char map_mode;
+extern unsigned char update_map;
+extern unsigned char zoom_in_decay_count;
 
 /* Symbol page 7 (PS emission page 25). */
 extern int demo_mode;
@@ -202,7 +202,7 @@ extern struct army_rec army_list[];
 extern short arrow_a;
 extern struct arrow_rec arrow_list[];
 extern unsigned char w_dirc;
-extern char fig_at_edge;
+extern unsigned char fig_at_edge;
 
 /* Symbol page 8 (PS emission page 24). */
 extern int map_direction;
@@ -560,7 +560,7 @@ extern int no_of_connected_towns;
 extern int attacking_region;
 extern int plague_accident;
 extern int no_of_towns;
-extern char empire_connections[];
+extern unsigned char empire_connections[];
 extern int no_of_farms;
 extern int region_accident;
 extern int road_cover;
@@ -714,8 +714,8 @@ extern int auto_conquered;
 extern int east_trader_count1;
 extern int history_end_ptr;
 extern int south_trader_brings;
-extern char first_choice;
-extern char choice_info;
+extern unsigned char first_choice;
+extern unsigned char choice_info;
 
 /* Symbol page 27 (PS emission page 5). */
 extern int culture_rating;
@@ -742,7 +742,7 @@ extern int peace_rating;
 extern int prosperity_rating_pop_limit;
 extern int entertainment_level;
 extern unsigned short int_battle_header[];
-extern char choice_count;
+extern unsigned char choice_count;
 
 /* Symbol page 28 (PS emission page 4). */
 extern int gmn_max_run;
@@ -766,10 +766,10 @@ extern int gmn_type;
 extern int gmn_nwse_count;
 extern int ofset_y;
 extern int ofset_x;
-extern char forum_dept_over;
+extern unsigned char forum_dept_over;
 extern char ov2_map_mode;
 extern signed char stone_random_count;
-extern char forum_dept;
+extern unsigned char forum_dept;
 
 /* Symbol page 29 (PS emission page 3). */
 extern int health_debar;

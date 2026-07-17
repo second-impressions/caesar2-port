@@ -3,12 +3,11 @@
 
 /* Shared Caesar II structs, typedef-like records, and map helpers.
  *
- * `entities.h` is the historical reconstruction that currently contains both
- * struct definitions and the map/cell macros that would have lived in a shared
- * PS-era globals/defs header.  Include it through this stable layer in new
- * source; keep `entities.h` available for older file-local comments and direct
- * includes during cleanup.
+ * `entities.h` carries the struct definitions and the map/cell macros that
+ * would have lived in a shared PS-era globals/defs header; this layer
+ * re-exports it.  Both spellings of the include are in use.
  */
+#include "c2_target.h"
 #include "entities.h"
 
 /* Pointer-valued globals (scratch_buffer, people_data) are stored as

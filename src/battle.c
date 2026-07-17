@@ -40,6 +40,58 @@ int yback;
 extern int get_heading();
 
 void elephant_fire(void);
+/* Forward declarations (functions defined later in this file). */
+void deselect_all_figures(void);
+void deselect_enemy_figures(void);
+void get_highlight_position(void);
+void generate_battle_map(void);
+void setup_battle(void);
+void setup_roman_units(void);
+void setup_enemy_units(void);
+void get_battle_odds(void);
+void build_units_figures(int deployment_idx, int figure_kind, int stampede_kind, int unit_sub_kind, int unit_rank, int stance, int army_morale, int target_men, int formation_cols, int row_spacing, unsigned char *arrow_data_ptr, unsigned char *sprite_data_ptr, int sprite_kind);
+void find_attack_spot(void);
+void find_defensive_spot(void);
+void get_start_points(int deployment_idx);
+void figure_intelligence(void);
+void sf12_rout(void);
+void get_arrow_base_image(void);
+void reform(int unit_ref, int formation, int force_reform);
+void instant_reform(int unit_idx, int formation);
+void get_fig_in_unit_position(int formation, int position, int figure_idx);
+void get_fig_fight_image(void);
+void get_fig_walk_image(void);
+void get_fig_still_image(void);
+void get_fig_tortoise_image(void);
+void get_fig_death_image(void);
+void get_fig_missile_image(void);
+void set_figure_map_refresh(int grid_x, int grid_y, int offset_x, int offset_y, int radius, int extra_size);
+void set_missile_fire_range(int weapon_kind);
+void elephant_ai(void);
+void do_light_ai(void);
+void do_heavy_ai(void);
+void set_ai_flank_move(int flank_mode);
+void set_ai_unit_move(int offset_x, int offset_y);
+void set_ai_unit_withdraw(int offset_x, int offset_y);
+void set_ai_unit_beserk(void);
+void set_ai_unit_delayed_beserk(void);
+void set_ai_unit_auto_fire(void);
+void drop_all_units_morale(int match_type, int morale_a_delta, int morale_b_delta);
+void raise_all_units_morale(int skip_type, int morale_a_delta, int morale_b_delta);
+void set_unit_to_rout(int unit_idx);
+void get_units_status(void);
+void battle_tune_mood_from_type(int unit_idx);
+void move_figure(int figure_idx);
+void backtrack_figure(int figure_idx);
+void fly_to_target(void);
+void bd(int dominant_axis);
+void move_arrow_vert(void);
+void move_arrow_horiz(void);
+void loose_arrow_move(void);
+void do_the_fight(void);
+void set_attack_count(int figure_idx);
+void set_defense_shield(int figure_idx);
+
 // Enter or resume a battle, preparing its map, graphics, units, audio, and main battle screen.
 // FUNCTION: C2 0x4afd7
 // FUNCTION: C2WIN 0x00472bc0

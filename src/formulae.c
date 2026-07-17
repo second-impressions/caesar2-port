@@ -11,6 +11,24 @@ char events[5][64] = {
 };
 
 void stop_db(void);
+/* Forward declarations (functions defined later in this file). */
+void adjust_peace_criteria(void);
+void adjust_culture_criteria(void);
+void adjust_proserity_criteria(void);
+void adjust_empire_criteria(void);
+void assign_to_new_province(void);
+void do_promotion(int promotion_level);
+void make_emperor(void);
+void get_morale_and_readiness(void);
+void get_current_cohort_totals(void);
+void set_current_cohort_totals(void);
+void fill_cohort_centuries(void);
+void get_army_totals(void);
+void collect_pop_tax(void);
+void collect_ind_tax(void);
+void get_pop_tax_estimate(void);
+void get_ind_tax_estimate(void);
+
 
 // Advances the bankruptcy countdown and ends the game if the treasury stays negative.
 // FUNCTION: C2 0x55326

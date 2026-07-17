@@ -4,6 +4,9 @@
 
 extern void put_a_font_string(char *str, int x, int y, unsigned char *font, int color);
 extern void font_no(int value, char pad_char, char *suffix, int x, int y, unsigned char *font, int color);
+/* Forward declarations (functions defined later in this file). */
+void show_debug_screen(void);
+
 
 // Displays the debug screen until a key is pressed, then restores the active map.
 // FUNCTION: C2 0x713cf

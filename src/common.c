@@ -31,10 +31,10 @@ int ferret_targ_ptr;
 int ferret_horiz_off;
 int clock_ferret_x;
 int ferret_energy;
-char tb_occ_b_flag;
-char tb_road_flag;
-char tb_prev_flag;
-char tb_occ_a_flag;
+unsigned char tb_occ_b_flag;
+unsigned char tb_road_flag;
+unsigned char tb_prev_flag;
+unsigned char tb_occ_a_flag;
 
 /* Forward declarations */
 heading_t get_heading(int start_x, int start_y, int end_x, int end_y, char still_offset);
@@ -44,6 +44,16 @@ signed char check_anti_ferret_move(signed char direction);
 unsigned char ferret_heading(int current_x, int current_y);
 unsigned char get_tb_value(int direction);
 unsigned char get_ferret2(int direction);
+/* Forward declarations (functions defined later in this file). */
+void clear_army(struct army_rec *record_ptr);
+void load_ferret_run(int start_x, int start_y, int max_length);
+void smooth_ferret_run(int margin, unsigned char *map_base, int map_width, int map_height, int cell_size, int start_x, int start_y, int end_x, int end_y);
+void run_clock_ferret(void);
+void run_anti_ferret(void);
+void move_clock_ferret(signed char direction, char update_existing);
+void move_anti_ferret(signed char direction, char update_existing);
+void move_to_tb_value(int direction);
+
 
 // Allocates and initializes a citizen in an available city-map slot.
 // FUNCTION: C2 0x2a907

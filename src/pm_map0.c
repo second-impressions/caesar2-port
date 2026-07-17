@@ -3,6 +3,11 @@
 
 
 /* Pseudo-map coordinate conversion and isometric diamond rendering. */
+/* Forward declarations (functions defined later in this file). */
+void three_by_three(int center_x, int center_y);
+void four_by_four(int center_x, int center_y);
+void show_one_ptr(int screen_cell_x, int screen_cell_y);
+
 
 // Finds an actual map offset in the pseudo-map and stores its row and column in x and y.
 // FUNCTION: C2 0x352aa

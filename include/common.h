@@ -3,10 +3,10 @@
 
 /* Page 0: final dword plus the complete ascending byte run. */
 extern int ferret_energy;
-extern char tb_occ_b_flag;
-extern char tb_road_flag;
-extern char tb_prev_flag;
-extern char tb_occ_a_flag;
+extern unsigned char tb_occ_b_flag;
+extern unsigned char tb_road_flag;
+extern unsigned char tb_prev_flag;
+extern unsigned char tb_occ_a_flag;
 
 /* Page 1: the penultimate dword and globals consumed by common.c. */
 extern int clock_ferret_x;
@@ -33,7 +33,7 @@ extern short hunting_army;
 extern int map_actual_atom;
 extern int map_actual_height;
 extern int map_actual_width;
-extern char map_mode;
+extern unsigned char map_mode;
 
 /* Page 2: the remaining 24 members of the first dword run.  Equal-hash
  * declarations are reversed so Watcom's hash chain emits PS order. */

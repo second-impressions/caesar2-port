@@ -1,10 +1,8 @@
 #include "c2_data.h"
 #include "c2_types.h"
 
-#ifndef _MSC_VER
 extern int affected_by_cover1(unsigned char *cell_ptr, int range, char mask);
 extern int affected_by_cover2(unsigned char *cell_ptr, int range, char mask);
-#endif
 extern unsigned char *get_ptr_to_corner(unsigned char *base_ptr, int size);
 
 int stretch_ofsets_2x2[4][3] = {
@@ -72,6 +70,41 @@ struct int_delta_rec putouts4[16] = {
     { -1, 1 },
     { -1, 0 }
 };
+/* Forward declarations (functions defined later in this file). */
+void update_time(void);
+void monthly_update(void);
+void yearly_update(void);
+void evolve_water_supply_baths_industry(int row_count);
+void evolve_water_table(int row_count);
+void evolve_security_cover(int row_count);
+void evolve_amenity_cover(int row_count);
+void evolve_land_value(int rows);
+void cap_land_value(int row_count);
+void evolve_forum_activity(int row_count);
+void evolve_fort_activity(int row_count);
+void evolve_security_activity(int row_count);
+void evolve_industrial_activity(int row_count);
+void remove_envoy(void);
+void market_image(void);
+void business_output(int cell_x, int cell_y);
+void spread_fire_and_plague_and_unrest(int row_count);
+void evolve_a_cm_row(void);
+void devolve_a_building( int tier_idx, int footprint_size, unsigned char base_kind, unsigned char gfx_base, unsigned char gfx_step);
+void evolve_a_building( int tier_idx, int footprint_size, unsigned char base_kind, unsigned char gfx_base, unsigned char gfx_step);
+void change_house(int tier_idx, int footprint_size, int orientation);
+void pad_house_with_domus(int previous_size);
+void reduce_villa_to_domus(unsigned char *cell_ptr);
+void remove_house(void);
+/* Callers before this point treat the return as implicit int;
+   only the Windows build sees the prototype. */
+#if C2_TARGET_WIN
+void evolve_a_plaza(signed char land_value, signed char old_kind, int cell_x);
+#endif
+void clear_fire_zones(void);
+void push_shell(int row_count);
+void evolve_region(int row_count);
+void check_goods_in_region_warehouses(void);
+
 
 // Reset the city-evolution cycle and refresh the goods available from regional warehouses.
 // FUNCTION: C2 0x3fa14

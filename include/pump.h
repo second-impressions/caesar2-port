@@ -24,6 +24,6 @@ extern unsigned char *text_buf;
 extern int codesize;
 extern short match_length;
 extern unsigned short getbuf;
-extern char putlen;
+extern unsigned char putlen;
 
 #endif /* PUMP_H */

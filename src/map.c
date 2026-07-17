@@ -4,6 +4,51 @@
 struct byte_point_rec temp_route[16];
 
 extern void copy(unsigned char *src, unsigned char *dst, int n);
+/* Forward declarations (functions defined later in this file). */
+void generate_cm_scrub(void);
+void flesh_river_atoms(void);
+void transform_road_elastic(int radius);
+void transform_wall_elastic(int radius);
+void transform_aquaduct_elastic(int radius);
+void transform_reg_wall_elastic(int radius);
+void plague_sized(int sptr, int size);
+void clear_sized_to_rubble(int sptr, int size, int rubble_kind);
+void clear_to_rubble(int sptr, int rubble_kind);
+void clear_to_empty(int sptr);
+void clear_basic(int sptr);
+void clear_sized_to_reg_basic(int rm_offset, int size);
+void clear_reg_basic(int rm_offset);
+void plague_it(int sptr);
+void unflag_rm_area(int x, int y, int size, char mask_byte);
+void adjust_regions_coastline(int x, int y, int width, int height);
+void test_citymap_neighbours_posedge(char mask);
+void test_citymap_neighbours_negedge(char mask);
+void test_type_citymap_neighbours_negedge(unsigned char type);
+void test_regionmap_neighbours_posedge(char mask);
+void test_regionmap_neighbours_negedge(char mask);
+void test_type_regionmap_neighbours_negedge(unsigned char type);
+void init_choices(struct choice_rec *arr, int count);
+void invert_gmn(void);
+void set_range(int x, int y, int range, unsigned char field_off, unsigned char value);
+void set_rm_range(int x, int y, int half_width, char field_offset, char kind_byte);
+void set_4_neighbours_if_not_wallortower(int x, int y, int sptr, unsigned char field_off, unsigned char value);
+void set_2_neighbours_if_not_wallortower(int x, int y, int sptr, unsigned char field_off, unsigned char value, int north_south);
+void set_4_neighbours_if_not_aquaductorresevoir(int x, int y, int sptr, unsigned char field_off, unsigned char value);
+void set_2_neighbours_if_not_aquaductorresevoir(int x, int y, int sptr, unsigned char field_off, unsigned char value, int north_south);
+void set_4_rm_neighbours_if_not_wallortower(int x, int y, int sptr, unsigned char field_off, unsigned char value);
+void inc_elastic_by2(int x, int y, int sptr);
+void restore_city_from_undo_buffer(void);
+void restore_region_from_undo_buffer(void);
+/* Callers before this point treat the return as implicit int;
+   only the Windows build sees the prototype. */
+#if C2_TARGET_WIN
+void clear_all_cm(char layer);
+#endif
+void set_route_elastic_range(int radius);
+void clear_city_flag(int val);
+void clear_prov_flag(int val);
+void count_danger_flags(void);
+
 
 // Clear the city-map layers, seed scrub terrain, and generate the river layout.
 // FUNCTION: C2 0x65f4c
@@ -2341,7 +2386,9 @@ void clear_sized_to_rubble(int sptr, int size, int rubble_kind)
         if (mouse_left_button != 0) had_clear_sound = 1;
         else had_clear_sound = 0;
     }
+#if C2_FEAT_TILE_REFRESH
     setup_map_screen_refresh();
+#endif
 }
 
 // Turn one city cell into rubble and start fire effects when requested.
@@ -4468,12 +4515,13 @@ int get_best_lv(unsigned char *base, int bp)
     int best;
     int i;
     int j;
+    int value;
 
     best = 0;
     for (i = 0; i < bp; i++) {
         for (j = 0; j < bp; j++) {
-            int val = (base + j * CITY_CELL_BYTES + i * CITY_ROW)[15];
-            if (val > best) best = val;
+            value = (base + j * CITY_CELL_BYTES + i * CITY_ROW)[15];
+            if (value > best) best = value;
         }
     }
     return best;
@@ -4768,8 +4816,7 @@ void restore_city_from_undo_buffer(void)
 {
     if (sb_cm_undo_flushed != 0) return;
     copy(scratch_buffer, (unsigned char *)city_map, 0x1f400);
-    particles_built = 0;
-    particles_cleared = 0;
+    particles_cleared = particles_built = 0;
 }
 
 // Restore the region map from the pending undo snapshot and repair army positions.
@@ -4779,8 +4826,7 @@ void restore_region_from_undo_buffer(void)
 {
     if (sb_rm_undo_flushed != 0) return;
     copy(scratch_buffer + 0x1f400, (unsigned char *)region_map, 0x7080);
-    particles_built = 0;
-    particles_cleared = 0;
+    particles_cleared = particles_built = 0;
     army_restoring_adjusts();
 }
 
@@ -4821,6 +4867,7 @@ void clear_all_cm(char layer)
 
 // Clear temporary edge information from the active map.
 // FUNCTION: C2 0x6ea2d
+// FUNCTION: C2WIN 0x004ad65d
 void clear_edge_info(void)
 {
     if (map_mode == 0) {

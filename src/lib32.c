@@ -30,7 +30,7 @@ unsigned char greying_data[256];
 char mouse_background[576];
 struct vbe_info_block vesa_info;
 char black_out_data[768];
-char current_palette[768];
+unsigned char current_palette[768];
 char temp_palette[768];
 unsigned char logos[5344];
 unsigned char font2[28248];
@@ -223,30 +223,30 @@ char old3cf_6;
 char old3cf_5;
 char vid_val;
 char old3c5_4;
-char pre_loaded_status;
-char continue_tutorial_status;
-char file_loaded_status;
+unsigned char pre_loaded_status;
+unsigned char continue_tutorial_status;
+unsigned char file_loaded_status;
 char map_gfx_loaded;
 char hot_exit_flag;
-char decision;
+unsigned char decision;
 char confirming;
-char exit_flag;
-char restart_flag;
+unsigned char exit_flag;
+unsigned char restart_flag;
 char test_mode3;
 char test_mode2;
 char test_mode1;
 char test_mode4;
-char develop_mode;
-char xclipped;
-char yclipped;
+unsigned char develop_mode;
+unsigned char xclipped;
+unsigned char yclipped;
 char insert_cursor;
 char highlight;
-char allow_padding;
+unsigned char allow_padding;
 char hot_key_out_off_build;
 char hold_hot_keys;
 char padding_off;
 char screen_refresh_flag;
-char hold_mouse_replace;
+unsigned char hold_mouse_replace;
 unsigned char screen_mode;
 unsigned char pointer_mode;
 char old_mouse_rb;
@@ -257,12 +257,12 @@ char debar_fade_click;
 unsigned char mouse_right_preclick;
 unsigned char mouse_left_preclick;
 char mouse_right_button;
-char mouse_right_click;
+unsigned char mouse_right_click;
 char key_code;
 char debug_interupt;
 char key_ascii_was;
 char mse_button;
-char key_ready;
+unsigned char key_ready;
 char key_ascii;
 
 extern void write_i_sprite(unsigned char *sprite_addr);
@@ -324,6 +324,19 @@ extern void __far click_handler(unsigned int ax,
                                 unsigned int dx,
                                 unsigned int si,
                                 unsigned int di);
+/* Forward declarations (functions defined later in this file). */
+void set_palette(char *p);
+void clear_a_screen(void);
+void get_mouse(void);
+void clear_keys(void);
+void to_fb(void);
+void del_fb(void);
+void test_for_delimiter(void);
+void xclip(int clip_left, int clip_right);
+void yclip(int clip_top, int clip_bottom);
+void setup_scratch_buffer(void);
+void stop_system(void);
+
 #ifdef __WATCOMC__
 
 // Populate directory[] with up to 100 DOS 8.3 filenames matching a wildcard pattern.
@@ -454,7 +467,7 @@ int check_file_exists(char *filename)
     int fd;
     int found = 0;
     cd_path(filename);
-    fd = open(filename, 0x200);
+    fd = open(filename, O_BINARY);
     if (fd >= 0) {
         found = 1;
         close(fd);
@@ -487,7 +500,7 @@ int readfile(const char *filename, void *buffer, int size, int offset)
     int bytes_read;
 
     bytes_read = 0;
-    fd = open(filename, 0x200);
+    fd = open(filename, O_BINARY);
     if (fd != -1) {
         if (_lseek(fd, offset, 0) != -1) {
             bytes_read = read(fd, buffer, size);
@@ -497,7 +510,7 @@ int readfile(const char *filename, void *buffer, int size, int offset)
 
     if (bytes_read <= 0) {
         cd_path(filename);
-        fd = open(filename, 0x200);
+        fd = open(filename, O_BINARY);
         if (fd != -1) {
             if (_lseek(fd, offset, 0) != -1) {
                 bytes_read = read(fd, buffer, size);
@@ -1914,9 +1927,9 @@ void strip_trailing_space(signed char *s)
 // FUNCTION: C2WIN 0x0044ca89
 void strip_spaces(char *s)
 {
-    int len;
     int i;
     int previous_was_space = 0;
+    int len;
 
     for (i = 0; i < 0xfa00; i++) {
         if (s[i] == 0) {
@@ -2854,8 +2867,6 @@ void click_on_text(int x, int y, int w, int h)
     cursor_y = y;
 }
 
-#ifdef __WATCOMC__
-
 // Like clicked_delay() but runs the inner poll for a fixed 8000 iterations and returns void: a
 // settle (warmup) loop of 1000 get_mouse() calls followed by `delay` outer ticks of 8000 inner
 // polls.
@@ -2898,7 +2909,6 @@ int clicked_delay(int delay)
     }
     return 0;
 }
-#endif /* __WATCOMC__ */
 
 // Crude busy-wait: `n` * 25 vertical-blank cycles.
 // FUNCTION: C2 0x27402

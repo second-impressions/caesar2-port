@@ -104,6 +104,18 @@ int tutorial_timer;
 int media_left_image;
 int tutorial_correct;
 int linked_text_flag;
+/* Forward declarations (functions defined later in this file). */
+void load_media_entry(void);
+void show_help_page(void);
+void put_a_media_string(char *text, int x, int y);
+void push_forward_help_history(void);
+void init_help_history(void);
+void do_a_tutorial_page(void);
+void show_please_wait(void);
+void act_back_tutorial_page(void);
+void act_middle_tutorial_page(void);
+void act_forward_tutorial_page(void);
+
 
 // Run the in-game help browser from the requested page until the user exits.
 // FUNCTION: C2 0x57fa8
@@ -637,19 +649,18 @@ void do_a_tutorial_page(void)
 // FUNCTION: C2WIN 0x004537a1
 void tutorial_test_for_forum_access(void)
 {
-    int cell_y;
-    int cell_x;
-    unsigned char building_kind;
+    int map_y;
+    int map_x;
 
     if (tutorial_level != 3) return;
     if (tutorial_timer % 50 != 0) return;
     if (tutorial_correct) return;
 
+    map_y = 0;
     cm_sptr = 0;
-    cell_y = 0;
-    for ( ; cell_y < 80; cell_y++) {
-    for (cell_x = 0; cell_x < 80; cell_x++, cm_sptr += 20) {
-        building_kind = CM_CELL(cm_sptr).base_kind;
+    for ( ; map_y < 80; map_y++) {
+    for (map_x = 0; map_x < 80; map_x++, cm_sptr += 20) {
+        unsigned char building_kind = CM_CELL(cm_sptr).base_kind;
         if (building_kind >= 0x82 && building_kind <= 0xa1
             && (CM_CELL(cm_sptr).range_flag & 0x0c) != 0) {
             tutorial_correct_timer = 50;
@@ -665,19 +676,18 @@ void tutorial_test_for_forum_access(void)
 // FUNCTION: C2WIN 0x00453897
 void tutorial_test_for_water_distribution(void)
 {
-    int cell_y;
-    int cell_x;
-    unsigned char building_kind;
+    int map_y;
+    int map_x;
 
     if (tutorial_level != 2) return;
     if (tutorial_timer % 50 != 0) return;
     if (tutorial_correct) return;
 
+    map_y = 0;
     cm_sptr = 0;
-    cell_y = 0;
-    for ( ; cell_y < 80; cell_y++) {
-    for (cell_x = 0; cell_x < 80; cell_x++, cm_sptr += 20) {
-        building_kind = CM_CELL(cm_sptr).base_kind;
+    for ( ; map_y < 80; map_y++) {
+    for (map_x = 0; map_x < 80; map_x++, cm_sptr += 20) {
+        unsigned char building_kind = CM_CELL(cm_sptr).base_kind;
         if (building_kind >= 0x82 && building_kind <= 0xa1
             && (CM_CELL(cm_sptr).education & 0x01) != 0) {
             tutorial_correct = 1;
@@ -693,7 +703,9 @@ void tutorial_test_for_water_distribution(void)
 void show_please_wait(void)
 {
     show_a_system_window(0x50, 0xc0, 0x14, 8);
+#if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
     font_list(0x31, 0,   0x90, 0xd8, font2, 0x10);
     font_list(0x31, 9,   0x80, 0x100, font1, 0x10);
     font_list(0x31, 0xa, 0xb0, 0x110, font1, 0x10);
@@ -745,8 +757,8 @@ void act_middle_tutorial_page(void)
 // FUNCTION: C2WIN 0x00453b68
 void act_forward_tutorial_page(void)
 {
-    out1 = 1;
     tutorial_page += 1;
+    out1 = 1;
     do_pos();
 }
 

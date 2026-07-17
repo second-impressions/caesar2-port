@@ -48,6 +48,9 @@ char svga_refresh_table[1364];
 extern void refresh_16x16_partblock(int screen_off, unsigned short bank_off,
                                     int width);
 
+/* Forward declarations (functions defined later in this file). */
+void setup_refresh_area(int screen_x, int screen_y, int width, int height, int refresh_value);
+
 
 // Mark every clean screen tile for one redraw.
 // FUNCTION: C2 0x28e94
@@ -263,22 +266,22 @@ void refresh_a_square(int tile_x, int tile_y, char refresh_value)
 // FUNCTION: C2WIN 0x0043aed4
 void refresh_a_bigger_square(int tile_x, int tile_y)
 {
-    int row_count;
-    int row_idx;
+    int i;
+    int count;
 
-    row_count = 6;
+    count = 6;
     if (tile_y < -0x20) {
         tile_y = 0;
-        row_count = 3;
+        count = 3;
     } else if (tile_y < -0x10) {
         tile_y = 0;
-        row_count = 4;
+        count = 4;
     } else if (tile_y < 0) {
         tile_y = 0;
-        row_count = 5;
+        count = 5;
     }
     ref_ptr = tile_x + tile_y * 40;
-    for (row_idx = 0; row_idx < row_count; ++row_idx) {
+    for (i = 0; i < count; ++i) {
         if (ref_ptr >= 0x4b0) return;
         svga_refresh_table[ref_ptr + 0] = 2;
         svga_refresh_table[ref_ptr + 1] = 2;
@@ -288,6 +291,7 @@ void refresh_a_bigger_square(int tile_x, int tile_y)
         ref_ptr += 0x28;
     }
 }
+
 
 // Raise a 14×12 tile rectangle to priority 2, clipping at the top and left edges.
 // FUNCTION: C2 0x29458

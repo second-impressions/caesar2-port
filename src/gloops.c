@@ -14,6 +14,10 @@ extern void show_cursor(unsigned char *font_ptr);
 
 extern void exit_screen_void(void);
 
+/* Forward declarations (functions defined later in this file). */
+void explain_forum(void);
+void forum_explanations(int department_idx, int highlight_flag);
+
 
 // Starts a UI frame by advancing the cycle count, restoring the mouse background, polling input,
 // and advancing the random-number generator.

@@ -6,6 +6,11 @@ extern void place_2x2_block(unsigned char *src, int screen_off);
 extern void place_4x4_block(unsigned char *src, int screen_off);
 extern void place_6x6_block(unsigned char *src, int screen_off);
 extern void place_8x8_block(unsigned char *src, int screen_off);
+/* Forward declarations (functions defined later in this file). */
+void show_city_landfill(int x_start, int y_start);
+void get_circus_bodge(unsigned char building_kind);
+void show_region_landfill(int x_start, int y_start);
+
 
 // Clear the city map's per-cell overlay sprite pool.
 // FUNCTION: C2 0x3e9c0

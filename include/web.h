@@ -17,7 +17,7 @@ extern struct web_node web[120];
 extern int web_start_y;
 extern int web_start_x;
 extern int web_node;
-extern char web_directions;
+extern unsigned char web_directions;
 
 /* Page 1: low-hash heads of the dword and byte runs. */
 extern int web_nof_dircs;
@@ -28,7 +28,7 @@ extern int web_first_actual_node;
 extern int web_total_length;
 extern int web_out_of_the_walls;
 extern int web_ptr;
-extern char web_from;
-extern char web_dirc;
+extern unsigned char web_from;
+extern unsigned char web_dirc;
 
 #endif /* WEB_H */

@@ -29,7 +29,7 @@ short match_length;
 unsigned short getbuf;
 unsigned short putbuf;
 short match_position;
-char putlen;
+unsigned char putlen;
 char getlen;
 
 /* Okumura/Yoshizaki LZHUF parameters. */
@@ -45,6 +45,9 @@ char getlen;
 extern void  memmove(void *dst, const void *src, unsigned int n);
 extern void *calloc(unsigned int nmemb, unsigned int size);
 extern void free(void *);
+/* Forward declarations (functions defined later in this file). */
+void free_pumping_memory(void);
+
 
 // Initialize the LZSS match tree with every node detached.
 // FUNCTION: C2 0x6f535

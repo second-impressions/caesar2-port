@@ -8,7 +8,7 @@
 char __far *MK_FP(int off, int seg);
 #pragma aux MK_FP = parm [eax] [edx] value [dx eax];
 #else
-static char __far *MK_FP(unsigned off, unsigned seg) { }
+static char __far *MK_FP(unsigned off, unsigned seg) { return 0; }
 #endif
 extern int  open(const char *path, int flags, ...);
 void __cdecl mood_modfication(int seq);
@@ -60,6 +60,15 @@ void free(void *p);
 
 extern void _pos_ret3(void);
 extern void *malloc(unsigned int size);
+/* Forward declarations (functions defined later in this file). */
+void stop_samples(void);
+void stop_sequences(void);
+void get_city_mood(void);
+void get_battle_mood(void);
+void choose_odd_tune(int branch_base);
+void get_new_sslot(char *filename);
+void free_up_sslot(int slot_idx);
+
 
 // Initialize AIL and enable digital samples and MIDI sequences.
 // FUNCTION: C2 0x11758
@@ -70,8 +79,7 @@ void start_sounds(void)
     smacker_open    = 0;
     c2inf.samples_on = 1;
     c2inf.tunes_on   = 1;
-    next_sequence    = 0;
-    next_sample      = 0;
+    next_sample = next_sequence = 0;
     samples_running  = 0;
     sequences_running = 0;
     AIL_startup();
@@ -525,7 +533,7 @@ void get_city_mood(void)
     if (((bad_mood == 0) && (threat_mood == 0)) && (emergency_mood == 0)) {
         if (last_city_mood == 3)      tune_mood = 2;
         else if (last_city_mood == 2) tune_mood = 1;
-        else                          tune_mood = bad_mood;
+        else                          tune_mood = 0;
     }
     last_city_mood = tune_mood;
 }
