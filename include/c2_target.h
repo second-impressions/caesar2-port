@@ -75,4 +75,10 @@
  * the pointers dangling (verified at C2WIN 0x43c7e8 vs C2 0x6fffc). */
 #define C2_FEAT_PUMP_FREE_NULLS   C2_TARGET_WIN
 
+/* The DOS promotion offer spins a nested input loop over the
+ * want-promotion box; the Windows port made the box modal (it returns
+ * the choice) and re-shows any open advisor windows after a review
+ * choice (verified at C2WIN 0x454e88 vs C2 0x554b1). */
+#define C2_FEAT_MODAL_PROMOTION   C2_TARGET_WIN
+
 #endif /* C2_TARGET_H */

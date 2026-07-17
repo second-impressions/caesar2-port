@@ -197,8 +197,81 @@ int city_pop_limit_10_to_1(int rating, int population_factor) {
 }
 
 // Asks whether the player accepts an offered promotion.
-// FUNCTION: C2 0x559d5
+#if C2_FEAT_MODAL_PROMOTION
+/* Windows-port promotion dialog: the box call is modal and returns the
+   player's choice, and any advisor windows the player had open are
+   brought back afterwards. */
+void act_take_promotion(void);
+void act_review_in_10(void);
+void act_review_in_25(void);
+extern unsigned char advisor_window_up[3];
+void show_advisor_window(char advisor_idx);
+void redraw_city_window(void);
+void redraw_region_window(void);
+
+// Asks whether the player accepts an offered promotion.
 // FUNCTION: C2WIN 0x004554ba
+int want_promotion(int promotion_level)
+{
+    int result;
+
+    pointer_mode = 0;
+    decision = 0;
+    result = show_want_promotion_box(player_rank + promotion_level);
+    if (result == 1) {
+        act_take_promotion();
+    } else if (result == 2) {
+        act_review_in_10();
+        if (advisor_window_up[0] == 1)
+            show_advisor_window(0);
+        if (advisor_window_up[1] == 1)
+            show_advisor_window(1);
+        if (advisor_window_up[2] == 1)
+            show_advisor_window(2);
+    } else if (result == 3) {
+        act_review_in_25();
+        if (advisor_window_up[0] == 1)
+            show_advisor_window(0);
+        if (advisor_window_up[1] == 1)
+            show_advisor_window(1);
+        if (advisor_window_up[2] == 1)
+            show_advisor_window(2);
+    }
+    if (player_rank + promotion_level >= 10 && decision == 1) {
+        if (c2inf.skill_level < 2) {
+            make_emperor();
+            return 0;
+        }
+        confirm(13, 160, 160);
+        if (decision == 0) {
+            make_emperor();
+            return 0;
+        }
+    }
+    if (decision == 1) {
+        stop_db();
+        return 1;
+    }
+    load_map_graphics(map_mode, zoom_level);
+    if (map_mode == 0) {
+        city_map_screen(1);
+    } else if (map_mode == 1) {
+        region_map_screen(1);
+    }
+    if (result == 2 || result == 3) {
+        if (map_mode == 0) {
+            redraw_city_window();
+        } else if (map_mode == 1) {
+            redraw_region_window();
+        }
+    }
+    flush_sb_buffer();
+    stop_db();
+    return 0;
+}
+#else
+// Asks whether the player accepts an offered promotion.
+// FUNCTION: C2 0x559d5
 int want_promotion(int promotion_level) {
     int promoted_rank;
     pointer_mode = 0;
@@ -237,6 +310,7 @@ int want_promotion(int promotion_level) {
     stop_db();
     return 0;
 }
+#endif
 
 
 // Accepts the pending promotion and closes the promotion dialog.
@@ -399,9 +473,7 @@ void set_current_cohort_totals(void) {
 
     if (no_of_cohorts_in_action <= 0) {
         current_no_of_soldiers = 0;
-        current_no_of_auxillaries = 0;
-        current_no_of_irregulars = 0;
-        current_no_of_regulars = 0;
+        current_no_of_regulars = current_no_of_irregulars = current_no_of_auxillaries = 0;
         return;
     }
 
@@ -409,94 +481,98 @@ void set_current_cohort_totals(void) {
     temp_army = last_adjusted_cohort;
 
     // Reconcile auxiliaries.
-    while (lacking_auxillaries > 0) {
-        iteration_count++;
-        if (iteration_count >= 40000) break;
-        if (get_next_temp_cohort(0) == 0) break;
-        if (army_list[temp_army].num_auxillaries == 0) continue;
-        army_list[temp_army].num_auxillaries--;
-        lacking_auxillaries--;
+    while (lacking_auxillaries > 0 && ++iteration_count < 40000) {
+        if (get_next_temp_cohort(0) == 0)
+            break;
+        if (army_list[temp_army].num_auxillaries != 0) {
+            army_list[temp_army].num_auxillaries--;
+            lacking_auxillaries--;
+        }
     }
-    while (extra_auxillaries > 0) {
-        iteration_count++;
-        if (iteration_count >= 40000) break;
-        if (get_next_temp_cohort(1) == 0) break;
+    while (extra_auxillaries > 0 && ++iteration_count < 40000) {
+        if (get_next_temp_cohort(1) == 0)
+            break;
         if (army_list[temp_army].cohort_size_class == 0)      troops_per_pass = 2;
         else if (army_list[temp_army].cohort_size_class == 2) troops_per_pass = 4;
         else                                                  troops_per_pass = 1;
         for (i = 0; i < troops_per_pass; i++) {
-            if (extra_auxillaries == 0) break;
-            army_list[temp_army].num_auxillaries++;
-            extra_auxillaries--;
+            if (extra_auxillaries != 0) {
+                army_list[temp_army].num_auxillaries++;
+                extra_auxillaries--;
+            } else
+                break;
         }
     }
 
     // Reconcile irregulars.
-    while (lacking_irregulars > 0) {
-        iteration_count++;
-        if (iteration_count >= 40000) break;
-        if (get_next_temp_cohort(0) == 0) break;
-        if (army_list[temp_army].num_irregulars == 0) continue;
-        army_list[temp_army].num_irregulars--;
-        lacking_irregulars--;
+    while (lacking_irregulars > 0 && ++iteration_count < 40000) {
+        if (get_next_temp_cohort(0) == 0)
+            break;
+        if (army_list[temp_army].num_irregulars != 0) {
+            army_list[temp_army].num_irregulars--;
+            lacking_irregulars--;
+        }
     }
-    while (extra_irregulars > 0) {
-        iteration_count++;
-        if (iteration_count >= 40000) break;
-        if (get_next_temp_cohort(1) == 0) break;
+    while (extra_irregulars > 0 && ++iteration_count < 40000) {
+        if (get_next_temp_cohort(1) == 0)
+            break;
         if (army_list[temp_army].cohort_size_class == 0)      troops_per_pass = 2;
         else if (army_list[temp_army].cohort_size_class == 2) troops_per_pass = 4;
         else                                                  troops_per_pass = 1;
         for (i = 0; i < troops_per_pass; i++) {
-            if (extra_irregulars == 0) break;
-            army_list[temp_army].num_irregulars++;
-            extra_irregulars--;
+            if (extra_irregulars != 0) {
+                army_list[temp_army].num_irregulars++;
+                extra_irregulars--;
+            } else
+                break;
         }
     }
 
     // Reconcile regulars.
-    while (lacking_regulars > 0) {
-        iteration_count++;
-        if (iteration_count >= 40000) break;
-        if (get_next_temp_cohort(0) == 0) break;
-        if (army_list[temp_army].num_regulars == 0) continue;
-        army_list[temp_army].num_regulars--;
-        lacking_regulars--;
+    while (lacking_regulars > 0 && ++iteration_count < 40000) {
+        if (get_next_temp_cohort(0) == 0)
+            break;
+        if (army_list[temp_army].num_regulars != 0) {
+            army_list[temp_army].num_regulars--;
+            lacking_regulars--;
+        }
     }
-    while (extra_regulars > 0) {
-        iteration_count++;
-        if (iteration_count >= 40000) break;
-        if (get_next_temp_cohort(1) == 0) break;
+    while (extra_regulars > 0 && ++iteration_count < 40000) {
+        if (get_next_temp_cohort(1) == 0)
+            break;
         if (army_list[temp_army].cohort_size_class == 0)      troops_per_pass = 2;
         else if (army_list[temp_army].cohort_size_class == 2) troops_per_pass = 4;
         else                                                  troops_per_pass = 1;
         for (i = 0; i < troops_per_pass; i++) {
-            if (extra_regulars == 0) break;
-            army_list[temp_army].num_regulars++;
-            extra_regulars--;
+            if (extra_regulars != 0) {
+                army_list[temp_army].num_regulars++;
+                extra_regulars--;
+            } else
+                break;
         }
     }
 
     // Reconcile special troops.
-    while (lacking_specials > 0) {
-        iteration_count++;
-        if (iteration_count >= 40000) break;
-        if (get_next_temp_cohort(0) == 0) break;
-        if (army_list[temp_army].num_specials == 0) continue;
-        army_list[temp_army].num_specials--;
-        lacking_specials--;
+    while (lacking_specials > 0 && ++iteration_count < 40000) {
+        if (get_next_temp_cohort(0) == 0)
+            break;
+        if (army_list[temp_army].num_specials != 0) {
+            army_list[temp_army].num_specials--;
+            lacking_specials--;
+        }
     }
-    while (extra_specials > 0) {
-        iteration_count++;
-        if (iteration_count >= 40000) break;
-        if (get_next_temp_cohort(1) == 0) break;
+    while (extra_specials > 0 && ++iteration_count < 40000) {
+        if (get_next_temp_cohort(1) == 0)
+            break;
         if (army_list[temp_army].cohort_size_class == 0)      troops_per_pass = 2;
         else if (army_list[temp_army].cohort_size_class == 2) troops_per_pass = 4;
         else                                                  troops_per_pass = 1;
         for (i = 0; i < troops_per_pass; i++) {
-            if (extra_specials == 0) break;
-            army_list[temp_army].num_specials++;
-            extra_specials--;
+            if (extra_specials != 0) {
+                army_list[temp_army].num_specials++;
+                extra_specials--;
+            } else
+                break;
         }
     }
 
@@ -504,14 +580,14 @@ void set_current_cohort_totals(void) {
 
     // Refresh each active cohort's troop total.
     for (temp_army = 1; temp_army < 26; temp_army++) {
-        if (army_list[temp_army].exists == 0) continue;
-        if (army_list[temp_army].type != 1) continue;
-        army_list[temp_army].total_troops =
-              army_list[temp_army].num_auxillaries
-            + army_list[temp_army].num_irregulars
-            + army_list[temp_army].num_regulars
-            + army_list[temp_army].num_specials;
-        army_list[temp_army].assigned_needs = 0;
+        if (army_list[temp_army].exists != 0 && army_list[temp_army].type == 1) {
+            army_list[temp_army].total_troops =
+                  army_list[temp_army].num_auxillaries
+                + army_list[temp_army].num_irregulars
+                + army_list[temp_army].num_regulars
+                + army_list[temp_army].num_specials;
+            army_list[temp_army].assigned_needs = 0;
+        }
     }
 
     // Distribute remaining reinforcement needs among active cohorts.
@@ -520,28 +596,24 @@ void set_current_cohort_totals(void) {
     needed_regulars = needed_no_of_regulars;
     needed_specials = needed_no_of_specials;
 
-    while (needed_auxillaries-- > 0) {
-        iteration_count++;
-        if (iteration_count >= 40000) break;
-        if (get_next_temp_cohort(1) == 0) break;
+    while (needed_auxillaries-- > 0 && ++iteration_count < 40000) {
+        if (get_next_temp_cohort(1) == 0)
+            break;
         army_list[temp_army].assigned_needs++;
     }
-    while (needed_irregulars-- > 0) {
-        iteration_count++;
-        if (iteration_count >= 40000) break;
-        if (get_next_temp_cohort(1) == 0) break;
+    while (needed_irregulars-- > 0 && ++iteration_count < 40000) {
+        if (get_next_temp_cohort(1) == 0)
+            break;
         army_list[temp_army].assigned_needs++;
     }
-    while (needed_regulars-- > 0) {
-        iteration_count++;
-        if (iteration_count >= 40000) break;
-        if (get_next_temp_cohort(1) == 0) break;
+    while (needed_regulars-- > 0 && ++iteration_count < 40000) {
+        if (get_next_temp_cohort(1) == 0)
+            break;
         army_list[temp_army].assigned_needs++;
     }
-    while (needed_specials-- > 0) {
-        iteration_count++;
-        if (iteration_count >= 40000) break;
-        if (get_next_temp_cohort(1) == 0) break;
+    while (needed_specials-- > 0 && ++iteration_count < 40000) {
+        if (get_next_temp_cohort(1) == 0)
+            break;
         army_list[temp_army].assigned_needs++;
     }
 }
@@ -557,15 +629,18 @@ void fill_cohort_centuries(void) {
     int specials;
 
     for (temp_army = 1; temp_army < 26; temp_army++) {
-        if (army_list[temp_army].exists == 0) continue;
-        if (army_list[temp_army].type != 1) continue;
+        if (army_list[temp_army].exists != 0 && army_list[temp_army].type == 1) {
 
         army_list[temp_army].num_centuries = 0;
         auxillaries = army_list[temp_army].num_auxillaries;
         irregulars = army_list[temp_army].num_irregulars;
         regulars = army_list[temp_army].num_regulars;
         specials = army_list[temp_army].num_specials;
-        army_list[temp_army].total_troops = auxillaries + irregulars + regulars + specials;
+        army_list[temp_army].total_troops =
+              army_list[temp_army].num_auxillaries
+            + army_list[temp_army].num_irregulars
+            + army_list[temp_army].num_regulars
+            + army_list[temp_army].num_specials;
 
         // Pass 1: re-stock existing centuries by type.
         for (i = 0; i < 14; i++) {
@@ -618,7 +693,7 @@ void fill_cohort_centuries(void) {
 
         // Pass 2: fill empty centuries from leftovers.
         for (i = 0; i < 14; i++) {
-            if (army_list[temp_army].centuries[i].type != 0) continue;
+            if (army_list[temp_army].centuries[i].type == 0) {
             if (regulars >= 60) {
                 regulars -= 60;
                 army_list[temp_army].centuries[i].type = 1;
@@ -652,12 +727,14 @@ void fill_cohort_centuries(void) {
                 army_list[temp_army].centuries[i].type = 4;
                 army_list[temp_army].centuries[i].damaged = 0;
             }
+            }
         }
 
         // Pass 3: count non-empty centuries.
         for (i = 0; i < 14; i++) {
             if (army_list[temp_army].centuries[i].type != 0)
                 army_list[temp_army].num_centuries++;
+        }
         }
     }
 }
@@ -867,8 +944,101 @@ void adjust_slave_usage(void) {
 }
 
 // Draw and apply a skill-dependent random province event for the current turn.
-// FUNCTION: C2 0x56bf6
+#if C2_TARGET_WIN
+/* The Windows build rewrote this handler: OR-combined quiet-outcome
+   gates, reordered temple sums, split argument locals, and a dead
+   20000-denarii tier storing 50 where the DOS build stores 20 (both
+   stores are shadowed by the 10000 tier, so behavior is unchanged). */
 // FUNCTION: C2WIN 0x004575f9
+void random_event(void) {
+    int event_kind;
+    int robbery_bonus;
+    int denarii_per_temple;
+    int temple_total;
+    int temple_score;
+    int temple_weight;
+    int robbery_avg;
+
+    event_kind = (unsigned char)events[c2inf.skill_level][rand128 & 63];
+    plague_accident = 999999;
+    revolt_accident = 999999;
+
+    if (event_kind == 0) {
+        if (denarii < 1000 || population < 100)
+            return;
+        temple_total = med_temples_count * 3
+                     + large_temples_count * 4
+                     + small_temples_count;
+        if (temple_total == 0) temple_total = 1;
+        denarii_per_temple = denarii / temple_total;
+        if (denarii_per_temple >= 20000) robbery_bonus = 50;
+        if      (denarii_per_temple >= 10000) robbery_bonus = 20;
+        else if (denarii_per_temple >=  4000) robbery_bonus = 14;
+        else if (denarii_per_temple >=  2000) robbery_bonus =  8;
+        else if (denarii_per_temple >=  1000) robbery_bonus =  4;
+        else if (denarii_per_temple >=   500) robbery_bonus =  0;
+        else                                  robbery_bonus = -4;
+        robbery_bonus += c2inf.skill_level;
+        if (rand128 >= robbery_bonus)
+            return;
+        robbery_count = 1;
+        event_kind = 3;
+    }
+
+    if (event_kind == 4) {
+        if (plague_running_count < 4)
+            return;
+        plague_accident = get_rand_max(plague_running_count);
+    }
+
+    if (event_kind == 2) {
+        if (denarii < 1000 || population < 100)
+            return;
+        if (temples_count == 0) {
+            if (!warned_of_robbery) {
+                warned_of_robbery = 1;
+                put_message(88, 0, 14);
+            } else {
+                put_message(89, 0, 16);
+                stolen_denarii = denarii / 4;
+                denarii -= stolen_denarii;
+            }
+        }
+    }
+
+    if (event_kind == 3) {
+        if (denarii < 1000 || population < 100)
+            return;
+        if (temples_count == 0) {
+            if (!warned_of_robbery) {
+                warned_of_robbery = 1;
+                put_message(88, 0, 14);
+            } else {
+                put_message(89, 0, 16);
+                stolen_denarii = denarii / 4;
+                denarii -= stolen_denarii;
+            }
+        } else if (robbery_count != 0) {
+            temple_weight = large_temples_count * 4
+                          + med_temples_count * 2
+                          + small_temples_count;
+            robbery_avg = (large_robbery_count * 4
+                           + med_robbery_count * 2
+                           + small_robbery_count) / robbery_count;
+            temple_score = valueDIVtotal(robbery_avg, temple_weight);
+            if (temple_score < 10) temple_score = 10;
+            if (temple_score > 80) temple_score = 80;
+            stolen_denarii = totalXpercent(denarii / 4, temple_score);
+            if (stolen_denarii > 0) {
+                denarii -= stolen_denarii;
+                put_message(86, 0, 16);
+            }
+        }
+    }
+}
+#else
+// Draw and apply a skill-dependent random province event for the current turn.
+// FUNCTION: C2 0x56bf6
 void random_event(void) {
     int event_kind;
     int temple_score;
@@ -956,6 +1126,7 @@ void random_event(void) {
     denarii -= stolen_denarii;
     put_message(86, 0, 16);
 }
+#endif
 
 // Pays the governor's salary for the current rank.
 // FUNCTION: C2 0x56eb8
