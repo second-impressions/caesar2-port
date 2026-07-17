@@ -397,7 +397,7 @@ struct army_rec {
     unsigned char  num_centuries;       /* +0x92 */
     char           morale_timer;       /* +0x93  cohort morale-recovery countdown */
     unsigned char  morale;             /* +0x94 */
-    char           readiness_level;    /* +0x95 */
+    unsigned char  readiness_level;    /* +0x95 */
     unsigned char  home_x;             /* +0x96  saved home tile X (region
                                             grid); used by sa12_army_sail_
                                             home as the destination to
