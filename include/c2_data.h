@@ -409,7 +409,7 @@ extern unsigned char gen_refresh2;
 extern unsigned char gen_refresh3;
 extern char gen_refresh4;
 extern unsigned short getbuf;
-extern char getlen;
+extern unsigned char getlen;
 extern char gmn[];
 extern int gmn_count;
 extern int gmn_density;

@@ -70,4 +70,9 @@
  * (verified at C2WIN 0x4b6f46 / 0x4b6f99). */
 #define C2_FEAT_ROTATE_PM_LIMITS  C2_TARGET_WIN
 
+/* The Windows build resets each compression work-table pointer to
+ * null after freeing it in free_pumping_memory; the DOS build leaves
+ * the pointers dangling (verified at C2WIN 0x43c7e8 vs C2 0x6fffc). */
+#define C2_FEAT_PUMP_FREE_NULLS   C2_TARGET_WIN
+
 #endif /* C2_TARGET_H */

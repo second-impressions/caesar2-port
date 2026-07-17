@@ -30,7 +30,7 @@ unsigned short getbuf;
 unsigned short putbuf;
 short match_position;
 unsigned char putlen;
-char getlen;
+unsigned char getlen;
 
 /* Okumura/Yoshizaki LZHUF parameters. */
 #define N           4096        /* size of string buffer */
@@ -54,114 +54,110 @@ void free_pumping_memory(void);
 // FUNCTION: C2WIN 0x0043b720
 void InitTree(void)
 {
-    short *right_child_ptr;
-    short *parent_ptr;
-    short node_idx;
-    for (node_idx = 0x1001; node_idx <= 0x1100; node_idx++) {
-        right_child_ptr = rson;
-        right_child_ptr[node_idx] = 0x1000;
+    short i;
+    for (i = 0x1001; i <= 0x1100; i++) {
+        rson[i] = 0x1000;
     }
-    for (node_idx = 0; node_idx < 0x1000; node_idx++) {
-        parent_ptr = dad;
-        parent_ptr[node_idx] = 0x1000;
+    for (i = 0; i < 0x1000; i++) {
+        dad[i] = 0x1000;
     }
 }
 
 // Insert a window position into the LZSS search tree and record its best match.
 // FUNCTION: C2 0x6f575
 // FUNCTION: C2WIN 0x0043b794
-void InsertNode(short insert_idx)
+void InsertNode(short r)
 {
-    unsigned short candidate_distance;
-    short compare_result;
-    short compare_idx;
-    short parent_idx;
-    unsigned char *key_ptr;
+    unsigned short c;
+    short cmp;
+    short i;
+    short p;
+    unsigned char *key;
 
-    compare_result = 1;
-    key_ptr = &text_buf[insert_idx];
-    parent_idx = (N + 1) + key_ptr[0];
-    rson[insert_idx] = lson[insert_idx] = NIL;
+    cmp = 1;
+    key = &text_buf[r];
+    p = (N + 1) + key[0];
+    rson[r] = lson[r] = NIL;
     match_length = 0;
     for (;;) {
-        if (compare_result >= 0) {
-            if (rson[parent_idx] != NIL)
-                parent_idx = rson[parent_idx];
+        if (cmp >= 0) {
+            if (rson[p] != NIL)
+                p = rson[p];
             else {
-                rson[parent_idx] = insert_idx;
-                dad[insert_idx] = parent_idx;
+                rson[p] = r;
+                dad[r] = p;
                 return;
             }
         } else {
-            if (lson[parent_idx] != NIL)
-                parent_idx = lson[parent_idx];
+            if (lson[p] != NIL)
+                p = lson[p];
             else {
-                lson[parent_idx] = insert_idx;
-                dad[insert_idx] = parent_idx;
+                lson[p] = r;
+                dad[r] = p;
                 return;
             }
         }
-        for (compare_idx = 1; compare_idx < F; compare_idx++)
-            if ((compare_result = key_ptr[compare_idx] - text_buf[parent_idx + compare_idx]) != 0)
+        for (i = 1; i < F; i++)
+            if ((cmp = key[i] - text_buf[p + i]) != 0)
                 break;
-        if (compare_idx > THRESHOLD) {
-            if (compare_idx > match_length) {
-                match_position = ((insert_idx - parent_idx) & (N - 1)) - 1;
-                if ((match_length = compare_idx) >= F)
+        if (i > THRESHOLD) {
+            if (i > match_length) {
+                match_position = ((r - p) & (N - 1)) - 1;
+                if ((match_length = i) >= F)
                     break;
             }
-            if (compare_idx == match_length) {
-                if ((candidate_distance = ((insert_idx - parent_idx) & (N - 1)) - 1) < match_position)
-                    match_position = candidate_distance;
+            if (i == match_length) {
+                if ((c = ((r - p) & (N - 1)) - 1) < match_position)
+                    match_position = c;
             }
         }
     }
-    dad[insert_idx] = dad[parent_idx];
-    lson[insert_idx] = lson[parent_idx];
-    rson[insert_idx] = rson[parent_idx];
-    dad[lson[parent_idx]] = insert_idx;
-    dad[rson[parent_idx]] = insert_idx;
-    if (rson[dad[parent_idx]] == parent_idx)
-        rson[dad[parent_idx]] = insert_idx;
+    dad[r] = dad[p];
+    lson[r] = lson[p];
+    rson[r] = rson[p];
+    dad[lson[p]] = r;
+    dad[rson[p]] = r;
+    if (rson[dad[p]] == p)
+        rson[dad[p]] = r;
     else
-        lson[dad[parent_idx]] = insert_idx;
-    dad[parent_idx] = 0x1000;
+        lson[dad[p]] = r;
+    dad[p] = 0x1000;
 }
 
 // Remove a window position from the LZSS search tree before reusing its slot.
 // FUNCTION: C2 0x6f75a
 // FUNCTION: C2WIN 0x0043bab6
-void DeleteNode(short node_idx)
+void DeleteNode(short p)
 {
-    short replacement_idx;
+    short q;
 
-    if (dad[node_idx] == NIL)
+    if (dad[p] == NIL)
         return;
-    if (rson[node_idx] == NIL) {
-        replacement_idx = lson[node_idx];
-    } else if (lson[node_idx] == NIL) {
-        replacement_idx = rson[node_idx];
+    if (rson[p] == NIL) {
+        q = lson[p];
+    } else if (lson[p] == NIL) {
+        q = rson[p];
     } else {
-        replacement_idx = lson[node_idx];
-        if (rson[replacement_idx] != NIL) {
+        q = lson[p];
+        if (rson[q] != NIL) {
             do {
-                replacement_idx = rson[replacement_idx];
-            } while (rson[replacement_idx] != NIL);
-            rson[dad[replacement_idx]] = lson[replacement_idx];
-            dad[lson[replacement_idx]] = dad[replacement_idx];
-            lson[replacement_idx] = lson[node_idx];
-            dad[lson[node_idx]] = replacement_idx;
+                q = rson[q];
+            } while (rson[q] != NIL);
+            rson[dad[q]] = lson[q];
+            dad[lson[q]] = dad[q];
+            lson[q] = lson[p];
+            dad[lson[p]] = q;
         }
-        rson[replacement_idx] = rson[node_idx];
-        dad[rson[node_idx]] = replacement_idx;
+        rson[q] = rson[p];
+        dad[rson[p]] = q;
     }
-    dad[replacement_idx] = dad[node_idx];
-    if (rson[dad[node_idx]] == node_idx) {
-        rson[dad[node_idx]] = replacement_idx;
+    dad[q] = dad[p];
+    if (rson[dad[p]] == p) {
+        rson[dad[p]] = q;
     } else {
-        lson[dad[node_idx]] = replacement_idx;
+        lson[dad[p]] = q;
     }
-    dad[node_idx] = NIL;
+    dad[p] = NIL;
 }
 
 // Read one bit from the compressed input stream.
@@ -169,22 +165,18 @@ void DeleteNode(short node_idx)
 // FUNCTION: C2WIN 0x0043bce1
 short GetBit(void)
 {
-    short value;
+    short i;
 
     while (getlen <= 8) {
-        int input_idx;
-        unsigned char *input_ptr;
-        input_idx = pmp_iptr;
-        input_ptr = pmp_inbuff;
-        pmp_iptr = input_idx + 1;
-        value = input_ptr[input_idx];
-        getbuf |= value << (8 - getlen);
+        i = pmp_inbuff[pmp_iptr++];
+        i &= 0xff;
+        getbuf |= i << (8 - getlen);
         getlen += 8;
     }
-    value = getbuf;
+    i = getbuf;
     getbuf <<= 1;
     getlen--;
-    return (value < 0);
+    return (i < 0);
 }
 
 // Read one byte from the compressed input stream.
@@ -192,37 +184,33 @@ short GetBit(void)
 // FUNCTION: C2WIN 0x0043bd95
 int GetByte(void)
 {
-    unsigned short value;
+    unsigned short i;
 
     while (getlen <= 8) {
-        int input_idx;
-        unsigned char *input_ptr;
-        input_idx = pmp_iptr;
-        input_ptr = pmp_inbuff;
-        pmp_iptr = input_idx + 1;
-        value = input_ptr[input_idx];
-        getbuf |= value << (8 - getlen);
+        i = pmp_inbuff[pmp_iptr++];
+        i &= 0xff;
+        getbuf |= i << (8 - getlen);
         getlen += 8;
     }
-    value = getbuf;
+    i = getbuf;
     getbuf <<= 8;
     getlen -= 8;
-    return value >> 8;
+    return i >> 8;
 }
 
 // Append the high `l` bits of `c` to the compressed output stream.
 // FUNCTION: C2 0x6f993
 // FUNCTION: C2WIN 0x0043be48
-void Putcode(short bit_count, unsigned short code)
+void Putcode(short l, unsigned short c)
 {
-    putbuf |= code >> putlen;
-    if ((putlen += bit_count) >= 8) {
+    putbuf |= c >> putlen;
+    if ((putlen += (unsigned char)l) >= 8) {
         pmp_outbuff[pmp_optr++] = putbuf >> 8;
         if ((putlen -= 8) >= 8) {
             pmp_outbuff[pmp_optr++] = putbuf;
             codesize += 2;
             putlen -= 8;
-            putbuf = code << (bit_count - putlen);
+            putbuf = c << (l - putlen);
         } else {
             putbuf <<= 8;
             codesize++;
@@ -235,22 +223,22 @@ void Putcode(short bit_count, unsigned short code)
 // FUNCTION: C2WIN 0x0043bf35
 void StartHuff(void)
 {
-    short child_idx;
-    short node_idx;
+    short i;
+    short j;
 
-    for (child_idx = 0; child_idx < N_CHAR; child_idx++) {
-        freq[child_idx] = 1;
-        son[child_idx] = child_idx + T;
-        prnt[child_idx + T] = child_idx;
+    for (i = 0; i < N_CHAR; i++) {
+        freq[i] = 1;
+        son[i] = i + T;
+        prnt[i + T] = i;
     }
-    child_idx = 0;
-    node_idx = N_CHAR;
-    while (node_idx <= R) {
-        freq[node_idx] = freq[child_idx] + freq[child_idx + 1];
-        son[node_idx] = child_idx;
-        prnt[child_idx] = prnt[child_idx + 1] = node_idx;
-        child_idx += 2;
-        node_idx++;
+    i = 0;
+    j = N_CHAR;
+    while (j <= R) {
+        freq[j] = freq[i] + freq[i + 1];
+        son[j] = i;
+        prnt[i] = prnt[i + 1] = j;
+        i += 2;
+        j++;
     }
     freq[T] = 0xffff;
     prnt[R] = 0;
@@ -261,37 +249,37 @@ void StartHuff(void)
 // FUNCTION: C2WIN 0x0043c061
 void reconst(void)
 {
-    short source_idx;
-    short scan_idx;
-    short write_idx;
-    unsigned short node_freq;
-    unsigned short byte_count;
+    short i;
+    short k;
+    short j;
+    unsigned short f;
+    unsigned short l;
 
-    write_idx = 0;
-    for (source_idx = 0; source_idx < T; source_idx++) {
-        if (son[source_idx] >= T) {
-            freq[write_idx] = (freq[source_idx] + 1) / 2;
-            son[write_idx] = son[source_idx];
-            write_idx++;
+    j = 0;
+    for (i = 0; i < T; i++) {
+        if (son[i] >= T) {
+            freq[j] = (freq[i] + 1) / 2;
+            son[j] = son[i];
+            j++;
         }
     }
-    for (source_idx = 0, write_idx = N_CHAR; write_idx < T; source_idx += 2, write_idx++) {
-        scan_idx = source_idx + 1;
-        node_freq = freq[write_idx] = (freq[source_idx] + freq[scan_idx]);
-        for (scan_idx = write_idx - 1; node_freq < freq[scan_idx]; scan_idx--)
+    for (i = 0, j = N_CHAR; j < T; i += 2, j++) {
+        k = i + 1;
+        f = freq[j] = (freq[i] + freq[k]);
+        for (k = j - 1; f < freq[k]; k--)
             ;
-        scan_idx++;
-        byte_count = (write_idx - scan_idx) * 2;
-        memmove(&freq[scan_idx + 1], &freq[scan_idx], byte_count);
-        freq[scan_idx] = node_freq;
-        memmove(&son[scan_idx + 1], &son[scan_idx], byte_count);
-        son[scan_idx] = source_idx;
+        k++;
+        l = (j - k) * 2;
+        memmove(&freq[k + 1], &freq[k], l);
+        freq[k] = f;
+        memmove(&son[k + 1], &son[k], l);
+        son[k] = i;
     }
-    for (source_idx = 0; source_idx < T; source_idx++) {
-        if ((scan_idx = son[source_idx]) >= T) {
-            prnt[scan_idx] = source_idx;
+    for (i = 0; i < T; i++) {
+        if ((k = son[i]) >= T) {
+            prnt[k] = i;
         } else {
-            prnt[scan_idx] = prnt[scan_idx + 1] = source_idx;
+            prnt[k] = prnt[k + 1] = i;
         }
     }
 }
@@ -299,77 +287,75 @@ void reconst(void)
 // Update and reorder the adaptive Huffman tree after processing a symbol.
 // FUNCTION: C2 0x6fc6e
 // FUNCTION: C2WIN 0x0043c2d1
-void update(short tree_idx)
+void update(short c)
 {
-    short child_idx;
-    short other_child_idx;
-    short updated_freq;
-    short swap_idx;
+    short i;
+    short j;
+    short k;
+    short l;
 
     if (freq[R] == MAX_FREQ)
         reconst();
-    tree_idx = prnt[tree_idx + T];
+    c = prnt[c + T];
     do {
-        updated_freq = ++freq[tree_idx];
-        if (updated_freq > freq[swap_idx = (tree_idx + 1)]) {
-            while (updated_freq > freq[++swap_idx])
+        k = ++freq[c];
+        if (k > freq[l = (c + 1)]) {
+            while (k > freq[++l])
                 ;
-            swap_idx--;
-            freq[tree_idx] = freq[swap_idx];
-            freq[swap_idx] = updated_freq;
-            child_idx = son[tree_idx];
-            prnt[child_idx] = swap_idx;
-            if (child_idx < T)
-                prnt[child_idx + 1] = swap_idx;
-            other_child_idx = son[swap_idx];
-            son[swap_idx] = child_idx;
-            prnt[other_child_idx] = tree_idx;
-            if (other_child_idx < T)
-                prnt[other_child_idx + 1] = tree_idx;
-            son[tree_idx] = other_child_idx;
-            tree_idx = swap_idx;
+            l--;
+            freq[c] = freq[l];
+            freq[l] = k;
+            i = son[c];
+            prnt[i] = l;
+            if (i < T)
+                prnt[i + 1] = l;
+            j = son[l];
+            son[l] = i;
+            prnt[j] = c;
+            if (j < T)
+                prnt[j + 1] = c;
+            son[c] = j;
+            c = l;
         }
-        tree_idx = prnt[tree_idx];
-    } while (tree_idx);
+        c = prnt[c];
+    } while (c);
 }
 
 // Encode one literal or match-length token with the adaptive Huffman tree.
 // FUNCTION: C2 0x6fdb3
 // FUNCTION: C2WIN 0x0043c486
-void EncodeChar(unsigned short symbol)
+void EncodeChar(unsigned short c)
 {
-    short bit_count;
-    unsigned short code;
-    short tree_idx;
+    short j;
+    unsigned short i;
+    short k;
 
-    bit_count = 0;
-    code = 0;
-    tree_idx = prnt[(unsigned short)symbol + 0x273];
+    i = j = 0;
+    k = prnt[(unsigned short)c + 0x273];
 
     do {
-        code >>= 1;
-        if (tree_idx & 1) {
-            code += 0x8000;
+        i >>= 1;
+        if (k & 1) {
+            i += 0x8000;
         }
-        bit_count++;
-        tree_idx = prnt[tree_idx];
-    } while (tree_idx != 0x272);
+        j++;
+        k = prnt[k];
+    } while (k != 0x272);
 
-    Putcode((int)bit_count, code);
-    update((short)symbol);
+    Putcode((int)j, i);
+    update((short)c);
 }
 
 // Encode an LZSS match distance using a table-coded prefix and six raw bits.
 // FUNCTION: C2 0x6fe17
 // FUNCTION: C2WIN 0x0043c51f
-void EncodePosition(unsigned short position)
+void EncodePosition(unsigned short c)
 {
-    int prefix_idx;
-    prefix_idx = (position >> 6) & 0xFFFF;
-    Putcode(p_len[prefix_idx],
-            (unsigned short)(p_code[prefix_idx] << 8));
-    position &= 0x3F;
-    Putcode(6, (unsigned short)(position << 10));
+    unsigned short i;
+
+    i = c >> 6;
+    Putcode(p_len[i], (unsigned short)(p_code[i] << 8));
+    Putcode(6, (unsigned short)((c & 0x3f) << 10));
 }
 
 // Flush the final partial byte from the compressed output bit buffer.
@@ -378,13 +364,7 @@ void EncodePosition(unsigned short position)
 void EncodeEnd(void)
 {
     if (putlen) {
-        int output_idx;
-        unsigned char *output_ptr;
-        unsigned char output_byte = (unsigned char)(putbuf >> 8);
-        output_idx = pmp_optr;
-        output_ptr = pmp_outbuff;
-        pmp_optr = output_idx + 1;
-        output_ptr[output_idx] = output_byte;
+        pmp_outbuff[pmp_optr++] = putbuf >> 8;
         codesize++;
     }
 }
@@ -394,16 +374,16 @@ void EncodeEnd(void)
 // FUNCTION: C2WIN 0x0043c5ba
 short DecodeChar(void)
 {
-    unsigned short tree_idx;
+    unsigned short c;
 
-    tree_idx = son[R];
-    while (tree_idx < T) {
-        tree_idx += GetBit();
-        tree_idx = son[tree_idx];
+    c = son[R];
+    while (c < T) {
+        c += GetBit();
+        c = son[c];
     }
-    tree_idx -= T;
-    update(tree_idx);
-    return (short)tree_idx;
+    c -= T;
+    update(c);
+    return (short)c;
 }
 
 // Decode an LZSS match distance from its prefix and trailing bits.
@@ -411,18 +391,18 @@ short DecodeChar(void)
 // FUNCTION: C2WIN 0x0043c643
 short DecodePosition(void)
 {
-    unsigned short code_bits;
-    unsigned short bit_count;
-    unsigned short position;
+    unsigned short i;
+    unsigned short j;
+    unsigned short c;
 
-    code_bits = GetByte();
-    position = d_code[code_bits] << 6;
-    bit_count = d_len[code_bits];
-    bit_count -= 2;
-    while (bit_count--) {
-        code_bits = (code_bits << 1) + GetBit();
+    i = GetByte();
+    c = d_code[i] << 6;
+    j = d_len[i];
+    j -= 2;
+    while (j--) {
+        i = (i << 1) + GetBit();
     }
-    return (short)(position | code_bits & 0x3f);
+    return (short)(c | i & 0x3f);
 }
 
 // Allocate the LZSS and Huffman work tables, rolling back on failure.
@@ -451,6 +431,15 @@ int get_pumping_memory(void)
 // FUNCTION: C2WIN 0x0043c7e8
 void free_pumping_memory(void)
 {
+#if C2_FEAT_PUMP_FREE_NULLS
+    if (text_buf) { free(text_buf); text_buf = 0; }
+    if (lson)     { free(lson);     lson = 0; }
+    if (rson)     { free(rson);     rson = 0; }
+    if (dad)      { free(dad);      dad = 0; }
+    if (freq)     { free(freq);     freq = 0; }
+    if (prnt)     { free(prnt);     prnt = 0; }
+    if (son)      { free(son);      son = 0; }
+#else
     if (text_buf) free(text_buf);
     if (lson)     free(lson);
     if (rson)     free(rson);
@@ -458,6 +447,7 @@ void free_pumping_memory(void)
     if (freq)     free(freq);
     if (prnt)     free(prnt);
     if (son)      free(son);
+#endif
 }
 
 // Compress a buffer with LZSS and adaptive Huffman coding.
@@ -466,11 +456,11 @@ void free_pumping_memory(void)
 // FUNCTION: C2WIN 0x0043c8f6
 int pump(unsigned char *source_ptr, unsigned char *dest_ptr, int source_size)
 {
-        short loop_idx;
-    short input_byte;
-    int lookahead_len;
-    short ring_idx;
-    short replace_idx;
+    short i;
+    short c;
+    int length;
+    short r;
+    short s;
     int last_match_length;
 
     pmp_inbuff  = source_ptr;
@@ -495,56 +485,58 @@ int pump(unsigned char *source_ptr, unsigned char *dest_ptr, int source_size)
     StartHuff();
     InitTree();
 
-    replace_idx = 0;
-    ring_idx = N - F;
-    for (loop_idx = replace_idx; loop_idx < ring_idx; loop_idx++)
-        text_buf[loop_idx] = ' ';
-    lookahead_len = 0;
-    while (lookahead_len < F) {
-        input_byte = pmp_inbuff[pmp_iptr++];
+    s = 0;
+    r = N - F;
+    for (i = s; i < r; i++)
+        text_buf[i] = ' ';
+    length = 0;
+    for (;;) {
+        if (length >= F)
+            break;
+        c = pmp_inbuff[pmp_iptr++];
         if (pmp_iptr >= pmp_length)
             break;
-        text_buf[ring_idx + lookahead_len] = input_byte;
-        lookahead_len++;
+        text_buf[r + length] = c;
+        length++;
     }
-    textsize = lookahead_len;
-    for (loop_idx = 1; loop_idx <= F; loop_idx++)
-        InsertNode(ring_idx - loop_idx);
-    InsertNode(ring_idx);
+    textsize = length;
+    for (i = 1; i <= F; i++)
+        InsertNode(r - i);
+    InsertNode(r);
 
     lib_ret4 = 0;
 
     do {
-        if (match_length > lookahead_len)
-            match_length = lookahead_len;
+        if (match_length > length)
+            match_length = length;
         if (match_length <= THRESHOLD) {
             match_length = 1;
-            EncodeChar(text_buf[ring_idx]);
+            EncodeChar(text_buf[r]);
         } else {
             EncodeChar((255 - THRESHOLD) + match_length);
             EncodePosition(match_position);
         }
         last_match_length = match_length;
-        for (loop_idx = 0; loop_idx < last_match_length; loop_idx++) {
+        for (i = 0; i < last_match_length; i++) {
             if (pmp_iptr >= pmp_length)
                 break;
-            input_byte = pmp_inbuff[pmp_iptr++];
-            DeleteNode(replace_idx);
-            text_buf[replace_idx] = input_byte;
-            if (replace_idx < F - 1)
-                text_buf[replace_idx + N] = input_byte;
-            replace_idx = (replace_idx + 1) & (N - 1);
-            ring_idx = (ring_idx + 1) & (N - 1);
-            InsertNode(ring_idx);
+            c = pmp_inbuff[pmp_iptr++];
+            DeleteNode(s);
+            text_buf[s] = c;
+            if (s < F - 1)
+                text_buf[s + N] = c;
+            s = (s + 1) & (N - 1);
+            r = (r + 1) & (N - 1);
+            InsertNode(r);
         }
-        while (loop_idx++ < last_match_length) {
-            DeleteNode(replace_idx);
-            replace_idx = (replace_idx + 1) & (N - 1);
-            ring_idx = (ring_idx + 1) & (N - 1);
-            if (--lookahead_len)
-                InsertNode(ring_idx);
+        while (i++ < last_match_length) {
+            DeleteNode(s);
+            s = (s + 1) & (N - 1);
+            r = (r + 1) & (N - 1);
+            if (--length)
+                InsertNode(r);
         }
-    } while (lookahead_len > 0);
+    } while (length > 0);
 
     EncodeEnd();
 
@@ -561,23 +553,23 @@ int pump(unsigned char *source_ptr, unsigned char *dest_ptr, int source_size)
 // FUNCTION: C2WIN 0x0043cc5b
 int evacuate(unsigned char *source_ptr, unsigned char *dest_ptr)
 {
-    short symbol;
-    short ring_idx;
-    short copy_idx;
-    short source_idx;
-    short match_len;
-    int output_size;
-    unsigned int output_count;
+    short c;
+    short r;
+    short k;
+    short i;
+    short j;
+    int length;
+    unsigned int count;
 
     /* Header: byte 4..7 = uncompressed length. */
-    my_strcpy((char *)(source_ptr + 4), (char *)&output_size, 4);
+    my_strcpy((char *)(source_ptr + 4), (char *)&length, 4);
     pmp_inbuff  = source_ptr;
     pmp_outbuff = dest_ptr;
     pmp_iptr    = 8;
     pmp_optr    = 0;
 
-    pmp_length = output_size;
-    textsize   = output_size;
+    pmp_length = length;
+    textsize   = length;
     codesize   = 0;
 
     getbuf = 0;
@@ -593,26 +585,26 @@ int evacuate(unsigned char *source_ptr, unsigned char *dest_ptr)
 
     StartHuff();
 
-    for (source_idx = 0; source_idx < (N - F); source_idx++) {
-        text_buf[source_idx] = ' ';
+    for (i = 0; i < (N - F); i++) {
+        text_buf[i] = ' ';
     }
-    ring_idx = (N - F);
-    for (output_count = 0; output_count < textsize; ) {
-        symbol = DecodeChar();
-        if (symbol < 256) {
-            pmp_outbuff[pmp_optr++] = symbol;
-            text_buf[ring_idx++] = symbol;
-            ring_idx &= (N - 1);
-            output_count++;
+    r = (N - F);
+    for (count = 0; count < textsize; ) {
+        c = DecodeChar();
+        if (c < 256) {
+            pmp_outbuff[pmp_optr++] = c;
+            text_buf[r++] = c;
+            r &= (N - 1);
+            count++;
         } else {
-            source_idx = (ring_idx - DecodePosition() - 1) & (N - 1);
-            match_len = symbol - (255 - THRESHOLD);
-            for (copy_idx = 0; copy_idx < match_len; copy_idx++) {
-                symbol = text_buf[(source_idx + copy_idx) & (N - 1)];
-                pmp_outbuff[pmp_optr++] = symbol;
-                text_buf[ring_idx++] = symbol;
-                ring_idx &= (N - 1);
-                output_count++;
+            i = (r - DecodePosition() - 1) & (N - 1);
+            j = c - (255 - THRESHOLD);
+            for (k = 0; k < j; k++) {
+                c = text_buf[(i + k) & (N - 1)];
+                pmp_outbuff[pmp_optr++] = c;
+                text_buf[r++] = c;
+                r &= (N - 1);
+                count++;
             }
         }
     }

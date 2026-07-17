@@ -662,7 +662,10 @@ int link_to_smacker(void)
 // FUNCTION: C2WIN 0x00402b01
 int allow_samples(void)
 {
-    return samples_running != 0;
+    if (samples_running) {
+        return 1;
+    }
+    return 0;
 }
 
 // Flag ambient slot `idx` for playback on the next play_ambient_fx tick.

@@ -6,7 +6,7 @@ extern int pmp_mem_needed;
 extern short *son;
 extern unsigned short putbuf;
 extern short match_position;
-extern char getlen;
+extern unsigned char getlen;
 
 /* Page 1: low-hash heads, emitted before page 0 within each size class. */
 extern short *dad;
