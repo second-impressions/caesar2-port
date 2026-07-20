@@ -1,0 +1,265 @@
+# Legacy/portable platform boundary
+
+## Purpose
+
+Caesar II's recovered source does not have a single historical "platform
+file." The DOS boundary is distributed across a small number of functions in
+seven C translation units, a banked-refresh implementation, third-party audio
+and movie APIs, and thirteen hardware-facing assembly routines. At the same
+time, `lib32.c` and the assembly corpus contain a large amount of ordinary
+game, formatting, rasterization, compression, and math code.
+
+The port therefore uses a function-level boundary. It does not classify
+`lib32.c`, all assembly, or all startup code as disposable platform code.
+
+The intended dependency direction is:
+
+```text
+recovered engine code
+        |
+        | existing Caesar-facing function names
+        v
+portable compatibility implementations
+        |
+        | small c2_host_* service interface
+        v
+SDL, filesystem, audio, and media backends
+```
+
+SDL types and functions must not occur above `c2_host_*`. This keeps recovered
+files recognizable, makes reconstruction changes easy to cherry-pick, and
+allows headless and non-SDL backends to exercise the same engine.
+
+## Audit method and scale
+
+The boundary inventory was generated with the repository's tree-sitter C AST
+support, recursively walking preprocessing nodes as well as ordinary
+translation-unit children. A top-level-only AST traversal is incorrect here:
+it omits precisely the functions nested under platform guards.
+
+The audited source contains:
+
+- 1,451 reconstructed C functions;
+- 81 functions that directly call DOS, OS, Miles AIL, or RAD Smacker APIs;
+- 26 DOS-only function bodies already grouped in `lib32.c`;
+- 8 assembly files exporting 87 callable routines; and
+- 897 C loop nodes in 523 functions, most of which are bounded renderer,
+  simulation, map-walking, compression, or formatting loops rather than host
+  event loops.
+
+The 81 direct platform/API users are concentrated in `c2.c`, `lib32.c`,
+`loadsave.c`, `pcsound.c`, `smacker.c`, `display.c`, and `hotkeys.c`.
+`refresh.c` additionally reaches video hardware through assembly calls. This
+concentration is the main evidence that selected replacement is viable.
+
+## Build selection
+
+Platform selection describes the program being built, not the compiler used
+to build it:
+
+- `PLATFORM_DOS`: the shipped DOS/4GW program;
+- `PLATFORM_WINDOWS`: the shipped Windows source witness; and
+- `PLATFORM_PORTABLE`: the modern continuation in this repository.
+
+Source must not infer a platform from `__WATCOMC__`, `_MSC_VER`, or another
+compiler macro. A different compiler may legitimately target the same
+platform, and one compiler may target more than one platform. Compiler
+pragmas may remain where they express an ABI, register-clobber contract, or
+symbol decoration; they must not choose game behavior or platform services.
+
+Use a named `C2_FEAT_*` macro when the condition describes a verified behavior
+difference between releases. Use a `PLATFORM_*` condition for build mechanics
+or an actual host facility.
+
+## Inputs excluded from a portable build
+
+The following historical inputs must not be compiled or linked into the
+portable executable:
+
+| Historical input | Portable treatment |
+|---|---|
+| The eight `.asm` files | Same-signature portable C replacements |
+| Miles AIL objects/import machinery | Modern audio backend |
+| RAD Smacker objects/import machinery | Modern movie backend |
+| `sndail.c`, `sndnull.c`, and `smackinp.c` vendor bridge state | Exclude once the portable backends own the corresponding state |
+| DOS entry/CD-drive policy | Portable application and asset-root bootstrap |
+| VGA, VESA, DPMI, port-I/O, and INT 33h bodies | DOS-only bodies plus portable same-symbol implementations |
+| Banked physical-screen refresh | Portable `refresh_svga_screen` body that publishes a framebuffer |
+
+No major recovered engine C translation unit should be excluded wholesale.
+In particular, `lib32.c`, `pcsound.c`, `display.c`, and `c2.c` each contain
+shared policy or algorithms in addition to their historical platform work.
+
+## Assembly classification
+
+Only thirteen of the 87 callable assembly exports are true DOS video
+operations:
+
+- `library.asm`: `cls_256x`, `show_point_256x`, `copy_screen_256x`,
+  `convert_and_copy_to_256xscreen`, `copy_to_256xscreen`,
+  `copy_from_256xscreen`, `wvbl1`, `set_bank`,
+  `copy_to_640_480_screen`, and `copy_mouse_to_screen`;
+- `sprites.asm`: `refresh_16x16_block` and
+  `refresh_16x16_partblock`; and
+- `palet.asm`: `PaletteSet`.
+
+The remaining 74 exports are implementation-language work, not platform
+work. They include all diamond rasterizers and pointer calculators, font and
+sprite rasterization, block placement, mouse-background save/restore,
+compression, decompression, memory copying, internal-screen primitives, and
+`call_address`. They should be translated to ordinary C and compiled by the
+target compiler for x86-64, ARM64, or Wasm. Hand-written Wasm versions would
+create an unnecessary second portability problem.
+
+## Filesystem and asset services
+
+The legacy-facing asset surface is already useful and should keep its current
+signatures:
+
+- `readfile`;
+- `writefile`;
+- `write_to_file`;
+- `check_file_exists`;
+- `is_file_on_harddrive`; and
+- `get_directory`.
+
+`readfile` has 38 direct engine callers. Retaining it keeps path resolution out
+of the engine. Its portable implementation must replace `cd_path` and
+`main_path` with an asset resolver; it must never emulate the DOS code by
+changing the process working directory. The resolver searches a configured
+data root case-insensitively and preserves the old install/CD overlay rules
+without exposing drives to callers.
+
+Mutable storage is a separate namespace from assets. Save games,
+`caesar2.inf`, `history.dat`, and screenshots use a writable user-data root.
+The browser backend may mount persistent storage asynchronously before the
+engine starts, after which the legacy worker may continue to perform
+synchronous file operations.
+
+These functions mix serialization or game fixups with raw file descriptors:
+
+- `savegame` and `loadgame`;
+- `save_inf` and `load_inf`;
+- `loadmodel`;
+- `setup_history_data`, `save_history`, and `get_history_in_buffer`; and
+- `capture_shot`.
+
+Keep their game behavior shared. Replace their open/read/write/seek/close
+operations with a small stream interface or narrowly guarded calls. Complete
+function duplication would duplicate save-format and post-load behavior.
+
+`test_cd_drive` is different: DOS drive validation is its entire purpose, so
+the portable target should provide a complete body that validates or selects
+the configured asset root.
+
+## Video and palette services
+
+The reference renderer remains the 640x480 indexed `internal_screen` plus its
+palette. Keep shared:
+
+- all rendering into `internal_screen`;
+- dirty-tile marking and viewport calculations;
+- palette animation state;
+- sprite, font, diamond, line, box, UI, and map rendering; and
+- `refresh_zoom_mode` and `refresh_battle_zoom_mode`.
+
+Provide complete portable implementations for VGA/VESA setup, bank selection,
+physical copies, `setup_svga_refresh_data`, and `refresh_svga_screen`. The
+portable `refresh_svga_screen` retains any externally visible dirty-counter
+semantics, then publishes the indexed framebuffer and palette rather than
+copying through VESA banks.
+
+Keep `cycle_colours`, `pulse_red`, `set_palette`, and the interpolation logic
+in `fade_to_palette`. Replace `set_vga_palette` and
+`set_vga_palette_range` with palette publication. `fade_to_palette` is a
+mixed function because it also waits and polls input; its portable path needs
+an explicit timed engine yield.
+
+`do_vga_smacked_anim` and `do_svga_smacked_anim` warrant complete portable
+bodies. Their game-visible filename and skip behavior remains, while VGA mode
+switching and graphics-buffer destruction do not.
+
+## Input services
+
+Provide same-signature portable implementations of `init_mouse`,
+`read_mouse`, `set_mouse`, `mouserange`, `set_mouse_limits`, and `get_key`.
+The INT 33h callback, DPMI lock, and installed-mouse callback buffer remain
+DOS-only.
+
+Keep `get_mouse` and `sim_mouse` on the engine side. They implement replay
+input, movement, button edges, and legacy global state rather than host event
+collection. The host publishes an input snapshot and a keyboard event queue;
+`read_mouse` and `get_key` translate those into legacy globals. SDL event
+handlers must not directly mutate `c2inf`, menu decisions, or control state.
+
+## Timing and waits
+
+`running_delay1`, `colour_cycle_delay1`, `colour_cycle_delay2`, and `timer`
+retain their legacy interfaces but read a monotonic host clock.
+
+The following busy waits require portable bodies or narrow portable branches:
+
+- `wvbl2` and `do_delay`;
+- `click_delay` and `clicked_delay`;
+- `wait_click`, `wait_key`, and `clear_mouse`;
+- the inner wait in `fade_to_palette`; and
+- movie frame waits.
+
+A no-op replacement is not acceptable: it turns these paths into CPU-burning
+spins. They must wait on a condition, timer, or engine-thread scheduling
+primitive.
+
+## Audio services
+
+Keep music mood and ambient policy in the engine:
+
+- `get_city_mood`, `get_battle_mood`, `get_old_mood`;
+- `choose_odd_tune` and `sooth_mood`;
+- ambient event selection and delay logic; and
+- the city, province, and battle ambient tables.
+
+Replace Miles driver startup, voice allocation, sample status, speech
+streaming, sequence control, and handle management behind the existing public
+sound API. `continue_db` remains callable even if a modern streaming backend
+does not require per-frame service.
+
+XMI music is not merely file playback. Miles invokes `mood_modfication` at a
+sequence marker; the engine calculates a new mood and requests a numbered
+branch. The portable music service therefore needs marker callbacks and a
+branch operation in addition to open, play, volume, and stop.
+
+## Movie services
+
+Retain `start_smacking`, `continue_smacking`, `stop_smacking`, and
+`are_smacking` as the engine-facing API, with complete portable bodies. This
+surface covers both full-screen cinematics and movies embedded in message
+dialogs. Prefer decoding into the indexed framebuffer and palette model so
+movie playback does not impose a second renderer on the engine.
+
+## Startup, shutdown, and errors
+
+The DOS `main` combines process bootstrap, CD policy, resource initialization,
+and the persistent campaign loop. A portable application entry owns SDL and
+starts the engine; the campaign flow remains legacy code on the engine worker.
+Similarly, `start_system` and `stop_system` should retain shared allocation and
+game initialization while delegating video, input, audio, and process work.
+
+Fatal resource errors should call a host-neutral `c2_fatal` service rather
+than invoking display teardown and `exit` from arbitrary engine functions.
+
+## Source-selection policy
+
+Use these forms in preference order:
+
+1. A fully platform-specific function gets a guarded historical body and a
+   same-symbol portable implementation in a separate compatibility file.
+2. A mixed function with one or two platform operations stays shared and
+   guards or delegates only those operations.
+3. A function whose control flow is structurally different on the portable
+   target gets a complete target-selected body.
+4. A verified game behavior difference gets a named `C2_FEAT_*` switch rather
+   than a platform or compiler test.
+
+Recovered files stay at their inherited paths. Portable compatibility files
+belong in `src/port/` or `src/platform/`, and backend-specific code belongs
+below `src/platform/<backend>/`.

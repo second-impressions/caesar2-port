@@ -10,6 +10,15 @@ behind narrow target boundaries.  That makes upstream decompilation advances
 straightforward to cherry-pick without preventing deliberate fixes and new
 features here.
 
+The durable port design is documented in:
+
+- [`docs/platform-boundary.md`](docs/platform-boundary.md) — the audited
+  function, subsystem, and assembly boundary;
+- [`docs/engine-scheduling.md`](docs/engine-scheduling.md) — worker-thread,
+  frame-publication, input, and browser scheduling; and
+- [`docs/legacy-abi.md`](docs/legacy-abi.md) — packing, pointer width,
+  signedness, serialization, and compiler semantics.
+
 ## Native Linux bootstrap
 
 The native bootstrap presents both original publisher splashes and then enters
@@ -190,8 +199,8 @@ benefits.  Port changes are not forwarded back to the byte-exact
 reconstruction.
 
 Target differences are expressed through `include/c2_target.h`
-(`C2_TARGET_DOS`, `C2_TARGET_WIN`, and `C2_TARGET_PORTABLE`) or through a named
-capability—not through raw compiler macros.
+(`PLATFORM_DOS`, `PLATFORM_WINDOWS`, and `PLATFORM_PORTABLE`) or through a
+named capability—not through raw compiler macros.
 
 ## Running the game
 
