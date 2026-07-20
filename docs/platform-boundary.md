@@ -88,10 +88,12 @@ top/bottom selection, clipped-side suppression, variable-stride origin, and
 fixed 640-pixel row offsets without unaligned typed stores. The live inventory
 is therefore 34 implemented and 53 blank routines.
 
-The basic small image-diamond placers are implemented in
+The basic small, medium, and large image-diamond placers are implemented in
 `src/portable/asm/c2_asm_diamond_image.c`, including opaque pixels, half
 selection, screen-edge source cropping, and the variable-origin/fixed-row
-addressing split. The live inventory is therefore 37 implemented and 50 blank
+addressing split. The shared kernel follows the recovered 6/14/30-row symmetric
+geometry; the small clipped pair retains its assembly-specific ignored `part`
+argument. The live inventory is therefore 43 implemented and 44 blank
 routines.
 
 The DOS diamond modules use the 20-byte Smacker/Miles `sndinit` array as four

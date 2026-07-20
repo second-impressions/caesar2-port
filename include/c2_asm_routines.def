@@ -1,7 +1,7 @@
 /* Diamond rasterizers: dia_medi.asm. */
-C2_ASM_STUB(C2_ROUTINE_VOID_2, place_i_medium_diamond, unsigned char *, int)
-C2_ASM_STUB(C2_ROUTINE_VOID_2, place_i_medium_diamond_lefthalf, unsigned char *, int)
-C2_ASM_STUB(C2_ROUTINE_VOID_2, place_i_medium_diamond_righthalf, unsigned char *, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, place_i_medium_diamond, unsigned char *, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, place_i_medium_diamond_lefthalf, unsigned char *, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, place_i_medium_diamond_righthalf, unsigned char *, int)
 C2_ASM_STUB(C2_ROUTINE_VOID_2, write_medium_diamond_hat, unsigned char *, int)
 C2_ASM_STUB(C2_ROUTINE_VOID_2, write_medium_diamond_lefthat, unsigned char *, int)
 C2_ASM_STUB(C2_ROUTINE_VOID_2, write_medium_diamond_righthat, unsigned char *, int)
@@ -40,9 +40,9 @@ C2_ASM_STUB(C2_ROUTINE_VOID_2, write_small_diamond_righthalfroof, unsigned char 
 C2_ASM_STUB(C2_ROUTINE_VOID_2, write_small_diamond_lefthalfroof, unsigned char *, int)
 
 /* Diamond rasterizers: dialarga.asm and dialargb.asm. */
-C2_ASM_STUB(C2_ROUTINE_VOID_2, place_i_large_diamond, unsigned char *, int)
-C2_ASM_STUB(C2_ROUTINE_VOID_2, place_i_large_diamond_lefthalf, unsigned char *, int)
-C2_ASM_STUB(C2_ROUTINE_VOID_2, place_i_large_diamond_righthalf, unsigned char *, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, place_i_large_diamond, unsigned char *, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, place_i_large_diamond_lefthalf, unsigned char *, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, place_i_large_diamond_righthalf, unsigned char *, int)
 C2_ASM_STUB(C2_ROUTINE_VOID_2, write_large_diamond_hat, unsigned char *, int)
 C2_ASM_STUB(C2_ROUTINE_VOID_2, write_large_diamond_lefthat, unsigned char *, int)
 C2_ASM_STUB(C2_ROUTINE_VOID_2, write_large_diamond_righthat, unsigned char *, int)
