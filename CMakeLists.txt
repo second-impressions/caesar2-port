@@ -4,6 +4,20 @@ project(caesar2-port VERSION 0.1.0 LANGUAGES C)
 
 find_package(SDL3 3.2 CONFIG REQUIRED)
 
+add_library(c2_asm_portable STATIC
+    src/portable/asm/c2_asm_stubs.c
+)
+target_compile_features(c2_asm_portable PRIVATE c_std_11)
+target_include_directories(c2_asm_portable PUBLIC include)
+if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
+    target_compile_options(c2_asm_portable PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wno-unused-parameter
+    )
+endif()
+
 add_executable(caesar2
     src/controls.c
     src/contrdat.c

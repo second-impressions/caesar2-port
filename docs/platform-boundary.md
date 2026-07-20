@@ -47,6 +47,27 @@ backend, that portable layers do not depend back on `c2_sdl_*`, and that the
 SDL callback does not mutate representative legacy globals. Extend this test
 whenever the boundary grows.
 
+## Portable assembly interface scaffold
+
+Before translating individual assembly bodies, the complete callable ABI is
+represented by `include/c2_asm_routines.def`. It contains exactly 87
+function slots: one for every callable `PUBLIC` export in the eight recovered
+assembly files. `include/c2_asm_routines.h` turns the manifest into engine
+declarations, while `src/portable/asm/c2_asm_stubs.c` currently turns it into
+empty C implementations. The two integer-returning compression routines
+return zero until implemented.
+
+This scaffold is deliberately a separate `c2_asm_portable` library and is not
+yet linked into the running bootstrap. It establishes and compile-checks the
+interface without letting unresolved link errors grow an ad-hoc compatibility
+layer. `tests/test_asm_portable_surface.py` derives the assembly exports from
+source and requires exact set equality with the manifest.
+
+The assembly surface must not be confused with the 81 C functions that
+directly use a DOS, operating-system, Miles, or Smacker API. Those 81 are an
+audit set, not 81 replacement bodies: several contain engine policy or file
+format logic that must remain shared and delegate only their host operations.
+
 ## Audit method and scale
 
 The boundary inventory was generated with the repository's tree-sitter C AST
