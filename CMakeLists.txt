@@ -43,18 +43,23 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
 endif()
 
 add_executable(caesar2
+    src/action.c
     src/c2_vars.c
     src/controls.c
     src/contrdat.c
     src/data.c
     src/display.c
     src/empire.c
+    src/gloops.c
+    src/mmedia.c
     src/refresh.c
     src/screens.c
+    src/portable/lib32/c2_lib32_text.c
     src/port/c2_port_app.c
+    src/port/c2_port_bootstrap.c
     src/port/c2_port_compat.c
+    src/port/c2_port_input.c
     src/port/c2_port_raster.c
-    src/port/c2_port_ui.c
     src/platform/sdl3/c2_sdl_main.c
     src/platform/sdl3/c2_sdl_host.c
 )
@@ -85,9 +90,12 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
     set_source_files_properties(
         src/controls.c
         src/contrdat.c
+        src/action.c
         src/c2_vars.c
         src/data.c
         src/empire.c
+        src/gloops.c
+        src/mmedia.c
         src/refresh.c
         src/screens.c
         PROPERTIES COMPILE_OPTIONS -Wno-implicit-function-declaration
@@ -96,14 +104,19 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/platform/sdl3/c2_sdl_main.c
         src/platform/sdl3/c2_sdl_host.c
         src/port/c2_port_app.c
+        src/port/c2_port_bootstrap.c
         src/port/c2_port_compat.c
+        src/port/c2_port_input.c
         src/port/c2_port_raster.c
-        src/port/c2_port_ui.c
+        src/portable/lib32/c2_lib32_text.c
         PROPERTIES COMPILE_OPTIONS -Wpedantic
     )
     target_compile_options(caesar2 PRIVATE
         -Wall
         -Wextra
+        -fno-strict-aliasing
+        -funsigned-char
+        -fwrapv
         -fms-extensions
         -ffunction-sections
         -fdata-sections
@@ -150,6 +163,6 @@ if(BUILD_TESTING AND C2_TEST_DATA_DIR)
         COMMAND caesar2 --headless --data-dir "${C2_TEST_DATA_DIR}"
     )
     set_tests_properties(startup-reaches-province-selection PROPERTIES
-        PASS_REGULAR_EXPRESSION "province selection framebuffer fnv1a64=2c50662a1c22d7b7"
+        PASS_REGULAR_EXPRESSION "province selection framebuffer fnv1a64=793d233b9b9454cd"
     )
 endif()

@@ -40,6 +40,12 @@ The native bootstrap now follows that dependency direction:
 - `src/port/c2_port_raster.c` owns the small sprite clipping/dispatch surface
   historically embedded in `lib32.c` while delegating pixel work to the
   translated assembly routines;
+- `src/port/c2_port_input.c` translates host snapshots into the legacy mouse
+  globals while preserving the recovered press/release edge state machine,
+  cursor background handling, frame timing, and optional-audio boundary;
+- `src/portable/lib32/c2_lib32_text.c` contains the currently selected
+  platform-independent text/font helpers and legacy globals from `lib32.c`;
+  these remain engine support code and do not call the host;
 - `src/port/c2_port_app.c` owns the currently connected recovered startup
   flow and consumes only neutral host events;
 - `src/platform/sdl3/c2_sdl_host.c` implements the host contract; and
@@ -330,11 +336,14 @@ Provide same-signature portable implementations of `init_mouse`,
 The INT 33h callback, DPMI lock, and installed-mouse callback buffer remain
 DOS-only.
 
-Keep `get_mouse` and `sim_mouse` on the engine side. They implement replay
-input, movement, button edges, and legacy global state rather than host event
-collection. The host publishes an input snapshot and a keyboard event queue;
-`read_mouse` and `get_key` translate those into legacy globals. SDL event
-handlers must not directly mutate `c2inf`, menu decisions, or control state.
+Keep `get_mouse` and `sim_mouse` logically on the engine side. They implement
+replay input, movement, button edges, and legacy global state rather than host
+event collection. Because `lib32.c` is not yet a portable translation unit,
+`c2_port_input.c` currently carries the recovered `get_mouse` state machine
+alongside its portable `read_mouse` snapshot adapter; only the latter reaches
+the host. The host publishes a normalized input snapshot and a keyboard event
+queue. SDL event handlers must not directly mutate `c2inf`, menu decisions, or
+control state. The broader `sim_mouse` keyboard mapping remains to be connected.
 
 ## Timing and waits
 

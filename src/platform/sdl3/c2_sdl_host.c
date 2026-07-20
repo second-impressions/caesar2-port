@@ -136,6 +136,14 @@ static enum c2_host_key translate_key(SDL_Keycode key)
     return C2_HOST_KEY_UNKNOWN;
 }
 
+static unsigned int translate_mouse_button(Uint8 button)
+{
+    if (button == SDL_BUTTON_LEFT) return C2_HOST_MOUSE_LEFT;
+    if (button == SDL_BUTTON_RIGHT) return C2_HOST_MOUSE_RIGHT;
+    if (button == SDL_BUTTON_MIDDLE) return C2_HOST_MOUSE_MIDDLE;
+    return 0;
+}
+
 static void queue_event(const struct c2_host_event *event)
 {
     int write_index;
@@ -462,14 +470,13 @@ void c2_sdl_host_handle_event(SDL_Event *event)
 
         c2_input.mouse_x = (int)event->button.x;
         c2_input.mouse_y = (int)event->button.y;
-        mask = event->button.button < 32
-            ? 1u << (event->button.button - 1) : 0;
+        mask = translate_mouse_button(event->button.button);
         if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
             c2_input.mouse_buttons |= mask;
             host_event.type = C2_HOST_EVENT_MOUSE_BUTTON_DOWN;
             host_event.mouse_x = c2_input.mouse_x;
             host_event.mouse_y = c2_input.mouse_y;
-            host_event.mouse_button = event->button.button;
+            host_event.mouse_button = mask;
             publish = 1;
         } else {
             c2_input.mouse_buttons &= ~mask;

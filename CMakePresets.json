@@ -26,6 +26,17 @@
         "CMAKE_C_FLAGS": "-fsanitize=thread",
         "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=thread"
       }
+    },
+    {
+      "name": "linux-asan",
+      "displayName": "Linux Address/UndefinedBehavior Sanitizers",
+      "inherits": "linux-debug",
+      "binaryDir": "${sourceDir}/build/port/linux-asan",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_C_FLAGS": "-fsanitize=address,undefined -mllvm -asan-globals=0",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined"
+      }
     }
   ],
   "buildPresets": [
@@ -36,6 +47,10 @@
     {
       "name": "linux-tsan",
       "configurePreset": "linux-tsan"
+    },
+    {
+      "name": "linux-asan",
+      "configurePreset": "linux-asan"
     }
   ],
   "testPresets": [
@@ -49,6 +64,13 @@
     {
       "name": "linux-tsan",
       "configurePreset": "linux-tsan",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-asan",
+      "configurePreset": "linux-asan",
       "output": {
         "outputOnFailure": true
       }

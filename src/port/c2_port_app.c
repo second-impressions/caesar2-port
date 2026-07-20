@@ -34,6 +34,8 @@ extern void show_skill2_box(void);
 extern void clear_empire(void);
 extern void get_new_province_options(void);
 extern void show_initreg_box(void);
+extern void initreg_game_loop(void);
+extern int out2;
 
 static struct c2_app_state c2_app;
 
@@ -59,6 +61,7 @@ static int show_startup_stage(enum c2_startup_stage stage)
     } else if (stage == C2_STARTUP_PROVINCE) {
         clear_empire();
         get_new_province_options();
+        out2 = 0;
         show_initreg_box();
         loaded = 1;
     }
@@ -138,6 +141,7 @@ enum c2_port_app_result c2_port_app_start(
         if (!show_startup_stage(C2_STARTUP_PROVINCE)) {
             return C2_PORT_APP_FAILURE;
         }
+        initreg_game_loop();
         printf("province selection framebuffer fnv1a64=%016" PRIx64 "\n",
                c2_port_frame_hash());
         return C2_PORT_APP_SUCCESS;
@@ -243,6 +247,9 @@ enum c2_port_app_result c2_port_app_update(void)
     if (c2_app.stage < C2_STARTUP_MENU &&
         c2_host_ticks_ms() - c2_app.stage_started >= C2_SPLASH_DURATION_MS) {
         return advance_startup();
+    }
+    if (c2_app.stage == C2_STARTUP_PROVINCE) {
+        initreg_game_loop();
     }
     return C2_PORT_APP_CONTINUE;
 }

@@ -4424,6 +4424,9 @@ void this_region(void)
 // FUNCTION: C2WIN 0x004b9590
 void act_tutorial(void)
 {
+#if PLATFORM_PORTABLE
+    return;
+#else
     do_tutorial();
     if (continue_tutorial_status == 0) {
         show_skill1_box();
@@ -4431,6 +4434,7 @@ void act_tutorial(void)
     } else {
         out1 = 1;
     }
+#endif
 }
 
 // New-game flow: "quit to DOS" — set exit_flag and dismiss the modal.
@@ -4479,6 +4483,9 @@ void act_tog_peace(void)
 // FUNCTION: C2WIN 0x004b96d2
 void act_choose_name(void)
 {
+#if PLATFORM_PORTABLE
+    return;
+#else
     insert_cursor = 0;
 #if C2_FEAT_NAME_EDIT_FB_COUNT
     fb_count = insert_cursor;
@@ -4494,6 +4501,7 @@ void act_choose_name(void)
     show_skill2_box();
 #if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
+#endif
 #endif
 }
 
@@ -4511,6 +4519,9 @@ void act_back_to_front_panel(void)
 // FUNCTION: C2WIN 0x004b974a
 void act_preload(void)
 {
+#if PLATFORM_PORTABLE
+    return;
+#else
     load_a_game();
     if (file_loaded_status != 0) {
         out1 = 1;
@@ -4523,6 +4534,7 @@ void act_preload(void)
     setup_whole_screen_refresh();
 #endif
     hold_mouse_replace = 1;
+#endif
 }
 
 // Pop the census panel and idle until the user dismisses it. Battle mode is silently ignored.

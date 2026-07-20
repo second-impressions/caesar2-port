@@ -7,6 +7,7 @@ ROOT = Path(__file__).parents[1]
 SRC = ROOT / "src"
 PORT = SRC / "port"
 SDL_BACKEND = SRC / "platform" / "sdl3"
+PORTABLE_LIB32 = SRC / "portable" / "lib32"
 HOST_HEADER = ROOT / "include" / "c2_host.h"
 
 
@@ -47,3 +48,11 @@ def test_optional_media_is_an_explicit_host_capability():
     assert "C2_HOST_CAPABILITY_MUSIC" in header
     assert "C2_HOST_CAPABILITY_VIDEO" in header
     assert "int c2_host_has_capability" in backend
+
+
+def test_portable_lib32_slice_remains_engine_side():
+    offenders = []
+    for path in _source_files(PORTABLE_LIB32):
+        if "c2_host_" in path.read_text():
+            offenders.append(str(path.relative_to(ROOT)))
+    assert not offenders, "legacy engine support reaches the host:\n" + "\n".join(offenders)

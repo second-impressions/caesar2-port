@@ -26,6 +26,12 @@ enum c2_host_key {
     C2_HOST_KEY_P
 };
 
+enum c2_host_mouse_button {
+    C2_HOST_MOUSE_LEFT = 1u << 0,
+    C2_HOST_MOUSE_RIGHT = 1u << 1,
+    C2_HOST_MOUSE_MIDDLE = 1u << 2
+};
+
 struct c2_host_config {
     const char *title;
     const char *asset_root;

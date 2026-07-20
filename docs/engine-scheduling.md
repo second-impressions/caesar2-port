@@ -121,8 +121,9 @@ input waits.
 The initial queue holds 64 neutral events and drops the oldest event on
 overflow so host callbacks can never block behind the engine. Mouse state,
 focus, wheel motion, quit state, and a generation counter are also available
-as a mutex-protected snapshot. The startup flow uses the event queue; legacy
-`read_mouse` will use the snapshot when it is connected.
+as a mutex-protected snapshot. The startup flow uses the event queue, while the
+connected province loop copies the snapshot through portable `read_mouse` into
+the recovered `get_mouse` press/release state machine.
 
 ### Audio and movies
 

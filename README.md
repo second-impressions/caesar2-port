@@ -30,8 +30,8 @@ UI. The splashes advance after two seconds or on input. Escape exits from the
 front screen and returns from the detailed game-options screen.
 
 The original `INTRO.SMK` between the publisher splashes and front screen is
-currently skipped. Loading games, tutorials, name entry, choosing a province,
-and starting the simulation remain to be connected.
+currently skipped. Loading games, tutorials, name entry, and starting the
+simulation after province confirmation remain to be connected.
 
 The recovered startup flow runs on an engine worker. The SDL main thread owns
 events and presentation, communicating through the backend-neutral
@@ -55,8 +55,10 @@ Writable files use a separate user-data root, selected with
 The game-options screen supports Start New Game by mouse or Enter/Space. In the
 detailed options, Left/Right changes difficulty, `P` toggles peaceful campaign
 mode, the Back row returns to the front screen, and Start This Game enters the
-province map. Province selection input is the next unconnected startup
-boundary.
+province map. Hover and click handling now run through the recovered
+`initreg_game_loop`, including its original region hit-testing and confirmation
+dialog. Handing the confirmed province into game initialization is the next
+startup boundary.
 
 A display-free smoke test loads the same PL8, font, text, and palette files and
 reports deterministic framebuffer hashes for the complete sequence:
@@ -71,7 +73,11 @@ interactive startup state as a portable pixmap beneath the user-data root.
 To register that smoke test with CTest, configure with
 `-DC2_TEST_DATA_DIR=/path/to/CAESAR2` and run `ctest --preset linux-debug`.
 The `linux-tsan` configure/build/test preset runs the same worker-thread slice
-under Clang ThreadSanitizer.
+under Clang ThreadSanitizer. The `linux-asan` preset combines AddressSanitizer
+and UndefinedBehaviorSanitizer. It disables ASan global instrumentation because
+that instrumentation retains every otherwise-dead legacy data section and
+defeats the bootstrap's deliberate link-time source slicing; heap, stack, and
+the live startup path remain instrumented.
 
 ## Reconstruction baseline
 
