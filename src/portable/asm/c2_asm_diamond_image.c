@@ -4,9 +4,11 @@
 
 extern unsigned char *internal_screen;
 extern int screen_width;
+extern int sprite_hat_start;
 extern int sprite_start;
 extern int sprite_x;
 extern int sprite_y;
+extern int y_length;
 
 static unsigned char *diamond_destination(void)
 {
@@ -143,4 +145,121 @@ void place_i_large_diamond_lefthalf(unsigned char *sprites, int part)
 void place_i_large_diamond_righthalf(unsigned char *sprites, int part)
 {
     place_diamond_half(sprites, part, 30, 28, 0, 1);
+}
+
+enum hat_part {
+    HAT_FULL,
+    HAT_KEEP_RIGHT,
+    HAT_KEEP_LEFT
+};
+
+static void write_hat_pair(unsigned char *destination,
+                           unsigned char *source)
+{
+    if (source[0] != 0) {
+        destination[0] = source[0];
+    }
+    if (source[1] != 0) {
+        destination[1] = source[1];
+    }
+}
+
+static void write_diamond_hat(unsigned char *sprites, int depth,
+                              int pair_count, enum hat_part part,
+                              int medium_right_quirk)
+{
+    unsigned char *source;
+    unsigned char *base;
+    int centre;
+    int first_pair;
+    int last_pair;
+    int destination_pair;
+    int row;
+    int pair;
+    int distance;
+    int vertical_offset;
+
+    source = sprites + sprite_hat_start;
+    base = diamond_destination();
+    centre = pair_count / 2;
+    first_pair = 0;
+    last_pair = pair_count;
+    if (part == HAT_KEEP_RIGHT) {
+        first_pair = centre + 1;
+    } else if (part == HAT_KEEP_LEFT) {
+        last_pair = centre;
+    }
+
+    for (row = 0; row < y_length; row++) {
+        if (row < depth) {
+            base -= screen_width;
+        }
+        for (pair = first_pair; pair < last_pair; pair++) {
+            distance = pair < centre ? centre - pair : pair - centre;
+            if (row < depth) {
+                vertical_offset = distance;
+            } else {
+                vertical_offset = distance - (row - depth) - 1;
+            }
+            if (vertical_offset >= 0) {
+                destination_pair = pair;
+                if (part == HAT_KEEP_RIGHT) {
+                    destination_pair -= centre + 1;
+                }
+                if (medium_right_quirk && row - depth == 2 && pair == 3) {
+                    destination_pair = 31;
+                }
+                write_hat_pair(base +
+                                   vertical_offset * C2_LEGACY_SCREEN_WIDTH +
+                                   destination_pair * 2,
+                               source + pair * 2);
+            }
+        }
+        source += pair_count * 2;
+    }
+}
+
+void write_small_diamond_hat(unsigned char *sprites, int depth)
+{
+    write_diamond_hat(sprites, depth, 5, HAT_FULL, 0);
+}
+
+void write_small_diamond_lefthat(unsigned char *sprites, int depth)
+{
+    write_diamond_hat(sprites, depth, 5, HAT_KEEP_RIGHT, 0);
+}
+
+void write_small_diamond_righthat(unsigned char *sprites, int depth)
+{
+    write_diamond_hat(sprites, depth, 5, HAT_KEEP_LEFT, 0);
+}
+
+void write_medium_diamond_hat(unsigned char *sprites, int depth)
+{
+    write_diamond_hat(sprites, depth, 13, HAT_FULL, 0);
+}
+
+void write_medium_diamond_lefthat(unsigned char *sprites, int depth)
+{
+    write_diamond_hat(sprites, depth, 13, HAT_KEEP_RIGHT, 0);
+}
+
+void write_medium_diamond_righthat(unsigned char *sprites, int depth)
+{
+    write_diamond_hat(sprites, depth, 13, HAT_KEEP_LEFT, 1);
+}
+
+void write_large_diamond_hat(unsigned char *sprites, int depth)
+{
+    write_diamond_hat(sprites, depth, 29, HAT_FULL, 0);
+}
+
+void write_large_diamond_lefthat(unsigned char *sprites, int depth)
+{
+    write_diamond_hat(sprites, depth, 29, HAT_KEEP_RIGHT, 0);
+}
+
+void write_large_diamond_righthat(unsigned char *sprites, int depth)
+{
+    write_diamond_hat(sprites, depth, 29, HAT_KEEP_LEFT, 0);
 }

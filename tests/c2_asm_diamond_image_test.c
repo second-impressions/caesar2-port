@@ -12,9 +12,11 @@ static unsigned char pixels[(TEST_WIDTH + 1) * TEST_HEIGHT];
 static unsigned char expected[(TEST_WIDTH + 1) * TEST_HEIGHT];
 unsigned char *internal_screen = pixels;
 int screen_width;
+int sprite_hat_start;
 int sprite_start;
 int sprite_x;
 int sprite_y;
+int y_length;
 
 static void reset_buffers(void)
 {
@@ -126,6 +128,79 @@ static void test_half(diamond_placer place, int height, int centre,
     }
 }
 
+enum test_hat_part {
+    TEST_HAT_FULL,
+    TEST_HAT_KEEP_RIGHT,
+    TEST_HAT_KEEP_LEFT
+};
+
+static void test_hat(diamond_placer write, int pair_count,
+                     enum test_hat_part part, int medium_right_quirk)
+{
+    unsigned char sprites[1024];
+    int depth;
+    int centre;
+    int first_pair;
+    int last_pair;
+    int destination_pair;
+    int row;
+    int pair;
+    int distance;
+    int vertical_offset;
+    int base_offset;
+    int destination_offset;
+    int source_offset;
+
+    centre = pair_count / 2;
+    first_pair = part == TEST_HAT_KEEP_RIGHT ? centre + 1 : 0;
+    last_pair = part == TEST_HAT_KEEP_LEFT ? centre : pair_count;
+    sprite_hat_start = 7;
+    y_length = 4;
+    memset(sprites, 0, sizeof(sprites));
+    for (source_offset = 0; source_offset < y_length * pair_count * 2;
+         source_offset++) {
+        sprites[sprite_hat_start + source_offset] =
+            source_offset % 5 == 0 ? 0 : (unsigned char)(source_offset + 1);
+    }
+
+    for (depth = 0; depth < 3; depth++) {
+        reset_buffers();
+        write(sprites, depth);
+        base_offset = sprite_y * screen_width + sprite_x;
+        for (row = 0; row < y_length; row++) {
+            if (row < depth) {
+                base_offset -= screen_width;
+            }
+            for (pair = first_pair; pair < last_pair; pair++) {
+                distance = pair < centre ? centre - pair : pair - centre;
+                vertical_offset = row < depth ? distance :
+                    distance - (row - depth) - 1;
+                if (vertical_offset >= 0) {
+                    destination_pair = pair;
+                    if (part == TEST_HAT_KEEP_RIGHT) {
+                        destination_pair -= centre + 1;
+                    }
+                    if (medium_right_quirk && row - depth == 2 && pair == 3) {
+                        destination_pair = 31;
+                    }
+                    destination_offset = base_offset +
+                        vertical_offset * TEST_WIDTH + destination_pair * 2;
+                    source_offset = sprite_hat_start +
+                        (row * pair_count + pair) * 2;
+                    if (sprites[source_offset] != 0) {
+                        expected[destination_offset] = sprites[source_offset];
+                    }
+                    if (sprites[source_offset + 1] != 0) {
+                        expected[destination_offset + 1] =
+                            sprites[source_offset + 1];
+                    }
+                }
+            }
+        }
+        assert(memcmp(pixels, expected, sizeof(pixels)) == 0);
+    }
+}
+
 int main(void)
 {
     screen_width = TEST_WIDTH + 1;
@@ -141,5 +216,15 @@ int main(void)
     test_full_parts(place_i_large_diamond, 30, 28);
     test_half(place_i_large_diamond_lefthalf, 30, 28, 1, 1);
     test_half(place_i_large_diamond_righthalf, 30, 28, 0, 1);
+    sprite_y = 10;
+    test_hat(write_small_diamond_hat, 5, TEST_HAT_FULL, 0);
+    test_hat(write_small_diamond_lefthat, 5, TEST_HAT_KEEP_RIGHT, 0);
+    test_hat(write_small_diamond_righthat, 5, TEST_HAT_KEEP_LEFT, 0);
+    test_hat(write_medium_diamond_hat, 13, TEST_HAT_FULL, 0);
+    test_hat(write_medium_diamond_lefthat, 13, TEST_HAT_KEEP_RIGHT, 0);
+    test_hat(write_medium_diamond_righthat, 13, TEST_HAT_KEEP_LEFT, 1);
+    test_hat(write_large_diamond_hat, 29, TEST_HAT_FULL, 0);
+    test_hat(write_large_diamond_lefthat, 29, TEST_HAT_KEEP_RIGHT, 0);
+    test_hat(write_large_diamond_righthat, 29, TEST_HAT_KEEP_LEFT, 0);
     return 0;
 }

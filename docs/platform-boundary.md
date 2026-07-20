@@ -100,6 +100,19 @@ routines.
 callback invocation encoded by its assembly trampoline. The live inventory is
 therefore 44 implemented and 43 blank routines.
 
+The nine full and screen-edge left/right diamond-hat writers share a proven
+two-pixel-pair projection kernel. It preserves transparent pixels, `y_length`,
+the variable-stride upward origin walk, fixed-640 projected rows, and the
+post-depth outer-pair clipping encoded by the unrolled assembly. The live
+inventory is therefore 53 implemented and 34 blank routines.
+
+Compatibility note: `write_medium_diamond_righthat` contains one asymmetric
+literal store inherited from `dia_medi.asm`. In the third post-depth clipped
+row, source pair 3 is written at x=62 rather than the geometrically symmetric
+x=6. The portable compatibility implementation preserves this shipped
+behavior. Treat correcting it as an explicit renderer bug fix with visual
+coverage, not as part of assembly translation.
+
 The DOS diamond modules use the 20-byte Smacker/Miles `sndinit` array as four
 unaligned transient dword slots at byte offsets 2, 6, 10, and 14. Each affected
 routine writes its own argument there and reads it back only during that call.
