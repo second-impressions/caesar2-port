@@ -32,7 +32,7 @@
 
 /* Entity list extern declarations.
  * These override the generic types in c2_data.h. */
-#if !C2_TARGET_PORTABLE
+#if !PLATFORM_PORTABLE
 extern struct figure_rec figure_list[];
 extern struct citizen_rec citizen_list[];
 extern struct unit_rec unit_list[];
@@ -1007,7 +1007,7 @@ struct mercs_class {
     short _unk0E;              /* +0x0E  reserved slack: ditto */
 };  /* 16 bytes */
 
-#if C2_TARGET_PORTABLE
+#if PLATFORM_PORTABLE
 /* Standard C requires an array element type to be complete at an extern
  * declaration. Watcom accepts the historical declarations at the top of this
  * header; portable compilers receive the same declarations after the types. */

@@ -23,7 +23,7 @@ set_target_properties(caesar2 PROPERTIES
 )
 
 target_compile_definitions(caesar2 PRIVATE
-    C2_TARGET_PORTABLE=1
+    PLATFORM_PORTABLE=1
 )
 
 target_include_directories(caesar2 PRIVATE
