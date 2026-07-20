@@ -197,6 +197,45 @@ void c2_sdl_platform_present(void)
     SDL_RenderPresent(c2_renderer);
 }
 
+int c2_sdl_event_to_game(SDL_Event *event)
+{
+    if (c2_renderer == NULL) {
+        return 0;
+    }
+    return SDL_ConvertEventToRenderCoordinates(c2_renderer, event);
+}
+
+int c2_sdl_save_screenshot(const char *path)
+{
+    FILE *file;
+    int i;
+
+    file = fopen(path, "wb");
+    if (file == NULL) {
+        return 0;
+    }
+    if (fprintf(file, "P6\n%d %d\n255\n", C2_SCREEN_WIDTH, C2_SCREEN_HEIGHT) < 0) {
+        fclose(file);
+        return 0;
+    }
+
+    for (i = 0; i < C2_SCREEN_PIXELS; i++) {
+        unsigned int palette_offset;
+        unsigned char rgb[3];
+
+        palette_offset = (unsigned int)internal_screen[i] * 3;
+        rgb[0] = expand_vga_channel(current_palette[palette_offset]);
+        rgb[1] = expand_vga_channel(current_palette[palette_offset + 1]);
+        rgb[2] = expand_vga_channel(current_palette[palette_offset + 2]);
+        if (fwrite(rgb, sizeof(rgb), 1, file) != 1) {
+            fclose(file);
+            return 0;
+        }
+    }
+
+    return fclose(file) == 0;
+}
+
 uint64_t c2_sdl_title_hash(void)
 {
     uint64_t hash;
@@ -246,6 +285,18 @@ void fade_to_palette(char *palette)
     current_palette[0] = 0;
     current_palette[1] = 0;
     current_palette[2] = 0;
+    c2_frame_dirty = 1;
+    c2_sdl_platform_present();
+}
+
+void set_palette(char *palette)
+{
+    fade_to_palette(palette);
+}
+
+void black_out(void)
+{
+    memset(current_palette, 0, C2_PALETTE_BYTES);
     c2_frame_dirty = 1;
     c2_sdl_platform_present();
 }

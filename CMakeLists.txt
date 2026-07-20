@@ -5,9 +5,14 @@ project(caesar2-port VERSION 0.1.0 LANGUAGES C)
 find_package(SDL3 3.2 CONFIG REQUIRED)
 
 add_executable(caesar2
+    src/controls.c
+    src/contrdat.c
+    src/data.c
     src/display.c
+    src/screens.c
     src/platform/sdl3/c2_sdl_main.c
     src/platform/sdl3/c2_sdl_platform.c
+    src/platform/sdl3/c2_sdl_ui.c
 )
 
 target_compile_features(caesar2 PRIVATE c_std_11)
@@ -33,8 +38,16 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         COMPILE_OPTIONS -Wno-implicit-function-declaration
     )
     set_source_files_properties(
+        src/controls.c
+        src/contrdat.c
+        src/data.c
+        src/screens.c
+        PROPERTIES COMPILE_OPTIONS -Wno-implicit-function-declaration
+    )
+    set_source_files_properties(
         src/platform/sdl3/c2_sdl_main.c
         src/platform/sdl3/c2_sdl_platform.c
+        src/platform/sdl3/c2_sdl_ui.c
         PROPERTIES COMPILE_OPTIONS -Wpedantic
     )
     target_compile_options(caesar2 PRIVATE
@@ -53,10 +66,10 @@ include(CTest)
 set(C2_TEST_DATA_DIR "" CACHE PATH "Original Caesar II data directory used by smoke tests")
 if(BUILD_TESTING AND C2_TEST_DATA_DIR)
     add_test(
-        NAME title-screen-loads
+        NAME startup-reaches-game-options
         COMMAND caesar2 --headless --data-dir "${C2_TEST_DATA_DIR}"
     )
-    set_tests_properties(title-screen-loads PROPERTIES
-        PASS_REGULAR_EXPRESSION "title framebuffer fnv1a64=4955dda40cb075e6"
+    set_tests_properties(startup-reaches-game-options PROPERTIES
+        PASS_REGULAR_EXPRESSION "game settings framebuffer fnv1a64=b9da7d0a15d22865"
     )
 endif()

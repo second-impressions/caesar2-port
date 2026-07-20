@@ -12,11 +12,16 @@ features here.
 
 ## Native Linux bootstrap
 
-The first native milestone presents the original indexed startup artwork
-through SDL3.  It deliberately links the recovered `display_pl8file` function,
-so this is a vertical engine-to-platform slice rather than a replacement asset
-viewer.  The full startup flow, input, audio, and Smacker intro remain to be
-connected.
+The native bootstrap presents both original publisher splashes and then enters
+the recovered `Caesar II - Game Options` and `New Game Options` screens through
+SDL3. It deliberately links recovered display, screen, control, and data
+translation units, so this is a vertical engine-to-platform slice rather than
+a replacement UI. The splashes advance after two seconds or on input. Escape
+exits from the front screen and returns from the detailed game-options screen.
+
+The original `INTRO.SMK` between the publisher splashes and front screen is
+currently skipped. Loading games, tutorials, name entry, and starting the
+simulation remain to be connected.
 
 Original game data is required and is never committed.  From the Nix
 development shell:
@@ -28,12 +33,20 @@ cmake --build --preset linux-debug
 ./build/port/linux-debug/caesar2 --data-dir /path/to/CAESAR2
 ```
 
-The window closes with Escape.  A display-free smoke test loads the same PL8
-and palette files and reports a deterministic framebuffer hash:
+The game-options screen supports Start New Game by mouse or Enter/Space. In the
+detailed options, Left/Right changes difficulty, `P` toggles peaceful campaign
+mode, and the Back row returns to the front screen. The visible Start This Game
+action is the next unconnected startup boundary.
+
+A display-free smoke test loads the same PL8, font, text, and palette files and
+reports deterministic framebuffer hashes for the complete sequence:
 
 ```bash
 ./build/port/linux-debug/caesar2 --headless --data-dir /path/to/CAESAR2
 ```
+
+Pass `--screenshot output.ppm` to write the final headless frame or the current
+interactive startup state as a portable pixmap.
 
 To register that smoke test with CTest, configure with
 `-DC2_TEST_DATA_DIR=/path/to/CAESAR2` and run `ctest --preset linux-debug`.
