@@ -29,13 +29,28 @@ static unsigned int read_u32(const unsigned char *source)
            ((unsigned int)source[3] << 24);
 }
 
-void copy(unsigned char *source, unsigned char *destination, int byte_count)
+static void copy_bytes(const unsigned char *source, unsigned char *destination,
+                       unsigned int byte_count)
 {
-    int i;
+    unsigned int i;
 
     for (i = 0; i < byte_count; i++) {
         destination[i] = source[i];
     }
+}
+
+void copy(unsigned char *source, unsigned char *destination, int byte_count)
+{
+    int i;
+
+    do {
+        for (i = 0; i < 32; i++) {
+            destination[i] = source[i];
+        }
+        source += 32;
+        destination += 32;
+        byte_count -= 32;
+    } while (byte_count > 0);
 }
 
 int compress(unsigned char *source, unsigned char *destination, int byte_count)
@@ -77,8 +92,9 @@ int compress(unsigned char *source, unsigned char *destination, int byte_count)
             }
             write_u16(destination + destination_offset,
                       (unsigned int)(run_length - 1) | 0x8000U);
-            copy(source + source_offset, destination + destination_offset + 2,
-                 run_length);
+            copy_bytes(source + source_offset,
+                       destination + destination_offset + 2,
+                       (unsigned int)run_length);
             destination_offset += run_length + 2;
         }
         source_offset += run_length;
@@ -104,8 +120,8 @@ int depress(unsigned char *destination, unsigned char *source)
         run_length = (control & 0x7fffU) + 1;
         source_offset += 2;
         if ((control & 0x8000U) != 0) {
-            copy(source + source_offset, destination + destination_offset,
-                 (int)run_length);
+            copy_bytes(source + source_offset,
+                       destination + destination_offset, run_length);
             source_offset += (int)run_length;
         } else {
             unsigned char value;

@@ -60,7 +60,10 @@ remaining empty bodies.
 The first implemented batch is `copy`, `compress`, and `depress` in
 `src/portable/asm/c2_asm_memory.c`. Their byte-oriented implementation avoids
 unaligned typed accesses and is covered by exact encoded-form and round-trip
-tests. The live inventory is therefore 3 implemented and 84 blank routines.
+tests. `copy` preserves the assembly routine's contract: callers provide a
+positive byte count in 32-byte units, and the implementation copies whole
+32-byte chunks. The live inventory is therefore 3 implemented and 84 blank
+routines.
 
 This scaffold is deliberately a separate `c2_asm_portable` library and is not
 yet linked into the running bootstrap. It establishes and compile-checks the

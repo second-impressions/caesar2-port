@@ -5,10 +5,14 @@
 
 static void test_copy(void)
 {
-    unsigned char source[] = { 1, 2, 3, 4, 5 };
-    unsigned char destination[5] = { 0 };
+    unsigned char source[64];
+    unsigned char destination[64] = { 0 };
+    int i;
 
-    copy(source, destination, 5);
+    for (i = 0; i < 64; i++) {
+        source[i] = (unsigned char)(i * 3 + 1);
+    }
+    copy(source, destination, 64);
     assert(memcmp(source, destination, sizeof(source)) == 0);
 }
 
