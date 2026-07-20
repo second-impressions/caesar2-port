@@ -80,6 +80,14 @@ The `char *` mouse-background ABI is retained, while its arbitrary pixel bytes
 are accessed through the C-defined `unsigned char` representation view. The
 live inventory is therefore 25 implemented and 62 blank routines.
 
+The nine map-pointer diamond writers are implemented in
+`src/portable/asm/c2_asm_diamond_ptr.c`. They are rasterizers despite their
+historical `ptr` names: each writes a two-byte color word around a large,
+medium, or small diamond. The portable geometry preserves the original
+top/bottom selection, clipped-side suppression, variable-stride origin, and
+fixed 640-pixel row offsets without unaligned typed stores. The live inventory
+is therefore 34 implemented and 53 blank routines.
+
 This scaffold is deliberately a separate `c2_asm_portable` library and is not
 yet linked into the running bootstrap. It establishes and compile-checks the
 interface without letting unresolved link errors grow an ad-hoc compatibility

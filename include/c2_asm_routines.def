@@ -14,15 +14,15 @@ C2_ASM_STUB(C2_ROUTINE_VOID_2, write_medium_diamond_righthalfroof, unsigned char
 C2_ASM_STUB(C2_ROUTINE_VOID_2, write_medium_diamond_lefthalfroof, unsigned char *, int)
 
 /* Pointer diamond rasterizers: dia_ptrs.asm. */
-C2_ASM_STUB(C2_ROUTINE_VOID_2, write_i_large_diamond_ptr, int, int)
-C2_ASM_STUB(C2_ROUTINE_VOID_2, write_i_large_diamond_ptr_left, int, int)
-C2_ASM_STUB(C2_ROUTINE_VOID_2, write_i_large_diamond_ptr_right, int, int)
-C2_ASM_STUB(C2_ROUTINE_VOID_2, write_i_medium_diamond_ptr, int, int)
-C2_ASM_STUB(C2_ROUTINE_VOID_2, write_i_medium_diamond_ptr_left, int, int)
-C2_ASM_STUB(C2_ROUTINE_VOID_2, write_i_medium_diamond_ptr_right, int, int)
-C2_ASM_STUB(C2_ROUTINE_VOID_2, write_i_small_diamond_ptr, int, int)
-C2_ASM_STUB(C2_ROUTINE_VOID_2, write_i_small_diamond_ptr_left, int, int)
-C2_ASM_STUB(C2_ROUTINE_VOID_2, write_i_small_diamond_ptr_right, int, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, write_i_large_diamond_ptr, int, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, write_i_large_diamond_ptr_left, int, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, write_i_large_diamond_ptr_right, int, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, write_i_medium_diamond_ptr, int, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, write_i_medium_diamond_ptr_left, int, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, write_i_medium_diamond_ptr_right, int, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, write_i_small_diamond_ptr, int, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, write_i_small_diamond_ptr_left, int, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, write_i_small_diamond_ptr_right, int, int)
 
 /* Diamond rasterizers: dia_smal.asm. */
 C2_ASM_STUB(C2_ROUTINE_VOID_2, place_i_small_diamond, unsigned char *, int)

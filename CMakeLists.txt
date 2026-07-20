@@ -5,6 +5,7 @@ project(caesar2-port VERSION 0.1.0 LANGUAGES C)
 find_package(SDL3 3.2 CONFIG REQUIRED)
 
 add_library(c2_asm_portable STATIC
+    src/portable/asm/c2_asm_diamond_ptr.c
     src/portable/asm/c2_asm_internal_raster.c
     src/portable/asm/c2_asm_memory.c
     src/portable/asm/c2_asm_sprite.c
@@ -101,6 +102,11 @@ if(BUILD_TESTING)
     target_compile_features(c2-asm-sprite-test PRIVATE c_std_11)
     target_link_libraries(c2-asm-sprite-test PRIVATE c2_asm_portable)
     add_test(NAME asm-sprite COMMAND c2-asm-sprite-test)
+
+    add_executable(c2-asm-diamond-ptr-test tests/c2_asm_diamond_ptr_test.c)
+    target_compile_features(c2-asm-diamond-ptr-test PRIVATE c_std_11)
+    target_link_libraries(c2-asm-diamond-ptr-test PRIVATE c2_asm_portable)
+    add_test(NAME asm-diamond-ptr COMMAND c2-asm-diamond-ptr-test)
 endif()
 
 set(C2_TEST_DATA_DIR "" CACHE PATH "Original Caesar II data directory used by smoke tests")
