@@ -40,8 +40,14 @@ def test_every_slot_has_exactly_one_implementation_state():
     stubs = _portable_slots("STUB")
     implemented = _portable_slots("IMPLEMENTED")
     assert not stubs & implemented
-    assert len(stubs) == 84
-    assert implemented == {"copy", "compress", "depress"}
+    assert len(stubs) == 74
+    assert implemented == {
+        "copy", "compress", "depress",
+        "show_internal_point", "show_internal_2point", "show_internal_2x8",
+        "show_internal_4point", "xor_internal_2point",
+        "place_2x2_block", "place_4x4_block", "place_6x6_block",
+        "place_8x8_block", "show_fast_rect",
+    }
 
 
 def test_engine_declarations_expose_the_portable_surface():

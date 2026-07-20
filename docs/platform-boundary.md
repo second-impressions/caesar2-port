@@ -62,8 +62,15 @@ The first implemented batch is `copy`, `compress`, and `depress` in
 unaligned typed accesses and is covered by exact encoded-form and round-trip
 tests. `copy` preserves the assembly routine's contract: callers provide a
 positive byte count in 32-byte units, and the implementation copies whole
-32-byte chunks. The live inventory is therefore 3 implemented and 84 blank
-routines.
+32-byte chunks.
+
+The internal-screen point writers, zero-only two-pixel writer, 2/4/6/8-pixel
+block placers, and fast rectangle filler are implemented in
+`src/portable/asm/c2_asm_internal_raster.c`. These retain the original fixed
+640-pixel stride in the block placers and in `show_internal_2x8`; the other
+point writers and the fast rectangle filler retain their variable
+`screen_width` stride. Tests cover both behaviors directly against framebuffer
+rows. The live inventory is therefore 13 implemented and 74 blank routines.
 
 This scaffold is deliberately a separate `c2_asm_portable` library and is not
 yet linked into the running bootstrap. It establishes and compile-checks the
