@@ -44,7 +44,8 @@ def test_portable_diamond_renderers_match_compiled_original_assembly(tmp_path):
 
     portable = tmp_path / "diamond-portable"
     _run(
-        ["cc", "-std=c11", f"-I{ROOT / 'include'}", os.fspath(HARNESS),
+        ["cc", "-std=c11", "-DC2_FIX_MEDIUM_RIGHT_HAT_OFFSET=0",
+         f"-I{ROOT / 'include'}", os.fspath(HARNESS),
          os.fspath(ROOT / "src" / "portable" / "asm" /
                    "c2_asm_diamond_image.c"),
          os.fspath(ROOT / "src" / "portable" / "asm" / "c2_asm_stubs.c"),

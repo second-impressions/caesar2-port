@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "c2_asm_routines.h"
+#include "c2_bugfixes.h"
 
 #define TEST_WIDTH 640
 #define TEST_HEIGHT 40
@@ -180,7 +181,8 @@ static void test_hat(diamond_placer write, int pair_count,
                     if (part == TEST_HAT_KEEP_RIGHT) {
                         destination_pair -= centre + 1;
                     }
-                    if (medium_right_quirk && row - depth == 2 && pair == 3) {
+                    if (!C2_FIX_MEDIUM_RIGHT_HAT_OFFSET &&
+                        medium_right_quirk && row - depth == 2 && pair == 3) {
                         destination_pair = 31;
                     }
                     destination_offset = base_offset +
@@ -199,6 +201,36 @@ static void test_hat(diamond_placer write, int pair_count,
         }
         assert(memcmp(pixels, expected, sizeof(pixels)) == 0);
     }
+}
+
+static void test_medium_right_hat_offset(void)
+{
+    unsigned char sprites[1024];
+    int base_offset;
+    int source_offset;
+
+    memset(sprites, 0, sizeof(sprites));
+    sprite_hat_start = 0;
+    y_length = 3;
+    source_offset = (2 * 13 + 3) * 2;
+    sprites[source_offset] = 0x71;
+    sprites[source_offset + 1] = 0x72;
+    reset_buffers();
+
+    write_medium_diamond_righthat(sprites, 0);
+
+    base_offset = sprite_y * screen_width + sprite_x;
+#if C2_FIX_MEDIUM_RIGHT_HAT_OFFSET
+    assert(pixels[base_offset + 6] == 0x71);
+    assert(pixels[base_offset + 7] == 0x72);
+    assert(pixels[base_offset + 62] == 0xa5);
+    assert(pixels[base_offset + 63] == 0xa5);
+#else
+    assert(pixels[base_offset + 6] == 0xa5);
+    assert(pixels[base_offset + 7] == 0xa5);
+    assert(pixels[base_offset + 62] == 0x71);
+    assert(pixels[base_offset + 63] == 0x72);
+#endif
 }
 
 int main(void)
@@ -226,5 +258,6 @@ int main(void)
     test_hat(write_large_diamond_hat, 29, TEST_HAT_FULL, 0);
     test_hat(write_large_diamond_lefthat, 29, TEST_HAT_KEEP_RIGHT, 0);
     test_hat(write_large_diamond_righthat, 29, TEST_HAT_KEEP_LEFT, 0);
+    test_medium_right_hat_offset();
     return 0;
 }

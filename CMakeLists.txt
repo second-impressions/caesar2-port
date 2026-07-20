@@ -4,6 +4,9 @@ project(caesar2-port VERSION 0.1.0 LANGUAGES C)
 
 find_package(SDL3 3.2 CONFIG REQUIRED)
 
+option(C2_FIX_MEDIUM_RIGHT_HAT_OFFSET
+    "Correct the misplaced pixel pair in the medium right diamond hat" ON)
+
 add_library(c2_asm_portable STATIC
     src/portable/asm/c2_asm_diamond_image.c
     src/portable/asm/c2_asm_diamond_ptr.c
@@ -14,6 +17,13 @@ add_library(c2_asm_portable STATIC
 )
 target_compile_features(c2_asm_portable PRIVATE c_std_11)
 target_include_directories(c2_asm_portable PUBLIC include)
+if(C2_FIX_MEDIUM_RIGHT_HAT_OFFSET)
+    target_compile_definitions(c2_asm_portable PUBLIC
+        C2_FIX_MEDIUM_RIGHT_HAT_OFFSET=1)
+else()
+    target_compile_definitions(c2_asm_portable PUBLIC
+        C2_FIX_MEDIUM_RIGHT_HAT_OFFSET=0)
+endif()
 if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
     target_compile_options(c2_asm_portable PRIVATE
         -Wall

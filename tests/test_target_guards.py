@@ -4,7 +4,8 @@ Version-specific differences between the DOS release and the Windows
 build-A witness must be guarded by the target/feature macros from
 ``include/c2_target.h`` — never by raw compiler macros, which conflate
 "which compiler" with "which build of the game". Platform-specific
-compiler capabilities are selected by ``PLATFORM_*`` too.
+compiler capabilities are selected by ``PLATFORM_*`` too. Optional fixes
+for confirmed shipped bugs are catalogued in ``include/c2_bugfixes.h``.
 """
 
 from __future__ import annotations
@@ -15,12 +16,14 @@ from pathlib import Path
 SRC = Path("src")
 INCLUDE = Path("include")
 TARGET_HEADER = INCLUDE / "c2_target.h"
+BUGFIX_HEADER = INCLUDE / "c2_bugfixes.h"
 
 COND_RE = re.compile(r"^\s*#\s*(if|ifdef|ifndef)\b\s*(.*?)\s*$")
 
 # Conditions allowed outside c2_target.h itself.
 ALLOWED_TOKENS = re.compile(
-    r"PLATFORM_(DOS|WINDOWS|PORTABLE)|C2_FEAT_[A-Z0-9_]+|C2_PATCHLEVEL"
+    r"PLATFORM_(DOS|WINDOWS|PORTABLE)|C2_FEAT_[A-Z0-9_]+"
+    r"|C2_FIX_[A-Z0-9_]+|C2_PATCHLEVEL"
     r"|S_IRUSR"              # portable stat-mode fallback
     r"|\w+_H\b"              # include guards
 )
@@ -83,3 +86,19 @@ def test_every_feature_macro_is_defined_in_the_target_header():
     assert not missing, f"feature macros used but not defined: {sorted(missing)}"
     unused = defined - used
     assert not unused, f"feature macros defined but never used: {sorted(unused)}"
+
+
+def test_every_bugfix_macro_is_defined_in_the_bugfix_header():
+    """C2_FIX_* used by shipped code must belong to the bug-fix catalogue."""
+    defined = set(
+        re.findall(r"#\s*define\s+(C2_FIX_\w+)", BUGFIX_HEADER.read_text())
+    )
+    used = set()
+    for path in sorted(SRC.rglob("*.c")) + sorted(INCLUDE.rglob("*.h")):
+        if path == BUGFIX_HEADER:
+            continue
+        used |= set(re.findall(r"\bC2_FIX_\w+\b", path.read_text()))
+    missing = used - defined
+    assert not missing, f"bug-fix macros used but not defined: {sorted(missing)}"
+    unused = defined - used
+    assert not unused, f"bug-fix macros defined but never used: {sorted(unused)}"

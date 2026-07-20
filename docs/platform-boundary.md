@@ -109,15 +109,19 @@ inventory is therefore 53 implemented and 34 blank routines.
 Compatibility note: `write_medium_diamond_righthat` contains one asymmetric
 literal store inherited from `dia_medi.asm`. In the third post-depth clipped
 row, source pair 3 is written at x=62 rather than the geometrically symmetric
-x=6. The portable compatibility implementation preserves this shipped
-behavior. Treat correcting it as an explicit renderer bug fix with visual
-coverage, not as part of assembly translation.
+x=6. The portable implementation corrects it by default. The centralized
+`C2_FIX_MEDIUM_RIGHT_HAT_OFFSET` switch in `include/c2_bugfixes.h` selects the
+behavior: `1` uses x=6 and `0` restores the shipped x=62 store. CMake exposes
+the same switch as an option, so a compatibility build uses
+`-DC2_FIX_MEDIUM_RIGHT_HAT_OFFSET=OFF`.
 
 `tests/test_diamond_asm_oracle.py` provides the executable semantic oracle for
 this family. It builds a statically linked 32-bit Linux fixture with OpenWatcom
 and the original recovered assembly, builds the same fixture against the
-portable C, and compares complete-framebuffer hashes across parameter cases.
-Extend its shared harness whenever another diamond routine is translated.
+portable C with the bug fix disabled, and compares complete-framebuffer hashes
+across parameter cases. The ordinary C test runs with the corrected default,
+including a focused assertion for the x=6 destination. Extend the shared
+harness whenever another diamond routine is translated.
 
 The nine full and screen-edge left/right roof writers use the corresponding
 upward-growing V projection: source row `r` draws pairs at most `r` steps from

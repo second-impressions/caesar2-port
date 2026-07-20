@@ -1,4 +1,5 @@
 #include "c2_asm_routines.h"
+#include "c2_bugfixes.h"
 
 #define C2_LEGACY_SCREEN_WIDTH 640
 
@@ -206,7 +207,8 @@ static void write_diamond_hat(unsigned char *sprites, int depth,
                 if (part == HAT_KEEP_RIGHT) {
                     destination_pair -= centre + 1;
                 }
-                if (medium_right_quirk && row - depth == 2 && pair == 3) {
+                if (!C2_FIX_MEDIUM_RIGHT_HAT_OFFSET &&
+                    medium_right_quirk && row - depth == 2 && pair == 3) {
                     destination_pair = 31;
                 }
                 write_hat_pair(base +
