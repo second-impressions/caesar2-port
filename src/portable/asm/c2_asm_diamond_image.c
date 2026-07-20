@@ -263,3 +263,90 @@ void write_large_diamond_righthat(unsigned char *sprites, int depth)
 {
     write_diamond_hat(sprites, depth, 29, HAT_KEEP_LEFT, 0);
 }
+
+static void write_diamond_roof(unsigned char *sprites, int pair_count,
+                               enum hat_part part)
+{
+    unsigned char *source;
+    unsigned char *base;
+    int centre;
+    int first_pair;
+    int last_pair;
+    int destination_pair;
+    int row;
+    int pair;
+    int distance;
+
+    source = sprites + sprite_hat_start;
+    base = diamond_destination();
+    centre = pair_count / 2;
+    first_pair = 0;
+    last_pair = pair_count;
+    if (part == HAT_KEEP_RIGHT) {
+        first_pair = centre + 1;
+    } else if (part == HAT_KEEP_LEFT) {
+        last_pair = centre;
+    }
+
+    for (row = 0; row < y_length; row++) {
+        for (pair = first_pair; pair < last_pair; pair++) {
+            distance = pair < centre ? centre - pair : pair - centre;
+            if (distance <= row) {
+                destination_pair = pair;
+                if (part == HAT_KEEP_RIGHT) {
+                    destination_pair -= centre + 1;
+                }
+                write_hat_pair(base + distance * C2_LEGACY_SCREEN_WIDTH +
+                                   destination_pair * 2,
+                               source + pair * 2);
+            }
+        }
+        source += pair_count * 2;
+        base -= screen_width;
+    }
+}
+
+void write_small_diamond_roof(unsigned char *sprites)
+{
+    write_diamond_roof(sprites, 5, HAT_FULL);
+}
+
+void write_small_diamond_leftroof(unsigned char *sprites)
+{
+    write_diamond_roof(sprites, 5, HAT_KEEP_RIGHT);
+}
+
+void write_small_diamond_rightroof(unsigned char *sprites)
+{
+    write_diamond_roof(sprites, 5, HAT_KEEP_LEFT);
+}
+
+void write_medium_diamond_roof(unsigned char *sprites)
+{
+    write_diamond_roof(sprites, 13, HAT_FULL);
+}
+
+void write_medium_diamond_leftroof(unsigned char *sprites)
+{
+    write_diamond_roof(sprites, 13, HAT_KEEP_RIGHT);
+}
+
+void write_medium_diamond_rightroof(unsigned char *sprites)
+{
+    write_diamond_roof(sprites, 13, HAT_KEEP_LEFT);
+}
+
+void write_large_diamond_roof(unsigned char *sprites)
+{
+    write_diamond_roof(sprites, 29, HAT_FULL);
+}
+
+void write_large_diamond_leftroof(unsigned char *sprites)
+{
+    write_diamond_roof(sprites, 29, HAT_KEEP_RIGHT);
+}
+
+void write_large_diamond_rightroof(unsigned char *sprites)
+{
+    write_diamond_roof(sprites, 29, HAT_KEEP_LEFT);
+}

@@ -18,11 +18,12 @@ def _run(command, cwd):
     not all(shutil.which(tool) for tool in ("wasm", "wcl386", "cc")),
     reason="OpenWatcom and a native C compiler are required",
 )
-def test_portable_hats_match_compiled_original_assembly(tmp_path):
+def test_portable_diamond_renderers_match_compiled_original_assembly(tmp_path):
     assembly_files = (
         ROOT / "src" / "dia_smal.asm",
         ROOT / "src" / "dia_medi.asm",
         ROOT / "src" / "dialarga.asm",
+        ROOT / "src" / "dialargb.asm",
     )
     objects = []
     for assembly in assembly_files:

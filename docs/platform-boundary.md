@@ -119,6 +119,12 @@ and the original recovered assembly, builds the same fixture against the
 portable C, and compares complete-framebuffer hashes across parameter cases.
 Extend its shared harness whenever another diamond routine is translated.
 
+The nine full and screen-edge left/right roof writers use the corresponding
+upward-growing V projection: source row `r` draws pairs at most `r` steps from
+the center while the origin walks upward with `screen_width`. Their portable
+kernel is covered by the compiled assembly oracle. The live inventory is
+therefore 62 implemented and 25 blank routines.
+
 The DOS diamond modules use the 20-byte Smacker/Miles `sndinit` array as four
 unaligned transient dword slots at byte offsets 2, 6, 10, and 14. Each affected
 routine writes its own argument there and reads it back only during that call.

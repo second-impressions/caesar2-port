@@ -5,6 +5,7 @@
 #define SOURCE_SIZE 4096
 
 typedef void (*hat_writer)(unsigned char *, int);
+typedef void (*roof_writer)(unsigned char *);
 
 unsigned char framebuffer[641 * SCREEN_ROWS];
 unsigned char source_data[SOURCE_SIZE];
@@ -26,6 +27,15 @@ void write_medium_diamond_righthat(unsigned char *, int);
 void write_large_diamond_hat(unsigned char *, int);
 void write_large_diamond_lefthat(unsigned char *, int);
 void write_large_diamond_righthat(unsigned char *, int);
+void write_small_diamond_roof(unsigned char *);
+void write_small_diamond_leftroof(unsigned char *);
+void write_small_diamond_rightroof(unsigned char *);
+void write_medium_diamond_roof(unsigned char *);
+void write_medium_diamond_leftroof(unsigned char *);
+void write_medium_diamond_rightroof(unsigned char *);
+void write_large_diamond_roof(unsigned char *);
+void write_large_diamond_leftroof(unsigned char *);
+void write_large_diamond_rightroof(unsigned char *);
 
 static unsigned int framebuffer_hash(void)
 {
@@ -75,6 +85,20 @@ static void run_hat(const char *name, hat_writer writer)
     }
 }
 
+static void run_roof(const char *name, roof_writer writer)
+{
+    static const int lengths[] = {1, 4, 8, 16};
+    unsigned int length_index;
+
+    for (length_index = 0;
+         length_index < sizeof(lengths) / sizeof(lengths[0]); length_index++) {
+        reset_fixture();
+        y_length = lengths[length_index];
+        writer(source_data);
+        printf("%s h%d %08x\n", name, y_length, framebuffer_hash());
+    }
+}
+
 int main(void)
 {
     run_hat("small-full", write_small_diamond_hat);
@@ -86,5 +110,14 @@ int main(void)
     run_hat("large-full", write_large_diamond_hat);
     run_hat("large-left", write_large_diamond_lefthat);
     run_hat("large-right", write_large_diamond_righthat);
+    run_roof("small-roof", write_small_diamond_roof);
+    run_roof("small-leftroof", write_small_diamond_leftroof);
+    run_roof("small-rightroof", write_small_diamond_rightroof);
+    run_roof("medium-roof", write_medium_diamond_roof);
+    run_roof("medium-leftroof", write_medium_diamond_leftroof);
+    run_roof("medium-rightroof", write_medium_diamond_rightroof);
+    run_roof("large-roof", write_large_diamond_roof);
+    run_roof("large-leftroof", write_large_diamond_leftroof);
+    run_roof("large-rightroof", write_large_diamond_rightroof);
     return 0;
 }
