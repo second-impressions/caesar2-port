@@ -39,6 +39,11 @@ static void copy_bytes(const unsigned char *source, unsigned char *destination,
     }
 }
 
+void call_address(c2_legacy_callback callback)
+{
+    callback();
+}
+
 void copy(unsigned char *source, unsigned char *destination, int byte_count)
 {
     int i;

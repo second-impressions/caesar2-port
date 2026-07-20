@@ -40,7 +40,7 @@ def test_every_slot_has_exactly_one_implementation_state():
     stubs = _portable_slots("STUB")
     implemented = _portable_slots("IMPLEMENTED")
     assert not stubs & implemented
-    assert len(stubs) == 44
+    assert len(stubs) == 43
     assert implemented == {
         "copy", "compress", "depress",
         "show_internal_point", "show_internal_2point", "show_internal_2x8",
@@ -62,6 +62,7 @@ def test_every_slot_has_exactly_one_implementation_state():
         "place_i_medium_diamond", "place_i_medium_diamond_lefthalf",
         "place_i_medium_diamond_righthalf", "place_i_large_diamond",
         "place_i_large_diamond_lefthalf", "place_i_large_diamond_righthalf",
+        "call_address",
     }
 
 

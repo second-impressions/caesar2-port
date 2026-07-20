@@ -3,6 +3,20 @@
 
 #include "c2_asm_routines.h"
 
+static int callback_count;
+
+static void count_callback(void)
+{
+    callback_count++;
+}
+
+static void test_call_address(void)
+{
+    callback_count = 0;
+    call_address(count_callback);
+    assert(callback_count == 1);
+}
+
 static void test_copy(void)
 {
     unsigned char source[64];
@@ -61,6 +75,7 @@ static void test_mixed_round_trip(void)
 
 int main(void)
 {
+    test_call_address();
     test_copy();
     test_repeated_run();
     test_literal_run();

@@ -96,6 +96,10 @@ geometry; the small clipped pair retains its assembly-specific ignored `part`
 argument. The live inventory is therefore 43 implemented and 44 blank
 routines.
 
+`call_address` is implemented as the ordinary no-argument, return-discarding
+callback invocation encoded by its assembly trampoline. The live inventory is
+therefore 44 implemented and 43 blank routines.
+
 The DOS diamond modules use the 20-byte Smacker/Miles `sndinit` array as four
 unaligned transient dword slots at byte offsets 2, 6, 10, and 14. Each affected
 routine writes its own argument there and reads it back only during that call.
