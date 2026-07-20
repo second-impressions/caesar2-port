@@ -10,9 +10,11 @@ add_executable(caesar2
     src/data.c
     src/display.c
     src/screens.c
+    src/port/c2_port_app.c
+    src/port/c2_port_compat.c
+    src/port/c2_port_ui.c
     src/platform/sdl3/c2_sdl_main.c
-    src/platform/sdl3/c2_sdl_platform.c
-    src/platform/sdl3/c2_sdl_ui.c
+    src/platform/sdl3/c2_sdl_host.c
 )
 
 target_compile_features(caesar2 PRIVATE c_std_11)
@@ -28,6 +30,7 @@ target_compile_definitions(caesar2 PRIVATE
 
 target_include_directories(caesar2 PRIVATE
     include
+    src/port
     src/platform/sdl3
 )
 
@@ -46,8 +49,10 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
     )
     set_source_files_properties(
         src/platform/sdl3/c2_sdl_main.c
-        src/platform/sdl3/c2_sdl_platform.c
-        src/platform/sdl3/c2_sdl_ui.c
+        src/platform/sdl3/c2_sdl_host.c
+        src/port/c2_port_app.c
+        src/port/c2_port_compat.c
+        src/port/c2_port_ui.c
         PROPERTIES COMPILE_OPTIONS -Wpedantic
     )
     target_compile_options(caesar2 PRIVATE

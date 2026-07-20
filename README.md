@@ -32,6 +32,12 @@ The original `INTRO.SMK` between the publisher splashes and front screen is
 currently skipped. Loading games, tutorials, name entry, and starting the
 simulation remain to be connected.
 
+The recovered startup flow runs on an engine worker. The SDL main thread owns
+events and presentation, communicating through the backend-neutral
+`c2_host_*` API. Music and video are explicit unavailable host capabilities in
+this milestone; no placeholder media libraries or false-success stubs are
+linked.
+
 Original game data is required and is never committed.  From the Nix
 development shell:
 
@@ -41,6 +47,9 @@ cmake --preset linux-debug
 cmake --build --preset linux-debug
 ./build/port/linux-debug/caesar2 --data-dir /path/to/CAESAR2
 ```
+
+Writable files use a separate user-data root, selected with
+`--user-data-dir PATH` or `C2_USER_DATA_DIR` (default: the current directory).
 
 The game-options screen supports Start New Game by mouse or Enter/Space. In the
 detailed options, Left/Right changes difficulty, `P` toggles peaceful campaign
@@ -55,10 +64,12 @@ reports deterministic framebuffer hashes for the complete sequence:
 ```
 
 Pass `--screenshot output.ppm` to write the final headless frame or the current
-interactive startup state as a portable pixmap.
+interactive startup state as a portable pixmap beneath the user-data root.
 
 To register that smoke test with CTest, configure with
 `-DC2_TEST_DATA_DIR=/path/to/CAESAR2` and run `ctest --preset linux-debug`.
+The `linux-tsan` configure/build/test preset runs the same worker-thread slice
+under Clang ThreadSanitizer.
 
 ## Reconstruction baseline
 

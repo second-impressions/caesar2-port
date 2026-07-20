@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "c2_data.h"
+#include "c2_port.h"
 
 #define C2_FONT1_BYTES 9460
 #define C2_FONT2_BYTES 28248
@@ -153,7 +154,7 @@ static void draw_text(const unsigned char *text, int x, int y,
     x_is += 4;
 }
 
-int c2_sdl_load_startup_ui(void)
+int c2_port_load_startup_ui(void)
 {
     if (readfile("font_c2.pl8", font1, sizeof(font1), 0) == 0) return 0;
     if (readfile("font3c2.pl8", font2, sizeof(font2), 0) == 0) return 0;

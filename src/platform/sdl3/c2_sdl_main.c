@@ -2,266 +2,171 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
-#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "c2_types.h"
-#include "c2_sdl_platform.h"
+#include "c2_host.h"
+#include "c2_port.h"
+#include "c2_port_app.h"
+#include "c2_sdl_host.h"
 
-#define C2_SPLASH_DURATION_MS 2000
-
-enum c2_startup_stage {
-    C2_STARTUP_SIERRA,
-    C2_STARTUP_IMPRESSIONS,
-    C2_STARTUP_MENU,
-    C2_STARTUP_SETTINGS
+struct c2_sdl_app {
+    SDL_Thread *engine_thread;
+    SDL_AtomicInt engine_result;
+    struct c2_port_app_config engine_config;
+    int host_initialized;
 };
 
-struct c2_app_state {
-    enum c2_startup_stage stage;
-    Uint64 stage_started;
-    const char *screenshot_path;
-    int headless;
-};
+static struct c2_sdl_app c2_app;
 
-extern struct button_rec skill1_buttons[];
-extern struct button_rec skill2_buttons[];
-extern int display_pl8file(char *pl8_filename, char *palette_filename);
-extern void refresh_svga_screen(void);
-extern void show_buttons(int x, int y, struct button_rec *button_list, int button_count);
-extern void show_skill1_box(void);
-extern void show_skill2_box(void);
-
-static struct c2_app_state c2_app;
-
-static int parse_arguments(int argc, char *argv[], const char **data_dir,
-                           const char **screenshot_path, int *headless)
+static int parse_arguments(int argc, char *argv[], const char **asset_root,
+                           const char **user_data_root,
+                           const char **screenshot_filename, int *headless)
 {
     int i;
 
-    *data_dir = getenv("C2_DATA_DIR");
-    if (*data_dir == NULL || **data_dir == '\0') {
-        *data_dir = ".";
+    *asset_root = getenv("C2_DATA_DIR");
+    if (*asset_root == NULL || **asset_root == '\0') {
+        *asset_root = ".";
+    }
+    *user_data_root = getenv("C2_USER_DATA_DIR");
+    if (*user_data_root == NULL || **user_data_root == '\0') {
+        *user_data_root = ".";
     }
     *headless = 0;
-    *screenshot_path = NULL;
+    *screenshot_filename = NULL;
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--headless") == 0) {
             *headless = 1;
         } else if (strcmp(argv[i], "--data-dir") == 0 && i + 1 < argc) {
-            i++;
-            *data_dir = argv[i];
+            *asset_root = argv[++i];
+        } else if (strcmp(argv[i], "--user-data-dir") == 0 && i + 1 < argc) {
+            *user_data_root = argv[++i];
         } else if (strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
-            i++;
-            *screenshot_path = argv[i];
+            *screenshot_filename = argv[++i];
         } else {
-            fprintf(stderr, "usage: %s [--headless] [--data-dir PATH] [--screenshot PATH]\n",
+            fprintf(stderr,
+                    "usage: %s [--headless] [--data-dir PATH] "
+                    "[--user-data-dir PATH] [--screenshot FILE]\n",
                     argv[0]);
             return 0;
         }
     }
-
     return 1;
 }
 
-static int show_startup_stage(enum c2_startup_stage stage)
+static int engine_main(void *data)
 {
-    int loaded;
+    struct c2_sdl_app *app;
+    enum c2_port_app_result result;
 
-    loaded = 0;
-    if (stage == C2_STARTUP_SIERRA) {
-        loaded = display_pl8file("logo1.pl8", "logo1.256");
-    } else if (stage == C2_STARTUP_IMPRESSIONS) {
-        loaded = display_pl8file("logo2.pl8", "logo2.256");
-    } else if (stage == C2_STARTUP_MENU) {
-        show_skill1_box();
-        show_buttons(0x50, 0x50, skill1_buttons, 4);
-        refresh_svga_screen();
-        loaded = 1;
-    } else if (stage == C2_STARTUP_SETTINGS) {
-        show_skill2_box();
-        show_buttons(0x50, 0x50, skill2_buttons, 6);
-        refresh_svga_screen();
-        loaded = 1;
-    }
+    app = data;
+    result = c2_port_app_start(&app->engine_config);
+    while (result == C2_PORT_APP_CONTINUE &&
+           !c2_host_shutdown_requested()) {
+        struct c2_host_event event;
 
-    if (loaded) {
-        c2_app.stage = stage;
-        c2_app.stage_started = SDL_GetTicks();
-        if (c2_app.screenshot_path != NULL &&
-            !c2_sdl_save_screenshot(c2_app.screenshot_path)) {
-            fprintf(stderr, "could not write screenshot to %s\n", c2_app.screenshot_path);
-            return 0;
+        result = c2_port_app_update();
+        if (result != C2_PORT_APP_CONTINUE) {
+            break;
+        }
+        if (c2_host_wait_event(&event, 16)) {
+            result = c2_port_app_handle_event(&event);
         }
     }
-    return loaded;
+    c2_port_app_stop();
+    SDL_SetAtomicInt(&app->engine_result, result);
+    return (int)result;
 }
 
-static SDL_AppResult advance_startup(void)
+static SDL_AppResult to_sdl_result(int result)
 {
-    enum c2_startup_stage next_stage;
-
-    if (c2_app.stage >= C2_STARTUP_MENU) {
-        return SDL_APP_CONTINUE;
+    if (result == C2_PORT_APP_SUCCESS) {
+        return SDL_APP_SUCCESS;
     }
-    next_stage = (enum c2_startup_stage)(c2_app.stage + 1);
-    if (!show_startup_stage(next_stage)) {
+    if (result == C2_PORT_APP_FAILURE) {
         return SDL_APP_FAILURE;
     }
     return SDL_APP_CONTINUE;
 }
 
-static SDL_AppResult redraw_settings(void)
-{
-    return show_startup_stage(C2_STARTUP_SETTINGS) ? SDL_APP_CONTINUE : SDL_APP_FAILURE;
-}
-
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 {
-    const char *data_dir;
-    const char *screenshot_path;
+    const char *asset_root;
+    const char *user_data_root;
+    const char *screenshot_filename;
+    struct c2_host_config host_config;
     int headless;
 
     *appstate = &c2_app;
-    if (!parse_arguments(argc, argv, &data_dir, &screenshot_path, &headless)) {
-        return SDL_APP_FAILURE;
-    }
-    if (!c2_sdl_platform_init(data_dir, headless)) {
-        return SDL_APP_FAILURE;
-    }
-    if (!c2_sdl_load_startup_ui()) {
-        fprintf(stderr, "could not load the Caesar II interface assets from %s\n", data_dir);
+    if (!parse_arguments(argc, argv, &asset_root, &user_data_root,
+                         &screenshot_filename, &headless)) {
         return SDL_APP_FAILURE;
     }
 
-    c2_app.headless = headless;
-    c2_app.screenshot_path = screenshot_path;
-    if (!show_startup_stage(C2_STARTUP_SIERRA)) {
-        fprintf(stderr, "could not load the Caesar II startup assets from %s\n", data_dir);
+    memset(&host_config, 0, sizeof(host_config));
+    host_config.title = "Caesar II";
+    host_config.asset_root = asset_root;
+    host_config.user_data_root = user_data_root;
+    host_config.logical_width = C2_SCREEN_WIDTH;
+    host_config.logical_height = C2_SCREEN_HEIGHT;
+    host_config.window_scale = 2;
+    host_config.headless = headless;
+    if (!c2_host_init(&host_config)) {
         return SDL_APP_FAILURE;
     }
-    printf("sierra framebuffer fnv1a64=%016" PRIx64 "\n", c2_sdl_title_hash());
+    c2_app.host_initialized = 1;
 
-    if (headless) {
-        if (advance_startup() == SDL_APP_FAILURE) {
-            return SDL_APP_FAILURE;
-        }
-        printf("impressions framebuffer fnv1a64=%016" PRIx64 "\n", c2_sdl_title_hash());
-        if (advance_startup() == SDL_APP_FAILURE) {
-            return SDL_APP_FAILURE;
-        }
-        printf("startup menu framebuffer fnv1a64=%016" PRIx64 "\n", c2_sdl_title_hash());
-        if (!show_startup_stage(C2_STARTUP_SETTINGS)) {
-            return SDL_APP_FAILURE;
-        }
-        printf("game settings framebuffer fnv1a64=%016" PRIx64 "\n", c2_sdl_title_hash());
-        return SDL_APP_SUCCESS;
+    c2_app.engine_config.screenshot_filename = screenshot_filename;
+    c2_app.engine_config.headless = headless;
+    SDL_SetAtomicInt(&c2_app.engine_result, C2_PORT_APP_CONTINUE);
+    c2_app.engine_thread = SDL_CreateThread(engine_main, "caesar2-engine", &c2_app);
+    if (c2_app.engine_thread == NULL) {
+        fprintf(stderr, "could not start the Caesar II engine: %s\n", SDL_GetError());
+        return SDL_APP_FAILURE;
     }
-
     return SDL_APP_CONTINUE;
 }
 
 SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
 {
-    struct c2_app_state *state;
-
-    state = appstate;
-
-    if (event->type == SDL_EVENT_QUIT) {
-        return SDL_APP_SUCCESS;
-    }
-    if (event->type == SDL_EVENT_KEY_DOWN && event->key.key == SDLK_ESCAPE) {
-        if (state->stage == C2_STARTUP_SETTINGS) {
-            return show_startup_stage(C2_STARTUP_MENU) ? SDL_APP_CONTINUE : SDL_APP_FAILURE;
-        }
-        return SDL_APP_SUCCESS;
-    }
-    if (state->stage < C2_STARTUP_MENU &&
-        (event->type == SDL_EVENT_KEY_DOWN || event->type == SDL_EVENT_MOUSE_BUTTON_DOWN)) {
-        return advance_startup();
-    }
-    if (state->stage == C2_STARTUP_MENU && event->type == SDL_EVENT_KEY_DOWN &&
-        (event->key.key == SDLK_RETURN || event->key.key == SDLK_SPACE)) {
-        return show_startup_stage(C2_STARTUP_SETTINGS) ? SDL_APP_CONTINUE : SDL_APP_FAILURE;
-    }
-    if (state->stage == C2_STARTUP_MENU && event->type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
-        if (!c2_sdl_event_to_game(event)) {
-            return SDL_APP_FAILURE;
-        }
-        if (event->button.x >= 130 && event->button.x < 440) {
-            if (event->button.y >= 170 && event->button.y < 218) {
-                return show_startup_stage(C2_STARTUP_SETTINGS) ? SDL_APP_CONTINUE : SDL_APP_FAILURE;
-            }
-            if (event->button.y >= 314 && event->button.y < 362) {
-                return SDL_APP_SUCCESS;
-            }
-        }
-    }
-    if (state->stage == C2_STARTUP_SETTINGS && event->type == SDL_EVENT_KEY_DOWN) {
-        if (event->key.key == SDLK_LEFT && c2inf.skill_level > 0) {
-            c2inf.skill_level--;
-            return redraw_settings();
-        }
-        if (event->key.key == SDLK_RIGHT && c2inf.skill_level < 4) {
-            c2inf.skill_level++;
-            return redraw_settings();
-        }
-        if (event->key.key == SDLK_P) {
-            c2inf.peace_mode ^= 1;
-            return redraw_settings();
-        }
-    }
-    if (state->stage == C2_STARTUP_SETTINGS && event->type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
-        if (!c2_sdl_event_to_game(event)) {
-            return SDL_APP_FAILURE;
-        }
-        if (event->button.y >= 145 && event->button.y < 195) {
-            if (event->button.x >= 260 && event->button.x < 300 && c2inf.skill_level > 0) {
-                c2inf.skill_level--;
-                return redraw_settings();
-            }
-            if (event->button.x >= 300 && event->button.x < 340 && c2inf.skill_level < 4) {
-                c2inf.skill_level++;
-                return redraw_settings();
-            }
-        }
-        if (event->button.x >= 130 && event->button.x < 440 &&
-            event->button.y >= 220 && event->button.y < 275) {
-            c2inf.peace_mode ^= 1;
-            return redraw_settings();
-        }
-        if (event->button.x >= 130 && event->button.x < 440 &&
-            event->button.y >= 370 && event->button.y < 425) {
-            return show_startup_stage(C2_STARTUP_MENU) ? SDL_APP_CONTINUE : SDL_APP_FAILURE;
-        }
-    }
-
+    (void)appstate;
+    c2_sdl_host_handle_event(event);
     return SDL_APP_CONTINUE;
 }
 
 SDL_AppResult SDL_AppIterate(void *appstate)
 {
-    struct c2_app_state *state;
+    struct c2_sdl_app *app;
+    int result;
 
-    state = appstate;
-    if (state->stage < C2_STARTUP_MENU &&
-        SDL_GetTicks() - state->stage_started >= C2_SPLASH_DURATION_MS) {
-        if (advance_startup() == SDL_APP_FAILURE) {
-            return SDL_APP_FAILURE;
-        }
+    app = appstate;
+    result = SDL_GetAtomicInt(&app->engine_result);
+    if (result != C2_PORT_APP_CONTINUE) {
+        return to_sdl_result(result);
     }
-
-    c2_sdl_platform_present();
-    SDL_Delay(16);
+    c2_host_present();
+    c2_host_sleep_ms(8);
     return SDL_APP_CONTINUE;
 }
 
 void SDL_AppQuit(void *appstate, SDL_AppResult result)
 {
-    (void)appstate;
+    struct c2_sdl_app *app;
+
     (void)result;
-    c2_sdl_platform_shutdown();
+    app = appstate;
+    if (app != NULL && app->host_initialized) {
+        c2_host_request_shutdown();
+    }
+    if (app != NULL && app->engine_thread != NULL) {
+        SDL_WaitThread(app->engine_thread, NULL);
+        app->engine_thread = NULL;
+    }
+    if (app != NULL && app->host_initialized) {
+        c2_host_shutdown();
+        app->host_initialized = 0;
+    }
 }

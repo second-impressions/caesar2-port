@@ -30,6 +30,23 @@ SDL types and functions must not occur above `c2_host_*`. This keeps recovered
 files recognizable, makes reconstruction changes easy to cherry-pick, and
 allows headless and non-SDL backends to exercise the same engine.
 
+## Implemented boundary
+
+The native bootstrap now follows that dependency direction:
+
+- `include/c2_host.h` is the backend-neutral service contract;
+- `src/port/c2_port_compat.c` owns same-symbol legacy shims such as
+  `readfile`, `refresh_svga_screen`, and palette publication;
+- `src/port/c2_port_app.c` owns the currently connected recovered startup
+  flow and consumes only neutral host events;
+- `src/platform/sdl3/c2_sdl_host.c` implements the host contract; and
+- `src/platform/sdl3/c2_sdl_main.c` is only the SDL lifecycle/thread adapter.
+
+`tests/test_port_layering.py` enforces that SDL API names do not escape the
+backend, that portable layers do not depend back on `c2_sdl_*`, and that the
+SDL callback does not mutate representative legacy globals. Extend this test
+whenever the boundary grows.
+
 ## Audit method and scale
 
 The boundary inventory was generated with the repository's tree-sitter C AST
@@ -136,6 +153,11 @@ The browser backend may mount persistent storage asynchronously before the
 engine starts, after which the legacy worker may continue to perform
 synchronous file operations.
 
+The native host already separates `asset_root` and `user_data_root`.
+`readfile` uses the asset service, while diagnostic screenshots use the user
+file service. The remaining save/history callers will migrate to that service
+as their translation units enter the portable build.
+
 These functions mix serialization or game fixups with raw file descriptors:
 
 - `savegame` and `loadgame`;
@@ -228,6 +250,10 @@ sequence marker; the engine calculates a new mood and requests a numbered
 branch. The portable music service therefore needs marker callbacks and a
 branch operation in addition to open, play, volume, and stop.
 
+Music is intentionally unavailable in the current bootstrap. The host reports
+that fact through `C2_HOST_CAPABILITY_MUSIC`; callers must skip optional music
+rather than link a placeholder decoder or pretend playback succeeded.
+
 ## Movie services
 
 Retain `start_smacking`, `continue_smacking`, `stop_smacking`, and
@@ -235,6 +261,12 @@ Retain `start_smacking`, `continue_smacking`, `stop_smacking`, and
 surface covers both full-screen cinematics and movies embedded in message
 dialogs. Prefer decoding into the indexed framebuffer and palette model so
 movie playback does not impose a second renderer on the engine.
+
+Video is intentionally unavailable in the current bootstrap and reported as
+such through `C2_HOST_CAPABILITY_VIDEO`. Startup therefore omits `INTRO.SMK`.
+The capability is the temporary boundary; a decoder API should be designed
+when a concrete media library and the embedded-message movie path are brought
+up together.
 
 ## Startup, shutdown, and errors
 

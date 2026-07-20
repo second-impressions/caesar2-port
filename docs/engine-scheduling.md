@@ -70,6 +70,12 @@ The host must not inspect or mutate arbitrary legacy globals. Doing so would
 turn the whole data segment into an undocumented shared-memory API. Every
 cross-thread value is instead copied through a defined boundary.
 
+This split is active in the Linux bootstrap. SDL callbacks enqueue neutral
+events and present frames on the main thread. A named `caesar2-engine` worker
+owns the recovered startup/options flow and every mutation of `c2inf` made by
+that flow. The same worker will absorb the campaign driver as more recovered
+translation units enter the native build.
+
 ## Boundary data
 
 ### Frame publication
@@ -84,13 +90,22 @@ with:
 - a monotonically increasing frame number.
 
 Ownership transfers atomically or under a short mutex. The main thread never
-uploads from a buffer the worker is modifying. After consuming the frame it
-returns the buffer to the engine's free queue.
+uploads from a buffer the worker is modifying.
 
-The portable `refresh_svga_screen` may wait for a free buffer or the next
-permitted engine tick. That wait replaces the historical cost of banked video
-copies and naturally throttles modal loops that already present every
-iteration.
+The current implementation uses a latest-frame mailbox rather than a
+free-buffer queue. Publication copies the engine-owned `internal_screen` and
+palette into a host-owned indexed buffer under a short mutex. Presentation
+copies that mailbox into a main-thread snapshot, releases the mutex, and only
+then expands the palette and uploads the texture. Intermediate frames may be
+dropped, but neither side ever touches a buffer owned by the other. This
+copying strategy is deliberately simpler at 640x480 and keeps the legacy
+renderer on its stable framebuffer; replace it with an ownership queue only
+if profiling shows the copy to matter.
+
+The mailbox publication itself does not wait for presentation. Frame pacing
+belongs in the engine's host wait/tick boundary, where shutdown and input can
+wake it. That wait replaces the historical cost of banked video copies and
+naturally throttles modal loops that already publish every iteration.
 
 ### Input publication
 
@@ -102,6 +117,12 @@ The portable `read_mouse` copies the snapshot into legacy mouse globals;
 Input remains responsive even when no new frame is ready because the main
 thread never waits for the worker. A condition signal wakes explicit engine
 input waits.
+
+The initial queue holds 64 neutral events and drops the oldest event on
+overflow so host callbacks can never block behind the engine. Mouse state,
+focus, wheel motion, quit state, and a generation counter are also available
+as a mutex-protected snapshot. The startup flow uses the event queue; legacy
+`read_mouse` will use the snapshot when it is connected.
 
 ### Audio and movies
 
