@@ -25,6 +25,7 @@
               pkgs.sdl3
               pkgs.clang
               pkgs.gdb
+              pkgs.imagemagick
               pkgs.python313
               pkgs.uv
             ];

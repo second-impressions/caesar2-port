@@ -43,13 +43,17 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
 endif()
 
 add_executable(caesar2
+    src/c2_vars.c
     src/controls.c
     src/contrdat.c
     src/data.c
     src/display.c
+    src/empire.c
+    src/refresh.c
     src/screens.c
     src/port/c2_port_app.c
     src/port/c2_port_compat.c
+    src/port/c2_port_raster.c
     src/port/c2_port_ui.c
     src/platform/sdl3/c2_sdl_main.c
     src/platform/sdl3/c2_sdl_host.c
@@ -72,7 +76,7 @@ target_include_directories(caesar2 PRIVATE
     src/platform/sdl3
 )
 
-target_link_libraries(caesar2 PRIVATE SDL3::SDL3)
+target_link_libraries(caesar2 PRIVATE c2_asm_portable SDL3::SDL3)
 
 if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
     set_source_files_properties(src/display.c PROPERTIES
@@ -81,7 +85,10 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
     set_source_files_properties(
         src/controls.c
         src/contrdat.c
+        src/c2_vars.c
         src/data.c
+        src/empire.c
+        src/refresh.c
         src/screens.c
         PROPERTIES COMPILE_OPTIONS -Wno-implicit-function-declaration
     )
@@ -90,6 +97,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/platform/sdl3/c2_sdl_host.c
         src/port/c2_port_app.c
         src/port/c2_port_compat.c
+        src/port/c2_port_raster.c
         src/port/c2_port_ui.c
         PROPERTIES COMPILE_OPTIONS -Wpedantic
     )
@@ -138,10 +146,10 @@ endif()
 set(C2_TEST_DATA_DIR "" CACHE PATH "Original Caesar II data directory used by smoke tests")
 if(BUILD_TESTING AND C2_TEST_DATA_DIR)
     add_test(
-        NAME startup-reaches-game-options
+        NAME startup-reaches-province-selection
         COMMAND caesar2 --headless --data-dir "${C2_TEST_DATA_DIR}"
     )
-    set_tests_properties(startup-reaches-game-options PROPERTIES
-        PASS_REGULAR_EXPRESSION "game settings framebuffer fnv1a64=b9da7d0a15d22865"
+    set_tests_properties(startup-reaches-province-selection PROPERTIES
+        PASS_REGULAR_EXPRESSION "province selection framebuffer fnv1a64=2c50662a1c22d7b7"
     )
 endif()

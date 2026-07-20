@@ -8,6 +8,7 @@
 #define C2_FONT2_BYTES 28248
 #define C2_SYSTEM_PANEL_BYTES 41672
 #define C2_TEXT_BUFFER_BYTES 40000
+#define C2_MISC_BYTES 3584
 
 unsigned char font1[C2_FONT1_BYTES];
 unsigned char font2[C2_FONT2_BYTES];
@@ -15,13 +16,9 @@ unsigned char system_panel[C2_SYSTEM_PANEL_BYTES];
 char text_buffer[C2_TEXT_BUFFER_BYTES];
 
 unsigned char hold_mouse_replace;
-signed char stone_random_count;
-unsigned char svga_refresh_table[1364];
 int sprite_image_no;
 int sprite_x;
 int sprite_y;
-int ref_x;
-int ref_y;
 int x_is;
 struct c2inf_rec c2inf;
 
@@ -35,35 +32,6 @@ static unsigned int read_u16(const unsigned char *bytes)
 static unsigned int read_u24(const unsigned char *bytes)
 {
     return read_u16(bytes) | ((unsigned int)bytes[2] << 16);
-}
-
-static void place_block(unsigned char *sprites, int size)
-{
-    const unsigned char *descriptor;
-    const unsigned char *source;
-    int row;
-
-    descriptor = sprites + sprite_image_no * 16 + 8;
-    source = sprites + read_u16(descriptor + 4);
-    for (row = 0; row < size; row++) {
-        int destination_y;
-        int copy_start;
-        int copy_end;
-
-        destination_y = sprite_y + row;
-        if (destination_y < 0 || destination_y >= screen_height) {
-            source += size;
-            continue;
-        }
-        copy_start = sprite_x < 0 ? -sprite_x : 0;
-        copy_end = sprite_x + size > screen_width ? screen_width - sprite_x : size;
-        if (copy_start < copy_end) {
-            memcpy(internal_screen + destination_y * screen_width + sprite_x + copy_start,
-                   source + copy_start,
-                   (size_t)(copy_end - copy_start));
-        }
-        source += size;
-    }
 }
 
 static int get_text_offset(int entry_idx)
@@ -159,26 +127,12 @@ int c2_port_load_startup_ui(void)
     if (readfile("font_c2.pl8", font1, sizeof(font1), 0) == 0) return 0;
     if (readfile("font3c2.pl8", font2, sizeof(font2), 0) == 0) return 0;
     if (readfile("system.pl8", system_panel, sizeof(system_panel), 0) == 0) return 0;
+    if (readfile("misc.pl8", misc, C2_MISC_BYTES, 0) == 0) return 0;
     if (readfile("c2.eng", text_buffer, sizeof(text_buffer), 0) == 0) return 0;
     memcpy(c2inf.player_name, "Octavian", sizeof("Octavian"));
     c2inf.skill_level = 0;
     c2inf.peace_mode = 0;
     return 1;
-}
-
-void place_16x16_block(unsigned char *sprites)
-{
-    place_block(sprites, 16);
-}
-
-void place_24x24_block(unsigned char *sprites)
-{
-    place_block(sprites, 24);
-}
-
-void place_32x32_block(unsigned char *sprites)
-{
-    place_block(sprites, 32);
 }
 
 void font_list(int entry_idx, int word_count, int x, int y, unsigned char *font, int color)
@@ -211,15 +165,6 @@ void draw_a_box(int x, int y, int width, int height, int color)
 void cover_mouse_droppings(void)
 {
     hold_mouse_replace = 0;
-}
-
-void setup_refresh_area(int x, int y, int width, int height, int priority)
-{
-    (void)x;
-    (void)y;
-    (void)width;
-    (void)height;
-    (void)priority;
 }
 
 void flush_sb_buffer(void)

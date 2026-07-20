@@ -1,6 +1,6 @@
 
-#include "c2_vars.h"
 #include "c2_types.h"
+#include "c2_vars.h"
 #include "c2_data.h"
 
 struct byte_delta_rec gmn_ofsets[8] = {

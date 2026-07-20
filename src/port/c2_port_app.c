@@ -12,7 +12,8 @@ enum c2_startup_stage {
     C2_STARTUP_SIERRA,
     C2_STARTUP_IMPRESSIONS,
     C2_STARTUP_MENU,
-    C2_STARTUP_SETTINGS
+    C2_STARTUP_SETTINGS,
+    C2_STARTUP_PROVINCE
 };
 
 struct c2_app_state {
@@ -30,6 +31,9 @@ extern void show_buttons(int x, int y, struct button_rec *button_list,
                          int button_count);
 extern void show_skill1_box(void);
 extern void show_skill2_box(void);
+extern void clear_empire(void);
+extern void get_new_province_options(void);
+extern void show_initreg_box(void);
 
 static struct c2_app_state c2_app;
 
@@ -51,6 +55,11 @@ static int show_startup_stage(enum c2_startup_stage stage)
         show_skill2_box();
         show_buttons(0x50, 0x50, skill2_buttons, 6);
         refresh_svga_screen();
+        loaded = 1;
+    } else if (stage == C2_STARTUP_PROVINCE) {
+        clear_empire();
+        get_new_province_options();
+        show_initreg_box();
         loaded = 1;
     }
 
@@ -126,6 +135,11 @@ enum c2_port_app_result c2_port_app_start(
         }
         printf("game settings framebuffer fnv1a64=%016" PRIx64 "\n",
                c2_port_frame_hash());
+        if (!show_startup_stage(C2_STARTUP_PROVINCE)) {
+            return C2_PORT_APP_FAILURE;
+        }
+        printf("province selection framebuffer fnv1a64=%016" PRIx64 "\n",
+               c2_port_frame_hash());
         return C2_PORT_APP_SUCCESS;
     }
 
@@ -172,6 +186,11 @@ enum c2_port_app_result c2_port_app_handle_event(
     }
     if (c2_app.stage == C2_STARTUP_SETTINGS &&
         event->type == C2_HOST_EVENT_KEY_DOWN) {
+        if (event->key == C2_HOST_KEY_RETURN ||
+            event->key == C2_HOST_KEY_SPACE) {
+            return show_startup_stage(C2_STARTUP_PROVINCE)
+                ? C2_PORT_APP_CONTINUE : C2_PORT_APP_FAILURE;
+        }
         if (event->key == C2_HOST_KEY_LEFT && c2inf.skill_level > 0) {
             c2inf.skill_level--;
             return redraw_settings();
@@ -203,6 +222,11 @@ enum c2_port_app_result c2_port_app_handle_event(
             event->mouse_y >= 220 && event->mouse_y < 275) {
             c2inf.peace_mode ^= 1;
             return redraw_settings();
+        }
+        if (event->mouse_x >= 130 && event->mouse_x < 440 &&
+            event->mouse_y >= 320 && event->mouse_y < 370) {
+            return show_startup_stage(C2_STARTUP_PROVINCE)
+                ? C2_PORT_APP_CONTINUE : C2_PORT_APP_FAILURE;
         }
         if (event->mouse_x >= 130 && event->mouse_x < 440 &&
             event->mouse_y >= 370 && event->mouse_y < 425) {

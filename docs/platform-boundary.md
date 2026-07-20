@@ -37,6 +37,9 @@ The native bootstrap now follows that dependency direction:
 - `include/c2_host.h` is the backend-neutral service contract;
 - `src/port/c2_port_compat.c` owns same-symbol legacy shims such as
   `readfile`, `refresh_svga_screen`, and palette publication;
+- `src/port/c2_port_raster.c` owns the small sprite clipping/dispatch surface
+  historically embedded in `lib32.c` while delegating pixel work to the
+  translated assembly routines;
 - `src/port/c2_port_app.c` owns the currently connected recovered startup
   flow and consumes only neutral host events;
 - `src/platform/sdl3/c2_sdl_host.c` implements the host contract; and
@@ -152,11 +155,13 @@ Portable translations must replace these assembly register-spill slots with
 local variables; renderer state must not remain coupled to the deferred sound
 backend.
 
-This scaffold is deliberately a separate `c2_asm_portable` library and is not
-yet linked into the running bootstrap. It establishes and compile-checks the
-interface without letting unresolved link errors grow an ad-hoc compatibility
-layer. `tests/test_asm_portable_surface.py` derives the assembly exports from
-source and requires exact set equality with the manifest.
+The translated CPU routines remain a separate `c2_asm_portable` library, now
+linked into the running bootstrap. The province-selection slice exercises its
+sprite writers and fixed-size block loaders through recovered `display.c` and
+`screens.c` call paths. The thirteen hardware-facing slots remain empty and
+unreachable from the portable framebuffer publication path.
+`tests/test_asm_portable_surface.py` derives the assembly exports from source
+and requires exact set equality with the manifest.
 
 The assembly surface must not be confused with the 81 C functions that
 directly use a DOS, operating-system, Miles, or Smacker API. Those 81 are an
@@ -302,10 +307,11 @@ palette. Keep shared:
 - `refresh_zoom_mode` and `refresh_battle_zoom_mode`.
 
 Provide complete portable implementations for VGA/VESA setup, bank selection,
-physical copies, `setup_svga_refresh_data`, and `refresh_svga_screen`. The
-portable `refresh_svga_screen` retains any externally visible dirty-counter
-semantics, then publishes the indexed framebuffer and palette rather than
-copying through VESA banks.
+physical copies, and `refresh_svga_screen`. The portable `refresh_svga_screen`
+retains the dirty-table and refresh-counter semantics, then publishes the
+indexed framebuffer and palette rather than copying through VESA banks.
+`setup_svga_refresh_data` only precomputes banked-VESA copy metadata and is not
+called by portable startup.
 
 Keep `cycle_colours`, `pulse_red`, `set_palette`, and the interpolation logic
 in `fade_to_palette`. Replace `set_vga_palette` and

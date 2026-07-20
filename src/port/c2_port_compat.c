@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "c2_data.h"
 #include "c2_host.h"
 #include "c2_port.h"
 
@@ -11,6 +12,8 @@ unsigned char *internal_screen;
 int screen_width = C2_SCREEN_WIDTH;
 int screen_height = C2_SCREEN_HEIGHT;
 int screen_size = C2_SCREEN_PIXELS;
+unsigned char *scratch_buffer;
+int scratch_buffer_size;
 
 static unsigned char expand_vga_channel(unsigned char channel)
 {
@@ -30,8 +33,14 @@ static void publish_frame(void)
 int c2_port_compat_init(void)
 {
     internal_screen = calloc(C2_SCREEN_PIXELS, sizeof(*internal_screen));
-    if (internal_screen == NULL) {
-        fprintf(stderr, "could not allocate the Caesar II framebuffer\n");
+    scratch_buffer_size = 0x27100;
+    scratch_buffer = malloc((size_t)scratch_buffer_size);
+    if (internal_screen == NULL || scratch_buffer == NULL) {
+        fprintf(stderr, "could not allocate Caesar II engine buffers\n");
+        free(scratch_buffer);
+        free(internal_screen);
+        scratch_buffer = NULL;
+        internal_screen = NULL;
         return 0;
     }
     memset(current_palette, 0, sizeof(current_palette));
@@ -42,8 +51,11 @@ int c2_port_compat_init(void)
 
 void c2_port_compat_shutdown(void)
 {
+    free(scratch_buffer);
     free(internal_screen);
+    scratch_buffer = NULL;
     internal_screen = NULL;
+    scratch_buffer_size = 0;
 }
 
 int readfile(const char *filename, void *buffer, int size, int offset)
@@ -57,6 +69,14 @@ int readfile(const char *filename, void *buffer, int size, int offset)
 
 void refresh_svga_screen(void)
 {
+    int tile_idx;
+
+    for (tile_idx = 0; tile_idx < 1200; tile_idx++) {
+        if (svga_refresh_table[tile_idx] != 0) {
+            refresh_count++;
+            svga_refresh_table[tile_idx]--;
+        }
+    }
     publish_frame();
 }
 

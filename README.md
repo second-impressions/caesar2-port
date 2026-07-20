@@ -21,16 +21,17 @@ The durable port design is documented in:
 
 ## Native Linux bootstrap
 
-The native bootstrap presents both original publisher splashes and then enters
-the recovered `Caesar II - Game Options` and `New Game Options` screens through
-SDL3. It deliberately links recovered display, screen, control, and data
-translation units, so this is a vertical engine-to-platform slice rather than
-a replacement UI. The splashes advance after two seconds or on input. Escape
-exits from the front screen and returns from the detailed game-options screen.
+The native bootstrap presents both original publisher splashes, enters the
+recovered `Caesar II - Game Options` and `New Game Options` screens, and reaches
+the recovered initial-province selection screen through SDL3. It deliberately
+links recovered display, screen, control, empire, refresh, and data translation
+units, so this is a vertical engine-to-platform slice rather than a replacement
+UI. The splashes advance after two seconds or on input. Escape exits from the
+front screen and returns from the detailed game-options screen.
 
 The original `INTRO.SMK` between the publisher splashes and front screen is
-currently skipped. Loading games, tutorials, name entry, and starting the
-simulation remain to be connected.
+currently skipped. Loading games, tutorials, name entry, choosing a province,
+and starting the simulation remain to be connected.
 
 The recovered startup flow runs on an engine worker. The SDL main thread owns
 events and presentation, communicating through the backend-neutral
@@ -53,8 +54,9 @@ Writable files use a separate user-data root, selected with
 
 The game-options screen supports Start New Game by mouse or Enter/Space. In the
 detailed options, Left/Right changes difficulty, `P` toggles peaceful campaign
-mode, and the Back row returns to the front screen. The visible Start This Game
-action is the next unconnected startup boundary.
+mode, the Back row returns to the front screen, and Start This Game enters the
+province map. Province selection input is the next unconnected startup
+boundary.
 
 A display-free smoke test loads the same PL8, font, text, and palette files and
 reports deterministic framebuffer hashes for the complete sequence:

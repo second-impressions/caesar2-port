@@ -504,6 +504,7 @@ void refresh_battle_zoom_mode(int zoom)
                       + (pm_screen_height + 1) * pm_diamond_half_height;
 }
 
+#if !PLATFORM_PORTABLE
 // Redraw dirty tiles, splitting copies that cross an SVGA bank boundary.
 // FUNCTION: C2 0x2992d
 // FUNCTION: C2WIN 0x0043b6cd
@@ -567,3 +568,4 @@ void refresh_svga_screen(void)
         }
     }
 }
+#endif
