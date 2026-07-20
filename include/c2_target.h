@@ -11,6 +11,10 @@
  *   C2_TARGET_WIN   the Windows port (reccmp target C2WIN) — MSVC; a
  *                   source-location/oracle target, not a full rebuild.
  *                   Which Windows build is meant is C2_PATCHLEVEL's job.
+ *   C2_TARGET_PORTABLE
+ *                   the modern SDL-based continuation.  This target keeps
+ *                   recovered engine code shared while replacing shipped
+ *                   platform services behind portable implementations.
  *
  * Exactly one target is 1, every other target is 0.  The build selects
  * a target explicitly (`wcc386 -dC2_TARGET_DOS=1` / `cl /DC2_TARGET_WIN=1`);
@@ -18,7 +22,7 @@
  * is derived so a bare compile of either toolchain still does the
  * right thing.
  */
-#if !defined(C2_TARGET_DOS) && !defined(C2_TARGET_WIN)
+#if !defined(C2_TARGET_DOS) && !defined(C2_TARGET_WIN) && !defined(C2_TARGET_PORTABLE)
 #  ifdef _MSC_VER
 #    define C2_TARGET_WIN 1
 #  else
@@ -31,7 +35,10 @@
 #ifndef C2_TARGET_WIN
 #  define C2_TARGET_WIN 0
 #endif
-#if C2_TARGET_DOS + C2_TARGET_WIN != 1
+#ifndef C2_TARGET_PORTABLE
+#  define C2_TARGET_PORTABLE 0
+#endif
+#if C2_TARGET_DOS + C2_TARGET_WIN + C2_TARGET_PORTABLE != 1
 #  error "exactly one C2_TARGET_* must be selected"
 #endif
 

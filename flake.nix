@@ -1,5 +1,5 @@
 {
-  description = "Caesar II reconstruction — dev shell (python/uv toolchain)";
+  description = "Caesar II portable continuation — development shell";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -19,6 +19,12 @@
         {
           default = pkgs.mkShell {
             packages = [
+              pkgs.cmake
+              pkgs.ninja
+              pkgs.pkg-config
+              pkgs.sdl3
+              pkgs.clang
+              pkgs.gdb
               pkgs.python313
               pkgs.uv
             ];

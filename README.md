@@ -1,4 +1,44 @@
-# Caesar II Reconstruction
+# Caesar II Port
+
+Portable continuation of the byte-exact
+[Caesar II reconstruction](https://github.com/second-impressions/caesar2-reconstruction).
+This repository preserves the reconstruction's Git ancestry but is an
+independent project rather than a GitHub fork.
+
+The port keeps recovered engine files in place and puts modern platform code
+behind narrow target boundaries.  That makes upstream decompilation advances
+straightforward to cherry-pick without preventing deliberate fixes and new
+features here.
+
+## Native Linux bootstrap
+
+The first native milestone presents the original indexed startup artwork
+through SDL3.  It deliberately links the recovered `display_pl8file` function,
+so this is a vertical engine-to-platform slice rather than a replacement asset
+viewer.  The full startup flow, input, audio, and Smacker intro remain to be
+connected.
+
+Original game data is required and is never committed.  From the Nix
+development shell:
+
+```bash
+nix develop
+cmake --preset linux-debug
+cmake --build --preset linux-debug
+./build/port/linux-debug/caesar2 --data-dir /path/to/CAESAR2
+```
+
+The window closes with Escape.  A display-free smoke test loads the same PL8
+and palette files and reports a deterministic framebuffer hash:
+
+```bash
+./build/port/linux-debug/caesar2 --headless --data-dir /path/to/CAESAR2
+```
+
+To register that smoke test with CTest, configure with
+`-DC2_TEST_DATA_DIR=/path/to/CAESAR2` and run `ctest --preset linux-debug`.
+
+## Reconstruction baseline
 
 Clean-room source reconstruction and supporting tools for Caesar II (1995), a
 32-bit DOS/4GW game built with Watcom C. The current rebuild is byte-exact
@@ -123,37 +163,22 @@ Download any of these CD images from the
 originals, OEMs, the 1995-10-06 USA rerelease — ship earlier, non-debug
 builds of PS.EXE and will be rejected by the hash check.)
 
-## Editing the source: the byte-exactness invariant
+## Port source policy
 
-`original/PS.EXE` is the spec.  **Any edit under `src/` or `include/` must keep
-the reconstruction byte-exact**: run `c2 rebuild` (every comparison line
-must stay exact, `strict 0 differing code byte(s)`, and the final
-`whole file: 0 differing byte(s)`) and `c2 reccmp code` (100% accuracy)
-before committing.  Even style edits are constrained — the optimiser's
-output depends on statement order, declaration order, and idiom choice.
-The inferred source-style guide (`observed-source-style.md`) and the
-155-rule Watcom codegen catalogue live in the
-[watcom10.0a](../../ReverseEngineering/watcom10.0a) sibling repo's `docs/`;
-the game's data structures are documented in `include/entities.h`.
+Byte equality is not a requirement in this repository.  The reconstructed DOS
+program remains a behavioral and historical reference, but the port may change
+recovered code for portability, bug fixes, maintainability, and new features.
 
-Every tracked source is an ordinary, hand-editable file under that same
-invariant — including `include/c2_data.h` (which began as generator
-output; the generators were retired 2026-07-15 and remain recoverable
-from git history) and the 8 `.asm` modules in `src/`.  Function
-prototype visibility is deliberately **per translation unit**: each
-`.c` file carries exactly the forward declarations its call sites were
-compiled against (some intentionally K&R / implicit-int — e.g.
-`colour_cycle_delay1`, `get_heading` — because PS.EXE call sites test
-EAX where the definition returns char).  Do not centralize prototypes
-into a shared header; widening visibility changes Watcom call-site
-codegen and the byte-exact rebuild will catch it.
+Keep inherited files and functions structurally close where that makes future
+changes from `caesar2-reconstruction` easy to cherry-pick.  This is a practical
+merge policy, not a source freeze: prefer narrow platform interfaces and small
+commits, but change engine code directly when the portable design genuinely
+benefits.  Port changes are not forwarded back to the byte-exact
+reconstruction.
 
-Cross-build differences (DOS release vs the Windows build-A witness)
-are guarded by the target/feature macros in `include/c2_target.h`
-(`C2_TARGET_DOS` / `C2_TARGET_WIN`, `C2_FEAT_*`, with `C2_PATCHLEVEL`
-reserved for future per-platform patchlevels) — never by raw compiler
-macros.  `grep C2_FEAT_ include src` lists the verified difference
-classes.
+Target differences are expressed through `include/c2_target.h`
+(`C2_TARGET_DOS`, `C2_TARGET_WIN`, and `C2_TARGET_PORTABLE`) or through a named
+capability—not through raw compiler macros.
 
 ## Running the game
 

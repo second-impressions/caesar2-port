@@ -32,6 +32,7 @@
 
 /* Entity list extern declarations.
  * These override the generic types in c2_data.h. */
+#if !C2_TARGET_PORTABLE
 extern struct figure_rec figure_list[];
 extern struct citizen_rec citizen_list[];
 extern struct unit_rec unit_list[];
@@ -42,6 +43,7 @@ extern struct web_node web[];
 extern struct province_industry province_industries[];
 extern struct mercs_class      mercenary_type[];
 extern struct industry_rec     industry[];
+#endif
 /* Map dimensions and strides used pervasively in the code base.
  * The row-stride values appear as raw immediates in PS.EXE often
  * enough (region row-stride 480 = 18x, battle row-stride 208 = 4x)
@@ -1004,6 +1006,21 @@ struct mercs_class {
     short _unk0C;              /* +0x0C  reserved slack: ditto */
     short _unk0E;              /* +0x0E  reserved slack: ditto */
 };  /* 16 bytes */
+
+#if C2_TARGET_PORTABLE
+/* Standard C requires an array element type to be complete at an extern
+ * declaration. Watcom accepts the historical declarations at the top of this
+ * header; portable compilers receive the same declarations after the types. */
+extern struct figure_rec figure_list[];
+extern struct citizen_rec citizen_list[];
+extern struct unit_rec unit_list[];
+extern struct arrow_rec arrow_list[];
+extern struct army_rec army_list[];
+extern struct army_route_rec army_routes[];
+extern struct province_industry province_industries[];
+extern struct mercs_class mercenary_type[];
+extern struct industry_rec industry[];
+#endif
 
 /* City-map field layout (20 bytes per cell, 80x80 = 128 000 bytes).
  *
