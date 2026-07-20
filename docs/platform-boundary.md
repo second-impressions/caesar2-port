@@ -113,6 +113,12 @@ x=6. The portable compatibility implementation preserves this shipped
 behavior. Treat correcting it as an explicit renderer bug fix with visual
 coverage, not as part of assembly translation.
 
+`tests/test_diamond_asm_oracle.py` provides the executable semantic oracle for
+this family. It builds a statically linked 32-bit Linux fixture with OpenWatcom
+and the original recovered assembly, builds the same fixture against the
+portable C, and compares complete-framebuffer hashes across parameter cases.
+Extend its shared harness whenever another diamond routine is translated.
+
 The DOS diamond modules use the 20-byte Smacker/Miles `sndinit` array as four
 unaligned transient dword slots at byte offsets 2, 6, 10, and 14. Each affected
 routine writes its own argument there and reads it back only during that call.
