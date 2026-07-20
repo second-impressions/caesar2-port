@@ -20,11 +20,12 @@ def _assembly_exports():
     return exports
 
 
-def _portable_slots():
-    return set(re.findall(
-        r"(?m)^C2_ROUTINE_[A-Z0-9_]+\(([^,\)]+)",
-        DEFINITIONS.read_text(),
-    ))
+def _portable_slots(state=None):
+    pattern = r"(?m)^C2_ASM_(STUB|IMPLEMENTED)\([^,]+,\s*([^,\)]+)"
+    entries = re.findall(pattern, DEFINITIONS.read_text())
+    if state is not None:
+        entries = [entry for entry in entries if entry[0] == state]
+    return {entry[1] for entry in entries}
 
 
 def test_every_callable_assembly_export_has_one_portable_slot():
@@ -33,6 +34,14 @@ def test_every_callable_assembly_export_has_one_portable_slot():
     assert len(assembly) == 87
     assert len(portable) == 87
     assert portable == assembly
+
+
+def test_every_slot_has_exactly_one_implementation_state():
+    stubs = _portable_slots("STUB")
+    implemented = _portable_slots("IMPLEMENTED")
+    assert not stubs & implemented
+    assert len(stubs) == 84
+    assert implemented == {"copy", "compress", "depress"}
 
 
 def test_engine_declarations_expose_the_portable_surface():

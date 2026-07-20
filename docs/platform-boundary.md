@@ -53,9 +53,14 @@ Before translating individual assembly bodies, the complete callable ABI is
 represented by `include/c2_asm_routines.def`. It contains exactly 87
 function slots: one for every callable `PUBLIC` export in the eight recovered
 assembly files. `include/c2_asm_routines.h` turns the manifest into engine
-declarations, while `src/portable/asm/c2_asm_stubs.c` currently turns it into
-empty C implementations. The two integer-returning compression routines
-return zero until implemented.
+declarations. Each entry is explicitly marked `C2_ASM_STUB` or
+`C2_ASM_IMPLEMENTED`; `src/portable/asm/c2_asm_stubs.c` supplies only the
+remaining empty bodies.
+
+The first implemented batch is `copy`, `compress`, and `depress` in
+`src/portable/asm/c2_asm_memory.c`. Their byte-oriented implementation avoids
+unaligned typed accesses and is covered by exact encoded-form and round-trip
+tests. The live inventory is therefore 3 implemented and 84 blank routines.
 
 This scaffold is deliberately a separate `c2_asm_portable` library and is not
 yet linked into the running bootstrap. It establishes and compile-checks the
