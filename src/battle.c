@@ -1597,7 +1597,11 @@ void sf01_wait(void)
     figure_list[figure_no].wf_step_x    = 0;
     figure_list[figure_no].is_routing   = 0;
     figure_list[figure_no].state_idx    = figure_list[figure_no].next_state_idx;
+#if C2_FEAT_WAIT_KEEP_VISIBLE
+    figure_list[figure_no].is_visible  &= 0xfd;
+#else
     figure_list[figure_no].is_visible  &= 0xfc;
+#endif
     figure_list[figure_no].is_visible  |= 1;
 }
 
@@ -3524,26 +3528,26 @@ cap_wander:
 // FUNCTION: C2WIN 0x0047f57d
 int swap_2_figures(void)
 {
-    int   old_y;
-    int   old_x;
-    int   old_map_ref;
+    int   temp_y;
+    int   temp_x;
+    int   temp_map_ref;
 
     if (figure_list[enemy_figure].unit_ref != figure_list[figure_no].unit_ref) return 1;
 
     if (figure_list[enemy_figure].state_idx == 1) return 1;
     if (figure_list[enemy_figure].state_idx != 6) return 0;
 
-    old_x       = figure_list[figure_no].grid_x;
-    old_y       = figure_list[figure_no].grid_y;
-    old_map_ref = figure_list[figure_no].map_ref;
+    temp_x       = figure_list[figure_no].grid_x;
+    temp_y       = figure_list[figure_no].grid_y;
+    temp_map_ref = figure_list[figure_no].map_ref;
 
     figure_list[figure_no].grid_x  = figure_list[enemy_figure].grid_x;
     figure_list[figure_no].grid_y  = figure_list[enemy_figure].grid_y;
     figure_list[figure_no].map_ref = figure_list[enemy_figure].map_ref;
 
-    figure_list[enemy_figure].grid_x  = old_x;
-    figure_list[enemy_figure].grid_y  = old_y;
-    figure_list[enemy_figure].map_ref = old_map_ref;
+    figure_list[enemy_figure].grid_x  = temp_x;
+    figure_list[enemy_figure].grid_y  = temp_y;
+    figure_list[enemy_figure].map_ref = temp_map_ref;
 
     (*(struct battle_cell *)((unsigned char *)battle_map + (figure_list[figure_no].map_ref))).figure = figure_no;
     (*(struct battle_cell *)((unsigned char *)battle_map + (figure_list[enemy_figure].map_ref))).figure = enemy_figure;

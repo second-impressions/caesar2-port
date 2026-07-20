@@ -475,6 +475,8 @@ void check_army_list(void)
 // FUNCTION: C2WIN 0x0046a551
 void clear_citizen_list(void)
 {
+    int i;
+
     for (citizen_no = 1; citizen_no < 0xC9; citizen_no++) {
         remove_citizen(citizen_no);
     }
@@ -485,6 +487,8 @@ void clear_citizen_list(void)
 // FUNCTION: C2WIN 0x0046a59b
 void clear_army_list(void)
 {
+    int i;
+
     for (army_no = 1; army_no < 0x1A; army_no++) {
         remove_army(army_no);
     }

@@ -66,15 +66,13 @@ void get_no_ov_image(void)
 void get_landval_ov_image(void)
 {
     signed char land_value;
-    int land_value_int;
 
     land_value = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).land_value;
     if (land_value < 0) land_value = 0;
     else if (land_value >= 0x40) land_value = 0x40;
 
     if (land_value > 0) {
-        land_value_int = land_value;
-        landfill_pool[cm_dptr] = (unsigned char)((land_value_int / 8) * 3 + 0x7e);
+        landfill_pool[cm_dptr] = (unsigned char)((land_value / 8) * 3 + 0x7e);
     } else {
         landfill_pool[cm_dptr] = 0;
     }
@@ -87,23 +85,24 @@ void get_landval_ov_image(void)
 // FUNCTION: C2WIN 0x0049d4c5
 void get_water_ov_image(void)
 {
-    unsigned char terrain;
+    unsigned char terrain_flag;
     unsigned char water_flags;
-    unsigned char water;
-    unsigned char fountain;
-    unsigned char building_kind;
+    unsigned char water_supply;
+    unsigned char has_fountain;
+    unsigned char image;
+    unsigned char base_kind;
 
-    terrain = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain;
-    building_kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+    terrain_flag = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).terrain;
+    base_kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
     water_flags = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).education;
-    fountain = water_flags & 4;
-    water = water_flags & 3;
+    has_fountain = water_flags & 4;
+    water_supply = water_flags & 3;
 
-    if ((terrain & 0xc0) != 0) { landfill_pool[cm_dptr] = 0x96; return; }
-    if (building_kind >= 0xd7 && building_kind <= 0xde) { landfill_pool[cm_dptr] = 0x96; return; }
-    if (water != 0 && fountain != 0) { landfill_pool[cm_dptr] = 0x87; return; }
-    if (water != 0) { landfill_pool[cm_dptr] = 0x84; return; }
-    if (fountain != 0) { landfill_pool[cm_dptr] = 0x8d; return; }
+    if ((terrain_flag & 0xc0) != 0) { landfill_pool[cm_dptr] = 0x96; return; }
+    if (base_kind >= 0xd7 && base_kind <= 0xde) { landfill_pool[cm_dptr] = 0x96; return; }
+    if (water_supply != 0 && has_fountain != 0) { landfill_pool[cm_dptr] = 0x87; return; }
+    if (water_supply != 0) { landfill_pool[cm_dptr] = 0x84; return; }
+    if (has_fountain != 0) { landfill_pool[cm_dptr] = 0x8d; return; }
     landfill_pool[cm_dptr] = 0;
 }
 
@@ -272,33 +271,33 @@ void get_unrest_ov_image(void)
 // FUNCTION: C2WIN 0x0049dc0e
 int get_reg_geog_ov_image(void)
 {
-    unsigned char region_kind;
-    unsigned char overlay_flag;
+    unsigned char map_kind;
+    unsigned char edge_bits;
 
-    region_kind = ((unsigned char *)region_map)[cm_sptr];
-    overlay_flag = ((unsigned char *)region_map)[cm_sptr + 3] & 2;
+    map_kind = ((unsigned char *)region_map)[cm_sptr];
+    edge_bits = ((unsigned char *)region_map)[cm_sptr + 3] & 2;
     ((unsigned char *)region_map)[cm_sptr + 3] &= 0xfd;
-    if (overlay_flag != 0) sprite_image_no = 0x93;
-    else if (region_kind < 4) sprite_image_no = 0xb4;
-    else if (region_kind < 8) sprite_image_no = 0xb5;
-    else if (region_kind < 0xc) sprite_image_no = 0xb6;
-    else if (region_kind < 0x10) sprite_image_no = 0xb7;
-    else if (region_kind < 0x20) sprite_image_no = (region_kind & 7) + 0x10;
-    else if (region_kind < 0x7c) sprite_image_no = (region_kind & 7) + 0xb8;
-    else if (region_kind >= 0x7d && region_kind < 0x85) sprite_image_no = (region_kind & 7) + 0xc0;
-    else if (region_kind >= 0x85 && region_kind < 0x8d) sprite_image_no = (region_kind & 3) + 0xc8;
-    else if (region_kind >= 0x8d && region_kind < 0x91) sprite_image_no = (region_kind & 3) + 0xd1;
-    else if (region_kind == 0x91) sprite_image_no = 0xd5;
-    else if (region_kind == 0x92) sprite_image_no = 0xcc;
-    else if (region_kind >= 0x93 && region_kind <= 0x96) sprite_image_no = 0x48;
-    else if (region_kind >= 0x97 && region_kind <= 0x9b) sprite_image_no = 0x4a;
-    else if (region_kind >= 0x9c && region_kind <= 0x9f) sprite_image_no = 0xb8;
-    else if (region_kind >= 0xa0 && region_kind <= 0xaa) sprite_image_no = lf_tiles[region_kind - 0x4e];
-    else if (region_kind >= 0xb7 && region_kind <= 0xc0) sprite_image_no = lf_tiles[region_kind + 0xa];
-    else if (region_kind == 0xd5) sprite_image_no = 0xce;
-    else if (region_kind >= 0xdc && region_kind <= 0xe7) sprite_image_no = 0xcf;
-    else if (region_kind >= 0xe8 && region_kind <= 0xeb) sprite_image_no = 0xd0;
-    else if (region_kind >= 0xec && region_kind <= 0xef) sprite_image_no = 0xcd;
+    if (edge_bits != 0) sprite_image_no = 0x93;
+    else if (map_kind < 4) sprite_image_no = 0xb4;
+    else if (map_kind < 8) sprite_image_no = 0xb5;
+    else if (map_kind < 0xc) sprite_image_no = 0xb6;
+    else if (map_kind < 0x10) sprite_image_no = 0xb7;
+    else if (map_kind < 0x20) sprite_image_no = (map_kind & 7) + 0x10;
+    else if (map_kind < 0x7c) sprite_image_no = (map_kind & 7) + 0xb8;
+    else if (map_kind >= 0x7d && map_kind < 0x85) sprite_image_no = (map_kind & 7) + 0xc0;
+    else if (map_kind >= 0x85 && map_kind < 0x8d) sprite_image_no = (map_kind & 3) + 0xc8;
+    else if (map_kind >= 0x8d && map_kind < 0x91) sprite_image_no = (map_kind & 3) + 0xd1;
+    else if (map_kind == 0x91) sprite_image_no = 0xd5;
+    else if (map_kind == 0x92) sprite_image_no = 0xcc;
+    else if (map_kind >= 0x93 && map_kind <= 0x96) sprite_image_no = 0x48;
+    else if (map_kind >= 0x97 && map_kind <= 0x9b) sprite_image_no = 0x4a;
+    else if (map_kind >= 0x9c && map_kind <= 0x9f) sprite_image_no = 0xb8;
+    else if (map_kind >= 0xa0 && map_kind <= 0xaa) sprite_image_no = lf_tiles[map_kind - 0x4e];
+    else if (map_kind >= 0xb7 && map_kind <= 0xc0) sprite_image_no = lf_tiles[map_kind + 0xa];
+    else if (map_kind == 0xd5) sprite_image_no = 0xce;
+    else if (map_kind >= 0xdc && map_kind <= 0xe7) sprite_image_no = 0xcf;
+    else if (map_kind >= 0xe8 && map_kind <= 0xeb) sprite_image_no = 0xd0;
+    else if (map_kind >= 0xec && map_kind <= 0xef) sprite_image_no = 0xcd;
     else sprite_image_no = 0x96;
     return 0;
 }

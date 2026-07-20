@@ -1191,9 +1191,9 @@ struct refresh_bank_row {
 extern struct refresh_bank_row refresh_bank_switch_data[];
 
 struct hut_rec {
-    char x;
-    char y;
-    char kind;
+    unsigned char x;
+    unsigned char y;
+    unsigned char kind;
 }; /* 0x03 */
 extern struct hut_rec hut_list[4];
 

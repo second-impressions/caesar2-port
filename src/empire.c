@@ -51,12 +51,14 @@ void get_new_province_options(void)
 int known_world(int province_idx)
 {
     int i;
+    int j;
     int border_province_idx;
     if (empire[province_idx] == 6) return 1;
-    for (i = 0; i < 4; i++) {
-        border_province_idx = region_borders[province_idx].u.dir[i];
-        if (border_province_idx >= 44) continue;
-        if (empire[border_province_idx] == 6) return 1;
+    for (j = 0; j < 4; j++) {
+        border_province_idx = region_borders[province_idx].u.dir[j];
+        if (border_province_idx < 44) {
+            if (empire[border_province_idx] == 6) return 1;
+        }
     }
     return 0;
 }

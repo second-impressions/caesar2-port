@@ -1284,20 +1284,21 @@ void get_rioter_image(int image_base)
 // FUNCTION: C2WIN 0x00408aa0
 void get_barbarian_image(void)
 {
-    int screen_dir;
+    int dir;
+    int i;
 
     army_list[army_no].sprite_dir = 0;
-    screen_dir = army_list[army_no].world_dir - map_direction + 1;
-    if (screen_dir < 0)  screen_dir += 8;
-    if (screen_dir >= 8) screen_dir %= 8;
+    dir = army_list[army_no].world_dir - map_direction + 1;
+    if (dir < 0)  dir += 8;
+    if (dir >= 8) dir %= 8;
 
     if (army_list[army_no].state_idx >= 14) {
-        army_list[army_no].sprite_image = (char)(screen_dir + 0x56);
+        army_list[army_no].sprite_image = (char)(dir + 0x56);
         army_list[army_no].sprite_anim = 0;
     } else {
         army_list[army_no].sprite_image = tribe_to_standard[
             army_list[army_no].tribe_id];
-        army_list[army_no].sprite_anim = (get_army_walk_dirc(screen_dir,
+        army_list[army_no].sprite_anim = (get_army_walk_dirc(dir,
             army_list[army_no].target_kind) + 0x2a);
     }
 }
@@ -1309,21 +1310,22 @@ void get_barbarian_image(void)
 // FUNCTION: C2WIN 0x00408beb
 void get_enemy_image(void)
 {
-    int screen_dir;
+    int dir;
+    int i;
 
-    screen_dir = army_list[army_no].world_dir - map_direction + 1;
-    if (screen_dir < 0)  screen_dir += 8;
-    if (screen_dir >= 8) screen_dir %= 8;
+    dir = army_list[army_no].world_dir - map_direction + 1;
+    if (dir < 0)  dir += 8;
+    if (dir >= 8) dir %= 8;
 
     if (army_list[army_no].state_idx >= 14) {
-        army_list[army_no].sprite_image = (char)(screen_dir + 0x5e);
+        army_list[army_no].sprite_image = (char)(dir + 0x5e);
         army_list[army_no].sprite_anim = 0;
         army_list[army_no].sprite_dir  = 0;
     } else {
         army_list[army_no].sprite_image = tribe_to_standard[
             army_list[army_no].tribe_id];
         army_list[army_no].sprite_anim = (cnt8 + 0x1a);
-        army_list[army_no].sprite_dir  = (get_army_walk_dirc(screen_dir,
+        army_list[army_no].sprite_dir  = (get_army_walk_dirc(dir,
             army_list[army_no].target_kind) + 0x42);
     }
 }
@@ -1333,18 +1335,19 @@ void get_enemy_image(void)
 // FUNCTION: C2WIN 0x00408d56
 void get_cohort_image(void)
 {
-    int screen_dir;
+    int dir;
+    int i;
 
-    screen_dir = army_list[army_no].world_dir - map_direction + 1;
-    if (screen_dir < 0)  screen_dir += 8;
-    if (screen_dir >= 8) screen_dir %= 8;
+    dir = army_list[army_no].world_dir - map_direction + 1;
+    if (dir < 0)  dir += 8;
+    if (dir >= 8) dir %= 8;
 
     army_list[army_no].sprite_image = army_list[army_no].cohort_id;
     if (army_list[army_no].state_idx == 10)
         army_list[army_no].sprite_anim = 0x12;
     else
         army_list[army_no].sprite_anim = (cnt8 + 0x12);
-    army_list[army_no].sprite_dir = (get_army_walk_dirc(screen_dir,
+    army_list[army_no].sprite_dir = (get_army_walk_dirc(dir,
         army_list[army_no].target_kind) + 0x36);
 }
 

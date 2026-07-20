@@ -42,7 +42,7 @@ int ref_y;
 int ref_x;
 int ref_ptr;
 int refresh_count;
-char svga_refresh_table[1364];
+unsigned char svga_refresh_table[1364];
 
 /* Copies part of a 16×16 tile into the active SVGA bank. */
 extern void refresh_16x16_partblock(int screen_off, unsigned short bank_off,
@@ -82,11 +82,11 @@ void set_mouse_refresh(void)
     if (ref_x >= 40) return;
     if (ref_y >= 30) return;
 
-    (*(char (*)[30][40])svga_refresh_table)[ref_y][ref_x] = 2;
+    (*(unsigned char (*)[30][40])svga_refresh_table)[ref_y][ref_x] = 2;
     if (ref_x < 39)
-        (*(char (*)[30][40])svga_refresh_table)[ref_y][ref_x + 1] = 2;
+        (*(unsigned char (*)[30][40])svga_refresh_table)[ref_y][ref_x + 1] = 2;
     if (ref_y < 29)
-        (*(char (*)[30][40])svga_refresh_table)[ref_y + 1][ref_x] = 2;
+        (*(unsigned char (*)[30][40])svga_refresh_table)[ref_y + 1][ref_x] = 2;
     if (ref_x < 39 && ref_y < 29)
         (&svga_refresh_table[ref_x])[(ref_y + 1) * 40 + 1] = 2;
 }
@@ -362,11 +362,11 @@ void setup_map_screen_long_refresh(int refresh_value)
 // FUNCTION: C2WIN 0x0043b183
 void setup_battle_screen_refresh(void)
 {
-    int col_idx;
+    int i;
     int row_idx;
     int tile_idx = 0x28;
     for (row_idx = 1; row_idx < 0x17; row_idx++) {
-        for (col_idx = 0; col_idx < 0x28; col_idx++) {
+        for (i = 0; i < 0x28; i++) {
             svga_refresh_table[tile_idx] = 1;
             tile_idx++;
         }

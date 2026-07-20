@@ -19,7 +19,7 @@ void clear_basic(int sptr);
 void clear_sized_to_reg_basic(int rm_offset, int size);
 void clear_reg_basic(int rm_offset);
 void plague_it(int sptr);
-void unflag_rm_area(int x, int y, int size, char mask_byte);
+void unflag_rm_area(int x, int y, int size, unsigned char mask_byte);
 void adjust_regions_coastline(int x, int y, int width, int height);
 void test_citymap_neighbours_posedge(char mask);
 void test_citymap_neighbours_negedge(char mask);
@@ -185,12 +185,12 @@ int generate_cm_river(void)
 // FUNCTION: C2WIN 0x0049fc8b
 void generate_cm_scrub(void)
 {
-    int cell_x;
-    int cell_y;
+    int row;
+    int col;
 
     cm_sptr = 0;
-    for (cell_y = 0; cell_y < 80; cell_y++) {
-        for (cell_x = 0; cell_x < 80; cell_x++, cm_sptr += 20) {
+    for (row = 0; row < 80; row++) {
+        for (col = 0; col < 80; col++, cm_sptr += 20) {
             int terrain_variant;
             random();
             terrain_variant = rand128 & 0xf;
@@ -942,86 +942,86 @@ void transform_wall_elastic(int radius)
 // FUNCTION: C2WIN 0x004a1ee0
 void build_wall_from_elastic(void)
 {
-    int counter;
+    int size;
     int y;
     int x;
-    int ptr;
-    unsigned char outer_state;
-    unsigned char saved_byte2;
+    int pm_ptr;
 
-    counter = (unsigned char)(*(struct city_cell *)((unsigned char *)city_map + (pm_over_cm_ptr))).road_aqueduct;
+    size = (unsigned char)(*(struct city_cell *)((unsigned char *)city_map + (pm_over_cm_ptr))).road_aqueduct;
     if ((*(struct city_cell *)((unsigned char *)city_map + (pm_over_cm_ptr))).terrain & 4)
-        counter++;
-    if (counter == 0) {
+        size++;
+    if (size == 0) {
         illegal_build = 1;
-    } else if (counter == 0xff) {
+    } else if (size == 0xff) {
         illegal_build = 1;
     } else {
+        unsigned char status;
+        unsigned char saved_byte2;
 
-        outer_state = 0;
+        status = 0;
         x = over_x;
         y = over_y;
-        ptr = pm_over_cm_ptr;
-        while (counter > 0) {
-            counter--;
-            if (((*(struct city_cell *)((unsigned char *)city_map + (ptr))).terrain & 6) == 0)
+        pm_ptr = pm_over_cm_ptr;
+        while (size > 0) {
+            size--;
+            if (((*(struct city_cell *)((unsigned char *)city_map + (pm_ptr))).terrain & 6) == 0)
                 particles_built++;
-            if ((unsigned char)(*(struct city_cell *)((unsigned char *)city_map + (ptr))).base_kind < 0x1a)
+            if ((unsigned char)(*(struct city_cell *)((unsigned char *)city_map + (pm_ptr))).base_kind < 0x1a)
                 particles_cleared++;
-            (*(struct city_cell *)((unsigned char *)city_map + (ptr))).edge_bits |= 1;
-            if (!((*(struct city_cell *)((unsigned char *)city_map + (ptr))).terrain & 4)) {
-                if ((*(struct city_cell *)((unsigned char *)city_map + (ptr))).terrain & 0x20)
-                    (*(struct city_cell *)((unsigned char *)city_map + (ptr))).terrain |= 4;
+            (*(struct city_cell *)((unsigned char *)city_map + (pm_ptr))).edge_bits |= 1;
+            if (!((*(struct city_cell *)((unsigned char *)city_map + (pm_ptr))).terrain & 4)) {
+                if ((*(struct city_cell *)((unsigned char *)city_map + (pm_ptr))).terrain & 0x20)
+                    (*(struct city_cell *)((unsigned char *)city_map + (pm_ptr))).terrain |= 4;
                 else
-                    (*(struct city_cell *)((unsigned char *)city_map + (ptr))).terrain |= 2;
+                    (*(struct city_cell *)((unsigned char *)city_map + (pm_ptr))).terrain |= 2;
             }
-            saved_byte2 = (*(struct city_cell *)((unsigned char *)city_map + (ptr))).road_aqueduct;
-            get_best_elastic_value(x, y, ptr, elastic_start_dirc);
+            saved_byte2 = (*(struct city_cell *)((unsigned char *)city_map + (pm_ptr))).road_aqueduct;
+            get_best_elastic_value(x, y, pm_ptr, elastic_start_dirc);
             if (saved_byte2 >= best_elastic_value) {
-                if (best_elastic_dirc == 0) { ptr -= 0x640; y--; }
-                else if (best_elastic_dirc == 1) { ptr += 0x14;  x++; }
-                else if (best_elastic_dirc == 2) { ptr += 0x640; y++; }
-                else if (best_elastic_dirc == 3) { ptr -= 0x14;  x--; }
+                if (best_elastic_dirc == 0) { pm_ptr -= 0x640; y--; }
+                else if (best_elastic_dirc == 1) { pm_ptr += 0x14;  x++; }
+                else if (best_elastic_dirc == 2) { pm_ptr += 0x640; y++; }
+                else if (best_elastic_dirc == 3) { pm_ptr -= 0x14;  x--; }
                 continue;
             }
             if (saved_byte2 > 1) {
-                outer_state = 1;
+                status = 1;
                 goto check_outer_state;
             }
             break;
         }
 
-        counter = (unsigned char)(*(struct city_cell *)((unsigned char *)city_map + (pm_over_cm_ptr))).road_aqueduct;
+        size = (unsigned char)(*(struct city_cell *)((unsigned char *)city_map + (pm_over_cm_ptr))).road_aqueduct;
         if ((*(struct city_cell *)((unsigned char *)city_map + (pm_over_cm_ptr))).terrain & 4)
-            counter++;
+            size++;
         x = over_x;
         y = over_y;
-        ptr = pm_over_cm_ptr;
-        while (counter > 0) {
-            counter--;
+        pm_ptr = pm_over_cm_ptr;
+        while (size > 0) {
+            size--;
             if (!wall_ramifications(x, y)) {
-                outer_state = 2;
+                status = 2;
                 goto check_outer_state;
             }
-            (*(struct city_cell *)((unsigned char *)city_map + (ptr))).industrial = 0;
-            saved_byte2 = (*(struct city_cell *)((unsigned char *)city_map + (ptr))).road_aqueduct;
-            get_best_elastic_value(x, y, ptr, elastic_start_dirc);
+            (*(struct city_cell *)((unsigned char *)city_map + (pm_ptr))).industrial = 0;
+            saved_byte2 = (*(struct city_cell *)((unsigned char *)city_map + (pm_ptr))).road_aqueduct;
+            get_best_elastic_value(x, y, pm_ptr, elastic_start_dirc);
             if (saved_byte2 >= best_elastic_value) {
-                if (best_elastic_dirc == 0) { ptr -= 0x640; y--; }
-                else if (best_elastic_dirc == 1) { ptr += 0x14;  x++; }
-                else if (best_elastic_dirc == 2) { ptr += 0x640; y++; }
-                else if (best_elastic_dirc == 3) { ptr -= 0x14;  x--; }
+                if (best_elastic_dirc == 0) { pm_ptr -= 0x640; y--; }
+                else if (best_elastic_dirc == 1) { pm_ptr += 0x14;  x++; }
+                else if (best_elastic_dirc == 2) { pm_ptr += 0x640; y++; }
+                else if (best_elastic_dirc == 3) { pm_ptr -= 0x14;  x--; }
                 continue;
             }
             if (saved_byte2 > 1) {
-                outer_state = 3;
+                status = 3;
                 goto check_outer_state;
             }
             break;
         }
 
     check_outer_state:
-        if (outer_state != 0) {
+        if (status != 0) {
             illegal_build = 1;
             restore_city_from_undo_buffer();
             elastic_start_dirc++;
@@ -1264,27 +1264,27 @@ void build_aquaduct_from_elastic(void)
     int over_y_l;
     int over_x_l;
     int pm_ptr;
-    int count;
-    unsigned char saved_slot;
-    unsigned char status;
+    int size;
+    unsigned char path_value;
+    unsigned char outcome;
 
     over_x_l = over_x;
     over_y_l = over_y;
     pm_ptr = pm_over_cm_ptr;
 
-    count = CM_CELL(pm_over_cm_ptr).road_aqueduct;
+    size = CM_CELL(pm_over_cm_ptr).road_aqueduct;
     if (CM_CELL(pm_over_cm_ptr).terrain & 0x80)
-        count++;
-    if (count == 0) {
+        size++;
+    if (size == 0) {
         illegal_build = 1;
-    } else if (count == 0xff) {
+    } else if (size == 0xff) {
         illegal_build = 1;
     } else {
 
-        status = 0;
+        outcome = 0;
 
-        while (count > 0) {
-            count--;
+        while (size > 0) {
+            size--;
             if ((CM_CELL(pm_ptr).terrain & 0xc0) == 0)
                 particles_built++;
             if (CM_CELL(pm_ptr).base_kind < 0x1a)
@@ -1293,54 +1293,54 @@ void build_aquaduct_from_elastic(void)
             if (!(CM_CELL(pm_ptr).terrain & 0x80))
                 CM_CELL(pm_ptr).terrain |= 0x40;
 
-            saved_slot = CM_CELL(pm_ptr).road_aqueduct;
+            path_value = CM_CELL(pm_ptr).road_aqueduct;
             get_best_elastic_value(over_x_l, over_y_l, pm_ptr, elastic_start_dirc);
-            if (saved_slot >= best_elastic_value) {
+            if (path_value >= best_elastic_value) {
                 if (best_elastic_dirc == 0) { pm_ptr -= 0x640; over_y_l--; }
                 else if (best_elastic_dirc == 1) { pm_ptr += 0x14;  over_x_l++; }
                 else if (best_elastic_dirc == 2) { pm_ptr += 0x640; over_y_l++; }
                 else if (best_elastic_dirc == 3) { pm_ptr -= 0x14;  over_x_l--; }
                 continue;
             }
-            if (saved_slot > 1) {
-                status = 1;
+            if (path_value > 1) {
+                outcome = 1;
                 goto check_outer_state;
             }
             break;
         }
 
-        count = CM_CELL(pm_over_cm_ptr).road_aqueduct;
+        size = CM_CELL(pm_over_cm_ptr).road_aqueduct;
         if (CM_CELL(pm_over_cm_ptr).terrain & 0x80)
-            count++;
+            size++;
 
         over_x_l = over_x;
         over_y_l = over_y;
         pm_ptr = pm_over_cm_ptr;
 
-        while (count > 0) {
-            count--;
+        while (size > 0) {
+            size--;
             if (!aquaduct_ramifications(over_x_l, over_y_l)) {
-                status = 2;
+                outcome = 2;
                 goto check_outer_state;
             }
-            saved_slot = CM_CELL(pm_ptr).road_aqueduct;
+            path_value = CM_CELL(pm_ptr).road_aqueduct;
             get_best_elastic_value(over_x_l, over_y_l, pm_ptr, elastic_start_dirc);
-            if (saved_slot >= best_elastic_value) {
+            if (path_value >= best_elastic_value) {
                 if (best_elastic_dirc == 0) { pm_ptr -= 0x640; over_y_l--; }
                 else if (best_elastic_dirc == 1) { pm_ptr += 0x14;  over_x_l++; }
                 else if (best_elastic_dirc == 2) { pm_ptr += 0x640; over_y_l++; }
                 else if (best_elastic_dirc == 3) { pm_ptr -= 0x14;  over_x_l--; }
                 continue;
             }
-            if (saved_slot > 1) {
-                status = 3;
+            if (path_value > 1) {
+                outcome = 3;
                 goto check_outer_state;
             }
             break;
         }
 
     check_outer_state:
-        if (status != 0) {
+        if (outcome != 0) {
             illegal_build = 1;
             restore_city_from_undo_buffer();
             elastic_start_dirc++;
@@ -1782,76 +1782,79 @@ void build_reg_wall_from_elastic(void)
 {
     int over_y_l;
     int over_x_l;
-    int cell_ptr;
-    int count;
-    unsigned char saved_slot;
-    unsigned char status;
+    int pm_ptr;
+    unsigned char road_byte;
+    unsigned char build_outcome;
+    int size;
 
-    count = RM_CELL(pm_over_cm_ptr).place_state;
-    if (RM_CELL(pm_over_cm_ptr).terrain & 0x04) count++;
+    size = RM_CELL(pm_over_cm_ptr).place_state;
+    if (RM_CELL(pm_over_cm_ptr).terrain & 0x04) size++;
 
-    if (count == 0) { illegal_build = 1; return; }
-    if (count == 0xff) { illegal_build = 1; return; }
-
-    status = 0;
-    over_x_l = over_x;
-    over_y_l = over_y;
-    cell_ptr = pm_over_cm_ptr;
-
-    while (count > 0) {
-        count--;
-        if (!(RM_CELL(cell_ptr).terrain & 0x02)) particles_built++;
-        if (RM_CELL(cell_ptr).base_kind < 0x10) particles_cleared++;
-        RM_CELL(cell_ptr).edge_bits |= 1;
-        if (!(RM_CELL(cell_ptr).terrain & 0x04)) RM_CELL(cell_ptr).terrain |= 0x02;
-        saved_slot = RM_CELL(cell_ptr).place_state;
-        get_best_rm_elastic_value(over_x_l, over_y_l, cell_ptr, elastic_start_dirc);
-        if (saved_slot >= best_elastic_value) {
-            if (best_elastic_dirc == 0) { cell_ptr -= 0x1e0; over_y_l--; }
-            else if (best_elastic_dirc == 1) { cell_ptr += 8; over_x_l++; }
-            else if (best_elastic_dirc == 2) { cell_ptr += 0x1e0; over_y_l++; }
-            else if (best_elastic_dirc == 3) { cell_ptr -= 8; over_x_l--; }
-            continue;
-        }
-        if (saved_slot > 1) {
-            status = 1;
-            goto finish;
-        }
-        break;
-    }
-
-    count = RM_CELL(pm_over_cm_ptr).place_state;
-    if (RM_CELL(pm_over_cm_ptr).terrain & 0x04) count++;
-
-    over_x_l = over_x;
-    over_y_l = over_y;
-    cell_ptr = pm_over_cm_ptr;
-
-    while (count > 0) {
-        count--;
-        if (!reg_wall_ramifications(over_x_l, over_y_l)) { status = 2; goto finish; }
-        saved_slot = RM_CELL(cell_ptr).place_state;
-        get_best_rm_elastic_value(over_x_l, over_y_l, cell_ptr, elastic_start_dirc);
-        if (saved_slot >= best_elastic_value) {
-            if (best_elastic_dirc == 0) { cell_ptr -= 0x1e0; over_y_l--; }
-            else if (best_elastic_dirc == 1) { cell_ptr += 8; over_x_l++; }
-            else if (best_elastic_dirc == 2) { cell_ptr += 0x1e0; over_y_l++; }
-            else if (best_elastic_dirc == 3) { cell_ptr -= 8; over_x_l--; }
-            continue;
-        }
-        if (saved_slot > 1) {
-            status = 3;
-            goto finish;
-        }
-        break;
-    }
-
-finish:
-    if (status != 0) {
+    if (size == 0) {
         illegal_build = 1;
-        restore_region_from_undo_buffer();
-        elastic_start_dirc++;
-        if (elastic_start_dirc > 3) elastic_start_dirc = 0;
+    } else if (size == 0xff) {
+        illegal_build = 1;
+    } else {
+        build_outcome = 0;
+        over_x_l = over_x;
+        over_y_l = over_y;
+        pm_ptr = pm_over_cm_ptr;
+
+        while (size > 0) {
+            size--;
+            if (!(RM_CELL(pm_ptr).terrain & 0x02)) particles_built++;
+            if (RM_CELL(pm_ptr).base_kind < 0x10) particles_cleared++;
+            RM_CELL(pm_ptr).edge_bits |= 1;
+            if (!(RM_CELL(pm_ptr).terrain & 0x04)) RM_CELL(pm_ptr).terrain |= 0x02;
+            road_byte = RM_CELL(pm_ptr).place_state;
+            get_best_rm_elastic_value(over_x_l, over_y_l, pm_ptr, elastic_start_dirc);
+            if (road_byte >= best_elastic_value) {
+                if (best_elastic_dirc == 0) { pm_ptr -= 0x1e0; over_y_l--; }
+                else if (best_elastic_dirc == 1) { pm_ptr += 8; over_x_l++; }
+                else if (best_elastic_dirc == 2) { pm_ptr += 0x1e0; over_y_l++; }
+                else if (best_elastic_dirc == 3) { pm_ptr -= 8; over_x_l--; }
+                continue;
+            }
+            if (road_byte > 1) {
+                build_outcome = 1;
+                goto finish;
+            }
+            break;
+        }
+
+        size = RM_CELL(pm_over_cm_ptr).place_state;
+        if (RM_CELL(pm_over_cm_ptr).terrain & 0x04) size++;
+
+        over_x_l = over_x;
+        over_y_l = over_y;
+        pm_ptr = pm_over_cm_ptr;
+
+        while (size > 0) {
+            size--;
+            if (!reg_wall_ramifications(over_x_l, over_y_l)) { build_outcome = 2; goto finish; }
+            road_byte = RM_CELL(pm_ptr).place_state;
+            get_best_rm_elastic_value(over_x_l, over_y_l, pm_ptr, elastic_start_dirc);
+            if (road_byte >= best_elastic_value) {
+                if (best_elastic_dirc == 0) { pm_ptr -= 0x1e0; over_y_l--; }
+                else if (best_elastic_dirc == 1) { pm_ptr += 8; over_x_l++; }
+                else if (best_elastic_dirc == 2) { pm_ptr += 0x1e0; over_y_l++; }
+                else if (best_elastic_dirc == 3) { pm_ptr -= 8; over_x_l--; }
+                continue;
+            }
+            if (road_byte > 1) {
+                build_outcome = 3;
+                goto finish;
+            }
+            break;
+        }
+
+    finish:
+        if (build_outcome != 0) {
+            illegal_build = 1;
+            restore_region_from_undo_buffer();
+            elastic_start_dirc++;
+            if (elastic_start_dirc > 3) elastic_start_dirc = 0;
+        }
     }
 }
 
@@ -3054,10 +3057,10 @@ int put_rm_area(int x, int y, int footprint_size, unsigned char base_kind,
 // FUNCTION: C2WIN 0x004a7ec5
 void flag_rm_area(int x, int y, int size, char mask_byte)
 {
-    int row_skip = (60 - size) * 8;
-    int rm_offset;
-    int xi;
-    int yi;
+    int rowadd = (60 - size) * 8;
+    int offset;
+    int i;
+    int j;
 
     if (map_direction == 2)
         x -= size - 1;
@@ -3070,10 +3073,10 @@ void flag_rm_area(int x, int y, int size, char mask_byte)
     if (x < 0) return;
     if (y < 0) return;
 
-    rm_offset = ((x) + (y) * 60) * 8;
-    for (yi = y; yi < y + size; yi++, rm_offset += row_skip) {
-        for (xi = x; xi < x + size; xi++, rm_offset += 8) {
-            (*(struct region_cell *)((unsigned char *)region_map + (rm_offset))).terrain |= mask_byte;
+    offset = ((x) + (y) * 60) * 8;
+    for (j = y; j < y + size; j++, offset += rowadd) {
+        for (i = x; i < x + size; i++, offset += 8) {
+            (*(struct region_cell *)((unsigned char *)region_map + (offset))).terrain |= mask_byte;
         }
     }
 }
@@ -3081,21 +3084,21 @@ void flag_rm_area(int x, int y, int size, char mask_byte)
 // Mask terrain flags across a regional footprint.
 // FUNCTION: C2 0x6b126
 // FUNCTION: C2WIN 0x004a7fd4
-void unflag_rm_area(int x, int y, int size, char mask_byte)
+void unflag_rm_area(int x, int y, int size, unsigned char mask_byte)
 {
-    int row_skip = (60 - size) * 8;
-    int rm_offset;
-    int xi;
-    int yi;
+    int rowadd = (60 - size) * 8;
+    int offset;
+    int i;
+    int j;
 
     if (x < 0) return;
     if (y < 0) return;
 
-    rm_offset = ((x) + (y) * 60) * 8;
+    offset = ((x) + (y) * 60) * 8;
 
-    for (yi = y; yi < y + size; yi++, rm_offset += row_skip) {
-        for (xi = x; xi < x + size; xi++, rm_offset += 8) {
-            (*(struct region_cell *)((unsigned char *)region_map + (rm_offset))).terrain &= mask_byte;
+    for (j = y; j < y + size; j++, offset += rowadd) {
+        for (i = x; i < x + size; i++, offset += 8) {
+            (*(struct region_cell *)((unsigned char *)region_map + (offset))).terrain &= mask_byte;
         }
     }
 }
@@ -4260,28 +4263,28 @@ int get_reg_buildings_in_radius(int x, int y, int span, int radius,
 // FUNCTION: C2WIN 0x004ac19b
 int get_reg_industries_in_radius(int x, int y)
 {
-    int width;
-    int height;
+    int w;
+    int h;
     int row_skip;
     int count;
-    unsigned char kind;
+    unsigned char type;
 
     x = x - 1; y = y - 1;
-    height = 3; width = height;
+    h = 3; w = h;
 
-    if (x < 0) { width += x; x = 0; }
-    else if (x + width > 60) width -= x + width - 60;
-    if (y < 0) { height += y; y = 0; }
-    else if (y + height > 60) height -= y + height - 60;
+    if (x < 0) { w += x; x = 0; }
+    else if (x + w > 60) w -= x + w - 60;
+    if (y < 0) { h += y; y = 0; }
+    else if (y + h > 60) h -= y + h - 60;
 
     gmn_sptr = (x + y * 60) * 8;
-    row_skip = (60 - width) * 8;
+    row_skip = (60 - w) * 8;
 
     count = 0;
-    for (gmn_y = y; gmn_y < y + height; gmn_y++, gmn_sptr += row_skip) {
-        for (gmn_x = x; gmn_x < x + width; gmn_x++, gmn_sptr += 8) {
-            kind = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).base_kind;
-            if (kind >= 0xdc && kind <= 0xef) count++;
+    for (gmn_y = y; gmn_y < y + h; gmn_y++, gmn_sptr += row_skip) {
+        for (gmn_x = x; gmn_x < x + w; gmn_x++, gmn_sptr += 8) {
+            type = (*(struct region_cell *)((unsigned char *)region_map + (gmn_sptr))).base_kind;
+            if (type >= 0xdc && type <= 0xef) count++;
         }
     }
     return count;

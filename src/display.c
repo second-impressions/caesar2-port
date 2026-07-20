@@ -176,39 +176,39 @@ void show_a_mosaic_window(int window_x, int window_y, int column_count, int row_
 // FUNCTION: C2WIN 0x0045fd86
 void show_a_mosaic_frame(int window_x, int window_y, int column_count, int row_count)
 {
-    int row_idx;
-    int column_idx;
+    int row;
+    int column;
 
-    for (row_idx = 0; row_idx < row_count; row_idx++) {
-        for (column_idx = 0; column_idx < column_count; column_idx++) {
+    for (row = 0; row < row_count; row++) {
+        for (column = 0; column < column_count; column++) {
             if (stone_random_count++ >= 0x40)
                 stone_random_count = 0;
 
-            if (row_idx == 0 && column_idx == 0) {
+            if (row == 0 && column == 0) {
                 sprite_image_no = 0;
-            } else if (row_idx == row_count - 1 && column_idx == 0) {
+            } else if (row == row_count - 1 && column == 0) {
                 sprite_image_no = 3;
-            } else if (row_idx == 0 && column_idx == column_count - 1) {
+            } else if (row == 0 && column == column_count - 1) {
                 sprite_image_no = 1;
-            } else if (row_idx == row_count - 1 && column_idx == column_count - 1) {
+            } else if (row == row_count - 1 && column == column_count - 1) {
                 sprite_image_no = 2;
-            } else if (row_idx == 0) {
+            } else if (row == 0) {
                 sprite_image_no =
                     stone_random_data[stone_random_count] / 2 + 4;
-            } else if (row_idx == row_count - 1) {
+            } else if (row == row_count - 1) {
                 sprite_image_no =
                     stone_random_data[stone_random_count] / 2 + 0xc;
-            } else if (column_idx == 0) {
+            } else if (column == 0) {
                 sprite_image_no =
                     stone_random_data[stone_random_count] / 2 + 0x14;
-            } else if (column_idx == column_count - 1) {
+            } else if (column == column_count - 1) {
                 sprite_image_no =
                     stone_random_data[stone_random_count] / 2 + 0x1c;
             } else {
                 continue;
             }
-            sprite_x = window_x + column_idx * 16;
-            sprite_y = window_y + row_idx * 16;
+            sprite_x = window_x + column * 16;
+            sprite_y = window_y + row * 16;
             place_16x16_block(game_panels);
         }
     }
@@ -243,16 +243,16 @@ void mosaic_frame_divider(int divider_x, int divider_y, int column_count, int un
 // FUNCTION: C2WIN 0x0046002d
 void show_a_mosaic_blank(int window_x, int window_y, int column_count, int row_count)
 {
-    int row_idx;
-    int column_idx;
+    int row;
+    int column;
 
-    for (row_idx = 0; row_idx < row_count; row_idx++) {
-        for (column_idx = 0; column_idx < column_count; column_idx++) {
+    for (row = 0; row < row_count; row++) {
+        for (column = 0; column < column_count; column++) {
             if (stone_random_count++ >= 0x40)
                 stone_random_count = 0;
             sprite_image_no = stone_random_data[stone_random_count] + 0x24;
-            sprite_x = window_x + column_idx * 16;
-            sprite_y = window_y + row_idx * 16;
+            sprite_x = window_x + column * 16;
+            sprite_y = window_y + row * 16;
             place_16x16_block(game_panels);
         }
     }

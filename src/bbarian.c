@@ -33,7 +33,7 @@ void region_trouble(void)
     if (revolt_trouble()) return;
     if (raider_trouble()) return;
     if (horde_trouble()) return;
-    war_trouble();
+    if (war_trouble()) return;
 }
 
 // Resets the cooldown counters for regional trouble events.
@@ -393,29 +393,29 @@ int get_region_invasion_points(int direction, int from_sea)
 // FUNCTION: C2WIN 0x0046fd4f
 int get_region_revolt_points(void)
 {
-    int hut_idx;
+    int hut_no;
     int hut_offset;
-    char hut_kind;
-    char occupant;
-    char terrain;
+    unsigned char hut_kind;
+    unsigned char occupant;
+    unsigned char square;
 
-    hut_idx = rand128 & 3;
-    hut_offset = hut_list[hut_idx].x * REGION_CELL_BYTES;
-    hut_offset += hut_list[hut_idx].y * REGION_W * REGION_CELL_BYTES;
+    hut_no = rand128 & 3;
+    hut_offset = hut_list[hut_no].x * REGION_CELL_BYTES;
+    hut_offset += hut_list[hut_no].y * REGION_W * REGION_CELL_BYTES;
     hut_kind = RM_CELL(hut_offset).base_kind;
     if (hut_kind >= 0x93 && hut_kind <= 0x96) {
-        terrain  = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr - 480))).terrain;
+        square   = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr - 480))).terrain;
         occupant = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr - 480))).occupant;
-        if ((terrain & 8) == 0 && occupant == 0) { barb_x = hut_list[hut_idx].x; barb_y = hut_list[hut_idx].y - 1; return hut_kind - 0x92; }
-        terrain  = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr + 8))).terrain;
+        if ((square & 8) == 0 && occupant == 0) { barb_x = hut_list[hut_no].x; barb_y = hut_list[hut_no].y - 1; return hut_kind - 0x92; }
+        square   = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr + 8))).terrain;
         occupant = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr + 8))).occupant;
-        if ((terrain & 8) == 0 && occupant == 0) { barb_x = hut_list[hut_idx].x + 1; barb_y = hut_list[hut_idx].y; return hut_kind - 0x92; }
-        terrain  = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr + 480))).terrain;
+        if ((square & 8) == 0 && occupant == 0) { barb_x = hut_list[hut_no].x + 1; barb_y = hut_list[hut_no].y; return hut_kind - 0x92; }
+        square   = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr + 480))).terrain;
         occupant = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr + 480))).occupant;
-        if ((terrain & 8) == 0 && occupant == 0) { barb_x = hut_list[hut_idx].x; barb_y = hut_list[hut_idx].y + 1; return hut_kind - 0x92; }
-        terrain  = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr - 8))).terrain;
+        if ((square & 8) == 0 && occupant == 0) { barb_x = hut_list[hut_no].x; barb_y = hut_list[hut_no].y + 1; return hut_kind - 0x92; }
+        square   = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr - 8))).terrain;
         occupant = (*(struct region_cell *)((unsigned char *)region_map + (barb_ptr - 8))).occupant;
-        if ((terrain & 8) == 0 && occupant == 0) { barb_x = hut_list[hut_idx].x - 1; barb_y = hut_list[hut_idx].y; return hut_kind - 0x92; }
+        if ((square & 8) == 0 && occupant == 0) { barb_x = hut_list[hut_no].x - 1; barb_y = hut_list[hut_no].y; return hut_kind - 0x92; }
     }
     return 0;
 }
@@ -1154,10 +1154,8 @@ void get_villagers(int village_level)
 void do_battle_victory(void)
 {
     struct army_rec *our_army_ptr;
-    struct army_rec *their_army_ptr;
     int   auxiliary_loss;
     int   specialist_loss;
-    int   army_slot;
 
     if (battle_victor == 0) {
         /* We won. */

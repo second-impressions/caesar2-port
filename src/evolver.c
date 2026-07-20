@@ -363,80 +363,80 @@ void evolve_water_supply_baths_industry(int row_count)
 // FUNCTION: C2WIN 0x0046277b
 void evolve_water_table(int row_count)
 {
-    unsigned char supplied;
-    int row_idx;
-    int col_idx;
-    unsigned char trouble_counter;
-    unsigned char fountain_variant;
-    unsigned char activity_state;
-    unsigned char gfx_idx;
-    int coverage_range;
-    unsigned char building_kind;
+    unsigned char new_count;
+    int map_row;
+    int col_no;
+    unsigned char has_water_flag;
+    int range;
+    unsigned char fountain_type;
+    unsigned char activity;
+    unsigned char image_idx;
+    unsigned char building_type;
 
     cm_sptr = evolve_row * 1600;
 
-    for (row_idx = 0; row_idx < row_count; row_idx++)
-        for (col_idx = 0; col_idx < 80; col_idx++, cm_sptr += 20)
+    for (map_row = 0; map_row < row_count; map_row++)
+        for (col_no = 0; col_no < 80; col_no++, cm_sptr += 20)
         {
-            building_kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
-            if ((building_kind >= 0x1e) && (building_kind <= 0x51))
+            building_type = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+            if ((building_type >= 0x1e) && (building_type <= 0x51))
             {
-                flag_range(0, col_idx, row_idx + evolve_row, 3, 0xd, 2);
+                flag_range(0, col_no, map_row + evolve_row, 3, 0xd, 2);
             }
-            else if ((building_kind >= 0xd7) && (building_kind <= 0xda))
+            else if ((building_type >= 0xd7) && (building_type <= 0xda))
             {
-                flag_range(0, col_idx, row_idx + evolve_row, 2, 0xd, 2);
+                flag_range(0, col_no, map_row + evolve_row, 2, 0xd, 2);
             }
-            else if (building_kind == 0xbe)
+            else if (building_type == 0xbe)
             {
-                supplied = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 3;
-                if (supplied == 3) flag_range(0, col_idx, row_idx + evolve_row, 3, 0xd, 1);
-                else if (supplied == 2) flag_range(0, col_idx, row_idx + evolve_row, 2, 0xd, 1);
-                else if (supplied == 1) flag_range(0, col_idx, row_idx + evolve_row, 1, 0xd, 1);
+                has_water_flag = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).range_flag & 3;
+                if (has_water_flag == 3) flag_range(0, col_no, map_row + evolve_row, 3, 0xd, 1);
+                else if (has_water_flag == 2) flag_range(0, col_no, map_row + evolve_row, 2, 0xd, 1);
+                else if (has_water_flag == 1) flag_range(0, col_no, map_row + evolve_row, 1, 0xd, 1);
             }
-            else if ((building_kind >= 0xdb) && (building_kind <= 0xde))
+            else if ((building_type >= 0xdb) && (building_type <= 0xde))
             {
-                supplied = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).education & 4;
+                has_water_flag = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).education & 4;
 
-                if (water_trouble_rate == 0) supplied = 0;
+                if (water_trouble_rate == 0) has_water_flag = 0;
                 else if (water_trouble_rate < 0x10)
                 {
-                    trouble_counter = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building + water_trouble_rate;
-                    if (trouble_counter < 0x10) supplied = 0; else trouble_counter = trouble_counter & 0xf;
-                    (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building = trouble_counter;
+                    new_count = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building + water_trouble_rate;
+                    if (new_count < 0x10) has_water_flag = 0; else new_count = new_count & 0xf;
+                    (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building = new_count;
                 }
 
-                if (supplied)
+                if (has_water_flag)
                 {
-                    flag_range(0, col_idx, row_idx + evolve_row, 6, 0xd, 1);
-                    (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).extra_edge = house_gfxdat[building_kind + 0x2d] + 1;
+                    flag_range(0, col_no, map_row + evolve_row, 6, 0xd, 1);
+                    (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).extra_edge = house_gfxdat[building_type + 0x2d] + 1;
                 }
-                else (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).extra_edge = house_gfxdat[building_kind + 0x2d];
+                else (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).extra_edge = house_gfxdat[building_type + 0x2d];
                 (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).edge_bits |= 1;
             }
-            else if ((building_kind >= 0xdf) && (building_kind <= 0xe2))
+            else if ((building_type >= 0xdf) && (building_type <= 0xe2))
             {
-                activity_state = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).activity_a & 0xf;
-                if (activity_state != 0) continue;
-                fountain_variant = building_kind - 0xdf;
-                supplied = affected_by_cover1((*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).b, 2, 4);
-                if (supplied)
+                activity = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).activity_a & 0xf;
+                if (activity != 0) continue;
+                fountain_type = building_type - 0xdf;
+                has_water_flag = affected_by_cover1((*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).b, 2, 4);
+                if (has_water_flag)
                 {
-                    coverage_range = building_kind - 0xda;
-                    flag_range(1, col_idx, row_idx + evolve_row, coverage_range, 0xd, 8);
+                    range = building_type - 0xda;
+                    flag_range(1, col_no, map_row + evolve_row, range, 0xd, 8);
                 }
 
-                if (water_trouble_rate == 0) supplied = 0;
+                if (water_trouble_rate == 0) has_water_flag = 0;
                 else if (water_trouble_rate < 0x10)
                 {
-                    trouble_counter = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building + water_trouble_rate;
-                    if (trouble_counter < 0x10) supplied = 0; else trouble_counter = trouble_counter & 0xf;
-                    (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building = trouble_counter;
+                    new_count = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building + water_trouble_rate;
+                    if (new_count < 0x10) has_water_flag = 0; else new_count = new_count & 0xf;
+                    (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building = new_count;
                 }
 
-                gfx_idx = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).extra_edge;
-                if (supplied && (gfx_idx >= 0x63)) change_sized(building_kind, (fountain_variant * 4) + 0x20, 2, cm_sptr);
-                if ((!supplied) && (gfx_idx < 0x63)) change_sized(building_kind, (fountain_variant * 4) + 0x63, 2, cm_sptr);
+                image_idx = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).extra_edge;
+                if (has_water_flag && (image_idx >= 0x63)) change_sized(building_type, (fountain_type * 4) + 0x20, 2, cm_sptr);
+                if ((!has_water_flag) && (image_idx < 0x63)) change_sized(building_type, (fountain_type * 4) + 0x63, 2, cm_sptr);
             }
         }
 }
@@ -1198,31 +1198,31 @@ void remove_envoy(void)
 // FUNCTION: C2WIN 0x0046553b
 void market_image(void)
 {
-    unsigned char building_kind = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
-    unsigned char building_state = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building;
-    unsigned char first_activity = building_state & 0x03;
-    unsigned char second_activity = building_state & 0x0c;
-    unsigned char target_variant = first_activity;
-    if (second_activity == 0) target_variant = 1;
+    unsigned char shape = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).base_kind;
+    unsigned char building = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building;
+    unsigned char low_half = building & 0x03;
+    unsigned char second_half = building & 0x0c;
+    unsigned char target = low_half;
+    if (second_half == 0) target = 1;
 
-    if (building_kind != 0xfc + target_variant) {
-        change_sized(target_variant + 0xfc, target_variant * 4 + 0x30, 2, cm_sptr);
+    if (shape != 0xfc + target) {
+        change_sized(target + 0xfc, target * 4 + 0x30, 2, cm_sptr);
     }
 
-    if (first_activity != 0 && (evolve_tick4 & 1)) {
+    if (low_half != 0 && (evolve_tick4 & 1)) {
         (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building &= 0xfc;
-        if (first_activity == 2) {
+        if (low_half == 2) {
             (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building |= 1;
-        } else if (first_activity == 3) {
+        } else if (low_half == 3) {
             (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building |= 2;
         }
     }
 
-    if (second_activity != 0 && (evolve_tick4 & 1)) {
+    if (second_half != 0 && (evolve_tick4 & 1)) {
         (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building &= 0xf3;
-        if (second_activity == 8) {
+        if (second_half == 8) {
             (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building |= 4;
-        } else if (second_activity == 0xc) {
+        } else if (second_half == 0xc) {
             (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).building |= 8;
         }
     }
@@ -1750,24 +1750,24 @@ void devolve_a_building(
     int tier_idx, int footprint_size, unsigned char base_kind, unsigned char gfx_base,
     unsigned char gfx_step)
 {
-    unsigned char gfx_idx;
-    unsigned char supplied_flag;
+    unsigned char offs;
+    unsigned char fflag;
 
     if (tier_idx <= 0)
         return;
     --tier_idx;
     if (base_kind == 0xDB) {
-        supplied_flag = city_qptr[0xD] & 4;
-        gfx_idx = fountain_gfxdat[tier_idx];
-        if (supplied_flag) ++gfx_idx;
+        fflag = city_qptr[0xD] & 4;
+        offs = fountain_gfxdat[tier_idx];
+        if (fflag) ++offs;
     } else if (base_kind == 0xDF) {
-        supplied_flag = city_qptr[0xD] & 4;
-        if (supplied_flag) gfx_idx = tier_idx * 4 + 0x20;
-        else gfx_idx = tier_idx * 4 + 0x63;
+        fflag = city_qptr[0xD] & 4;
+        if (fflag) offs = tier_idx * 4 + 0x20;
+        else offs = tier_idx * 4 + 0x63;
     } else {
-        gfx_idx = gfx_base + tier_idx * gfx_step;
+        offs = gfx_base + tier_idx * gfx_step;
     }
-    change_sized(base_kind + tier_idx, gfx_idx, footprint_size,
+    change_sized(base_kind + tier_idx, offs, footprint_size,
                  city_ptr + evolve_col * 20);
 }
 
@@ -1778,29 +1778,28 @@ void evolve_a_building(
     int tier_idx, int footprint_size, unsigned char base_kind, unsigned char gfx_base,
     unsigned char gfx_step)
 {
-    unsigned char gfx_idx;
-    unsigned char supplied_flag;
+    unsigned char offs;
+    unsigned char fflag;
 
     if (tier_idx >= 3)
         return;
     ++tier_idx;
     if (base_kind == 0xDB) {
-        supplied_flag = city_qptr[0xD] & 4;
-        gfx_idx = fountain_gfxdat[tier_idx];
-        if (supplied_flag)
-            ++gfx_idx;
+        fflag = city_qptr[0xD] & 4;
+        offs = fountain_gfxdat[tier_idx];
+        if (fflag)
+            ++offs;
     } else if (base_kind == 0xDF) {
-        supplied_flag = city_qptr[0xD] & 4;
-        if (supplied_flag)
-            gfx_idx = tier_idx * 4 + 0x20;
+        fflag = city_qptr[0xD] & 4;
+        if (fflag)
+            offs = tier_idx * 4 + 0x20;
         else
-            gfx_idx = tier_idx * 4 + 0x63;
+            offs = tier_idx * 4 + 0x63;
     } else {
-        gfx_idx = gfx_base + tier_idx * gfx_step;
+        offs = gfx_base + tier_idx * gfx_step;
     }
-    change_sized(base_kind + tier_idx, gfx_idx, footprint_size,
+    change_sized(base_kind + tier_idx, offs, footprint_size,
                  city_ptr + evolve_col * 20);
-    return;
 }
 
 // Demote a house, shrinking its footprint when necessary or removing the lowest tier.
@@ -1808,19 +1807,19 @@ void evolve_a_building(
 // FUNCTION: C2WIN 0x0046725d
 int devolve_a_house(int tier_idx)
 {
-    unsigned int current_size;
-    unsigned int previous_size;
+    unsigned int new_size;
+    unsigned int old_size;
 
-    current_size = house_gfxdat[tier_idx*4 + 1];
+    old_size = house_gfxdat[tier_idx*4 + 1];
     --tier_idx;
     if (tier_idx < 0) {
         remove_house();
         return 0;
     }
-    previous_size = house_gfxdat[tier_idx*4 + 1] & 0xff;
-    change_house(tier_idx, previous_size, 0);
-    if (current_size != previous_size) {
-        pad_house_with_domus(previous_size);
+    new_size = house_gfxdat[tier_idx*4 + 1] & 0xff;
+    change_house(tier_idx, new_size, 0);
+    if (old_size != new_size) {
+        pad_house_with_domus(new_size);
     }
     return 1;
 }
@@ -1830,21 +1829,21 @@ int devolve_a_house(int tier_idx)
 // FUNCTION: C2WIN 0x004672d2
 int evolve_a_house(int tier_idx)
 {
-    unsigned int current_size;
-    unsigned int next_size;
-    int orientation;
+    unsigned int curr;
+    unsigned int next;
+    int delta;
 
-    current_size = house_gfxdat[tier_idx*4 + 1];
+    curr = house_gfxdat[tier_idx*4 + 1];
     ++tier_idx;
     if (tier_idx >= 0x20) return 0;
-    next_size = house_gfxdat[tier_idx*4 + 1];
-    orientation = 0;
-    if (current_size != next_size) {
-        orientation = stretch_house(tier_idx, next_size);
-        if (orientation == 0) return 0;
-        orientation--;
+    next = house_gfxdat[tier_idx*4 + 1];
+    delta = 0;
+    if (curr != next) {
+        delta = stretch_house(tier_idx, next);
+        if (delta == 0) return 0;
+        delta--;
     }
-    change_house(tier_idx, next_size, orientation);
+    change_house(tier_idx, next, delta);
     return 1;
 }
 
@@ -1991,31 +1990,31 @@ void change_house(int tier_idx, int footprint_size, int orientation)
 void pad_house_with_domus(int previous_size)
 {
     int gfx_idx;
-    int stride;
-    unsigned char *cell_ptr;
-    int row_idx;
-    int col_idx;
+    int row_stride;
+    unsigned char *cm;
+    int y;
+    int x;
 
     gfx_idx    = house_gfxdat[0x64];
-    stride = (80 - previous_size) * 20;
-    cell_ptr      = city_qptr;
+    row_stride = (80 - previous_size) * 20;
+    cm      = city_qptr;
 
-    for (row_idx = 0; row_idx < previous_size; row_idx++) {
-        col_idx = 0;
-        for ( ; col_idx < previous_size; col_idx++, cell_ptr += 20)
+    for (y = 0; y < previous_size; y++) {
+        x = 0;
+        for ( ; x < previous_size; x++, cm += 20)
             ;
-        cell_ptr[0]  = 0x9b;
-        cell_ptr[3] |= 1;
-        cell_ptr[4]  = gfx_idx;
-        cell_ptr[5]  = 0;
-        cell_ptr    += stride;
+        cm[0]  = 0x9b;
+        cm[3] |= 1;
+        cm[4]  = gfx_idx;
+        cm[5]  = 0;
+        cm    += row_stride;
     }
 
-    for (col_idx = 0; col_idx <= previous_size; col_idx++, cell_ptr += 20) {
-        cell_ptr[0]  = 0x9b;
-        cell_ptr[3] |= 1;
-        cell_ptr[4]  = gfx_idx;
-        cell_ptr[5]  = 0;
+    for (x = 0; x <= previous_size; x++, cm += 20) {
+        cm[0]  = 0x9b;
+        cm[3] |= 1;
+        cm[4]  = gfx_idx;
+        cm[5]  = 0;
     }
 }
 

@@ -81,4 +81,14 @@
  * choice (verified at C2WIN 0x454e88 vs C2 0x554b1). */
 #define C2_FEAT_MODAL_PROMOTION   C2_TARGET_WIN
 
+/* The Windows wait-state transition preserves visibility bit 0 while
+ * clearing bit 1, then sets bit 0.  The DOS build clears both low bits
+ * before the same final set (verified at C2WIN 0x477fae vs C2 0x4dd39). */
+#define C2_FEAT_WAIT_KEEP_VISIBLE C2_TARGET_WIN
+
+/* The Windows name-entry dialog seeds the format-buffer count from
+ * the cleared insert cursor; the DOS build clears this_letter instead
+ * (verified at C2WIN 0x4b96d2 vs C2 0x34cfa). */
+#define C2_FEAT_NAME_EDIT_FB_COUNT C2_TARGET_WIN
+
 #endif /* C2_TARGET_H */

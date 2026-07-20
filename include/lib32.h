@@ -194,7 +194,7 @@ extern int sprite_bank_ofset;
 extern int x_end;
 extern int y_end;
 extern int x_ofset;
-extern char insert_cursor;
+extern unsigned char insert_cursor;
 extern char highlight;
 
 /* Symbol page 7 (PS emission page 4). */

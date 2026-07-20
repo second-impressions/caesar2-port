@@ -28,18 +28,18 @@ void region_census(void);
 // FUNCTION: C2WIN 0x004304c0
 void forum_update_census(void)
 {
-    int saved_plague;
-    int saved_fire;
-    int saved_wall;
-    int saved_road;
+    int old_plague_accident;
+    int old_fire_accident;
+    int old_wall_accident;
+    int old_road_accident;
 
-    saved_fire = fire_accident;
+    old_fire_accident = fire_accident;
     fire_accident = 0xf423f;
-    saved_wall = wall_accident;
+    old_wall_accident = wall_accident;
     wall_accident = 0xf423f;
-    saved_road = road_accident;
+    old_road_accident = road_accident;
     road_accident = 0xf423f;
-    saved_plague = plague_accident;
+    old_plague_accident = plague_accident;
     plague_accident = 0xf423f;
 
     evolve_row = 0;
@@ -60,10 +60,10 @@ void forum_update_census(void)
         evolve_clock = 0xcb;
     }
 
-    if (fire_cover < 0x64) fire_accident = saved_fire;
-    if (wall_cover < 0x64) wall_accident = saved_wall;
-    if (road_cover < 0x64) road_accident = saved_road;
-    plague_accident = saved_plague;
+    if (fire_cover < 0x64) fire_accident = old_fire_accident;
+    if (wall_cover < 0x64) wall_accident = old_wall_accident;
+    if (road_cover < 0x64) road_accident = old_road_accident;
+    plague_accident = old_plague_accident;
 }
 
 // Reset census, economy, accident, settlement, and industry state for a new game.
@@ -570,9 +570,10 @@ void fire_trouble(void)
     get_fire_cover();
     fire_rate += 0x64 - fire_cover;
     if (fire_rate <= 0) fire_rate = 0;
-    if (fire_rate < 0x64) return;
-    fire_rate = fire_rate % 0x64;
-    fire_accident = get_rand_max(fire_pass_count);
+    if (fire_rate >= 0x64) {
+        fire_rate = fire_rate % 0x64;
+        fire_accident = get_rand_max(fire_pass_count);
+    }
 }
 
 // Accumulate road-failure risk from staffing shortfalls and select a site at the threshold.
@@ -585,9 +586,10 @@ void road_trouble(void)
     get_road_cover();
     road_rate += 0x64 - road_cover;
     if (road_rate <= 0) road_rate = 0;
-    if (road_rate < 0x64) return;
-    road_rate = road_rate % 0x64;
-    road_accident = get_rand_max(road_pass_count);
+    if (road_rate >= 0x64) {
+        road_rate = road_rate % 0x64;
+        road_accident = get_rand_max(road_pass_count);
+    }
 }
 
 // Convert the current water coverage into the 0–16 water-trouble rating.
@@ -624,9 +626,10 @@ void wall_trouble(void)
     get_wall_cover();
     wall_rate += 0x64 - wall_cover;
     if (wall_rate <= 0) wall_rate = 0;
-    if (wall_rate < 0x64) return;
-    wall_rate = wall_rate % 0x64;
-    wall_accident = get_rand_max(structure_pass_count);
+    if (wall_rate >= 0x64) {
+        wall_rate = wall_rate % 0x64;
+        wall_accident = get_rand_max(structure_pass_count);
+    }
 }
 
 // Compute firefighter staffing coverage and flag an insufficient workforce.

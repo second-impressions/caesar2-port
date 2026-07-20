@@ -239,7 +239,7 @@ char test_mode4;
 unsigned char develop_mode;
 unsigned char xclipped;
 unsigned char yclipped;
-char insert_cursor;
+unsigned char insert_cursor;
 char highlight;
 unsigned char allow_padding;
 char hot_key_out_off_build;

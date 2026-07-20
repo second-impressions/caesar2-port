@@ -1089,6 +1089,8 @@ void forum_constant_screen(void)
 // FUNCTION: C2WIN 0x0042533e
 void background_screen(void)
 {
+    int i;
+
     black_out();
     readfile("backgrnd.256", temp_palette, 0x300, 0);
     show_pl8file("backgrnd.pl8", 0x1e0);

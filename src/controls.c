@@ -453,32 +453,32 @@ void show_an_exit_button(int x, int y)
 // FUNCTION: C2WIN 0x0042106d
 int slider_control(struct slider_rec *slider_list, int slider_count)
 {
-    int i;
-    int step_pixels;
+    int index;
+    int spacing;
     int slider_range;
-    int min_pixel;
-    int max_pixel;
+    int minimum;
+    int maximum;
     int knob_width;
 
     if (mouse_left_button == 0) return 0;
-    for (i = 0; i < slider_count; i++) {
-        step_pixels  = slider_list->step_pixels;
+    for (index = 0; index < slider_count; index++) {
+        spacing = slider_list->step_pixels;
         slider_range = slider_list->slider_range;
-        min_pixel  = slider_list->min_pixel;
-        max_pixel  = slider_list->max_pixel;
-        knob_width = (max_pixel - min_pixel) * step_pixels / slider_range;
+        minimum = slider_list->min_pixel;
+        maximum = slider_list->max_pixel;
+        knob_width = (maximum - minimum) * spacing / slider_range;
         if (slider_list->y <= mouse_y && slider_list->y + 10 > mouse_y) {
             if (slider_list->x <= mouse_x && slider_list->x + 12 > mouse_x) {
                 down_slider_var(slider_list);
-                return i + 1;
+                return index + 1;
             }
             if (slider_list->x + 12 <= mouse_x && slider_list->x + knob_width + 12 > mouse_x) {
                 mid_slider_var(slider_list, mouse_x - 12 - slider_list->x);
-                return i + 1;
+                return index + 1;
             }
             if (slider_list->x + 12 + knob_width <= mouse_x && slider_list->x + knob_width + 0x18 > mouse_x) {
                 up_slider_var(slider_list);
-                return i + 1;
+                return index + 1;
             }
         }
         slider_list++;
@@ -722,56 +722,57 @@ int control_buttons(int x, int y, struct button_rec *button_list, int button_cou
 // FUNCTION: C2WIN 0x00421ae2
 int control_menus(struct menu_rec *menu_list, int menu_count, void (*draw_map_fn)(void))
 {
-    int item_idx;
-    int active_menu_idx;
-    int hovered_menu_idx;
-    int done_flag;
-    int track_hover_flag;
-    int old_pointer_mode;
-    struct menu_rec *menu_ptr;
+    int item_number;
+    int old_mode;
+    int over;
+    int active_menu;
+    int finish;
+    int menu_tracking;
+    struct menu_item_rec *current_item;
+    struct menu_rec *current_menu;
 
     if (mouse_left_preclick == 0) return 0;
     if (tutorial_mode != 0) return 0;
-    active_menu_idx = over_menu(menu_list, menu_count);
-    item_idx = 0;
-    if (active_menu_idx == 0) return 0;
-    old_pointer_mode = pointer_mode;
+    active_menu = over_menu(menu_list, menu_count);
+    item_number = 0;
+    if (active_menu == 0) return 0;
+    old_mode = pointer_mode;
     pointer_mode = 0;
-    menu_ptr = menu_list + active_menu_idx - 1;
-    show_menus(menu_list, menu_count, active_menu_idx);
+    current_menu = menu_list + active_menu - 1;
+    show_menus(menu_list, menu_count, active_menu);
     setup_map_screen_refresh();
     mouse_left_preclick = 0;
-    track_hover_flag = 1;
-    done_flag = 0;
-    while (done_flag == 0) {
-        if (mouse_left_button == 0) track_hover_flag = 0;
+    menu_tracking = 1;
+    finish = 0;
+    while (finish == 0) {
+        if (mouse_left_button == 0) menu_tracking = 0;
         gloop_start();
         update_map = 1;
         draw_map_fn();
-        show_menu_items(menu_ptr->items, menu_ptr->u.pos.x1, menu_ptr->y, menu_ptr->text, menu_ptr->item_count, item_idx);
+        show_menu_items(current_menu->items, current_menu->u.pos.x1, current_menu->y, current_menu->text, current_menu->item_count, item_number);
         gloop_end();
-        if (track_hover_flag != 0) {
-            hovered_menu_idx = over_menu(menu_list, menu_count);
-            if (hovered_menu_idx != 0 && active_menu_idx != hovered_menu_idx) {
-                active_menu_idx = hovered_menu_idx;
-                menu_ptr = menu_list + active_menu_idx - 1;
-                show_menus(menu_list, menu_count, active_menu_idx);
+        if (menu_tracking != 0) {
+            over = over_menu(menu_list, menu_count);
+            if (over != 0 && active_menu != over) {
+                active_menu = over;
+                current_menu = menu_list + active_menu - 1;
+                show_menus(menu_list, menu_count, active_menu);
             }
         }
-        item_idx = over_item(menu_ptr->items, menu_ptr->item_count, menu_ptr->u.pos.x1, menu_ptr->y);
-        if (mouse_left_click != 0 && item_idx != 0) done_flag = 1;
-        if (mouse_left_preclick != 0) done_flag = 1;
-        if (mouse_right_preclick != 0) { done_flag = 1; item_idx = 0; }
+        item_number = over_item(current_menu->items, current_menu->item_count, current_menu->u.pos.x1, current_menu->y);
+        if (mouse_left_click != 0 && item_number != 0) finish = 1;
+        if (mouse_left_preclick != 0) finish = 1;
+        if (mouse_right_preclick != 0) { finish = 1; item_number = 0; }
     }
     show_menus(menu_list, menu_count, 0);
-    if (item_idx != 0) {
-        struct menu_item_rec *item_ptr = menu_ptr->items;
-        item_ptr += item_idx - 1;
-        item_ptr->action();
+    if (item_number != 0) {
+        current_item = current_menu->items;
+        current_item += item_number - 1;
+        current_item->action();
     }
     setup_map_screen_refresh();
     update_map = 1;
-    pointer_mode = old_pointer_mode;
+    pointer_mode = old_mode;
     clear_mouse();
     return 1;
 }

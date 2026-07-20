@@ -975,11 +975,11 @@ int loadmodel(char *model_filename)
 // Replace control bytes in the first 24 player-name characters with spaces and append a terminator.
 // FUNCTION: C2 0x70eae
 // FUNCTION: C2WIN 0x004838d3
-void fix_plyr_name(char *name_buf)
+void fix_plyr_name(unsigned char *name_buf)
 {
     int i;
     for (i = 0; i < 0x18; i++) {
-        if ((unsigned char)name_buf[i] < 0x20)
+        if (name_buf[i] < 0x20)
             name_buf[i] = 0x20;
         if (name_buf[i] == 0) break;
     }

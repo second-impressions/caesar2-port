@@ -1472,34 +1472,34 @@ void get_icon_over(void)
 // which always returns 1 — the command-strip area is special-cased by the caller).
 // FUNCTION: C2 0x31850
 // FUNCTION: C2WIN 0x004b437f
-int is_icon_over(int icon_idx)
+int is_icon_over(int idx)
 {
-    short icon_x;
-    short icon_y;
-    short icon_width;
-    short icon_height;
+    short xpos;
+    short ypos;
+    short w;
+    short h;
 
     if (mouse_x < 0x1e0) {
         return 0;
     }
 
     if (map_mode == 0) {
-        icon_width = int_city_header[icon_idx * 8 + 4];
-        icon_height = int_city_header[icon_idx * 8 + 5];
-        icon_x = int_city_header[icon_idx * 8 + 8] + 0xee;
-        icon_y = int_city_header[icon_idx * 8 + 9];
+        w = int_city_header[idx * 8 + 4];
+        h = int_city_header[idx * 8 + 5];
+        xpos = int_city_header[idx * 8 + 8] + 0xee;
+        ypos = int_city_header[idx * 8 + 9];
     } else {
-        icon_width = int_region_header[icon_idx * 8 + 4];
-        icon_height = int_region_header[icon_idx * 8 + 5];
-        icon_x = int_region_header[icon_idx * 8 + 8] + 0xee;
-        icon_y = int_region_header[icon_idx * 8 + 9];
+        w = int_region_header[idx * 8 + 4];
+        h = int_region_header[idx * 8 + 5];
+        xpos = int_region_header[idx * 8 + 8] + 0xee;
+        ypos = int_region_header[idx * 8 + 9];
     }
 
-    if (mouse_in_area((unsigned short)icon_x, (unsigned short)icon_y,
-                      (unsigned short)icon_width, (unsigned short)icon_height) != 0) {
+    if (mouse_in_area((unsigned short)xpos, (unsigned short)ypos,
+                      (unsigned short)w, (unsigned short)h) != 0) {
         return 1;
     }
-    if (icon_idx == 2) {
+    if (idx == 2) {
         return 1;
     }
     return 0;
@@ -4320,23 +4320,22 @@ void act_set_skill_levels(void)
     tutorial_mode = 0;
     continue_tutorial_status = 0;
 
-    do {
-        show_skill1_box();
-        out1 = 0;
-        while (out1 == 0) {
-            skill1_game_loop();
-        }
-        if (continue_tutorial_status != 0
-                || exit_flag != 0
-                || pre_loaded_status != 0) {
-            break;
-        }
+choose_skill1:
+    show_skill1_box();
+    out1 = 0;
+    while (out1 == 0) {
+        skill1_game_loop();
+    }
+    if (continue_tutorial_status == 0
+            && exit_flag == 0
+            && pre_loaded_status == 0) {
         show_skill2_box();
         out1 = 0;
         while (out1 == 0) {
             skill2_game_loop();
         }
-    } while (out1 == 0x42a);
+        if (out1 == 0x42a) goto choose_skill1;
+    }
     flush_sb_buffer();
 }
 
@@ -4481,7 +4480,11 @@ void act_tog_peace(void)
 void act_choose_name(void)
 {
     insert_cursor = 0;
+#if C2_FEAT_NAME_EDIT_FB_COUNT
+    fb_count = insert_cursor;
+#else
     this_letter = 0;
+#endif
     in_format_buffer(c2inf.player_name, 0x18, 0xa0, 2);
     show_new_name_box();
     out2 = 0;
