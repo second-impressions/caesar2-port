@@ -40,13 +40,18 @@ def test_every_slot_has_exactly_one_implementation_state():
     stubs = _portable_slots("STUB")
     implemented = _portable_slots("IMPLEMENTED")
     assert not stubs & implemented
-    assert len(stubs) == 74
+    assert len(stubs) == 62
     assert implemented == {
         "copy", "compress", "depress",
         "show_internal_point", "show_internal_2point", "show_internal_2x8",
         "show_internal_4point", "xor_internal_2point",
         "place_2x2_block", "place_4x4_block", "place_6x6_block",
         "place_8x8_block", "show_fast_rect",
+        "write_i_font", "write_i_left_font", "write_i_right_font",
+        "place_i_sprite", "write_i_sprite", "write_i_left_sprite",
+        "write_i_right_sprite", "place_16x16_block", "place_24x24_block",
+        "place_32x32_block", "pick_up_mouse_background",
+        "put_down_mouse_background",
     }
 
 

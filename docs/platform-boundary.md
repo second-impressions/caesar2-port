@@ -72,6 +72,14 @@ point writers and the fast rectangle filler retain their variable
 `screen_width` stride. Tests cover both behaviors directly against framebuffer
 rows. The live inventory is therefore 13 implemented and 74 blank routines.
 
+The seven font/sprite blitters, three fixed-size block loaders, and two mouse
+background copies are implemented in `src/portable/asm/c2_asm_sprite.c`.
+Their source transparency, clipping skips, embedded little-endian sprite-table
+offsets, and mixed variable-initial/fixed-640 row addressing have direct tests.
+The `char *` mouse-background ABI is retained, while its arbitrary pixel bytes
+are accessed through the C-defined `unsigned char` representation view. The
+live inventory is therefore 25 implemented and 62 blank routines.
+
 This scaffold is deliberately a separate `c2_asm_portable` library and is not
 yet linked into the running bootstrap. It establishes and compile-checks the
 interface without letting unresolved link errors grow an ad-hoc compatibility
