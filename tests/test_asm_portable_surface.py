@@ -33,3 +33,8 @@ def test_every_callable_assembly_export_has_one_portable_slot():
     assert len(assembly) == 87
     assert len(portable) == 87
     assert portable == assembly
+
+
+def test_engine_declarations_expose_the_portable_surface():
+    shared_declarations = (ROOT / "include" / "c2_data.h").read_text()
+    assert '#include "c2_asm_routines.h"' in shared_declarations
