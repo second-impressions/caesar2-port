@@ -25,9 +25,9 @@ C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, write_i_small_diamond_ptr_left, int, int)
 C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, write_i_small_diamond_ptr_right, int, int)
 
 /* Diamond rasterizers: dia_smal.asm. */
-C2_ASM_STUB(C2_ROUTINE_VOID_2, place_i_small_diamond, unsigned char *, int)
-C2_ASM_STUB(C2_ROUTINE_VOID_2, place_i_small_diamond_lefthalf, unsigned char *, int)
-C2_ASM_STUB(C2_ROUTINE_VOID_2, place_i_small_diamond_righthalf, unsigned char *, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, place_i_small_diamond, unsigned char *, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, place_i_small_diamond_lefthalf, unsigned char *, int)
+C2_ASM_IMPLEMENTED(C2_ROUTINE_VOID_2, place_i_small_diamond_righthalf, unsigned char *, int)
 C2_ASM_STUB(C2_ROUTINE_VOID_2, write_small_diamond_hat, unsigned char *, int)
 C2_ASM_STUB(C2_ROUTINE_VOID_2, write_small_diamond_lefthat, unsigned char *, int)
 C2_ASM_STUB(C2_ROUTINE_VOID_2, write_small_diamond_righthat, unsigned char *, int)

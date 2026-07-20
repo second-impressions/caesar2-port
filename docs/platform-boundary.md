@@ -88,6 +88,19 @@ top/bottom selection, clipped-side suppression, variable-stride origin, and
 fixed 640-pixel row offsets without unaligned typed stores. The live inventory
 is therefore 34 implemented and 53 blank routines.
 
+The basic small image-diamond placers are implemented in
+`src/portable/asm/c2_asm_diamond_image.c`, including opaque pixels, half
+selection, screen-edge source cropping, and the variable-origin/fixed-row
+addressing split. The live inventory is therefore 37 implemented and 50 blank
+routines.
+
+The DOS diamond modules use the 20-byte Smacker/Miles `sndinit` array as four
+unaligned transient dword slots at byte offsets 2, 6, 10, and 14. Each affected
+routine writes its own argument there and reads it back only during that call.
+Portable translations must replace these assembly register-spill slots with
+local variables; renderer state must not remain coupled to the deferred sound
+backend.
+
 This scaffold is deliberately a separate `c2_asm_portable` library and is not
 yet linked into the running bootstrap. It establishes and compile-checks the
 interface without letting unresolved link errors grow an ad-hoc compatibility
