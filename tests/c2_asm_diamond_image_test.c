@@ -8,6 +8,8 @@
 #define TEST_HEIGHT 40
 
 typedef void (*diamond_placer)(unsigned char *, int);
+typedef void (*half_hat_writer)(unsigned char *, int, int);
+typedef void (*half_roof_writer)(unsigned char *, int);
 
 static unsigned char pixels[(TEST_WIDTH + 1) * TEST_HEIGHT];
 static unsigned char expected[(TEST_WIDTH + 1) * TEST_HEIGHT];
@@ -233,6 +235,155 @@ static void test_medium_right_hat_offset(void)
 #endif
 }
 
+static void set_expected_pair(int destination_offset,
+                              unsigned char *source)
+{
+    if (source[0] != 0) {
+        expected[destination_offset] = source[0];
+    }
+    if (source[1] != 0) {
+        expected[destination_offset + 1] = source[1];
+    }
+}
+
+static void make_half_source(unsigned char *sprites, int pair_count,
+                             int rows)
+{
+    int source_offset;
+
+    memset(sprites, 0, 1024);
+    for (source_offset = 0; source_offset < rows * pair_count * 2;
+         source_offset++) {
+        sprites[sprite_hat_start + source_offset] =
+            source_offset % 7 == 0 ? 0 :
+            (unsigned char)(source_offset * 13 + 5);
+    }
+}
+
+static void test_half_hat(half_hat_writer write, int centre, int keep_left)
+{
+    unsigned char sprites[1024];
+    int edge_seam;
+    int depth;
+    int pair_count;
+    int destination_pair_offset;
+    int destination_offset;
+    int source_offset;
+    int base_offset;
+    int vertical_offset;
+    int row;
+    int pair;
+
+    pair_count = centre + 1;
+    sprite_hat_start = 7;
+    y_length = 8;
+    make_half_source(sprites, pair_count, y_length);
+    for (edge_seam = 0; edge_seam <= 2; edge_seam += 2) {
+        for (depth = 0; depth <= 5; depth += depth == 0 ? 2 : 3) {
+            reset_buffers();
+            write(sprites, depth, edge_seam);
+            base_offset = sprite_y * screen_width + sprite_x;
+            destination_pair_offset = edge_seam == 2 ? -1 : centre;
+            for (row = 0; row < y_length; row++) {
+                source_offset = sprite_hat_start + row * pair_count * 2;
+                if (row < depth) {
+                    base_offset -= screen_width;
+                }
+                if (!keep_left && row < depth && edge_seam != 2) {
+                    set_expected_pair(base_offset + centre * 2,
+                                      sprites + source_offset + 2);
+                }
+                for (pair = keep_left ? 0 : 1; pair <= centre; pair++) {
+                    if (row < depth) {
+                        vertical_offset = keep_left ? centre - pair : pair;
+                    } else {
+                        vertical_offset = keep_left ?
+                            centre - pair - (row - depth) - 1 :
+                            pair - (row - depth) - 1;
+                    }
+                    if (vertical_offset < 0 ||
+                        (keep_left && edge_seam == 2 &&
+                         vertical_offset == 0)) {
+                        continue;
+                    }
+                    destination_offset = base_offset +
+                        vertical_offset * TEST_WIDTH +
+                        (keep_left ? pair :
+                         destination_pair_offset + pair) * 2;
+                    set_expected_pair(destination_offset,
+                                      sprites + source_offset + pair * 2);
+                }
+            }
+            assert(memcmp(pixels, expected, sizeof(pixels)) == 0);
+        }
+    }
+}
+
+static void test_half_roof(half_roof_writer write, int centre, int keep_left)
+{
+    unsigned char sprites[1024];
+    int edge_seam;
+    int pair_count;
+    int first_pair;
+    int last_pair;
+    int destination_pair_offset;
+    int destination_offset;
+    int source_offset;
+    int base_offset;
+    int vertical_offset;
+    int row;
+    int pair;
+
+    pair_count = centre + 1;
+    sprite_hat_start = 7;
+    y_length = 16;
+    make_half_source(sprites, pair_count, y_length + 1);
+    for (edge_seam = 0; edge_seam <= 2; edge_seam += 2) {
+        reset_buffers();
+        write(sprites, edge_seam);
+        base_offset = sprite_y * screen_width + sprite_x;
+        destination_pair_offset = edge_seam == 2 ? -1 : centre;
+        for (row = 0; row < y_length; row++) {
+            source_offset = sprite_hat_start + row * pair_count * 2;
+            if (keep_left) {
+                for (pair = 0; pair <= centre; pair++) {
+                    vertical_offset = centre - pair;
+                    if (vertical_offset <= row &&
+                        !(edge_seam == 2 && vertical_offset == 0)) {
+                        destination_offset = base_offset +
+                            vertical_offset * TEST_WIDTH + pair * 2;
+                        set_expected_pair(destination_offset,
+                                          sprites + source_offset + pair * 2);
+                    }
+                }
+            } else if (row == 0) {
+                if (edge_seam != 2) {
+                    set_expected_pair(base_offset +
+                                          destination_pair_offset * 2,
+                                      sprites + source_offset + centre * 2);
+                }
+            } else {
+                first_pair = edge_seam == 2 ? 1 : 0;
+                last_pair = row < centre ? row : centre;
+                if (!C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR &&
+                    centre == 14 && edge_seam == 2 && row == 10) {
+                    set_expected_pair(base_offset +
+                                          destination_pair_offset * 2,
+                                      sprites + source_offset);
+                }
+                for (pair = first_pair; pair <= last_pair; pair++) {
+                    destination_offset = base_offset + pair * TEST_WIDTH +
+                        (destination_pair_offset + pair) * 2;
+                    set_expected_pair(destination_offset,
+                                      sprites + source_offset + pair * 2);
+                }
+            }
+            base_offset -= screen_width;
+        }
+        assert(memcmp(pixels, expected, sizeof(pixels)) == 0);
+    }
+}
+
 int main(void)
 {
     screen_width = TEST_WIDTH + 1;
@@ -259,5 +410,18 @@ int main(void)
     test_hat(write_large_diamond_lefthat, 29, TEST_HAT_KEEP_RIGHT, 0);
     test_hat(write_large_diamond_righthat, 29, TEST_HAT_KEEP_LEFT, 0);
     test_medium_right_hat_offset();
+    test_half_hat(write_small_diamond_lefthalfhat, 2, 1);
+    test_half_hat(write_small_diamond_righthalfhat, 2, 0);
+    test_half_hat(write_medium_diamond_lefthalfhat, 6, 1);
+    test_half_hat(write_medium_diamond_righthalfhat, 6, 0);
+    test_half_hat(write_large_diamond_lefthalfhat, 14, 1);
+    test_half_hat(write_large_diamond_righthalfhat, 14, 0);
+    sprite_y = 20;
+    test_half_roof(write_small_diamond_lefthalfroof, 2, 1);
+    test_half_roof(write_small_diamond_righthalfroof, 2, 0);
+    test_half_roof(write_medium_diamond_lefthalfroof, 6, 1);
+    test_half_roof(write_medium_diamond_righthalfroof, 6, 0);
+    test_half_roof(write_large_diamond_lefthalfroof, 14, 1);
+    test_half_roof(write_large_diamond_righthalfroof, 14, 0);
     return 0;
 }

@@ -6,6 +6,8 @@ find_package(SDL3 3.2 CONFIG REQUIRED)
 
 option(C2_FIX_MEDIUM_RIGHT_HAT_OFFSET
     "Correct the misplaced pixel pair in the medium right diamond hat" ON)
+option(C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR
+    "Suppress the stray seam pair in the large right half-roof" ON)
 
 add_library(c2_asm_portable STATIC
     src/portable/asm/c2_asm_diamond_image.c
@@ -23,6 +25,13 @@ if(C2_FIX_MEDIUM_RIGHT_HAT_OFFSET)
 else()
     target_compile_definitions(c2_asm_portable PUBLIC
         C2_FIX_MEDIUM_RIGHT_HAT_OFFSET=0)
+endif()
+if(C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR)
+    target_compile_definitions(c2_asm_portable PUBLIC
+        C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR=1)
+else()
+    target_compile_definitions(c2_asm_portable PUBLIC
+        C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR=0)
 endif()
 if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
     target_compile_options(c2_asm_portable PRIVATE

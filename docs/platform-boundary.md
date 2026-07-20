@@ -115,19 +115,35 @@ behavior: `1` uses x=6 and `0` restores the shipped x=62 store. CMake exposes
 the same switch as an option, so a compatibility build uses
 `-DC2_FIX_MEDIUM_RIGHT_HAT_OFFSET=OFF`.
 
+The large right half-roof has a separate unrolled-row defect in seam mode `2`.
+Every other row suppresses source pair 0 at the seam, but row 10 in
+`dialargb.asm` omits that check and draws the pair. Suppressing the stray pair
+is the portable default. Set `C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR` to `0`,
+or use the same-named CMake option with `OFF`, to reproduce the shipped row-10
+store.
+
 `tests/test_diamond_asm_oracle.py` provides the executable semantic oracle for
 this family. It builds a statically linked 32-bit Linux fixture with OpenWatcom
 and the original recovered assembly, builds the same fixture against the
-portable C with the bug fix disabled, and compares complete-framebuffer hashes
-across parameter cases. The ordinary C test runs with the corrected default,
-including a focused assertion for the x=6 destination. Extend the shared
-harness whenever another diamond routine is translated.
+portable C with renderer bug fixes disabled, and compares complete-framebuffer
+hashes across parameter cases. The ordinary C test runs with the corrected
+defaults, including focused assertions for the corrected destinations. Extend
+the shared harness whenever another diamond routine is translated.
 
 The nine full and screen-edge left/right roof writers use the corresponding
 upward-growing V projection: source row `r` draws pairs at most `r` steps from
 the center while the origin walks upward with `screen_width`. Their portable
 kernel is covered by the compiled assembly oracle. The live inventory is
 therefore 62 implemented and 25 blank routines.
+
+The six half-width hat writers and six half-width roof writers complete the
+CPU-only diamond family. Their source rows contain 3, 7, or 15 two-byte pairs;
+the `edge_seam` argument is the recovered `0`/`2` choice that retains or
+suppresses the joining pair at a viewport edge. The right-half encoding has an
+unused leading hat pair and a special first roof row, both preserved by the
+shared portable kernels and verified against compiled assembly. The live
+inventory is therefore 74 implemented and 13 blank routines. The remaining
+13 routines are all hardware-facing video, refresh, cursor, or palette paths.
 
 The DOS diamond modules use the 20-byte Smacker/Miles `sndinit` array as four
 unaligned transient dword slots at byte offsets 2, 6, 10, and 14. Each affected

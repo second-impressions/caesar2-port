@@ -11,7 +11,13 @@ HARNESS = ROOT / "tests" / "asm_oracle" / "diamond_oracle.c"
 
 
 def _run(command, cwd):
-    subprocess.run(command, cwd=cwd, check=True, capture_output=True, text=True)
+    result = subprocess.run(
+        command, cwd=cwd, check=False, capture_output=True, text=True
+    )
+    assert result.returncode == 0, (
+        f"command failed ({result.returncode}): {' '.join(map(os.fspath, command))}\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
 
 
 @pytest.mark.skipif(
@@ -45,6 +51,7 @@ def test_portable_diamond_renderers_match_compiled_original_assembly(tmp_path):
     portable = tmp_path / "diamond-portable"
     _run(
         ["cc", "-std=c11", "-DC2_FIX_MEDIUM_RIGHT_HAT_OFFSET=0",
+         "-DC2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR=0",
          f"-I{ROOT / 'include'}", os.fspath(HARNESS),
          os.fspath(ROOT / "src" / "portable" / "asm" /
                    "c2_asm_diamond_image.c"),
@@ -55,4 +62,4 @@ def test_portable_diamond_renderers_match_compiled_original_assembly(tmp_path):
 
     original_output = subprocess.check_output([original], text=True)
     portable_output = subprocess.check_output([portable], text=True)
-    assert portable_output == original_output
+    assert portable_output.splitlines() == original_output.splitlines()

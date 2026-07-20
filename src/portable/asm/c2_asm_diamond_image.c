@@ -221,6 +221,76 @@ static void write_diamond_hat(unsigned char *sprites, int depth,
     }
 }
 
+static void write_left_diamond_half_hat(unsigned char *sprites, int depth,
+                                        int centre, int edge_seam)
+{
+    unsigned char *source;
+    unsigned char *base;
+    int row;
+    int pair;
+    int vertical_offset;
+
+    source = sprites + sprite_hat_start;
+    base = diamond_destination();
+    for (row = 0; row < y_length; row++) {
+        if (row < depth) {
+            base -= screen_width;
+        }
+        for (pair = 0; pair <= centre; pair++) {
+            if (row < depth) {
+                vertical_offset = centre - pair;
+            } else {
+                vertical_offset = centre - pair - (row - depth) - 1;
+            }
+            if (vertical_offset >= 0 &&
+                !(edge_seam == 2 && vertical_offset == 0)) {
+                write_hat_pair(base +
+                                   vertical_offset * C2_LEGACY_SCREEN_WIDTH +
+                                   pair * 2,
+                               source + pair * 2);
+            }
+        }
+        source += (centre + 1) * 2;
+    }
+}
+
+static void write_right_diamond_half_hat(unsigned char *sprites, int depth,
+                                         int centre, int edge_seam)
+{
+    unsigned char *source;
+    unsigned char *base;
+    int destination_pair_offset;
+    int row;
+    int pair;
+    int vertical_offset;
+
+    source = sprites + sprite_hat_start;
+    base = diamond_destination();
+    destination_pair_offset = edge_seam == 2 ? -1 : centre;
+    for (row = 0; row < y_length; row++) {
+        if (row < depth) {
+            base -= screen_width;
+            if (edge_seam != 2) {
+                write_hat_pair(base + centre * 2, source + 2);
+            }
+        }
+        for (pair = 1; pair <= centre; pair++) {
+            if (row < depth) {
+                vertical_offset = pair;
+            } else {
+                vertical_offset = pair - (row - depth) - 1;
+            }
+            if (vertical_offset >= 0) {
+                write_hat_pair(base +
+                                   vertical_offset * C2_LEGACY_SCREEN_WIDTH +
+                                   (destination_pair_offset + pair) * 2,
+                               source + pair * 2);
+            }
+        }
+        source += (centre + 1) * 2;
+    }
+}
+
 void write_small_diamond_hat(unsigned char *sprites, int depth)
 {
     write_diamond_hat(sprites, depth, 5, HAT_FULL, 0);
@@ -234,6 +304,18 @@ void write_small_diamond_lefthat(unsigned char *sprites, int depth)
 void write_small_diamond_righthat(unsigned char *sprites, int depth)
 {
     write_diamond_hat(sprites, depth, 5, HAT_KEEP_LEFT, 0);
+}
+
+void write_small_diamond_lefthalfhat(unsigned char *sprites, int depth,
+                                     int edge_seam)
+{
+    write_left_diamond_half_hat(sprites, depth, 2, edge_seam);
+}
+
+void write_small_diamond_righthalfhat(unsigned char *sprites, int depth,
+                                      int edge_seam)
+{
+    write_right_diamond_half_hat(sprites, depth, 2, edge_seam);
 }
 
 void write_medium_diamond_hat(unsigned char *sprites, int depth)
@@ -251,6 +333,18 @@ void write_medium_diamond_righthat(unsigned char *sprites, int depth)
     write_diamond_hat(sprites, depth, 13, HAT_KEEP_LEFT, 1);
 }
 
+void write_medium_diamond_lefthalfhat(unsigned char *sprites, int depth,
+                                      int edge_seam)
+{
+    write_left_diamond_half_hat(sprites, depth, 6, edge_seam);
+}
+
+void write_medium_diamond_righthalfhat(unsigned char *sprites, int depth,
+                                       int edge_seam)
+{
+    write_right_diamond_half_hat(sprites, depth, 6, edge_seam);
+}
+
 void write_large_diamond_hat(unsigned char *sprites, int depth)
 {
     write_diamond_hat(sprites, depth, 29, HAT_FULL, 0);
@@ -264,6 +358,18 @@ void write_large_diamond_lefthat(unsigned char *sprites, int depth)
 void write_large_diamond_righthat(unsigned char *sprites, int depth)
 {
     write_diamond_hat(sprites, depth, 29, HAT_KEEP_LEFT, 0);
+}
+
+void write_large_diamond_lefthalfhat(unsigned char *sprites, int depth,
+                                     int edge_seam)
+{
+    write_left_diamond_half_hat(sprites, depth, 14, edge_seam);
+}
+
+void write_large_diamond_righthalfhat(unsigned char *sprites, int depth,
+                                      int edge_seam)
+{
+    write_right_diamond_half_hat(sprites, depth, 14, edge_seam);
 }
 
 static void write_diamond_roof(unsigned char *sprites, int pair_count,
@@ -308,6 +414,71 @@ static void write_diamond_roof(unsigned char *sprites, int pair_count,
     }
 }
 
+static void write_left_diamond_half_roof(unsigned char *sprites, int centre,
+                                         int edge_seam)
+{
+    unsigned char *source;
+    unsigned char *base;
+    int row;
+    int pair;
+    int vertical_offset;
+
+    source = sprites + sprite_hat_start;
+    base = diamond_destination();
+    for (row = 0; row < y_length; row++) {
+        for (pair = 0; pair <= centre; pair++) {
+            vertical_offset = centre - pair;
+            if (vertical_offset <= row &&
+                !(edge_seam == 2 && vertical_offset == 0)) {
+                write_hat_pair(base +
+                                   vertical_offset * C2_LEGACY_SCREEN_WIDTH +
+                                   pair * 2,
+                               source + pair * 2);
+            }
+        }
+        source += (centre + 1) * 2;
+        base -= screen_width;
+    }
+}
+
+static void write_right_diamond_half_roof(unsigned char *sprites, int centre,
+                                          int edge_seam)
+{
+    unsigned char *source;
+    unsigned char *base;
+    int destination_pair_offset;
+    int first_pair;
+    int last_pair;
+    int row;
+    int pair;
+
+    source = sprites + sprite_hat_start;
+    base = diamond_destination();
+    destination_pair_offset = edge_seam == 2 ? -1 : centre;
+    for (row = 0; row < y_length; row++) {
+        if (row == 0) {
+            if (edge_seam != 2) {
+                write_hat_pair(base + destination_pair_offset * 2,
+                               source + centre * 2);
+            }
+        } else {
+            first_pair = edge_seam == 2 ? 1 : 0;
+            last_pair = row < centre ? row : centre;
+            if (!C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR &&
+                centre == 14 && edge_seam == 2 && row == 10) {
+                write_hat_pair(base + destination_pair_offset * 2, source);
+            }
+            for (pair = first_pair; pair <= last_pair; pair++) {
+                write_hat_pair(base + pair * C2_LEGACY_SCREEN_WIDTH +
+                                   (destination_pair_offset + pair) * 2,
+                               source + pair * 2);
+            }
+        }
+        source += (centre + 1) * 2;
+        base -= screen_width;
+    }
+}
+
 void write_small_diamond_roof(unsigned char *sprites)
 {
     write_diamond_roof(sprites, 5, HAT_FULL);
@@ -321,6 +492,16 @@ void write_small_diamond_leftroof(unsigned char *sprites)
 void write_small_diamond_rightroof(unsigned char *sprites)
 {
     write_diamond_roof(sprites, 5, HAT_KEEP_LEFT);
+}
+
+void write_small_diamond_righthalfroof(unsigned char *sprites, int edge_seam)
+{
+    write_right_diamond_half_roof(sprites, 2, edge_seam);
+}
+
+void write_small_diamond_lefthalfroof(unsigned char *sprites, int edge_seam)
+{
+    write_left_diamond_half_roof(sprites, 2, edge_seam);
 }
 
 void write_medium_diamond_roof(unsigned char *sprites)
@@ -338,6 +519,16 @@ void write_medium_diamond_rightroof(unsigned char *sprites)
     write_diamond_roof(sprites, 13, HAT_KEEP_LEFT);
 }
 
+void write_medium_diamond_righthalfroof(unsigned char *sprites, int edge_seam)
+{
+    write_right_diamond_half_roof(sprites, 6, edge_seam);
+}
+
+void write_medium_diamond_lefthalfroof(unsigned char *sprites, int edge_seam)
+{
+    write_left_diamond_half_roof(sprites, 6, edge_seam);
+}
+
 void write_large_diamond_roof(unsigned char *sprites)
 {
     write_diamond_roof(sprites, 29, HAT_FULL);
@@ -351,4 +542,14 @@ void write_large_diamond_leftroof(unsigned char *sprites)
 void write_large_diamond_rightroof(unsigned char *sprites)
 {
     write_diamond_roof(sprites, 29, HAT_KEEP_LEFT);
+}
+
+void write_large_diamond_righthalfroof(unsigned char *sprites, int edge_seam)
+{
+    write_right_diamond_half_roof(sprites, 14, edge_seam);
+}
+
+void write_large_diamond_lefthalfroof(unsigned char *sprites, int edge_seam)
+{
+    write_left_diamond_half_roof(sprites, 14, edge_seam);
 }
