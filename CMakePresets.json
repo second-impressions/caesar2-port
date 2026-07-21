@@ -17,6 +17,15 @@
       }
     },
     {
+      "name": "linux-release",
+      "displayName": "Linux release",
+      "inherits": "linux-debug",
+      "binaryDir": "${sourceDir}/build/port/linux-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
       "name": "linux-tsan",
       "displayName": "Linux ThreadSanitizer",
       "inherits": "linux-debug",
@@ -43,6 +52,10 @@
   ],
   "buildPresets": [
     {
+      "name": "linux-release",
+      "configurePreset": "linux-release"
+    },
+    {
       "name": "linux-debug",
       "configurePreset": "linux-debug"
     },
@@ -56,6 +69,13 @@
     }
   ],
   "testPresets": [
+    {
+      "name": "linux-release",
+      "configurePreset": "linux-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
     {
       "name": "linux-debug",
       "configurePreset": "linux-debug",

@@ -84,7 +84,11 @@ Unity tests cover the native-pointer conversion, normalized byte-for-byte
 round trips, host stream behavior, case-insensitive overwrite, and save-list
 enumeration. The optional `C2_TEST_SAVE_FIXTURE` CMake path enables the same
 round-trip check against an original 225,745-byte save without committing
-copyrighted game data.
+copyrighted game data. A Debug-only semantic smoke test additionally drives
+the recovered filename editor, save action, state mutation, load action, and
+city-loop re-entry through ordinary host input. It checks the file through the
+user-data service and verifies that the loaded province and view state match
+the state observed at save completion.
 
 Portable extensions must not be appended silently to this format. If new
 state becomes necessary, introduce an explicitly versioned container or

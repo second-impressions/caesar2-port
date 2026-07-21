@@ -20,7 +20,8 @@ enum c2_host_event_type {
     C2_HOST_EVENT_QUIT,
     C2_HOST_EVENT_KEY_DOWN,
     C2_HOST_EVENT_TEXT_INPUT,
-    C2_HOST_EVENT_MOUSE_BUTTON_DOWN
+    C2_HOST_EVENT_MOUSE_BUTTON_DOWN,
+    C2_HOST_EVENT_MOUSE_WHEEL
 };
 
 enum c2_host_key {
@@ -35,7 +36,27 @@ enum c2_host_key {
     C2_HOST_KEY_LEFT,
     C2_HOST_KEY_RIGHT,
     C2_HOST_KEY_UP,
-    C2_HOST_KEY_DOWN
+    C2_HOST_KEY_DOWN,
+    C2_HOST_KEY_F1,
+    C2_HOST_KEY_F2,
+    C2_HOST_KEY_F3,
+    C2_HOST_KEY_F4,
+    C2_HOST_KEY_F5,
+    C2_HOST_KEY_D,
+    C2_HOST_KEY_F,
+    C2_HOST_KEY_X,
+    C2_HOST_KEY_1,
+    C2_HOST_KEY_2,
+    C2_HOST_KEY_3,
+    C2_HOST_KEY_4,
+    C2_HOST_KEY_5,
+    C2_HOST_KEY_6,
+    C2_HOST_KEY_7,
+    C2_HOST_KEY_8
+};
+
+enum c2_host_key_modifier {
+    C2_HOST_KEY_MODIFIER_ALT = 1u << 0
 };
 
 enum c2_host_mouse_button {
@@ -60,10 +81,12 @@ struct c2_host_config {
 struct c2_host_event {
     enum c2_host_event_type type;
     enum c2_host_key key;
+    unsigned int key_modifiers;
     uint32_t codepoint;
     int mouse_x;
     int mouse_y;
     unsigned int mouse_button;
+    int wheel_y;
 };
 
 struct c2_host_input {

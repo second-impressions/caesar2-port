@@ -310,6 +310,22 @@ static enum c2_host_key translate_key(SDL_Keycode key)
     if (key == SDLK_RIGHT) return C2_HOST_KEY_RIGHT;
     if (key == SDLK_UP) return C2_HOST_KEY_UP;
     if (key == SDLK_DOWN) return C2_HOST_KEY_DOWN;
+    if (key == SDLK_F1) return C2_HOST_KEY_F1;
+    if (key == SDLK_F2) return C2_HOST_KEY_F2;
+    if (key == SDLK_F3) return C2_HOST_KEY_F3;
+    if (key == SDLK_F4) return C2_HOST_KEY_F4;
+    if (key == SDLK_F5) return C2_HOST_KEY_F5;
+    if (key == SDLK_D) return C2_HOST_KEY_D;
+    if (key == SDLK_F) return C2_HOST_KEY_F;
+    if (key == SDLK_X) return C2_HOST_KEY_X;
+    if (key == SDLK_1) return C2_HOST_KEY_1;
+    if (key == SDLK_2) return C2_HOST_KEY_2;
+    if (key == SDLK_3) return C2_HOST_KEY_3;
+    if (key == SDLK_4) return C2_HOST_KEY_4;
+    if (key == SDLK_5) return C2_HOST_KEY_5;
+    if (key == SDLK_6) return C2_HOST_KEY_6;
+    if (key == SDLK_7) return C2_HOST_KEY_7;
+    if (key == SDLK_8) return C2_HOST_KEY_8;
     return C2_HOST_KEY_UNKNOWN;
 }
 
@@ -941,11 +957,14 @@ void c2_host_publish_observation(const struct c2_observation *observation)
     c2_observation.zoom_level = observation->zoom_level;
     c2_observation.paused = observation->paused;
     c2_observation.peace_mode = observation->peace_mode;
+    c2_observation.tutorial_mode = observation->tutorial_mode;
     c2_observation.in_forum = observation->in_forum;
     c2_observation.map_x = observation->map_x;
     c2_observation.map_y = observation->map_y;
     memcpy(c2_observation.player_name, observation->player_name,
            sizeof(c2_observation.player_name));
+    memcpy(c2_observation.filename, observation->filename,
+           sizeof(c2_observation.filename));
     SDL_UnlockMutex(c2_event_mutex);
 }
 
@@ -1035,12 +1054,35 @@ void c2_sdl_host_handle_event(SDL_Event *event)
         }
         c2_input.generation++;
     } else if (event->type == SDL_EVENT_MOUSE_WHEEL) {
-        c2_input.wheel_x += (int)event->wheel.x;
-        c2_input.wheel_y += (int)event->wheel.y;
+        int wheel_x;
+        int wheel_y;
+
+        wheel_x = event->wheel.integer_x;
+        wheel_y = event->wheel.integer_y;
+        if (wheel_x == 0 && event->wheel.x != 0.0f) {
+            wheel_x = event->wheel.x > 0.0f ? 1 : -1;
+        }
+        if (wheel_y == 0 && event->wheel.y != 0.0f) {
+            wheel_y = event->wheel.y > 0.0f ? 1 : -1;
+        }
+        if (event->wheel.direction == SDL_MOUSEWHEEL_FLIPPED) {
+            wheel_x = -wheel_x;
+            wheel_y = -wheel_y;
+        }
+        c2_input.wheel_x += wheel_x;
+        c2_input.wheel_y += wheel_y;
         c2_input.generation++;
+        if (wheel_y != 0) {
+            host_event.type = C2_HOST_EVENT_MOUSE_WHEEL;
+            host_event.wheel_y = wheel_y;
+            publish = 1;
+        }
     } else if (event->type == SDL_EVENT_KEY_DOWN && !event->key.repeat) {
         host_event.type = C2_HOST_EVENT_KEY_DOWN;
         host_event.key = translate_key(event->key.key);
+        if ((event->key.mod & SDL_KMOD_ALT) != 0) {
+            host_event.key_modifiers |= C2_HOST_KEY_MODIFIER_ALT;
+        }
         c2_input.generation++;
         publish = host_event.key != C2_HOST_KEY_UNKNOWN;
     } else if (event->type == SDL_EVENT_TEXT_INPUT) {

@@ -51,7 +51,37 @@ int c2_port_event_to_legacy_key(const struct c2_host_event *event,
     if (event->type == C2_HOST_EVENT_TEXT_INPUT) {
         return encode_text(event->codepoint, ascii);
     }
+    if (event->type == C2_HOST_EVENT_MOUSE_WHEEL) {
+        if (event->wheel_y > 0) {
+            *ascii = '+';
+            return 1;
+        }
+        if (event->wheel_y < 0) {
+            *ascii = '-';
+            return 1;
+        }
+        return 0;
+    }
     if (event->type != C2_HOST_EVENT_KEY_DOWN) return 0;
+
+    if ((event->key_modifiers & C2_HOST_KEY_MODIFIER_ALT) != 0) {
+        switch (event->key) {
+        case C2_HOST_KEY_F:  *scan_code = 0x21; return 1;
+        case C2_HOST_KEY_F1: *scan_code = 0x68; return 1;
+        case C2_HOST_KEY_F3: *scan_code = 0x6a; return 1;
+        case C2_HOST_KEY_D:  *scan_code = 0x20; return 1;
+        case C2_HOST_KEY_X:  *scan_code = 0x2d; return 1;
+        case C2_HOST_KEY_1:  *scan_code = 0x78; return 1;
+        case C2_HOST_KEY_2:  *scan_code = 0x79; return 1;
+        case C2_HOST_KEY_3:  *scan_code = 0x7a; return 1;
+        case C2_HOST_KEY_4:  *scan_code = 0x7b; return 1;
+        case C2_HOST_KEY_5:  *scan_code = 0x7c; return 1;
+        case C2_HOST_KEY_6:  *scan_code = 0x7d; return 1;
+        case C2_HOST_KEY_7:  *scan_code = 0x7e; return 1;
+        case C2_HOST_KEY_8:  *scan_code = 0x7f; return 1;
+        default: return 0;
+        }
+    }
 
     switch (event->key) {
     case C2_HOST_KEY_ESCAPE:    *ascii = 0x1b; return 1;
@@ -65,6 +95,11 @@ int c2_port_event_to_legacy_key(const struct c2_host_event *event,
     case C2_HOST_KEY_RIGHT:     *scan_code = 0x4d; return 1;
     case C2_HOST_KEY_UP:        *scan_code = 0x48; return 1;
     case C2_HOST_KEY_DOWN:      *scan_code = 0x50; return 1;
+    case C2_HOST_KEY_F1:        *scan_code = 0x3b; return 1;
+    case C2_HOST_KEY_F2:        *scan_code = 0x3c; return 1;
+    case C2_HOST_KEY_F3:        *scan_code = 0x3d; return 1;
+    case C2_HOST_KEY_F4:        *scan_code = 0x3e; return 1;
+    case C2_HOST_KEY_F5:        *scan_code = 0x3f; return 1;
     default: return 0;
     }
 }

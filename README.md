@@ -62,6 +62,10 @@ cmake --build --preset linux-debug
 ./build/port/linux-debug/caesar2 --asset-root /path/to/CAESAR2
 ```
 
+For an optimized build, use `cmake --preset linux-release` followed by
+`cmake --build --preset linux-release`. Its native Unity suite is available as
+`ctest --preset linux-release`; Debug-only semantic smoke tests are omitted.
+
 Assets are read only from `--asset-root PATH` or `C2_ASSET_ROOT` (default: the
 current directory). Writable runtime files use the separate
 `--user-data-dir PATH` or `C2_USER_DATA_DIR` namespace. Without an override,
@@ -81,7 +85,10 @@ the Unity suite; original game files are never committed.
 
 Mouse interaction, button geometry, modal behavior, and province hit-testing
 all come from the recovered engine. The SDL backend only publishes input
-snapshots and frames.
+snapshots and frames. It translates the recovered F1--F5 shortcuts, Alt+F,
+Alt+F1, Alt+F3, Alt+D, Alt+X, and Alt+1--Alt+8 chords to their original DOS
+scan codes. Vertical mouse-wheel motion uses the engine's existing `+`/`-`
+zoom actions, so keyboard and wheel input retain the same game-side rules.
 
 Display-free smoke tests drive input through that same host boundary. They edit
 and accept a player name through the recovered name dialog before continuing.
@@ -105,18 +112,27 @@ shutdown:
 ./build/port/linux-debug/caesar2 --city-smoke-test --asset-root /path/to/CAESAR2
 ```
 
-The tutorial-entry scenario selects the recovered Tutorial action and verifies
-that its first page is loaded through the original CD media overlay:
+The tutorial scenario selects the recovered Tutorial action, advances through
+every available page, exits interactive stages through normal input, declines
+the final continue prompt, and verifies return to the original menu:
 
 ```bash
 ./build/port/linux-debug/caesar2 --tutorial-smoke-test --asset-root /path/to/CAESAR2
+```
+
+The save/load scenario enters a city, saves `c2smoke.sav` through the recovered
+filename editor, changes the view, loads through the recovered dialog, and
+verifies both restored state and re-entry into the city loop:
+
+```bash
+./build/port/linux-debug/caesar2 --save-load-smoke-test --asset-root /path/to/CAESAR2
 ```
 
 Pass `--screenshot output.png` to write the final headless frame or the current
 interactive startup state as a PNG beneath the user-data root. The recovered
 screenshot hotkeys likewise write `shot1.png` through `shot8.png`.
 
-To register both smoke tests with CTest, configure with
+To register the semantic smoke tests with CTest, configure with
 `-DC2_TEST_DATA_DIR=/path/to/CAESAR2` and run `ctest --preset linux-debug`.
 Native C unit tests use Unity, supplied by the Nix development shell, while
 CTest remains the suite runner. Pytest covers repository tooling and static

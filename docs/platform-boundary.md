@@ -70,7 +70,11 @@ The SDL backend hides the operating-system cursor while its window exists;
 the recovered engine remains the sole owner of the visible in-game pointer.
 SDL text-input events supply layout- and modifier-aware printable characters;
 key-down events are reserved for Escape, Enter, Backspace, Delete, Insert,
-Home, End, and the arrow keys. The recovered `act_choose_name`,
+Home, End, the arrow keys, F1--F5, and the recovered Alt hotkeys. The common
+key mapper reconstructs the DOS scan codes consumed by `sim_mouse`; it covers
+Alt+F, Alt+F1, Alt+F3, Alt+D, Alt+X, and Alt+1 through Alt+8. Vertical wheel
+events become the existing `+` and `-` engine inputs, keeping zoom policy in
+the recovered hotkey handler. The recovered `act_choose_name`,
 `new_name_game_loop`, and `edit_format_buffer` path is shared unchanged by the
 portable target.
 
@@ -436,7 +440,11 @@ event collection. The full recovered `lib32.c` now supplies both functions;
 edge (`init_mouse`, `read_mouse`, `set_mouse`, `mouserange`, and `get_key`).
 The host publishes a normalized input snapshot and a keyboard event queue. SDL
 event handlers must not directly mutate `c2inf`, menu decisions, or control
-state.
+state. SDL key/modifier and wheel events are normalized at this boundary, then
+the common mapper emits the ASCII or DOS scan-code pairs already consumed by
+the recovered `sim_mouse`. Unit coverage enumerates every scan-code branch in
+that handler, including F1--F5, all supported Alt chords, and both wheel
+directions.
 
 ## Timing and waits
 

@@ -18,6 +18,10 @@ enum c2_observation_point {
     C2_OBSERVATION_FORUM,
     C2_OBSERVATION_NAME_ENTRY,
     C2_OBSERVATION_TUTORIAL_PAGE,
+    C2_OBSERVATION_CONFIRMATION,
+    C2_OBSERVATION_FILE_DIALOG,
+    C2_OBSERVATION_SAVE_COMPLETE,
+    C2_OBSERVATION_LOAD_COMPLETE,
     C2_OBSERVATION_ENGINE_STOPPED
 };
 
@@ -31,10 +35,12 @@ struct c2_observation {
     int zoom_level;
     int paused;
     int peace_mode;
+    int tutorial_mode;
     int in_forum;
     int map_x;
     int map_y;
     char player_name[26];
+    char filename[13];
 };
 
 void c2_observe(enum c2_observation_point point, int detail);

@@ -1,6 +1,9 @@
 #include "c2_data.h"
 #include "c2_types.h"
 #include "refresh.h"
+#if C2_FEAT_DEBUG_OBSERVATION
+#include "c2_observation.h"
+#endif
 
 char button_speed_profile[40] = { 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1 };
 
@@ -920,6 +923,9 @@ void confirm(int message_idx, int x, int y)
     refresh_svga_screen();
     clear_mouse();
     out1 = 0;
+#if C2_FEAT_DEBUG_OBSERVATION
+    c2_observe(C2_OBSERVATION_CONFIRMATION, message_idx);
+#endif
     while (out1 != 1) {
         gloop_start();
         show_buttons(x, y, confirming_buttons, 2);

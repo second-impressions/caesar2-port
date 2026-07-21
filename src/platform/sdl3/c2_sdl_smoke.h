@@ -7,7 +7,8 @@ enum c2_sdl_smoke_kind {
     C2_SDL_SMOKE_NONE,
     C2_SDL_SMOKE_PROVINCE_SELECTION,
     C2_SDL_SMOKE_CITY_LOOP,
-    C2_SDL_SMOKE_TUTORIAL
+    C2_SDL_SMOKE_TUTORIAL,
+    C2_SDL_SMOKE_SAVE_LOAD
 };
 
 enum c2_sdl_smoke_result {
@@ -32,6 +33,15 @@ struct c2_sdl_smoke {
     int initial_zoom;
     int name_phase;
     int name_failed;
+    int file_phase;
+    int tutorial_started;
+    int tutorial_confirmation_seen;
+    int tutorial_pages_seen;
+    int last_tutorial_page;
+    int saved_province;
+    int saved_map_x;
+    int saved_map_y;
+    int saved_zoom;
 };
 
 void c2_sdl_smoke_init(struct c2_sdl_smoke *smoke,

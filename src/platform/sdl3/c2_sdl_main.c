@@ -65,6 +65,9 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
         } else if (strcmp(argv[i], "--tutorial-smoke-test") == 0) {
             *headless = 1;
             *smoke_kind = C2_SDL_SMOKE_TUTORIAL;
+        } else if (strcmp(argv[i], "--save-load-smoke-test") == 0) {
+            *headless = 1;
+            *smoke_kind = C2_SDL_SMOKE_SAVE_LOAD;
 #endif
         } else if (strcmp(argv[i], "--asset-root") == 0 && i + 1 < argc) {
             *asset_root = argv[++i];
@@ -78,7 +81,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                     "usage: %s [--headless] [--asset-root PATH] "
                     "[--user-data-dir PATH] [--screenshot FILE] "
                     "[--smoke-test|--city-smoke-test|"
-                    "--tutorial-smoke-test]\n",
+                    "--tutorial-smoke-test|--save-load-smoke-test]\n",
                     argv[0]);
 #else
             fprintf(stderr,

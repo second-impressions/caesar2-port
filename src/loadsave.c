@@ -6,6 +6,9 @@
 #endif
 #include "c2_data.h"
 #include "c2_types.h"
+#if C2_FEAT_DEBUG_OBSERVATION
+#include "c2_observation.h"
+#endif
 
 #if PLATFORM_PORTABLE
 #define O_BINARY 0
@@ -723,6 +726,9 @@ int select_filename(int dialog_mode)
     adjust_min = 0;
 
     while (out1 != 1) {
+#if C2_FEAT_DEBUG_OBSERVATION
+        c2_observe(C2_OBSERVATION_FILE_DIALOG, dialog_mode);
+#endif
         cover_mouse_droppings();
         hold_hot_keys = 1;
         get_mouse();
@@ -846,6 +852,9 @@ int savegame(char *save_filename)
     setup_map_screen_refresh();
     unflag_all_cm(3, 0xfd);
     update_landfill = 1;
+#if C2_FEAT_DEBUG_OBSERVATION
+    c2_observe(C2_OBSERVATION_SAVE_COMPLETE, 0);
+#endif
     return 1;
 }
 
@@ -901,6 +910,9 @@ int loadgame(char *save_filename)
     if (prov_rotation >= 8 || prov_rotation < 0) prov_rotation = 0;
     get_old_mood();
     if (no_of_warehouses != 0) c2inf.peace_mode = 0;
+#if C2_FEAT_DEBUG_OBSERVATION
+    c2_observe(C2_OBSERVATION_LOAD_COMPLETE, 0);
+#endif
     return 1;
 }
 

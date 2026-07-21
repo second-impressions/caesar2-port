@@ -378,6 +378,7 @@ if(BUILD_TESTING AND C2_TEST_DATA_DIR AND
         "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/province-smoke"
         "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/city-smoke"
         "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/tutorial-smoke"
+        "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/save-load-smoke"
     )
     add_test(
         NAME startup-reaches-province-selection
@@ -402,15 +403,27 @@ if(BUILD_TESTING AND C2_TEST_DATA_DIR AND
         TIMEOUT 50
     )
     add_test(
-        NAME recovered-tutorial-entry-smoke
+        NAME recovered-tutorial-flow-smoke
         COMMAND caesar2 --tutorial-smoke-test
                 --asset-root "${C2_TEST_DATA_DIR}"
                 --user-data-dir
                 "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/tutorial-smoke"
     )
-    set_tests_properties(recovered-tutorial-entry-smoke PROPERTIES
+    set_tests_properties(recovered-tutorial-flow-smoke PROPERTIES
         CONFIGURATIONS Debug
-        PASS_REGULAR_EXPRESSION "recovered tutorial smoke reached page 1"
+        PASS_REGULAR_EXPRESSION "recovered tutorial flow smoke completed"
         TIMEOUT 50
+    )
+    add_test(
+        NAME recovered-save-load-smoke
+        COMMAND caesar2 --save-load-smoke-test
+                --asset-root "${C2_TEST_DATA_DIR}"
+                --user-data-dir
+                "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/save-load-smoke"
+    )
+    set_tests_properties(recovered-save-load-smoke PROPERTIES
+        CONFIGURATIONS Debug
+        PASS_REGULAR_EXPRESSION "recovered save/load smoke restored"
+        TIMEOUT 100
     )
 endif()
