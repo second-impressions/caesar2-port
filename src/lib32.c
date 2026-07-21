@@ -2961,12 +2961,12 @@ void do_delay(int n)
             wvbl2();
 }
 
+#if !PLATFORM_PORTABLE
 // Returns the number of milliseconds since the previous call, or 999 if the wallclock went
 // backwards (clock skew / wrap). Latches `tb.time` into the global `time_is` so the rest of the
 // engine can read it without re-calling ftime().
 // FUNCTION: C2 0x2742b
 // FUNCTION: C2WIN 0x0044e763
-#if !PLATFORM_PORTABLE
 int running_delay1(void)
 {
     static int running_delay_last;
