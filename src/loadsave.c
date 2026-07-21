@@ -607,7 +607,9 @@ void put_a_hut(int hut_x, int hut_y, int hut_kind);
 void load_a_game(void)
 {
     int done;
+#if C2_FEAT_POST_FILE_BUSY_WAIT
     int i;
+#endif
 
     file_loaded_status = 0;
     done = 0;
@@ -636,7 +638,9 @@ void load_a_game(void)
                 setup_whole_screen_refresh();
                 refresh_svga_screen();
                 loadgame(filename);
+#if C2_FEAT_POST_FILE_BUSY_WAIT
                 for (i = 0; i < 200; i++) just_idle_game_loop();
+#endif
                 pre_loaded_status = 2;
                 restart_flag = 1;
             }
@@ -657,7 +661,9 @@ void load_a_game(void)
 void save_a_game(void)
 {
     int done;
+#if C2_FEAT_POST_FILE_BUSY_WAIT
     int i;
+#endif
 
     file_loaded_status = 0;
     done = 0;
@@ -688,7 +694,9 @@ void save_a_game(void)
                 setup_whole_screen_refresh();
                 refresh_svga_screen();
                 savegame(filename);
+#if C2_FEAT_POST_FILE_BUSY_WAIT
                 for (i = 0; i < 1000; i++) just_idle_game_loop();
+#endif
                 decision = 1;
             }
         } else {

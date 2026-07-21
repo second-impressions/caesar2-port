@@ -129,6 +129,18 @@ portable gameplay cadence. They must be converted to an explicit deadline if a
 future recovered or new call path makes them live; their iteration counts must
 not be treated as milliseconds.
 
+The recovered save dialog has a similar but live construct: after the
+synchronous save has completely closed both files, it executes 1,000
+`just_idle_game_loop` iterations to keep “Saving Game -- PLEASE WAIT” visible.
+On the original hardware this was a CPU/video-throughput cosmetic hold, not
+part of the file operation and not a duration expressed in time. Applying the
+portable 60 Hz frame policy to it would manufacture a roughly 16.7-second
+delay. Loading has the same construct with 200 frames after the complete read,
+which would become about 3.3 seconds. `C2_FEAT_POST_FILE_BUSY_WAIT` retains both
+loops for the shipped targets and removes them from the portable target. Each
+message is presented once before synchronous I/O and the dialog continues as
+soon as that operation finishes.
+
 ## Host boundary and shutdown
 
 The common timing adapter depends only on `c2_host_ticks_ms`,

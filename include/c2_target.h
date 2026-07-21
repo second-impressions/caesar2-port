@@ -97,6 +97,12 @@
 #  define C2_FEAT_TEXT_ASSET_COMPAT PLATFORM_PORTABLE
 #endif
 
+/* The shipped builds held file-operation messages for throughput-bound idle
+ * frames after synchronous I/O had completed (1,000 after save, 200 after
+ * load). A paced portable renderer would turn those CPU-era cosmetic spins
+ * into fixed multi-second delays, so portable builds return when I/O ends. */
+#define C2_FEAT_POST_FILE_BUSY_WAIT (!PLATFORM_PORTABLE)
+
 /* Read-only engine observations and their smoke driver are development
  * instrumentation. CMake selects them only for portable Debug builds. */
 #if defined(C2_DEBUG_BUILD)

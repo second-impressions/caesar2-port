@@ -432,6 +432,11 @@ The following busy waits require portable bodies or narrow portable branches:
 - the inner wait in `fade_to_palette`; and
 - movie frame waits.
 
+The post-save 1,000-frame and post-load 200-frame cosmetic holds are handled by
+a narrow feature branch. Portable builds omit them because the file operation
+is already complete and pacing those iterations at 60 Hz would create
+artificial 16.7-second and 3.3-second delays.
+
 A no-op replacement is not acceptable: it turns these paths into CPU-burning
 spins. They must wait on a condition, timer, or engine-thread scheduling
 primitive.
