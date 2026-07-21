@@ -58,6 +58,13 @@ The native port now follows that dependency direction:
   while `c2_sdl_smoke.c` consumes observations and generates ordinary host
   input for end-to-end tests.
 
+Legacy text remains engine-rendered bitmap data. The narrowly scoped,
+switchable repair for editor-era smart punctuation is documented in
+`docs/text-encoding.md`.
+
+The SDL backend hides the operating-system cursor while its window exists;
+the recovered engine remains the sole owner of the visible in-game pointer.
+
 The native target compiles the complete recovered `c2.c` campaign driver and
 `lib32.c`. The former replacement bootstrap, port-side raster slice, and copied
 text subset were removed once the same-symbol boundary was complete enough to

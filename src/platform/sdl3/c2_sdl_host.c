@@ -236,6 +236,11 @@ int c2_host_init(const struct c2_host_config *config)
         c2_host_shutdown();
         return 0;
     }
+    if (!SDL_HideCursor()) {
+        fprintf(stderr, "could not hide the host cursor: %s\n", SDL_GetError());
+        c2_host_shutdown();
+        return 0;
+    }
     if (!SDL_SetRenderLogicalPresentation(c2_renderer,
                                           c2_frame_width,
                                           c2_frame_height,
@@ -260,6 +265,9 @@ int c2_host_init(const struct c2_host_config *config)
 
 void c2_host_shutdown(void)
 {
+    if (c2_window != NULL) {
+        SDL_ShowCursor();
+    }
     SDL_DestroyCondition(c2_event_condition);
     SDL_DestroyMutex(c2_event_mutex);
     SDL_DestroyMutex(c2_frame_mutex);
