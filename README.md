@@ -67,8 +67,10 @@ snapshots and frames.
 
 Display-free smoke tests drive input through that same host boundary. Their
 synchronization uses a read-only semantic observation stream rather than
-framebuffer signatures or fixed delays. The fast test stops at the recovered
-province selector:
+framebuffer signatures or fixed delays. The entire observation and smoke-test
+surface is compiled only in Debug configurations; release binaries do not
+contain it or accept its command-line flags. The fast test stops at the
+recovered province selector:
 
 ```bash
 ./build/port/linux-debug/caesar2 --smoke-test --data-dir /path/to/CAESAR2
@@ -96,6 +98,15 @@ under Clang ThreadSanitizer. The `linux-asan` preset combines AddressSanitizer
 and UndefinedBehaviorSanitizer. It disables ASan global instrumentation because
 the recovered program has a very large legacy global data segment; heap,
 stack, and the live engine path remain instrumented.
+
+Native POSIX Debug builds also install fatal-signal handlers for `SIGSEGV`,
+`SIGABRT`, `SIGBUS`, `SIGILL`, and `SIGFPE`. A crash on either the SDL or engine
+thread prints the signal, fault address, and native backtrace to standard error,
+then re-raises the signal so normal debugger and core-dump behavior is retained.
+The handler is absent from release builds. ASan and TSan presets leave it off
+so the sanitizer runtimes retain their own signal diagnostics.
+Executable frames are printed with load-independent `+0x...` offsets; resolve
+one with `addr2line -e build/port/linux-debug/caesar2 -f -C 0xOFFSET`.
 
 ## Reconstruction baseline
 

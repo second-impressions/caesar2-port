@@ -51,6 +51,21 @@ def test_smoke_driver_observes_without_reaching_into_legacy_state():
     assert "c2_sdl_host_set_headless_mouse" in smoke
 
 
+def test_observation_sources_are_debug_only():
+    cmake = (ROOT / "CMakeLists.txt").read_text()
+    assert "$<$<CONFIG:Debug>:C2_DEBUG_BUILD=1>" in cmake
+    assert "$<$<CONFIG:Debug>:src/platform/common/c2_port_observation.c>" in cmake
+    assert "$<$<CONFIG:Debug>:src/platform/sdl3/c2_sdl_smoke.c>" in cmake
+
+
+def test_posix_crash_handler_is_debug_only_and_sanitizer_safe():
+    cmake = (ROOT / "CMakeLists.txt").read_text()
+    presets = (ROOT / "CMakePresets.json").read_text()
+    assert "if(UNIX AND C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER)" in cmake
+    assert "$<$<CONFIG:Debug>:src/platform/posix/c2_posix_debug.c>" in cmake
+    assert presets.count('"C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER": "OFF"') == 2
+
+
 def test_optional_media_is_an_explicit_host_capability():
     header = HOST_HEADER.read_text()
     backend = (SDL_BACKEND / "c2_sdl_host.c").read_text()

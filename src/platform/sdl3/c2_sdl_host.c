@@ -25,7 +25,9 @@ static unsigned char c2_palette[C2_PALETTE_BYTES];
 static unsigned char c2_present_palette[C2_PALETTE_BYTES];
 static struct c2_host_event c2_event_queue[C2_EVENT_QUEUE_CAPACITY];
 static struct c2_host_input c2_input;
+#if C2_FEAT_DEBUG_OBSERVATION
 static struct c2_observation c2_observation;
+#endif
 static char c2_asset_root[C2_PATH_CAPACITY];
 static char c2_user_data_root[C2_PATH_CAPACITY];
 static int c2_frame_width;
@@ -35,7 +37,9 @@ static int c2_frame_dirty;
 static int c2_event_read;
 static int c2_event_count;
 static int c2_shutdown;
+#if C2_FEAT_DEBUG_OBSERVATION
 static int c2_observation_enabled;
+#endif
 
 static int copy_root(char *destination, size_t capacity, const char *root)
 {
@@ -194,9 +198,13 @@ int c2_host_init(const struct c2_host_config *config)
     c2_event_read = 0;
     c2_event_count = 0;
     c2_shutdown = 0;
+#if C2_FEAT_DEBUG_OBSERVATION
     c2_observation_enabled = config->enable_observation;
+#endif
     memset(&c2_input, 0, sizeof(c2_input));
+#if C2_FEAT_DEBUG_OBSERVATION
     memset(&c2_observation, 0, sizeof(c2_observation));
+#endif
     c2_input.focused = 1;
     pixel_count = (size_t)c2_frame_width * (size_t)c2_frame_height;
     c2_indexed_frame = calloc(pixel_count, sizeof(*c2_indexed_frame));
@@ -484,6 +492,7 @@ int c2_host_shutdown_requested(void)
     return shutdown;
 }
 
+#if C2_FEAT_DEBUG_OBSERVATION
 void c2_host_publish_observation(const struct c2_observation *observation)
 {
     if (!c2_observation_enabled) return;
@@ -512,7 +521,9 @@ void c2_host_observation_snapshot(struct c2_observation *observation)
     *observation = c2_observation;
     SDL_UnlockMutex(c2_event_mutex);
 }
+#endif
 
+#if C2_FEAT_DEBUG_OBSERVATION
 void c2_sdl_host_set_headless_mouse(int x, int y, unsigned int buttons)
 {
     SDL_LockMutex(c2_event_mutex);
@@ -532,6 +543,7 @@ void c2_sdl_host_push_headless_key(enum c2_host_key key)
     event.key = key;
     queue_event(&event);
 }
+#endif
 
 void c2_sdl_host_handle_event(SDL_Event *event)
 {

@@ -5,12 +5,11 @@
 #include <stdio.h>
 #include <unistd.h>
 #endif
-#if PLATFORM_PORTABLE
-#include "c2_observation.h"
-#endif
-
 #include "c2_data.h"
 #include "c2_bugfixes.h"
+#if C2_FEAT_DEBUG_OBSERVATION
+#include "c2_observation.h"
+#endif
 
 #if PLATFORM_PORTABLE
 extern void c2_port_exit(int status);
@@ -358,7 +357,7 @@ void main(int argc, char *argv[])
     refresh_zoom_mode(0);
     setup_svga_refresh_data();
     load_inf();
-#if PLATFORM_PORTABLE
+#if C2_FEAT_DEBUG_OBSERVATION
     c2_observe(C2_OBSERVATION_STARTUP, 0);
 #endif
     lead_in_logos();
@@ -554,7 +553,7 @@ void new_province(void)
     empire_rating           = 0;
     pax_romanum             = 0;
 
-#if PLATFORM_PORTABLE
+#if C2_FEAT_DEBUG_OBSERVATION
     c2_observe(C2_OBSERVATION_PROVINCE_INITIALIZED, 0);
 #endif
 }

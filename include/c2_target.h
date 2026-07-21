@@ -90,4 +90,20 @@
  * (verified at C2WIN 0x4b96d2 vs C2 0x34cfa). */
 #define C2_FEAT_NAME_EDIT_FB_COUNT PLATFORM_WINDOWS
 
+/* Read-only engine observations and their smoke driver are development
+ * instrumentation. CMake selects them only for portable Debug builds. */
+#if defined(C2_DEBUG_BUILD)
+#  define C2_FEAT_DEBUG_OBSERVATION PLATFORM_PORTABLE
+#else
+#  define C2_FEAT_DEBUG_OBSERVATION 0
+#endif
+
+/* Native fatal-signal diagnostics are compiled only where the selected Debug
+ * backend provides an implementation. */
+#if defined(C2_ENABLE_POSIX_CRASH_HANDLER)
+#  define C2_FEAT_DEBUG_CRASH_HANDLER PLATFORM_PORTABLE
+#else
+#  define C2_FEAT_DEBUG_CRASH_HANDLER 0
+#endif
+
 #endif /* C2_TARGET_H */

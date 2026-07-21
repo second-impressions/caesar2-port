@@ -4,7 +4,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "c2_target.h"
+
+#if C2_FEAT_DEBUG_OBSERVATION
 #include "c2_observation.h"
+#endif
 
 enum c2_host_capability {
     C2_HOST_CAPABILITY_MUSIC,
@@ -44,7 +48,9 @@ struct c2_host_config {
     int logical_height;
     int window_scale;
     int headless;
+#if C2_FEAT_DEBUG_OBSERVATION
     int enable_observation;
+#endif
 };
 
 struct c2_host_event {
@@ -94,7 +100,9 @@ void c2_host_input_snapshot(struct c2_host_input *input);
 void c2_host_request_shutdown(void);
 int c2_host_shutdown_requested(void);
 
+#if C2_FEAT_DEBUG_OBSERVATION
 void c2_host_publish_observation(const struct c2_observation *observation);
 void c2_host_observation_snapshot(struct c2_observation *observation);
+#endif
 
 #endif /* C2_HOST_H */

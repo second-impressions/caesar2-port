@@ -47,8 +47,8 @@ The native port now follows that dependency direction:
   legacy exit boundary, and performs final cleanup;
 - `src/platform/common/c2_port_observation.c` copies selected engine state into
   semantic observations at explicit recovered-code checkpoints; it is a
-  one-way, read-only instrumentation bridge and is disabled outside observed
-  test runs;
+  one-way, read-only instrumentation bridge compiled only into Debug builds
+  and inactive outside observed test runs;
 - `src/platform/sdl3/c2_sdl_host.c` implements the host contract; and
 - `src/platform/sdl3/c2_sdl_main.c` is only the SDL lifecycle/thread adapter,
   while `c2_sdl_smoke.c` consumes observations and generates ordinary host
@@ -70,6 +70,9 @@ contains a monotonically increasing sequence, a cumulative reached bitset, and
 a small immutable snapshot of relevant game state. The host may copy that
 record, but has no API for writing engine state. Test input remains entirely
 separate and travels through the normal mouse/key publication path.
+`C2_ENABLE_OBSERVATION` is supplied by CMake only for the Debug configuration;
+non-Debug builds omit the adapter sources, host storage, checkpoint calls,
+smoke driver, and smoke command-line options.
 
 ## Portable assembly interface scaffold
 

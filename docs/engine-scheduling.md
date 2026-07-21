@@ -132,8 +132,8 @@ the host boundary. The SDL test adapter can only read the latest snapshot and
 the cumulative reached bitset; it cannot mutate recovered globals. This lets
 tests wait for skill selection, province selection and confirmation, province
 initialization, city frames, messages, and the forum without framebuffer
-signatures or timing the renderer. Observation publication is enabled only for
-observed test runs.
+signatures or timing the renderer. The observation code is compiled only in
+Debug configurations and publication is enabled only for observed test runs.
 
 ### Audio and movies
 
@@ -223,6 +223,11 @@ Shutdown is a state transition, not an arbitrary `exit()` call:
 Fatal engine errors publish a structured failure containing a message and
 status. The main thread displays or logs it and follows the same shutdown
 sequence.
+
+On native POSIX Debug builds, faults that cannot use that orderly path are
+covered by process-wide fatal-signal handlers installed before the engine
+thread starts. They emit the current thread's native backtrace and re-raise the
+signal. This diagnostic implementation is compiled out of non-Debug builds.
 
 ## Verification
 

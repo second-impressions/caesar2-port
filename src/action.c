@@ -1,7 +1,7 @@
 
 #include "c2_data.h"
 #include "c2_types.h"
-#if PLATFORM_PORTABLE
+#if C2_FEAT_DEBUG_OBSERVATION
 #include "c2_observation.h"
 #endif
 
@@ -3533,7 +3533,7 @@ void act_forum(void)
     out1 = 0;
     while (out1 == 0) {
         in_the_forum = 1;
-#if PLATFORM_PORTABLE
+#if C2_FEAT_DEBUG_OBSERVATION
         c2_observe(C2_OBSERVATION_FORUM, forum_dept);
 #endif
         forum_game_loop();
@@ -4327,7 +4327,7 @@ void act_set_skill_levels(void)
     continue_tutorial_status = 0;
 
 choose_skill1:
-#if PLATFORM_PORTABLE
+#if C2_FEAT_DEBUG_OBSERVATION
     c2_observe(C2_OBSERVATION_SKILL_SELECTION, 0);
 #endif
     show_skill1_box();
@@ -4338,7 +4338,7 @@ choose_skill1:
     if (continue_tutorial_status == 0
             && exit_flag == 0
             && pre_loaded_status == 0) {
-#if PLATFORM_PORTABLE
+#if C2_FEAT_DEBUG_OBSERVATION
         c2_observe(C2_OBSERVATION_SKILL_DETAILS, 0);
 #endif
         show_skill2_box();
@@ -4373,7 +4373,7 @@ void act_choose_init_region(void)
     if (player_rank == 0) {
         show_initreg_box();
         show_first_region_box();
-#if PLATFORM_PORTABLE
+#if C2_FEAT_DEBUG_OBSERVATION
         c2_observe(C2_OBSERVATION_PROVINCE_INTRO, 0);
 #endif
         out2 = 0;
@@ -4400,7 +4400,7 @@ void act_choose_init_region(void)
         }
         restart_flag = 1;
     } else {
-#if PLATFORM_PORTABLE
+#if C2_FEAT_DEBUG_OBSERVATION
         c2_observe(C2_OBSERVATION_PROVINCE_SELECTION, 0);
 #endif
         while (out2 != 1) {
@@ -4417,7 +4417,7 @@ void act_choose_init_region(void)
 void this_region(void)
 {
     this_region_box(0);
-#if PLATFORM_PORTABLE
+#if C2_FEAT_DEBUG_OBSERVATION
     c2_observe(C2_OBSERVATION_PROVINCE_CONFIRMATION, region_over - 1);
 #endif
     out1 = 0; decision = 0;

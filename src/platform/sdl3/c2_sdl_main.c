@@ -9,15 +9,22 @@
 #include "c2_host.h"
 #include "c2_port.h"
 #include "c2_port_app.h"
+#if C2_FEAT_DEBUG_CRASH_HANDLER
+#include "c2_debug_crash.h"
+#endif
 #include "c2_sdl_host.h"
+#if C2_FEAT_DEBUG_OBSERVATION
 #include "c2_sdl_smoke.h"
+#endif
 
 struct c2_sdl_app {
     SDL_Thread *engine_thread;
     SDL_AtomicInt engine_result;
     struct c2_port_app_config engine_config;
+#if C2_FEAT_DEBUG_OBSERVATION
     struct c2_sdl_smoke smoke;
     int smoke_failed;
+#endif
     int host_initialized;
 };
 
@@ -26,7 +33,7 @@ static struct c2_sdl_app c2_app;
 static int parse_arguments(int argc, char *argv[], const char **asset_root,
                            const char **user_data_root,
                            const char **screenshot_filename, int *headless,
-                           enum c2_sdl_smoke_kind *smoke_kind)
+                           int *smoke_kind)
 {
     int i;
 
@@ -39,18 +46,20 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
         *user_data_root = ".";
     }
     *headless = 0;
-    *smoke_kind = C2_SDL_SMOKE_NONE;
+    *smoke_kind = 0;
     *screenshot_filename = NULL;
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--headless") == 0) {
             *headless = 1;
+#if C2_FEAT_DEBUG_OBSERVATION
         } else if (strcmp(argv[i], "--smoke-test") == 0) {
             *headless = 1;
             *smoke_kind = C2_SDL_SMOKE_PROVINCE_SELECTION;
         } else if (strcmp(argv[i], "--city-smoke-test") == 0) {
             *headless = 1;
             *smoke_kind = C2_SDL_SMOKE_CITY_LOOP;
+#endif
         } else if (strcmp(argv[i], "--data-dir") == 0 && i + 1 < argc) {
             *asset_root = argv[++i];
         } else if (strcmp(argv[i], "--user-data-dir") == 0 && i + 1 < argc) {
@@ -58,11 +67,18 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
         } else if (strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
             *screenshot_filename = argv[++i];
         } else {
+#if C2_FEAT_DEBUG_OBSERVATION
             fprintf(stderr,
                     "usage: %s [--headless] [--data-dir PATH] "
                     "[--user-data-dir PATH] [--screenshot FILE] "
                     "[--smoke-test|--city-smoke-test]\n",
                     argv[0]);
+#else
+            fprintf(stderr,
+                    "usage: %s [--headless] [--data-dir PATH] "
+                    "[--user-data-dir PATH] [--screenshot FILE]\n",
+                    argv[0]);
+#endif
             return 0;
         }
     }
@@ -98,9 +114,14 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     const char *screenshot_filename;
     struct c2_host_config host_config;
     int headless;
-    enum c2_sdl_smoke_kind smoke_kind;
+    int smoke_kind;
 
     *appstate = &c2_app;
+#if C2_FEAT_DEBUG_CRASH_HANDLER
+    if (!c2_debug_install_crash_handlers()) {
+        fprintf(stderr, "warning: could not install debug crash handlers\n");
+    }
+#endif
     if (!parse_arguments(argc, argv, &asset_root, &user_data_root,
                          &screenshot_filename, &headless, &smoke_kind)) {
         return SDL_APP_FAILURE;
@@ -114,7 +135,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     host_config.logical_height = C2_SCREEN_HEIGHT;
     host_config.window_scale = 2;
     host_config.headless = headless;
+#if C2_FEAT_DEBUG_OBSERVATION
     host_config.enable_observation = smoke_kind != C2_SDL_SMOKE_NONE;
+#endif
     if (!c2_host_init(&host_config)) {
         return SDL_APP_FAILURE;
     }
@@ -122,7 +145,11 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 
     c2_app.engine_config.screenshot_filename = screenshot_filename;
     c2_app.engine_config.headless = headless;
+#if C2_FEAT_DEBUG_OBSERVATION
     c2_sdl_smoke_init(&c2_app.smoke, smoke_kind, SDL_GetTicks());
+#else
+    (void)smoke_kind;
+#endif
     SDL_SetAtomicInt(&c2_app.engine_result, C2_PORT_APP_CONTINUE);
     c2_app.engine_thread = SDL_CreateThread(engine_main, "caesar2-engine", &c2_app);
     if (c2_app.engine_thread == NULL) {
@@ -145,6 +172,7 @@ SDL_AppResult SDL_AppIterate(void *appstate)
     int result;
 
     app = appstate;
+#if C2_FEAT_DEBUG_OBSERVATION
     if (app->smoke.kind != C2_SDL_SMOKE_NONE) {
         enum c2_sdl_smoke_result smoke_result;
 
@@ -155,9 +183,12 @@ SDL_AppResult SDL_AppIterate(void *appstate)
             c2_host_request_shutdown();
         }
     }
+#endif
     result = SDL_GetAtomicInt(&app->engine_result);
     if (result != C2_PORT_APP_CONTINUE) {
+#if C2_FEAT_DEBUG_OBSERVATION
         if (app->smoke_failed) return SDL_APP_FAILURE;
+#endif
         return to_sdl_result(result);
     }
     c2_host_present();

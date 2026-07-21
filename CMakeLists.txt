@@ -10,6 +10,8 @@ option(C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR
     "Suppress the stray seam pair in the large right half-roof" ON)
 option(C2_FIX_GFX_BUFFER_DOUBLE_FREE
     "Clear released graphics pointers to prevent repeated frees" ON)
+option(C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER
+    "Install native fatal-signal diagnostics in POSIX Debug builds" ON)
 
 add_library(c2_asm_portable STATIC
     src/asm/c2_asm_diamond_image.c
@@ -91,11 +93,14 @@ add_executable(caesar2
     src/platform/common/c2_port_audio.c
     src/platform/common/c2_port_compat.c
     src/platform/common/c2_port_input.c
-    src/platform/common/c2_port_observation.c
     src/platform/common/c2_port_video.c
     src/platform/sdl3/c2_sdl_main.c
     src/platform/sdl3/c2_sdl_host.c
-    src/platform/sdl3/c2_sdl_smoke.c
+)
+
+target_sources(caesar2 PRIVATE
+    $<$<CONFIG:Debug>:src/platform/common/c2_port_observation.c>
+    $<$<CONFIG:Debug>:src/platform/sdl3/c2_sdl_smoke.c>
 )
 
 target_compile_features(caesar2 PRIVATE c_std_11)
@@ -107,7 +112,17 @@ set_target_properties(caesar2 PROPERTIES
 
 target_compile_definitions(caesar2 PRIVATE
     PLATFORM_PORTABLE=1
+    $<$<CONFIG:Debug>:C2_DEBUG_BUILD=1>
 )
+
+if(UNIX AND C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER)
+    target_sources(caesar2 PRIVATE
+        $<$<CONFIG:Debug>:src/platform/posix/c2_posix_debug.c>
+    )
+    target_compile_definitions(caesar2 PRIVATE
+        $<$<CONFIG:Debug>:C2_ENABLE_POSIX_CRASH_HANDLER=1>
+    )
+endif()
 
 target_include_directories(caesar2 PRIVATE
     include
@@ -219,7 +234,8 @@ if(BUILD_TESTING)
 endif()
 
 set(C2_TEST_DATA_DIR "" CACHE PATH "Original Caesar II data directory used by smoke tests")
-if(BUILD_TESTING AND C2_TEST_DATA_DIR)
+if(BUILD_TESTING AND C2_TEST_DATA_DIR AND
+   (CMAKE_CONFIGURATION_TYPES OR CMAKE_BUILD_TYPE STREQUAL "Debug"))
     file(MAKE_DIRECTORY
         "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/province-smoke"
         "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/city-smoke"
@@ -231,6 +247,7 @@ if(BUILD_TESTING AND C2_TEST_DATA_DIR)
                 "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/province-smoke"
     )
     set_tests_properties(startup-reaches-province-selection PROPERTIES
+        CONFIGURATIONS Debug
         PASS_REGULAR_EXPRESSION "recovered province-selection smoke completed"
         TIMEOUT 50
     )
@@ -241,6 +258,7 @@ if(BUILD_TESTING AND C2_TEST_DATA_DIR)
                 "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/city-smoke"
     )
     set_tests_properties(recovered-city-loop-smoke PROPERTIES
+        CONFIGURATIONS Debug
         PASS_REGULAR_EXPRESSION "recovered city-loop smoke completed"
         TIMEOUT 50
     )
