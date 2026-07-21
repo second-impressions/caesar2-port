@@ -100,7 +100,7 @@ static void copy_vga_frame(const unsigned char *pixels, int left, int top)
     }
 }
 
-static void publish_decoded_frame(int left, int top, int mode)
+static void copy_decoded_frame(int left, int top, int mode)
 {
     const unsigned char *pixels;
     const unsigned char *palette;
@@ -138,7 +138,6 @@ static void publish_decoded_frame(int left, int top, int mode)
     } else {
         setup_whole_screen_refresh();
     }
-    refresh_svga_screen();
 }
 
 void start_smacking(char *filename, int left, int top, int mode)
@@ -190,7 +189,8 @@ void start_smacking(char *filename, int left, int top, int mode)
         return;
     }
     c2_movie.last_frame = first_result == SMK_LAST;
-    publish_decoded_frame(left, top, mode);
+    copy_decoded_frame(left, top, mode);
+    refresh_svga_screen();
     c2_movie.next_frame_ms = c2_host_ticks_ms() + frame_duration_ms();
 }
 
@@ -214,7 +214,8 @@ int continue_smacking(int left, int top, int mode)
         return 1;
     }
     c2_movie.last_frame = next_result == SMK_LAST;
-    publish_decoded_frame(left, top, mode);
+    copy_decoded_frame(left, top, mode);
+    if (mode == 2) refresh_svga_screen();
     c2_movie.next_frame_ms += frame_duration_ms();
     return 1;
 }

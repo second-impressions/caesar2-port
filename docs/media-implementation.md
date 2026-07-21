@@ -83,6 +83,15 @@ Retain `start_smacking`, `continue_smacking`, `stop_smacking`, and
 at most the next due frame and use the common shutdown-aware timing service; it
 must not recreate the original `SmackWait` busy loop.
 
+Preserve the recovered refresh ownership as well. Buffered modes 0 and 1 copy
+the decoded frame into `internal_screen` and mark its dirty region, but
+`continue_smacking` does not publish it. The surrounding recovered loop draws
+the software cursor and calls `refresh_svga_screen` once for the completed
+frame. Publishing once before and once after the cursor creates a visible
+cursor-less intermediate frame. Mode 2 historically wrote directly to the VGA
+screen, so its portable equivalent publishes immediately because it has no
+surrounding buffered refresh.
+
 FFmpeg is deliberately outside the project architecture: it is neither a
 runtime dependency, a fallback, nor a comparison oracle. Compatibility work
 must be driven from the official Caesar II movie corpus and libsmacker itself.

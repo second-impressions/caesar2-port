@@ -537,6 +537,11 @@ movie API they used under DOS. The SDL backend remains unaware of Smacker and
 only receives indexed frames and PCM chunks through the existing host
 interfaces.
 
+For buffered embedded and SVGA movies, advancing the decoder only updates
+`internal_screen` and dirty metadata. The recovered caller remains responsible
+for the one frame publication after overlays and the software cursor have been
+drawn. Only the legacy direct-VGA mode publishes from the adapter itself.
+
 ## Startup, shutdown, and errors
 
 The DOS `main` combines process bootstrap, CD policy, resource initialization,
