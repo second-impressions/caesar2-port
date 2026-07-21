@@ -1,8 +1,8 @@
 # Audio and movie implementation decision record
 
-Status: proposed architecture, recorded 2026-07-21. The subsystem boundaries
-and implementation order are decided. The Smacker decoder and music-synthesizer
-choices remain subject to the compatibility and licensing checks below.
+Status: accepted architecture, recorded 2026-07-21. SDL3 effects and speech
+are implemented. Libsmacker movies and the project-owned libADLMIDI fork are
+the next two stages.
 
 ## Outcome
 
@@ -164,6 +164,11 @@ the physical device. Portable common code owns formats and legacy semantics.
    - Implement WAV effects, feedback sounds, RAW speech, volume, looping,
      status, pause, stop, and shutdown.
    - Add memory-output/unit tests for voice reuse and PCM duration.
+   - **Implemented:** recovered sound policy is compiled from `pcsound.c`;
+     WAV effects, feedback sounds, RAW speech, gain, looping, status,
+     per-speech pause, stop, shutdown, and PC-speaker tones use the SDL3
+     backend. Focused SDL tests cover decoding, lifetime, stop, and
+     per-voice pause, and the recovered-flow test suite remains green.
 2. **Movies**
    - Add the decoder interface and libsmacker adapter.
    - Implement full-screen and embedded movie placement, palette changes,

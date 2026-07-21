@@ -15,6 +15,8 @@
 #ifndef AIL_H
 #define AIL_H
 
+#include "c2_target.h"
+
 /* The Miles AIL libraries are cdecl: arguments are pushed by caller
  * (right-to-left) and EAX/EBX/ECX/EDX are caller-save.  The `modify
  * [...]` clause tells Watcom these registers may be clobbered, so any
@@ -54,7 +56,6 @@
 /* The Windows build links the Miles library as wail32.dll: every AIL
  * entry point is a DLL import, so CAESAR2.EXE call sites are indirect
  * (`call [__imp_...]`).  MSVC reproduces that with dllimport. */
-#include "c2_target.h"
 #if PLATFORM_WINDOWS
 #define AILIMPORT __declspec(dllimport)
 #else

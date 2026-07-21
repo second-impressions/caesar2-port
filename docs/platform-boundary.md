@@ -44,9 +44,11 @@ The native port now follows that dependency direction:
   their DOS scan codes; recovered `lib32.c` still owns press/release edges,
   cursor state, text editing, timing, raster dispatch, and other engine
   support;
-- `src/platform/common/c2_port_audio.c` and `c2_port_video.c` are explicit
-  unavailable capability shims until real audio and Smacker backends are
-  selected;
+- `src/platform/common/c2_port_audio.c` implements the Miles sample surface
+  over backend-neutral PCM voices, while `src/platform/sdl3/c2_sdl_audio.c`
+  owns the SDL3 playback device, conversion, resampling, and mixing;
+  `c2_port_video.c` remains an unavailable capability shim until its
+  libsmacker backend is complete;
 - `src/platform/common/c2_port_timing.c` reproduces the recovered Watcom/DOS
   clock's 18.2 Hz, 50-to-60-ms increments while replacing VGA blank waits and
   CPU-throughput frame timing with separate explicit host deadlines; the three
@@ -488,12 +490,23 @@ streaming, sequence control, and handle management behind the existing public
 sound API. `continue_db` remains callable even if a modern streaming backend
 does not require per-frame service.
 
+Digital samples and speech are implemented. The portable target compiles the
+recovered `pcsound.c`, preserving its six-voice rotation, dedicated feedback
+and speech voices, sample cache, ambient tables, delay policy, and mood code.
+The common Miles adapter maps those handles onto SDL-independent PCM
+operations. SDL3 supplies one stream per voice, WAV decoding, conversion,
+resampling, gain, and device mixing; a seventh private voice reproduces the
+PC-speaker feedback tones without stealing a recovered sample handle. RAW
+speech is loaded through the asset service as unsigned 8-bit mono PCM at
+22,050 Hz. Pausing speech unbinds only that stream, rather than pausing the
+shared SDL device and every effect with it.
+
 XMI music is not merely file playback. Miles invokes `mood_modfication` at a
 sequence marker; the engine calculates a new mood and requests a numbered
 branch. The portable music service therefore needs marker callbacks and a
 branch operation in addition to open, play, volume, and stop.
 
-Music is intentionally unavailable in the current port. The host reports
+Music remains intentionally unavailable in the current port. The host reports
 that fact through `C2_HOST_CAPABILITY_MUSIC`; callers must skip optional music
 rather than link a placeholder decoder or pretend playback succeeded.
 

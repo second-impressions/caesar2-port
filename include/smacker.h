@@ -32,6 +32,8 @@
 #ifndef SMACKER_H
 #define SMACKER_H
 
+#include "c2_target.h"
+
 /* RAD Smacker SMK handle.
  *
  * Layout reverse-engineered from offsets PS.EXE reads/writes:

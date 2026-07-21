@@ -116,6 +116,19 @@ void c2_host_sleep_ms(unsigned int milliseconds);
 void c2_host_wait_until_ms(uint64_t deadline_ms);
 int c2_host_has_capability(enum c2_host_capability capability);
 
+int c2_host_audio_init(int voice_count);
+void c2_host_audio_shutdown(void);
+int c2_host_audio_play_wav(int voice, const void *data, size_t size,
+                           int loop_count);
+int c2_host_audio_play_pcm_u8(int voice, const void *data, size_t size,
+                              int sample_rate, int channels,
+                              int loop_count);
+int c2_host_audio_voice_playing(int voice);
+void c2_host_audio_stop_voice(int voice);
+void c2_host_audio_pause_voice(int voice);
+void c2_host_audio_resume_voice(int voice);
+void c2_host_audio_set_master_gain(float gain);
+
 size_t c2_host_asset_read(const char *filename, void *buffer,
                           size_t size, size_t offset);
 size_t c2_host_user_file_read(const char *filename, void *buffer,

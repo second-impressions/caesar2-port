@@ -34,6 +34,20 @@
 #  error "exactly one PLATFORM_* must be selected"
 #endif
 
+/* Historical memory-model and calling-convention keywords have no ABI effect
+ * in the flat portable build, but remain in recovered declarations. */
+#if PLATFORM_PORTABLE
+#  ifndef __far
+#    define __far
+#  endif
+#  ifndef __pascal
+#    define __pascal
+#  endif
+#  ifndef __cdecl
+#    define __cdecl
+#  endif
+#endif
+
 /*
  * PATCHLEVEL leaves room for other witnesses of the same platform
  * (CD rereleases, patches) to enter the source later.  Higher = later

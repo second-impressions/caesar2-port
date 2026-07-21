@@ -516,6 +516,7 @@ int c2_host_init(const struct c2_host_config *config)
 
 void c2_host_shutdown(void)
 {
+    c2_host_audio_shutdown();
     if (c2_window != NULL) {
         SDL_StopTextInput(c2_window);
         SDL_ShowCursor();

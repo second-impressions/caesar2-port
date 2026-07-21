@@ -109,6 +109,7 @@ add_executable(caesar2
     src/pm_map1.c
     src/pm_map2.c
     src/pm_map3.c
+    src/pcsound.c
     src/pump.c
     src/refresh.c
     src/rot_data.c
@@ -125,6 +126,7 @@ add_executable(caesar2
     src/platform/common/c2_port_save_registry.c
     src/platform/common/c2_port_timing.c
     src/platform/common/c2_port_video.c
+    src/platform/sdl3/c2_sdl_audio.c
     src/platform/sdl3/c2_sdl_main.c
     src/platform/sdl3/c2_sdl_host.c
 )
@@ -196,6 +198,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/pm_map1.c
         src/pm_map2.c
         src/pm_map3.c
+        src/pcsound.c
         src/pump.c
         src/refresh.c
         src/rot_data.c
@@ -207,6 +210,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
     )
     set_source_files_properties(
         src/platform/sdl3/c2_sdl_main.c
+        src/platform/sdl3/c2_sdl_audio.c
         src/platform/sdl3/c2_sdl_host.c
         src/platform/sdl3/c2_sdl_smoke.c
         src/platform/common/c2_port_app.c
@@ -303,6 +307,7 @@ if(BUILD_TESTING)
         src/c2_save_compat.c
         src/platform/common/c2_port_save.c
         src/platform/common/c2_port_save_registry.c
+        src/platform/sdl3/c2_sdl_audio.c
         src/platform/sdl3/c2_sdl_host.c)
     target_compile_features(c2-port-save-test PRIVATE c_std_11)
     target_compile_definitions(c2-port-save-test PRIVATE PLATFORM_PORTABLE=1)
@@ -315,6 +320,7 @@ if(BUILD_TESTING)
 
     add_executable(c2-user-files-test
         tests/c2_user_files_test.c
+        src/platform/sdl3/c2_sdl_audio.c
         src/platform/sdl3/c2_sdl_host.c)
     target_compile_features(c2-user-files-test PRIVATE c_std_11)
     target_compile_definitions(c2-user-files-test PRIVATE PLATFORM_PORTABLE=1)
@@ -323,6 +329,15 @@ if(BUILD_TESTING)
         src/platform/sdl3)
     target_link_libraries(c2-user-files-test PRIVATE SDL3::SDL3)
     add_test(NAME user-files COMMAND c2-user-files-test)
+
+    add_executable(c2-sdl-audio-test
+        tests/c2_sdl_audio_test.c
+        src/platform/sdl3/c2_sdl_audio.c)
+    target_compile_features(c2-sdl-audio-test PRIVATE c_std_11)
+    target_compile_definitions(c2-sdl-audio-test PRIVATE PLATFORM_PORTABLE=1)
+    target_include_directories(c2-sdl-audio-test PRIVATE include)
+    target_link_libraries(c2-sdl-audio-test PRIVATE SDL3::SDL3)
+    add_test(NAME sdl-audio COMMAND c2-sdl-audio-test)
 
     add_executable(c2-asm-memory-test tests/c2_asm_memory_test.c)
     target_compile_features(c2-asm-memory-test PRIVATE c_std_11)
@@ -359,6 +374,7 @@ if(BUILD_TESTING)
         c2-save-compat-test
         c2-port-save-test
         c2-user-files-test
+        c2-sdl-audio-test
         c2-asm-memory-test
         c2-asm-internal-raster-test
         c2-asm-sprite-test

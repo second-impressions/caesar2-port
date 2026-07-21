@@ -4,6 +4,10 @@
 #include "c2_data.h"
 #include "smacker.h"
 #include <fcntl.h>             /* O_BINARY */
+#if PLATFORM_PORTABLE
+#include <stdlib.h>
+#include <string.h>
+#endif
 #if PLATFORM_DOS
 char __far *MK_FP(int off, int seg);
 #pragma aux MK_FP = parm [eax] [edx] value [dx eax];
@@ -59,7 +63,9 @@ void init_ss_entires(void);
 void free(void *p);
 
 extern void _pos_ret3(void);
+#if !PLATFORM_PORTABLE
 extern void *malloc(unsigned int size);
+#endif
 /* Forward declarations (functions defined later in this file). */
 void stop_samples(void);
 void stop_sequences(void);
@@ -348,6 +354,7 @@ void serve_sample(int sample_handle, unsigned char **buffers, int buffer_size)
     AIL_load_sample_buffer(sample_handle, buffer_idx, buffers[buffer_idx], bytes_read);
 }
 
+#if !PLATFORM_PORTABLE
 // Open a speech sample and prepare the dedicated double-buffered streaming voice.
 // FUNCTION: C2 0x12003
 // FUNCTION: C2WIN 0x00401c57
@@ -377,7 +384,9 @@ void set_db_sound(char *filename)
     AIL_set_sample_playback_rate(S_dig[ds], 22050);
     main_path();
 }
+#endif
 
+#if !PLATFORM_PORTABLE
 // Refill the active speech stream and close it after playback finishes.
 // FUNCTION: C2 0x1211e
 // FUNCTION: C2WIN 0x00401da8
@@ -395,7 +404,9 @@ void continue_db(void)
     }
     main_path();
 }
+#endif
 
+#if !PLATFORM_PORTABLE
 // Stop the active speech stream and close its file.
 // FUNCTION: C2 0x121a9
 // FUNCTION: C2WIN 0x00401e49
@@ -411,7 +422,9 @@ void stop_db(void)
     close(db_handle);
     main_path();
 }
+#endif
 
+#if !PLATFORM_PORTABLE
 // Toggle pause state for the active speech stream.
 // FUNCTION: C2 0x121fa
 // FUNCTION: C2WIN 0x00401ec1
@@ -426,6 +439,7 @@ int pause_db(void)
     else if (dig_status == 8)  AIL_resume_sample(S_dig[ds]);
     return 1;
 }
+#endif
 
 // Load and start an XMI tune unless music or the sequence engine is disabled.
 // FUNCTION: C2 0x12279
