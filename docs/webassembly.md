@@ -9,6 +9,14 @@ all engine/UI control flow run on the same engine worker used by native builds.
 Frames, input, audio, movies, timing, assets, and user files cross the existing
 `c2_host_*` boundary.
 
+The threaded build uses a fixed 64 MiB WebAssembly memory. Growable shared
+memory exposes resizable typed-array views to JavaScript; WebGL upload APIs do
+not accept those views, which can leave SDL renderer geometry stale and show
+pieces of earlier sprites in later frames. The recovered game and its
+dynamically loaded graphics fit comfortably in the fixed heap; immutable
+packaged assets remain in the preload filesystem rather than being retained
+as one heap allocation.
+
 The build deliberately uses pthreads rather than Asyncify or a browser-only
 state machine. Two workers are created before the runtime starts, so the
 engine and SDL services never have to create a worker from inside a recovered

@@ -240,8 +240,7 @@ if(EMSCRIPTEN)
     target_link_options(caesar2 PRIVATE
         -pthread
         -sPTHREAD_POOL_SIZE=2
-        -sALLOW_MEMORY_GROWTH=1
-        -sMAXIMUM_MEMORY=1073741824
+        -sINITIAL_MEMORY=67108864
         -sEXIT_RUNTIME=0
         "--shell-file=${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2.html"
     )

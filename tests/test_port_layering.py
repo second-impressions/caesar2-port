@@ -79,6 +79,8 @@ def test_wasm_reuses_the_sdl_host_and_recovered_engine_worker():
     main = (SDL_BACKEND / "c2_sdl_main.c").read_text()
     assert "SDL_EMSCRIPTEN_PERSISTENT_PATH" in cmake
     assert "-sPTHREAD_POOL_SIZE=2" in cmake
+    assert "-sINITIAL_MEMORY=67108864" in cmake
+    assert "ALLOW_MEMORY_GROWTH" not in cmake
     assert "c2_wasm_implicit_void.h" in cmake
     assert "#if !C2_FEAT_BROWSER_RUNTIME" in main
     assert "src/platform/wasm" not in cmake
