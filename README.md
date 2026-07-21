@@ -19,6 +19,12 @@ The durable port design is documented in:
 - [`docs/legacy-abi.md`](docs/legacy-abi.md) — packing, pointer width,
   signedness, serialization, and compiler semantics.
 
+Source ownership follows the same boundary: recovered engine C remains in
+`src/`, CPU-only translations of recovered assembly live in `src/asm/`,
+backend-neutral legacy shims live in `src/platform/common/`, and concrete host
+backends live in `src/platform/<backend>/`. New backends are selected by the
+build rather than threaded through shared code with compiler-specific tests.
+
 ## Native Linux port
 
 The native executable now enters the recovered `c2.c` program driver and uses

@@ -12,13 +12,13 @@ option(C2_FIX_GFX_BUFFER_DOUBLE_FREE
     "Clear released graphics pointers to prevent repeated frees" ON)
 
 add_library(c2_asm_portable STATIC
-    src/portable/asm/c2_asm_diamond_image.c
-    src/portable/asm/c2_asm_diamond_ptr.c
-    src/portable/asm/c2_asm_internal_raster.c
-    src/portable/asm/c2_asm_memory.c
-    src/portable/asm/c2_asm_sprite.c
-    src/portable/asm/c2_asm_state.c
-    src/portable/asm/c2_asm_stubs.c
+    src/asm/c2_asm_diamond_image.c
+    src/asm/c2_asm_diamond_ptr.c
+    src/asm/c2_asm_internal_raster.c
+    src/asm/c2_asm_memory.c
+    src/asm/c2_asm_sprite.c
+    src/asm/c2_asm_state.c
+    src/asm/c2_asm_stubs.c
 )
 target_compile_features(c2_asm_portable PRIVATE c_std_11)
 target_include_directories(c2_asm_portable PUBLIC include)
@@ -87,11 +87,11 @@ add_executable(caesar2
     src/speech.c
     src/titles.c
     src/web.c
-    src/port/c2_port_app.c
-    src/port/c2_port_audio.c
-    src/port/c2_port_compat.c
-    src/port/c2_port_input.c
-    src/port/c2_port_video.c
+    src/platform/common/c2_port_app.c
+    src/platform/common/c2_port_audio.c
+    src/platform/common/c2_port_compat.c
+    src/platform/common/c2_port_input.c
+    src/platform/common/c2_port_video.c
     src/platform/sdl3/c2_sdl_main.c
     src/platform/sdl3/c2_sdl_host.c
 )
@@ -109,7 +109,7 @@ target_compile_definitions(caesar2 PRIVATE
 
 target_include_directories(caesar2 PRIVATE
     include
-    src/port
+    src/platform/common
     src/platform/sdl3
 )
 
@@ -160,11 +160,11 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
     set_source_files_properties(
         src/platform/sdl3/c2_sdl_main.c
         src/platform/sdl3/c2_sdl_host.c
-        src/port/c2_port_app.c
-        src/port/c2_port_audio.c
-        src/port/c2_port_compat.c
-        src/port/c2_port_input.c
-        src/port/c2_port_video.c
+        src/platform/common/c2_port_app.c
+        src/platform/common/c2_port_audio.c
+        src/platform/common/c2_port_compat.c
+        src/platform/common/c2_port_input.c
+        src/platform/common/c2_port_video.c
         PROPERTIES COMPILE_OPTIONS -Wpedantic
     )
     target_compile_options(caesar2 PRIVATE

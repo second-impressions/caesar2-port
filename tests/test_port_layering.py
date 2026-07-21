@@ -5,9 +5,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
 SRC = ROOT / "src"
-PORT = SRC / "port"
+PLATFORM_COMMON = SRC / "platform" / "common"
 SDL_BACKEND = SRC / "platform" / "sdl3"
-PORTABLE_LIB32 = SRC / "portable" / "lib32"
+ASM = SRC / "asm"
 HOST_HEADER = ROOT / "include" / "c2_host.h"
 
 
@@ -26,13 +26,13 @@ def test_sdl_api_stays_below_the_host_boundary():
     assert not offenders, "SDL escaped its backend:\n" + "\n".join(offenders)
 
 
-def test_portable_layers_do_not_reach_back_into_the_sdl_backend():
+def test_common_platform_layer_does_not_reach_into_sdl_backend():
     offenders = []
-    for path in [HOST_HEADER, *_source_files(PORT)]:
+    for path in [HOST_HEADER, *_source_files(PLATFORM_COMMON)]:
         text = path.read_text()
         if "c2_sdl_" in text:
             offenders.append(str(path.relative_to(ROOT)))
-    assert not offenders, "portable layer depends on SDL backend:\n" + "\n".join(offenders)
+    assert not offenders, "common platform layer depends on SDL backend:\n" + "\n".join(offenders)
 
 
 def test_sdl_callback_does_not_mutate_legacy_game_state():
@@ -50,16 +50,16 @@ def test_optional_media_is_an_explicit_host_capability():
     assert "int c2_host_has_capability" in backend
 
 
-def test_portable_lib32_slice_remains_engine_side():
+def test_asm_translations_remain_engine_side():
     offenders = []
-    for path in _source_files(PORTABLE_LIB32):
+    for path in _source_files(ASM):
         if "c2_host_" in path.read_text():
             offenders.append(str(path.relative_to(ROOT)))
     assert not offenders, "legacy engine support reaches the host:\n" + "\n".join(offenders)
 
 
 def test_port_adapter_does_not_reimplement_engine_control_flow():
-    app = (PORT / "c2_port_app.c").read_text()
+    app = (PLATFORM_COMMON / "c2_port_app.c").read_text()
     forbidden = (
         "skill1_buttons",
         "skill2_buttons",
@@ -77,6 +77,15 @@ def test_build_uses_recovered_driver_and_lib32():
     cmake = (ROOT / "CMakeLists.txt").read_text()
     assert "src/c2.c" in cmake
     assert "src/lib32.c" in cmake
-    assert "src/port/c2_port_bootstrap.c" not in cmake
-    assert "src/port/c2_port_raster.c" not in cmake
-    assert "src/portable/lib32/c2_lib32_text.c" not in cmake
+    assert "src/platform/common/c2_port_app.c" in cmake
+    assert "src/platform/sdl3/c2_sdl_main.c" in cmake
+    assert "src/asm/c2_asm_memory.c" in cmake
+    assert "src/port/" not in cmake
+    assert "src/portable/" not in cmake
+
+
+def test_source_layout_has_one_platform_hierarchy():
+    assert not (SRC / "port").exists()
+    assert not (SRC / "portable").exists()
+    assert PLATFORM_COMMON.is_dir()
+    assert SDL_BACKEND.is_dir()

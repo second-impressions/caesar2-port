@@ -35,15 +35,16 @@ allows headless and non-SDL backends to exercise the same engine.
 The native port now follows that dependency direction:
 
 - `include/c2_host.h` is the backend-neutral service contract;
-- `src/port/c2_port_compat.c` owns same-symbol legacy shims such as
+- `src/platform/common/c2_port_compat.c` owns same-symbol legacy shims such as
   `readfile`, user-data I/O, `refresh_svga_screen`, and palette publication;
-- `src/port/c2_port_input.c` translates host snapshots into the legacy mouse
-  globals; recovered `lib32.c::get_mouse` still owns press/release edges,
-  cursor state, timing, text, raster dispatch, and other engine support;
-- `src/port/c2_port_audio.c` and `c2_port_video.c` are explicit unavailable
-  capability shims until real audio and Smacker backends are selected;
-- `src/port/c2_port_app.c` only invokes `c2_engine_main`, traps the legacy exit
-  boundary, and performs final cleanup;
+- `src/platform/common/c2_port_input.c` translates host snapshots into the
+  legacy mouse globals; recovered `lib32.c::get_mouse` still owns press/release
+  edges, cursor state, timing, text, raster dispatch, and other engine support;
+- `src/platform/common/c2_port_audio.c` and `c2_port_video.c` are explicit
+  unavailable capability shims until real audio and Smacker backends are
+  selected;
+- `src/platform/common/c2_port_app.c` only invokes `c2_engine_main`, traps the
+  legacy exit boundary, and performs final cleanup;
 - `src/platform/sdl3/c2_sdl_host.c` implements the host contract; and
 - `src/platform/sdl3/c2_sdl_main.c` is only the SDL lifecycle/thread adapter.
 
@@ -64,11 +65,11 @@ represented by `include/c2_asm_routines.def`. It contains exactly 87
 function slots: one for every callable `PUBLIC` export in the eight recovered
 assembly files. `include/c2_asm_routines.h` turns the manifest into engine
 declarations. Each entry is explicitly marked `C2_ASM_STUB` or
-`C2_ASM_IMPLEMENTED`; `src/portable/asm/c2_asm_stubs.c` supplies only the
+`C2_ASM_IMPLEMENTED`; `src/asm/c2_asm_stubs.c` supplies only the
 remaining empty bodies.
 
 The first implemented batch is `copy`, `compress`, and `depress` in
-`src/portable/asm/c2_asm_memory.c`. Their byte-oriented implementation avoids
+`src/asm/c2_asm_memory.c`. Their byte-oriented implementation avoids
 unaligned typed accesses and is covered by exact encoded-form and round-trip
 tests. `copy` preserves the assembly routine's contract: callers provide a
 positive byte count in 32-byte units, and the implementation copies whole
@@ -76,14 +77,14 @@ positive byte count in 32-byte units, and the implementation copies whole
 
 The internal-screen point writers, zero-only two-pixel writer, 2/4/6/8-pixel
 block placers, and fast rectangle filler are implemented in
-`src/portable/asm/c2_asm_internal_raster.c`. These retain the original fixed
+`src/asm/c2_asm_internal_raster.c`. These retain the original fixed
 640-pixel stride in the block placers and in `show_internal_2x8`; the other
 point writers and the fast rectangle filler retain their variable
 `screen_width` stride. Tests cover both behaviors directly against framebuffer
 rows. The live inventory is therefore 13 implemented and 74 blank routines.
 
 The seven font/sprite blitters, three fixed-size block loaders, and two mouse
-background copies are implemented in `src/portable/asm/c2_asm_sprite.c`.
+background copies are implemented in `src/asm/c2_asm_sprite.c`.
 Their source transparency, clipping skips, embedded little-endian sprite-table
 offsets, and mixed variable-initial/fixed-640 row addressing have direct tests.
 The `char *` mouse-background ABI is retained, while its arbitrary pixel bytes
@@ -91,7 +92,7 @@ are accessed through the C-defined `unsigned char` representation view. The
 live inventory is therefore 25 implemented and 62 blank routines.
 
 The nine map-pointer diamond writers are implemented in
-`src/portable/asm/c2_asm_diamond_ptr.c`. They are rasterizers despite their
+`src/asm/c2_asm_diamond_ptr.c`. They are rasterizers despite their
 historical `ptr` names: each writes a two-byte color word around a large,
 medium, or small diamond. The portable geometry preserves the original
 top/bottom selection, clipped-side suppression, variable-stride origin, and
@@ -99,7 +100,7 @@ fixed 640-pixel row offsets without unaligned typed stores. The live inventory
 is therefore 34 implemented and 53 blank routines.
 
 The basic small, medium, and large image-diamond placers are implemented in
-`src/portable/asm/c2_asm_diamond_image.c`, including opaque pixels, half
+`src/asm/c2_asm_diamond_image.c`, including opaque pixels, half
 selection, screen-edge source cropping, and the variable-origin/fixed-row
 addressing split. The shared kernel follows the recovered 6/14/30-row symmetric
 geometry; the small clipped pair retains its assembly-specific ignored `part`
@@ -289,9 +290,10 @@ engine starts, after which the legacy worker may continue to perform
 synchronous file operations.
 
 The native host already separates `asset_root` and `user_data_root`.
-`readfile` uses the asset service, while diagnostic screenshots use the user
-file service. The remaining save/history callers will migrate to that service
-as their translation units enter the portable build.
+`readfile` uses the asset service, while preferences, history data, and
+diagnostic screenshots use the user-file service. Save-game enumeration and
+the bulk `savegame` / `loadgame` streams still need to move behind that same
+boundary.
 
 These functions mix serialization or game fixups with raw file descriptors:
 
@@ -325,7 +327,7 @@ physical copies, and `refresh_svga_screen`. The portable `refresh_svga_screen`
 retains the dirty-table and refresh-counter semantics, then publishes the
 indexed framebuffer and palette rather than copying through VESA banks.
 `setup_svga_refresh_data` only precomputes banked-VESA copy metadata and is not
-called by portable startup.
+used by portable framebuffer publication.
 
 Keep `cycle_colours`, `pulse_red`, `set_palette`, and the interpolation logic
 in `fade_to_palette`. Replace `set_vga_palette` and
@@ -346,12 +348,12 @@ DOS-only.
 
 Keep `get_mouse` and `sim_mouse` logically on the engine side. They implement
 replay input, movement, button edges, and legacy global state rather than host
-event collection. Because `lib32.c` is not yet a portable translation unit,
-`c2_port_input.c` currently carries the recovered `get_mouse` state machine
-alongside its portable `read_mouse` snapshot adapter; only the latter reaches
-the host. The host publishes a normalized input snapshot and a keyboard event
-queue. SDL event handlers must not directly mutate `c2inf`, menu decisions, or
-control state. The broader `sim_mouse` keyboard mapping remains to be connected.
+event collection. The full recovered `lib32.c` now supplies both functions;
+`src/platform/common/c2_port_input.c` supplies only the same-symbol hardware
+edge (`init_mouse`, `read_mouse`, `set_mouse`, `mouserange`, and `get_key`).
+The host publishes a normalized input snapshot and a keyboard event queue. SDL
+event handlers must not directly mutate `c2inf`, menu decisions, or control
+state.
 
 ## Timing and waits
 
@@ -431,6 +433,8 @@ Use these forms in preference order:
 4. A verified game behavior difference gets a named `C2_FEAT_*` switch rather
    than a platform or compiler test.
 
-Recovered files stay at their inherited paths. Portable compatibility files
-belong in `src/port/` or `src/platform/`, and backend-specific code belongs
-below `src/platform/<backend>/`.
+Recovered files stay at their inherited paths. CPU-only translations of the
+recovered assembly belong in `src/asm/`. Backend-neutral compatibility code
+belongs in `src/platform/common/`, while backend-specific code belongs below
+`src/platform/<backend>/`. Select those backend sources in the build graph;
+do not accumulate backend compiler tests inside shared engine functions.

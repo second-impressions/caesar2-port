@@ -53,9 +53,8 @@ def test_portable_diamond_renderers_match_compiled_original_assembly(tmp_path):
         ["cc", "-std=c11", "-DC2_FIX_MEDIUM_RIGHT_HAT_OFFSET=0",
          "-DC2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR=0",
          f"-I{ROOT / 'include'}", os.fspath(HARNESS),
-         os.fspath(ROOT / "src" / "portable" / "asm" /
-                   "c2_asm_diamond_image.c"),
-         os.fspath(ROOT / "src" / "portable" / "asm" / "c2_asm_stubs.c"),
+         os.fspath(ROOT / "src" / "asm" / "c2_asm_diamond_image.c"),
+         os.fspath(ROOT / "src" / "asm" / "c2_asm_stubs.c"),
          "-o", os.fspath(portable)],
         tmp_path,
     )
