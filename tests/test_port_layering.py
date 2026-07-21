@@ -98,6 +98,20 @@ def test_language_builds_split_artifacts_without_branching_the_engine():
     assert not offenders, "language build tag escaped into the engine:\n" + "\n".join(offenders)
 
 
+def test_wasm_shell_is_unframed_and_reports_downloads_in_megabytes():
+    cmake = (ROOT / "CMakeLists.txt").read_text()
+    shell = (ROOT / "web" / "caesar2.html").read_text()
+    assert 'LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2.html"' in cmake
+    assert "radial-gradient" not in shell
+    assert "box-shadow" not in shell
+    assert "width: 100vw" in shell
+    assert "height: 100vh" in shell
+    assert "width: min(100vw, 133.333333vh)" in shell
+    assert "height: min(100vh, 75vw)" in shell
+    assert "Number(match[1]) / 1_000_000" in shell
+    assert "MB)…" in shell
+
+
 def test_optional_media_is_an_explicit_host_capability():
     header = HOST_HEADER.read_text()
     backend = (SDL_BACKEND / "c2_sdl_host.c").read_text()

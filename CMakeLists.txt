@@ -231,6 +231,7 @@ target_link_libraries(caesar2 PRIVATE
 if(EMSCRIPTEN)
     set_target_properties(caesar2 PROPERTIES
         OUTPUT_NAME "caesar2-${C2_LANGUAGE}"
+        LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2.html"
         SUFFIX ".html")
     target_compile_options(caesar2 PRIVATE
         -pthread
