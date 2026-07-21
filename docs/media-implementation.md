@@ -2,8 +2,7 @@
 
 Status: accepted architecture, recorded 2026-07-21. SDL3 effects and speech
 and libsmacker movies are implemented. The project-owned libADLMIDI fork now
-exists; its branch API requires a human-authored patch under that project's
-repository policy before music integration can begin.
+implements and tests the numbered-branch API required for music integration.
 
 ## Outcome
 
@@ -130,24 +129,16 @@ dependency choice, however:
 The selected route is the public
 [Second Impressions libADLMIDI fork](https://github.com/second-impressions/libADLMIDI),
 whose git remote is `git@github.com:second-impressions/libADLMIDI.git`. The
-fork's `AGENTS.md` prohibits LLM-authored code contributions, so the required
-library change must be authored and reviewed by a human before the port pins
-it.
+fork commit `7ca7092` closes both gaps in the upstream implementation: the SMF
+marker parser turns the converter's `:XBRN:hh` markers into song-wide branch
+locations, and `adl_jumpToBranch` exposes the existing sequencer jump with a
+bounded branch ID and an explicit success result. A synthetic XMIDI regression
+proves branch discovery, missing and out-of-range failures, and the resulting
+playback-position jump. Direct validation against the examined Caesar II
+assets finds all 54 branches in `BATEST2.XMI` and all 42 branches in
+`CITYPROV.XMI`; the three linear `FORUM` scores correctly expose no branches.
 
-Read-only inspection identified two parts of that change. The sequencer
-already has a private `jumpToBranch(uint32_t, uint16_t)` implementation and a
-global-branch sentinel, but the public C API has no global numbered-branch
-operation. More importantly, the XMIDI converter preserves `RBRN` entries as
-`:XBRN:hh` marker events, while the current SMF marker parser does not convert
-those markers into the sequencer's `ST_BRANCH_LOCATION` events. Adding only a
-C wrapper would therefore expose an operation whose branch table is empty for
-the Caesar II XMIDI path. A human patch needs to close both gaps and test an
-actual converted `RBRN` jump. The desired C contract is one global branch ID
-on an `ADL_MIDIPlayer`, returning success only when that branch exists; this is
-the operation the port will map from `AIL_branch_index`.
-
-Keep the change suitable for upstreaming and consume the fork as an explicit
-dependency after that test passes. The port must load the user's shipped
+Consume that fork as an explicit dependency. The port must load the user's shipped
 `CAESAR.AD`/`CAESAR.OPL` data rather than embedding a derived copy of that
 asset. The fork and port must retain their respective license notices; the
 port's eventual distribution terms must be compatible with libADLMIDI's
@@ -224,6 +215,10 @@ the physical device. Portable common code owns formats and legacy semantics.
    - Load timbres from the user's assets and render into an SDL3 stream.
    - Add deterministic sequencer tests for every `RBRN` entry and an end-to-end
      test that forces two moods and observes different branch selections.
+   - **Branch prerequisite implemented:** fork commit `7ca7092` provides the
+     public jump and restores converted XMIDI branch locations. Both branching
+     Caesar II scores were validated through the public API; SDL3 synthesis and
+     the recovered Miles adapter remain the next implementation slice.
 4. **Cross-target validation**
    - Verify native Linux first, then Windows and macOS.
    - Measure decoder/synth code size and audio scheduling under Emscripten.
