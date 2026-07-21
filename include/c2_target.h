@@ -103,6 +103,10 @@
  * into fixed multi-second delays, so portable builds return when I/O ends. */
 #define C2_FEAT_POST_FILE_BUSY_WAIT (!PLATFORM_PORTABLE)
 
+/* Portable hosts save screenshots in a widely supported lossless format.
+ * Shipped targets retain the recovered indexed LBM writer and filenames. */
+#define C2_FEAT_PNG_SCREENSHOTS PLATFORM_PORTABLE
+
 /* Read-only engine observations and their smoke driver are development
  * instrumentation. CMake selects them only for portable Debug builds. */
 #if defined(C2_DEBUG_BUILD)

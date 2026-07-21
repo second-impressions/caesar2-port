@@ -12,7 +12,60 @@ static void remove_test_files(void)
     SDL_RemovePath(TEST_USER_ROOT "/Alpha.SAV");
     SDL_RemovePath(TEST_USER_ROOT "/beta.sAv");
     SDL_RemovePath(TEST_USER_ROOT "/notes.txt");
+    SDL_RemovePath(TEST_USER_ROOT "/screen.png");
     SDL_RemovePath(TEST_USER_ROOT);
+}
+
+static void test_indexed_screenshot_is_saved_as_png(void)
+{
+    struct c2_host_config config;
+    SDL_Surface *screenshot;
+    unsigned char pixels[4] = { 0, 1, 1, 0 };
+    unsigned char palette[256 * 3];
+    unsigned char signature[8];
+    Uint8 red;
+    Uint8 green;
+    Uint8 blue;
+    Uint8 alpha;
+
+    remove_test_files();
+    memset(&config, 0, sizeof(config));
+    config.title = "Caesar II screenshot test";
+    config.asset_root = ".";
+    config.user_data_root = TEST_USER_ROOT;
+    config.logical_width = 1;
+    config.logical_height = 1;
+    config.window_scale = 1;
+    config.headless = 1;
+    TEST_ASSERT_TRUE(c2_host_init(&config));
+
+    memset(palette, 0, sizeof(palette));
+    palette[3] = 63;
+    palette[5] = 31;
+    TEST_ASSERT_TRUE(c2_host_save_indexed_png("screen.png", pixels,
+                                             2, 2, 2,
+                                             palette, sizeof(palette)));
+    TEST_ASSERT_EQUAL_size_t(sizeof(signature),
+        c2_host_user_file_read("screen.png", signature,
+                               sizeof(signature), 0));
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(
+        ((const unsigned char []) { 0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a }),
+        signature, sizeof(signature));
+
+    screenshot = SDL_LoadPNG(TEST_USER_ROOT "/screen.png");
+    TEST_ASSERT_NOT_NULL(screenshot);
+    TEST_ASSERT_EQUAL_INT(2, screenshot->w);
+    TEST_ASSERT_EQUAL_INT(2, screenshot->h);
+    TEST_ASSERT_TRUE(SDL_ReadSurfacePixel(screenshot, 1, 0,
+                                          &red, &green, &blue, &alpha));
+    TEST_ASSERT_EQUAL_UINT8(255, red);
+    TEST_ASSERT_EQUAL_UINT8(0, green);
+    TEST_ASSERT_EQUAL_UINT8(125, blue);
+    TEST_ASSERT_EQUAL_UINT8(255, alpha);
+    SDL_DestroySurface(screenshot);
+
+    c2_host_shutdown();
+    remove_test_files();
 }
 
 static void test_user_streams_and_dos_style_directory_listing(void)
@@ -78,5 +131,6 @@ int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_user_streams_and_dos_style_directory_listing);
+    RUN_TEST(test_indexed_screenshot_is_saved_as_png);
     return UNITY_END();
 }

@@ -112,6 +112,12 @@ size_t c2_host_user_stream_write(struct c2_host_user_stream *stream,
                                  const void *buffer, size_t size);
 int c2_host_user_stream_close(struct c2_host_user_stream *stream);
 
+int c2_host_save_indexed_png(const char *filename,
+                             const unsigned char *pixels,
+                             int width, int height, int pitch,
+                             const unsigned char *palette,
+                             size_t palette_size);
+
 int c2_host_publish_indexed_frame(const unsigned char *pixels,
                                   int width, int height, int pitch,
                                   const unsigned char *palette,

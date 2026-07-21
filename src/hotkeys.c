@@ -190,6 +190,16 @@ char sim_mouse(void)
             out7 = 1;
             out8 = 1;
             break;
+#if C2_FEAT_PNG_SCREENSHOTS
+        case 0x78: capture_shot("shot1.png"); break;
+        case 0x79: capture_shot("shot2.png"); break;
+        case 0x7a: capture_shot("shot3.png"); break;
+        case 0x7b: capture_shot("shot4.png"); break;
+        case 0x7c: capture_shot("shot5.png"); break;
+        case 0x7d: capture_shot("shot6.png"); break;
+        case 0x7e: capture_shot("shot7.png"); break;
+        case 0x7f: capture_shot("shot8.png"); break;
+#else
         case 0x78: capture_shot("shot1.lbm"); break;
         case 0x79: capture_shot("shot2.lbm"); break;
         case 0x7a: capture_shot("shot3.lbm"); break;
@@ -198,6 +208,7 @@ char sim_mouse(void)
         case 0x7d: capture_shot("shot6.lbm"); break;
         case 0x7e: capture_shot("shot7.lbm"); break;
         case 0x7f: capture_shot("shot8.lbm"); break;
+#endif
         }
         break;
     case 'y':
@@ -278,25 +289,20 @@ char sim_mouse(void)
 // FUNCTION: C2 0x28e13
 void capture_shot(char *filename)
 {
-#if PLATFORM_PORTABLE
-    struct c2_host_user_stream *screenshot_file;
-#else
+#if !C2_FEAT_PNG_SCREENSHOTS
     int screenshot_fd;
 #endif
 
-    go_16m_palette(&current_palette);
-#if PLATFORM_PORTABLE
-    screenshot_file = c2_host_user_stream_open(filename,
-                                               C2_HOST_USER_STREAM_WRITE);
-    if (screenshot_file != NULL) {
-        c2_host_user_stream_write(screenshot_file, &LBM_HEADER1, 0x30);
-        c2_host_user_stream_write(screenshot_file, &current_palette, 0x300);
-        c2_host_user_stream_write(screenshot_file, &LBM_HEADER2, 8);
-        c2_host_user_stream_write(screenshot_file, internal_screen, 0x4b000);
-        c2_host_user_stream_close(screenshot_file);
-        go_64k_palette(&current_palette);
-    }
+#if C2_FEAT_PNG_SCREENSHOTS
+    c2_host_save_indexed_png(filename,
+                             internal_screen,
+                             640,
+                             480,
+                             640,
+                             current_palette,
+                             0x300);
 #else
+    go_16m_palette(&current_palette);
     screenshot_fd = open(filename,
               O_BINARY | O_TRUNC | O_CREAT | O_WRONLY,
               S_IRUSR | S_IWUSR);

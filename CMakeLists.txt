@@ -5,7 +5,7 @@ project(caesar2-port VERSION 0.1.0 LANGUAGES C)
 set(C2_TEST_SAVE_FIXTURE "" CACHE FILEPATH
     "Original 225745-byte Caesar II save used by compatibility tests")
 
-find_package(SDL3 3.2 CONFIG REQUIRED)
+find_package(SDL3 3.4 CONFIG REQUIRED)
 
 option(C2_FIX_MEDIUM_RIGHT_HAT_OFFSET
     "Correct the misplaced pixel pair in the medium right diamond hat" ON)

@@ -100,8 +100,9 @@ shutdown:
 ./build/port/linux-debug/caesar2 --city-smoke-test --asset-root /path/to/CAESAR2
 ```
 
-Pass `--screenshot output.ppm` to write the final headless frame or the current
-interactive startup state as a portable pixmap beneath the user-data root.
+Pass `--screenshot output.png` to write the final headless frame or the current
+interactive startup state as a PNG beneath the user-data root. The recovered
+screenshot hotkeys likewise write `shot1.png` through `shot8.png`.
 
 To register both smoke tests with CTest, configure with
 `-DC2_TEST_DATA_DIR=/path/to/CAESAR2` and run `ctest --preset linux-debug`.

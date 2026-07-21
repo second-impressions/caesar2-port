@@ -19,8 +19,8 @@ The mutable files currently supported by the recovered engine are:
 | `*.sav`, including `lastyear.sav` | manual saves and yearly autosaves |
 | `history.dat` | 200 five-value history rows used by the current game |
 | `caesar2.inf` | 64-byte preferences and career block |
-| `shot1.lbm` through `shot8.lbm` | original screenshot hotkeys |
-| a `--screenshot` filename | portable diagnostic PPM output |
+| `shot1.png` through `shot8.png` | portable screenshot hotkeys |
+| a `--screenshot` filename | portable diagnostic PNG output |
 
 `loadmodel` and the streamed speech database remain asset reads. DOS CD-drive
 probing is not a user-data operation.
@@ -28,10 +28,11 @@ probing is not a user-data operation.
 ## Host boundary
 
 The shared engine keeps its recovered save ordering, post-load repair, history
-ring, dialogs, and screenshot construction. The host boundary provides:
+ring, and dialogs. The host boundary provides:
 
 - whole-file and offset reads/writes for small preference/history operations;
-- sequential user-file streams for bulk saves and original LBM screenshots;
+- sequential user-file streams for bulk saves;
+- lossless PNG encoding from the read-only indexed frame and VGA palette;
 - existence checks in the mutable namespace; and
 - bounded wildcard enumeration for the recovered `char directory[100][13]`
   save picker.
@@ -42,6 +43,10 @@ created as `ROME.SAV` can be read or overwritten as `rome.sav` on Linux.
 Save-list results are sorted case-insensitively and exposed in DOS-style upper
 case for deterministic recovered-UI behavior. Entries which cannot fit the
 original 8.3-style 13-byte row are omitted.
+
+Portable screenshot encoding is implemented by the SDL backend and requires
+SDL 3.4 or newer. The recovered DOS and Windows targets retain their original
+LBM writer and `shotN.lbm` names; only the portable feature branch uses PNG.
 
 The engine worker uses these synchronous operations. A future browser backend
 must mount and synchronize its persistent store before starting that worker;

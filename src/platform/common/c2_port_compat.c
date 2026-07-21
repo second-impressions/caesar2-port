@@ -1,15 +1,8 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "c2_data.h"
 #include "c2_host.h"
 #include "c2_port.h"
-
-static unsigned char expand_vga_channel(unsigned char channel)
-{
-    return (unsigned char)((channel << 2) | (channel >> 4));
-}
 
 static char c2_language_filename[13];
 static char c2_media_filename[13];
@@ -142,39 +135,12 @@ void refresh_svga_screen(void)
 
 int c2_port_save_screenshot(const char *filename)
 {
-    unsigned char *ppm;
-    size_t header_size;
-    size_t ppm_size;
-    int header_length;
-    int i;
-
     if (internal_screen == NULL) return 0;
-    header_length = snprintf(NULL, 0, "P6\n%d %d\n255\n",
-                             C2_SCREEN_WIDTH, C2_SCREEN_HEIGHT);
-    if (header_length < 0) {
-        return 0;
-    }
-    header_size = (size_t)header_length;
-    ppm_size = header_size + C2_SCREEN_PIXELS * 3;
-    ppm = malloc(ppm_size);
-    if (ppm == NULL) {
-        return 0;
-    }
-    snprintf((char *)ppm, header_size + 1, "P6\n%d %d\n255\n",
-             C2_SCREEN_WIDTH, C2_SCREEN_HEIGHT);
-
-    for (i = 0; i < C2_SCREEN_PIXELS; i++) {
-        unsigned int palette_offset;
-        size_t pixel_offset;
-
-        palette_offset = (unsigned int)internal_screen[i] * 3;
-        pixel_offset = header_size + (size_t)i * 3;
-        ppm[pixel_offset] = expand_vga_channel(current_palette[palette_offset]);
-        ppm[pixel_offset + 1] = expand_vga_channel(current_palette[palette_offset + 1]);
-        ppm[pixel_offset + 2] = expand_vga_channel(current_palette[palette_offset + 2]);
-    }
-
-    i = c2_host_user_file_write(filename, ppm, ppm_size);
-    free(ppm);
-    return i;
+    return c2_host_save_indexed_png(filename,
+                                    internal_screen,
+                                    C2_SCREEN_WIDTH,
+                                    C2_SCREEN_HEIGHT,
+                                    C2_SCREEN_WIDTH,
+                                    current_palette,
+                                    C2_PALETTE_BYTES);
 }

@@ -650,6 +650,57 @@ int c2_host_user_stream_close(struct c2_host_user_stream *stream)
     return ok;
 }
 
+int c2_host_save_indexed_png(const char *filename,
+                             const unsigned char *pixels,
+                             int width, int height, int pitch,
+                             const unsigned char *palette,
+                             size_t palette_size)
+{
+    char path[C2_PATH_CAPACITY];
+    SDL_Surface *surface;
+    SDL_Palette *surface_palette;
+    SDL_Color colors[256];
+    int row;
+    int i;
+    int ok;
+
+    if (pixels == NULL || palette == NULL || width <= 0 || height <= 0 ||
+        pitch < width || palette_size != C2_PALETTE_BYTES ||
+        !resolve_user_path(path, sizeof(path), filename, 1)) {
+        return 0;
+    }
+    surface = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_INDEX8);
+    if (surface == NULL) {
+        return 0;
+    }
+    surface_palette = SDL_CreateSurfacePalette(surface);
+    if (surface_palette == NULL) {
+        SDL_DestroySurface(surface);
+        return 0;
+    }
+    for (i = 0; i < 256; i++) {
+        colors[i].r = expand_vga_channel(palette[i * 3]);
+        colors[i].g = expand_vga_channel(palette[i * 3 + 1]);
+        colors[i].b = expand_vga_channel(palette[i * 3 + 2]);
+        colors[i].a = 255;
+    }
+    if (!SDL_SetPaletteColors(surface_palette, colors, 0, 256) ||
+        !SDL_LockSurface(surface)) {
+        SDL_DestroySurface(surface);
+        return 0;
+    }
+    for (row = 0; row < height; row++) {
+        memcpy((unsigned char *)surface->pixels +
+                   (size_t)row * (size_t)surface->pitch,
+               pixels + (size_t)row * (size_t)pitch,
+               (size_t)width);
+    }
+    SDL_UnlockSurface(surface);
+    ok = SDL_SavePNG(surface, path);
+    SDL_DestroySurface(surface);
+    return ok;
+}
+
 int c2_host_publish_indexed_frame(const unsigned char *pixels,
                                   int width, int height, int pitch,
                                   const unsigned char *palette,

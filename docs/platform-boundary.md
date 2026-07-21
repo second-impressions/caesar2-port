@@ -369,6 +369,12 @@ user stream. The two native-pointer-bearing entity arrays are converted by an
 engine-side save codec; save ordering and post-load behavior are not
 duplicated in the platform layer.
 
+For screenshots, the shared engine passes the current indexed framebuffer and
+VGA palette read-only across the host boundary. The SDL backend encodes PNG
+under the user-data root. Shipped targets retain the recovered LBM writer;
+portable code neither mutates the live palette nor reconstructs image formats
+inside the engine.
+
 `test_cd_drive` is different: DOS drive validation is its entire purpose, so
 the portable target should provide a complete body that validates or selects
 the configured asset root.
