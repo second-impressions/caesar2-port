@@ -43,6 +43,10 @@ The native port now follows that dependency direction:
 - `src/platform/common/c2_port_audio.c` and `c2_port_video.c` are explicit
   unavailable capability shims until real audio and Smacker backends are
   selected;
+- `src/platform/common/c2_port_timing.c` reproduces the recovered Watcom/DOS
+  clock's 18.2 Hz, 50-to-60-ms increments while replacing VGA blank waits and
+  CPU-throughput frame timing with separate explicit host deadlines; the three
+  historical timing mechanisms are mapped in `docs/timing.md`;
 - `src/platform/common/c2_port_app.c` only invokes `c2_engine_main`, traps the
   legacy exit boundary, and performs final cleanup;
 - `src/platform/common/c2_port_observation.c` copies selected engine state into
@@ -374,7 +378,9 @@ state.
 ## Timing and waits
 
 `running_delay1`, `colour_cycle_delay1`, `colour_cycle_delay2`, and `timer`
-retain their legacy interfaces but read a monotonic host clock.
+retain their legacy interfaces and read the common timing adapter's modeled
+Watcom/DOS clock. The adapter advances from a monotonic host source but exposes
+the original 18.2 Hz, 50-to-60-ms increments to recovered code.
 
 The following busy waits require portable bodies or narrow portable branches:
 

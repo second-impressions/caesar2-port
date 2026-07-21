@@ -23,6 +23,7 @@ struct c2_sdl_smoke {
     Uint64 release_mouse_at;
     int phase;
     int scan_offset;
+    int confirmation_clicked;
     int mouse_down;
     int mouse_x;
     int mouse_y;

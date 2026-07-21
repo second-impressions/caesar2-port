@@ -12,7 +12,11 @@
 #include <fcntl.h>             /* O_BINARY */
 #include <stdlib.h>            /* free, malloc */
 #include <string.h>            /* memset */
+#if !PLATFORM_PORTABLE
 #include <sys/timeb.h>         /* ftime, struct timeb */
+#else
+#include "c2_port.h"
+#endif
 
 #if PLATFORM_PORTABLE
 #define O_BINARY 0
@@ -1139,7 +1143,9 @@ void go_16m_palette(char *p)
 void fade_to_palette(char *p)
 {
     short i;
+#if !PLATFORM_PORTABLE
     short j;
+#endif
     int waited;
     int wait_limit;
     char changed;
@@ -1150,15 +1156,24 @@ void fade_to_palette(char *p)
     wait_limit = 5;
     for (fade_step = 0; fade_step < 300; fade_step++) {
         changed = 0;
+#if !PLATFORM_PORTABLE
         j = 0;
+#endif
         get_mouse();
         if ((mouse_left_preclick || mouse_right_preclick) && !debar_fade_click) wait_limit = 0;
         waited = 0;
+#if PLATFORM_PORTABLE
+        do {
+            waited += running_delay1();
+            if (waited < wait_limit && !c2_port_wait_dos_clock_tick()) break;
+        } while (waited < wait_limit);
+#else
         while (j < 20000) {
             waited += running_delay1();
             if (waited >= wait_limit) break;
             j++;
         }
+#endif
 
         for (i = 0; i < 256; i++) {
             target = p[i * 3];
@@ -2951,6 +2966,7 @@ void do_delay(int n)
 // engine can read it without re-calling ftime().
 // FUNCTION: C2 0x2742b
 // FUNCTION: C2WIN 0x0044e763
+#if !PLATFORM_PORTABLE
 int running_delay1(void)
 {
     static int running_delay_last;
@@ -3053,6 +3069,7 @@ int timer(int mode)
     }
     return 0;
 }
+#endif /* !PLATFORM_PORTABLE */
 
 #if PLATFORM_DOS
 

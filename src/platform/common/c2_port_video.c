@@ -1,3 +1,5 @@
+#include "c2_port.h"
+
 void start_smacking(char *filename, int left, int top, int mode)
 {
     (void)filename;
@@ -25,6 +27,7 @@ int are_smacking(void)
 
 void wvbl2(void)
 {
+    c2_port_wait_vblank();
 }
 
 void set_vga_256x(void)

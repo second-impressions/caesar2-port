@@ -15,7 +15,9 @@ The durable port design is documented in:
 - [`docs/platform-boundary.md`](docs/platform-boundary.md) — the audited
   function, subsystem, and assembly boundary;
 - [`docs/engine-scheduling.md`](docs/engine-scheduling.md) — worker-thread,
-  frame-publication, input, and browser scheduling; and
+  frame-publication, input, and browser scheduling;
+- [`docs/timing.md`](docs/timing.md) — the three original timing mechanisms and
+  their monotonic, vertical-blank, and frame-paced portable counterparts; and
 - [`docs/legacy-abi.md`](docs/legacy-abi.md) — packing, pointer width,
   signedness, serialization, and compiler semantics.
 

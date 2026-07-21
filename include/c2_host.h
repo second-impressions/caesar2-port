@@ -76,7 +76,9 @@ int c2_host_init(const struct c2_host_config *config);
 void c2_host_shutdown(void);
 
 uint64_t c2_host_ticks_ms(void);
+uint64_t c2_host_wall_time_seconds(void);
 void c2_host_sleep_ms(unsigned int milliseconds);
+void c2_host_wait_until_ms(uint64_t deadline_ms);
 int c2_host_has_capability(enum c2_host_capability capability);
 
 size_t c2_host_asset_read(const char *filename, void *buffer,

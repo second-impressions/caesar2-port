@@ -22,7 +22,10 @@ enum city_smoke_phase {
 
 enum {
     CITY_FORUM_ICON_X = 560,
-    CITY_FORUM_ICON_Y = 251
+    CITY_FORUM_ICON_Y = 251,
+    PROVINCE_SCAN_WIDTH = 40,
+    PROVINCE_SCAN_HEIGHT = 40,
+    PROVINCE_SCAN_STEP = 2
 };
 
 static int observation_is(const struct c2_observation *observation,
@@ -90,17 +93,26 @@ static void drive_province_selection(
 
     if (!observation_is(observation,
                         C2_OBSERVATION_PROVINCE_SELECTION)) return;
+    x = 286 + (smoke->scan_offset %
+               (PROVINCE_SCAN_WIDTH / PROVINCE_SCAN_STEP)) *
+        PROVINCE_SCAN_STEP;
+    y = 223 + (smoke->scan_offset /
+               (PROVINCE_SCAN_WIDTH / PROVINCE_SCAN_STEP)) *
+        PROVINCE_SCAN_STEP;
     if (observation->detail == 13) {
-        click_mouse(smoke, now,
-                    286 + smoke->scan_offset % 40,
-                    223 + smoke->scan_offset / 40,
-                    C2_HOST_MOUSE_LEFT);
+        click_mouse(smoke, now, x, y, C2_HOST_MOUSE_LEFT);
         return;
     }
     if (smoke->mouse_down || now - smoke->last_input < 12) return;
-    smoke->scan_offset = (smoke->scan_offset + 1) % (40 * 40);
-    x = 286 + smoke->scan_offset % 40;
-    y = 223 + smoke->scan_offset / 40;
+    smoke->scan_offset = (smoke->scan_offset + 1) %
+        ((PROVINCE_SCAN_WIDTH / PROVINCE_SCAN_STEP) *
+         (PROVINCE_SCAN_HEIGHT / PROVINCE_SCAN_STEP));
+    x = 286 + (smoke->scan_offset %
+               (PROVINCE_SCAN_WIDTH / PROVINCE_SCAN_STEP)) *
+        PROVINCE_SCAN_STEP;
+    y = 223 + (smoke->scan_offset /
+               (PROVINCE_SCAN_WIDTH / PROVINCE_SCAN_STEP)) *
+        PROVINCE_SCAN_STEP;
     c2_sdl_host_set_headless_mouse(x, y, 0);
     smoke->mouse_x = x;
     smoke->mouse_y = y;
@@ -256,7 +268,10 @@ enum c2_sdl_smoke_result c2_sdl_smoke_iterate(
         drive_province_selection(smoke, now, &observation);
     } else if (observation_is(&observation,
                               C2_OBSERVATION_PROVINCE_CONFIRMATION)) {
-        click_mouse(smoke, now, 410, 330, C2_HOST_MOUSE_LEFT);
+        if (!smoke->confirmation_clicked &&
+            click_mouse(smoke, now, 410, 330, C2_HOST_MOUSE_LEFT)) {
+            smoke->confirmation_clicked = 1;
+        }
     }
 
     if (smoke->kind == C2_SDL_SMOKE_CITY_LOOP) {

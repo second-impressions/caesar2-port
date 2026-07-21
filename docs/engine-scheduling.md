@@ -102,10 +102,15 @@ copying strategy is deliberately simpler at 640x480 and keeps the legacy
 renderer on its stable framebuffer; replace it with an ownership queue only
 if profiling shows the copy to matter.
 
-The mailbox publication itself does not wait for presentation. Frame pacing
-belongs in the engine's host wait/tick boundary, where shutdown and input can
-wake it. That wait replaces the historical cost of banked video copies and
-naturally throttles modal loops that already publish every iteration.
+The mailbox publication itself does not wait for presentation. After
+publication, portable `refresh_svga_screen` waits on a drift-corrected 60 Hz
+engine deadline. The wait lives in the host timing boundary, where shutdown can
+wake it. It replaces the historical throughput cost of banked video copies and
+naturally throttles modal loops that already publish every iteration. Missed
+deadlines are dropped rather than replayed as catch-up frames. This frame policy
+does not drive simulation; recovered millisecond accumulators remain the
+simulation clock. See `docs/timing.md` for the original timing mechanisms and
+their portable mapping.
 
 ### Input publication
 
@@ -163,6 +168,14 @@ Non-presenting waits use explicit primitives:
 - movie-frame deadline/event wait instead of spinning on `SmackWait`; and
 - shutdown-aware waits everywhere so closing the window cannot strand the
   worker.
+
+The implemented palette wait preserves what the recovered 5 ms comparison
+meant against Watcom's coarse DOS clock: advance at the next 18.2 Hz clock
+edge. It removes the 20,000-poll CPU-speed ceiling without interpreting the
+comparison as a literal high-resolution 5 ms delay. The implemented
+vertical-blank substitute uses an independent 60 Hz deadline. Both use the
+same shutdown-aware host condition as frame pacing; neither turns the cheap
+mouse poll into a blocking operation.
 
 `read_mouse` itself must remain a cheap poll. Making every call block would
 stall animation when the pointer is stationary. Blocking belongs in the

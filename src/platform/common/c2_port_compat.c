@@ -130,7 +130,7 @@ void refresh_svga_screen(void)
         }
     }
     publish_frame();
-    c2_host_sleep_ms(1);
+    c2_port_wait_for_frame();
 }
 
 int c2_port_save_screenshot(const char *filename)

@@ -42,6 +42,7 @@ tmp/
 
 # Legacy runtime state still written relative to the process working directory
 /history.dat
+/caesar2.inf
 
 # c2 build caches
 .c2-cache/

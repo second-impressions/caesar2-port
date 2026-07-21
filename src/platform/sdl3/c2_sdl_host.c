@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "c2_host.h"
 #include "c2_sdl_host.h"
@@ -286,9 +287,31 @@ uint64_t c2_host_ticks_ms(void)
     return SDL_GetTicks();
 }
 
+uint64_t c2_host_wall_time_seconds(void)
+{
+    return (uint64_t)time(NULL);
+}
+
 void c2_host_sleep_ms(unsigned int milliseconds)
 {
     SDL_Delay(milliseconds);
+}
+
+void c2_host_wait_until_ms(uint64_t deadline_ms)
+{
+    uint64_t now;
+    uint64_t remaining;
+    Sint32 timeout;
+
+    SDL_LockMutex(c2_event_mutex);
+    while (!c2_shutdown) {
+        now = SDL_GetTicks();
+        if (now >= deadline_ms) break;
+        remaining = deadline_ms - now;
+        timeout = remaining > INT32_MAX ? INT32_MAX : (Sint32)remaining;
+        SDL_WaitConditionTimeout(c2_event_condition, c2_event_mutex, timeout);
+    }
+    SDL_UnlockMutex(c2_event_mutex);
 }
 
 int c2_host_has_capability(enum c2_host_capability capability)

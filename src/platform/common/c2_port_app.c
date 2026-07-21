@@ -42,6 +42,7 @@ enum c2_port_app_result c2_port_app_run(
     if (!c2_port_compat_init()) {
         return C2_PORT_APP_FAILURE;
     }
+    c2_port_timing_reset();
 
     c2_exit_status = 0;
     c2_engine_running = 1;

@@ -93,6 +93,7 @@ add_executable(caesar2
     src/platform/common/c2_port_audio.c
     src/platform/common/c2_port_compat.c
     src/platform/common/c2_port_input.c
+    src/platform/common/c2_port_timing.c
     src/platform/common/c2_port_video.c
     src/platform/sdl3/c2_sdl_main.c
     src/platform/sdl3/c2_sdl_host.c
@@ -183,6 +184,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/platform/common/c2_port_compat.c
         src/platform/common/c2_port_input.c
         src/platform/common/c2_port_observation.c
+        src/platform/common/c2_port_timing.c
         src/platform/common/c2_port_video.c
         PROPERTIES COMPILE_OPTIONS -Wpedantic
     )
@@ -205,6 +207,15 @@ endif()
 include(CTest)
 
 if(BUILD_TESTING)
+    add_executable(c2-port-timing-test
+        tests/c2_port_timing_test.c
+        src/platform/common/c2_port_timing.c)
+    target_compile_features(c2-port-timing-test PRIVATE c_std_11)
+    target_include_directories(c2-port-timing-test PRIVATE
+        include
+        src/platform/common)
+    add_test(NAME port-timing COMMAND c2-port-timing-test)
+
     add_executable(c2-asm-memory-test tests/c2_asm_memory_test.c)
     target_compile_features(c2-asm-memory-test PRIVATE c_std_11)
     target_link_libraries(c2-asm-memory-test PRIVATE c2_asm_portable)
