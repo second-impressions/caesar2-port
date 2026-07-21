@@ -13,7 +13,7 @@ Caesar II has three materially different media problems:
 | --- | --- | --- |
 | Effects and feedback | Simple PCM WAV files | SDL3 audio streams |
 | Speech | Headerless PCM `.raw` files | SDL3 streaming |
-| Movies | Smacker v2 indexed video, palettes, and audio | `libsmacker`, to be verified against FFmpeg |
+| Movies | Smacker v2 indexed video, palettes, and audio | `libsmacker` |
 | Music | Miles XMIDI with callbacks and numbered branches | XMIDI sequencer plus OPL3 synthesis |
 
 The examined English installation has 84 WAV effects, 73 RAW speech files,
@@ -58,7 +58,7 @@ filesystem paths. Speech should be queued with the format used by the recovered
 path: unsigned 8-bit, mono PCM at 22,050 Hz. SDL3 owns conversion to the actual
 device format.
 
-## Smacker movies: prefer libsmacker, retain an FFmpeg escape hatch
+## Smacker movies: use libsmacker
 
 The first runtime implementation should use
 [libsmacker](https://github.com/greg-kennedy/libsmacker). Its API matches this
@@ -83,35 +83,15 @@ Retain `start_smacking`, `continue_smacking`, `stop_smacking`, and
 at most the next due frame and use the common shutdown-aware timing service; it
 must not recreate the original `SmackWait` busy loop.
 
-FFmpeg remains the reference decoder and fallback, not the initial runtime
-dependency. FFmpeg has a Smacker demuxer, `smackvid` and `smackaud` decoders,
-and emits `AV_PIX_FMT_PAL8`, so it also fits the indexed renderer without
-`libswscale`:
-
-- [FFmpeg Smacker demuxer](https://ffmpeg.org/doxygen/trunk/libavformat_2smacker_8c.html)
-- [FFmpeg Smacker codecs](https://ffmpeg.org/doxygen/trunk/libavcodec_2smacker_8c.html)
-- [FFmpeg licensing guidance](https://ffmpeg.org/legal.html)
-
-Before selecting libsmacker permanently, build a private corpus check that
-decodes every available `.smk` with both implementations and compares:
-
-- open success, dimensions, frame count, and frame duration;
-- indexed pixel and palette hashes for every frame;
-- audio-track format, decoded byte count, and PCM hashes; and
-- completion, malformed-input behavior, and decode time.
-
-If libsmacker fails on an official asset variant or materially disagrees with
-FFmpeg, keep the same narrow decoder interface and replace its implementation
-with a minimal FFmpeg build. Such a build needs `libavformat`, `libavcodec`, and
-`libavutil`, the `smk` demuxer, and the `smackvid`/`smackaud` decoders. It does
-not need encoders, networking, programs, filters, `libswscale`, or
-`libswresample`; custom AVIO should read through the asset service. Native
-dynamic linking is straightforward, but size and LGPL relinking obligations
-make this less attractive for the WebAssembly target.
+FFmpeg is deliberately outside the project architecture: it is neither a
+runtime dependency, a fallback, nor a comparison oracle. Compatibility work
+must be driven from the official Caesar II movie corpus and libsmacker itself.
+If libsmacker does not handle an official asset variant, fix the decoder or
+the narrow adapter and add that asset shape to the libsmacker-facing tests.
 
 ## XMIDI music is a sequencer, not file playback
 
-Music must not be handed to SDL_mixer, FFmpeg, or an ordinary linear MIDI
+Music must not be handed to SDL_mixer or an ordinary linear MIDI
 player. The recovered Miles interaction is game-visible:
 
 1. playback reaches an XMIDI trigger;
@@ -136,13 +116,14 @@ choice, however:
 - the port should load the user's shipped `CAESAR.AD`/`CAESAR.OPL` data rather
   than embedding a derived copy of that asset.
 
-There are two acceptable routes:
-
-1. If the port's eventual licensing is compatible with GPLv3, use full
-   libADLMIDI and add or upstream a small public branch-jump API.
-2. Otherwise, use its sequencer and XMIDI behavior as a reference, combine
-   appropriately licensed XMIDI sequencing with an LGPL OPL3 emulator such as
-   Nuked OPL3, and implement loading of the shipped Caesar timbre bank.
+The selected route is a project-owned libADLMIDI fork. Add a small public
+branch-jump API for the numbered `RBRN` operation used by
+`AIL_branch_index`, keep the change suitable for upstreaming, and consume the
+fork as an explicit dependency. The port must load the user's shipped
+`CAESAR.AD`/`CAESAR.OPL` data rather than embedding a derived copy of that
+asset. The fork and port must retain their respective license notices; the
+port's eventual distribution terms must be compatible with libADLMIDI's
+GPLv3-covered complete synthesizer.
 
 FluidSynth may later be offered as an optional General MIDI backend. It should
 not be the default because it requires a separate SoundFont and would not
@@ -166,7 +147,7 @@ Portable media adapters
   recovered voice model, XMIDI sequencing, Smacker frame scheduling
         |
 Codec and synthesis components
-  WAV/RAW PCM        XMIDI + OPL3        libsmacker or FFmpeg
+  WAV/RAW PCM        XMIDI + OPL3        libsmacker
         |
 Platform backend
   SDL3 audio device and existing indexed-frame publication
@@ -187,11 +168,14 @@ the physical device. Portable common code owns formats and legacy semantics.
    - Add the decoder interface and libsmacker adapter.
    - Implement full-screen and embedded movie placement, palette changes,
      audio, timing, input skip, and clean stop.
-   - Run the libsmacker-versus-FFmpeg private corpus comparison.
+   - Exercise every available official movie through libsmacker and record
+     open, dimensions, frame count, frame timing, palette, audio, completion,
+     and malformed-input behavior.
    - Add semantic end-to-end tests for intro completion/skip and an embedded
      message movie.
 3. **Music**
-   - Resolve the port's dependency-license policy.
+   - Create the project-owned libADLMIDI fork and add the external numbered
+     branch API before integrating music into the port.
    - Prove trigger notification and external branch selection on both branching
      XMIDI files before choosing the final synth packaging.
    - Load timbres from the user's assets and render into an SDL3 stream.
