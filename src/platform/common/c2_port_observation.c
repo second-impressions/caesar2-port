@@ -20,6 +20,9 @@ void c2_observe(enum c2_observation_point point, int detail)
     observation.in_forum = in_the_forum;
     observation.map_x = pm_x;
     observation.map_y = pm_y;
+    observation.sequences_running = sequences_running;
+    observation.tune_branch = tune_branch;
+    observation.tune_branch_count = tune_branch_count;
     memcpy(observation.player_name, c2inf.player_name,
            sizeof(observation.player_name));
     observation.player_name[sizeof(observation.player_name) - 1] = '\0';

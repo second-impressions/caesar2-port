@@ -577,7 +577,8 @@ void c2_host_wait_until_ms(uint64_t deadline_ms)
 
 int c2_host_has_capability(enum c2_host_capability capability)
 {
-    return capability == C2_HOST_CAPABILITY_VIDEO;
+    return capability == C2_HOST_CAPABILITY_MUSIC ||
+           capability == C2_HOST_CAPABILITY_VIDEO;
 }
 
 size_t c2_host_asset_read(const char *filename, void *buffer,
@@ -961,6 +962,9 @@ void c2_host_publish_observation(const struct c2_observation *observation)
     c2_observation.in_forum = observation->in_forum;
     c2_observation.map_x = observation->map_x;
     c2_observation.map_y = observation->map_y;
+    c2_observation.sequences_running = observation->sequences_running;
+    c2_observation.tune_branch = observation->tune_branch;
+    c2_observation.tune_branch_count = observation->tune_branch_count;
     memcpy(c2_observation.player_name, observation->player_name,
            sizeof(c2_observation.player_name));
     memcpy(c2_observation.filename, observation->filename,

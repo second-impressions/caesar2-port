@@ -11,6 +11,7 @@ struct c2_audio_voice {
     SDL_AudioSpec source_spec;
     Uint64 deadline_ms;
     Uint64 pause_started_ms;
+    float gain;
     int paused;
 };
 
@@ -64,7 +65,8 @@ static int queue_pcm(int voice, const SDL_AudioSpec *spec,
         stream = SDL_CreateAudioStream(spec, NULL);
         if (stream == NULL ||
             !SDL_BindAudioStream(c2_audio_device, stream) ||
-            !SDL_SetAudioStreamGain(stream, c2_audio_master_gain)) {
+            !SDL_SetAudioStreamGain(stream, c2_audio_master_gain *
+                                            c2_audio_voices[voice].gain)) {
             SDL_DestroyAudioStream(stream);
             return 0;
         }
@@ -96,8 +98,26 @@ static int queue_pcm(int voice, const SDL_AudioSpec *spec,
 
 int c2_host_audio_init(int voice_count)
 {
-    if (c2_audio_device != 0) return 1;
-    if (voice_count <= 0 || !SDL_InitSubSystem(SDL_INIT_AUDIO)) return 0;
+    struct c2_audio_voice *voices;
+    int voice;
+
+    if (voice_count <= 0) return 0;
+    if (c2_audio_device != 0) {
+        if (voice_count <= c2_audio_voice_count) return 1;
+        voices = realloc(c2_audio_voices,
+                         (size_t)voice_count * sizeof(*voices));
+        if (voices == NULL) return 0;
+        c2_audio_voices = voices;
+        SDL_memset(c2_audio_voices + c2_audio_voice_count, 0,
+                   (size_t)(voice_count - c2_audio_voice_count) *
+                       sizeof(*c2_audio_voices));
+        for (voice = c2_audio_voice_count; voice < voice_count; voice++) {
+            c2_audio_voices[voice].gain = 1.0f;
+        }
+        c2_audio_voice_count = voice_count;
+        return 1;
+    }
+    if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) return 0;
 
     c2_audio_device = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
                                           NULL);
@@ -114,6 +134,9 @@ int c2_host_audio_init(int voice_count)
         return 0;
     }
     c2_audio_voice_count = voice_count;
+    for (voice = 0; voice < voice_count; voice++) {
+        c2_audio_voices[voice].gain = 1.0f;
+    }
     if (!SDL_ResumeAudioDevice(c2_audio_device)) {
         c2_host_audio_shutdown();
         return 0;
@@ -198,6 +221,19 @@ int c2_host_audio_voice_playing(int voice)
     return 0;
 }
 
+unsigned int c2_host_audio_voice_queued_ms(int voice)
+{
+    Uint64 now;
+    Uint64 deadline;
+
+    if (!valid_voice(voice) || c2_audio_voices[voice].stream == NULL) return 0;
+    now = SDL_GetTicks();
+    deadline = c2_audio_voices[voice].deadline_ms;
+    if (deadline <= now) return 0;
+    if (deadline - now > UINT_MAX) return UINT_MAX;
+    return (unsigned int)(deadline - now);
+}
+
 void c2_host_audio_stop_voice(int voice)
 {
     destroy_voice(voice);
@@ -230,6 +266,17 @@ void c2_host_audio_resume_voice(int voice)
     }
 }
 
+void c2_host_audio_set_voice_gain(int voice, float gain)
+{
+    if (!valid_voice(voice)) return;
+    if (gain < 0.0f) gain = 0.0f;
+    c2_audio_voices[voice].gain = gain;
+    if (c2_audio_voices[voice].stream != NULL) {
+        SDL_SetAudioStreamGain(c2_audio_voices[voice].stream,
+                               gain * c2_audio_master_gain);
+    }
+}
+
 void c2_host_audio_set_master_gain(float gain)
 {
     int voice;
@@ -238,7 +285,8 @@ void c2_host_audio_set_master_gain(float gain)
     c2_audio_master_gain = gain;
     for (voice = 0; voice < c2_audio_voice_count; voice++) {
         if (c2_audio_voices[voice].stream != NULL) {
-            SDL_SetAudioStreamGain(c2_audio_voices[voice].stream, gain);
+            SDL_SetAudioStreamGain(c2_audio_voices[voice].stream,
+                                   gain * c2_audio_voices[voice].gain);
         }
     }
 }

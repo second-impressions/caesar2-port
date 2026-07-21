@@ -18,7 +18,7 @@ The durable port design is documented in:
   frame-publication, input, and browser scheduling;
 - [`docs/timing.md`](docs/timing.md) — the three original timing mechanisms and
   their monotonic, vertical-blank, and frame-paced portable counterparts;
-- [`docs/media-implementation.md`](docs/media-implementation.md) — the planned
+- [`docs/media-implementation.md`](docs/media-implementation.md) — the
   SDL3 PCM, Smacker decoding, and branch-aware XMIDI/OPL3 media stack; and
 - [`docs/legacy-abi.md`](docs/legacy-abi.md) — packing, pointer width,
   signedness, serialization, and compiler semantics.
@@ -43,7 +43,9 @@ or replacement screens.
 WAV effects and RAW speech use SDL3 audio streams. `INTRO.SMK`, embedded
 message movies, and the VGA-era cinematics are decoded by the pinned Second
 Impressions libsmacker fork and run through the recovered playback loops.
-Branch-aware XMIDI music is the remaining silent media service. Save-file
+Branch-aware XMIDI music is sequenced and synthesized by the pinned Second
+Impressions libADLMIDI fork, with the recovered mood and branch policy still
+in control. Save-file
 enumeration, original-format save/load streams, preferences, history,
 autosaves, and screenshots use the portable user-data service described in
 [docs/user-data.md](docs/user-data.md).
@@ -53,8 +55,9 @@ code initializes it and enters the recovered city game loop.
 
 The recovered startup flow runs on an engine worker. The SDL main thread owns
 events and presentation, communicating through the backend-neutral
-`c2_host_*` API. Music remains an explicit unavailable host capability; no
-placeholder decoder or false-success stub is linked.
+`c2_host_*` API. The engine thread pumps music into private SDL streams, so
+XMIDI triggers and their resulting branch decisions never mutate recovered
+state from an audio callback.
 
 Original game data is required and is never committed.  From the Nix
 development shell:

@@ -39,6 +39,9 @@ struct c2_observation {
     int in_forum;
     int map_x;
     int map_y;
+    int sequences_running;
+    int tune_branch;
+    int tune_branch_count;
     char player_name[26];
     char filename[13];
 };

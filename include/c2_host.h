@@ -127,9 +127,11 @@ int c2_host_audio_queue_pcm(int voice, const void *data, size_t size,
                             int sample_rate, int channels, int bit_depth,
                             int final_chunk);
 int c2_host_audio_voice_playing(int voice);
+unsigned int c2_host_audio_voice_queued_ms(int voice);
 void c2_host_audio_stop_voice(int voice);
 void c2_host_audio_pause_voice(int voice);
 void c2_host_audio_resume_voice(int voice);
+void c2_host_audio_set_voice_gain(int voice, float gain);
 void c2_host_audio_set_master_gain(float gain);
 
 size_t c2_host_asset_read(const char *filename, void *buffer,

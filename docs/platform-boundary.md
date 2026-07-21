@@ -505,12 +505,17 @@ shared SDL device and every effect with it.
 
 XMI music is not merely file playback. Miles invokes `mood_modfication` at a
 sequence marker; the engine calculates a new mood and requests a numbered
-branch. The portable music service therefore needs marker callbacks and a
-branch operation in addition to open, play, volume, and stop.
+branch. The common adapter implements that recovered Miles surface with the
+pinned Second Impressions libADLMIDI fork. It owns the two private sequencer
+handles, loads shipped Miles timbres, pumps synthesized PCM from `continue_db`,
+and translates `AIL_branch_index` into the fork's bounded numbered jump. SDL3
+owns only the device streams, queued-duration observation, and gain.
 
-Music remains intentionally unavailable in the current port. The host reports
-that fact through `C2_HOST_CAPABILITY_MUSIC`; callers must skip optional music
-rather than link a placeholder decoder or pretend playback succeeded.
+The SDL3 host reports `C2_HOST_CAPABILITY_MUSIC` only now that this complete
+path is functional. Trigger callbacks run synchronously in the engine pump, so
+`mood_modfication` and all recovered state remain confined to the engine
+thread. Other backends must continue to report the capability unavailable
+until they implement equivalent sequencing, synthesis, and callback behavior.
 
 ## Movie services
 

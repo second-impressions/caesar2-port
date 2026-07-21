@@ -25,6 +25,10 @@
 #define C2_FIX_PLAYER_NAME_PADDING 1
 #endif
 
+#ifndef C2_FIX_LARGE_XMI_ASSETS
+#define C2_FIX_LARGE_XMI_ASSETS 1
+#endif
+
 #if C2_FIX_MEDIUM_RIGHT_HAT_OFFSET != 0 && \
     C2_FIX_MEDIUM_RIGHT_HAT_OFFSET != 1
 #error "C2_FIX_MEDIUM_RIGHT_HAT_OFFSET must be 0 or 1"
@@ -48,6 +52,10 @@
 #if C2_FIX_PLAYER_NAME_PADDING != 0 && \
     C2_FIX_PLAYER_NAME_PADDING != 1
 #error "C2_FIX_PLAYER_NAME_PADDING must be 0 or 1"
+#endif
+
+#if C2_FIX_LARGE_XMI_ASSETS != 0 && C2_FIX_LARGE_XMI_ASSETS != 1
+#error "C2_FIX_LARGE_XMI_ASSETS must be 0 or 1"
 #endif
 
 void c2_fix_help_text(char *text, int length);

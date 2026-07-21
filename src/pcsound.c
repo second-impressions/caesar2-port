@@ -34,7 +34,7 @@ int tune2;
 int dig_status;
 char positive_buffer[532];
 int samples_running;
-unsigned char tune_buffer[27500];
+unsigned char tune_buffer[C2_TUNE_BUFFER_SIZE];
 int db_handle;
 int db_playing;
 char *db_file;
@@ -448,7 +448,7 @@ void play_tune(char *filename, int loop_count)
     if (c2inf.tunes_on == 0) return;
     if (sequences_running == 0) return;
     if (*filename == 0) return;
-    if (readfile(filename, tune_buffer, 0x6b6c, 0) == 0) return;
+    if (readfile(filename, tune_buffer, C2_TUNE_BUFFER_SIZE, 0) == 0) return;
     start_tune(tune_buffer, 0, loop_count);
 }
 

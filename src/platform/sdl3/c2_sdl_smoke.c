@@ -574,8 +574,13 @@ static enum c2_sdl_smoke_result drive_city(
         }
         break;
     case CITY_SMOKE_DONE:
-        printf("recovered city-loop smoke completed\n");
-        return C2_SDL_SMOKE_SUCCESS;
+        if (observation->sequences_running &&
+            observation->tune_branch_count > 0) {
+            printf("recovered city-loop smoke completed with music branch %d\n",
+                   observation->tune_branch);
+            return C2_SDL_SMOKE_SUCCESS;
+        }
+        break;
     }
     return C2_SDL_SMOKE_RUNNING;
 }
@@ -602,10 +607,13 @@ enum c2_sdl_smoke_result c2_sdl_smoke_iterate(
              ? SAVE_LOAD_SMOKE_TIMEOUT_MS : SMOKE_TIMEOUT_MS)) {
         fprintf(stderr,
                 "smoke test timed out at observation %d detail %d phase %d "
-                "paused %d zoom %d map (%d,%d) file '%s'\n",
+                "paused %d zoom %d map (%d,%d) music %d branch %d count %d "
+                "file '%s'\n",
                 observation.point, observation.detail, smoke->phase,
                 observation.paused, observation.zoom_level,
                 observation.map_x, observation.map_y,
+                observation.sequences_running, observation.tune_branch,
+                observation.tune_branch_count,
                 observation.filename);
         return C2_SDL_SMOKE_FAILURE;
     }

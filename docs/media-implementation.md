@@ -1,8 +1,8 @@
 # Audio and movie implementation decision record
 
-Status: accepted architecture, recorded 2026-07-21. SDL3 effects and speech
-and libsmacker movies are implemented. The project-owned libADLMIDI fork now
-implements and tests the numbered-branch API required for music integration.
+Status: accepted architecture, recorded 2026-07-21. SDL3 effects and speech,
+libsmacker movies, and branch-aware libADLMIDI music are implemented on the
+native SDL3 target.
 
 ## Outcome
 
@@ -138,23 +138,34 @@ playback-position jump. Direct validation against the examined Caesar II
 assets finds all 54 branches in `BATEST2.XMI` and all 42 branches in
 `CITYPROV.XMI`; the three linear `FORUM` scores correctly expose no branches.
 
-Consume that fork as an explicit dependency. The port must load the user's shipped
-`CAESAR.AD`/`CAESAR.OPL` data rather than embedding a derived copy of that
-asset. The fork and port must retain their respective license notices; the
-port's eventual distribution terms must be compatible with libADLMIDI's
-GPLv3-covered complete synthesizer.
+The port pins that fork as an SSH git submodule. It initializes the Caesar II
+embedded bank only to retain libADLMIDI's generated note-lifetime metadata,
+then overlays every instrument from the user's shipped `CAESAR.OPL` or
+`CAESAR.AD` Miles bank. The asset's OPL register values, note offsets, bank
+selection, and percussion mapping therefore remain authoritative. The fork
+and port must retain their respective license notices; the port's eventual
+distribution terms must be compatible with libADLMIDI's GPLv3-covered complete
+synthesizer.
 
 FluidSynth may later be offered as an optional General MIDI backend. It should
 not be the default because it requires a separate SoundFont and would not
 reproduce the shipped DOS OPL timbres.
 
-Music generation should run from an engine-thread pump, initially through the
-already frequent `continue_db` boundary. Keeping a modest amount of PCM queued
-lets SDL3 consume audio asynchronously while trigger callbacks and
-`mood_modfication` remain on the engine thread. No audio callback or decoder
-worker may mutate recovered game state. If a worker is introduced later, it
-must stop at a trigger, publish a notification, and wait for the engine's
-branch decision rather than rendering past the decision point.
+Music generation runs from an engine-thread pump through the already frequent
+`continue_db` boundary. Each of the two recovered sequence handles owns a
+libADLMIDI player and a private SDL voice. The pump keeps approximately 100 ms
+of stereo 44.1-kHz PCM queued; SDL consumes it asynchronously while trigger
+callbacks, `mood_modfication`, volume fades, and numbered branch jumps remain
+on the engine thread. No audio callback or decoder worker mutates recovered
+game state. If a worker is introduced later, it must stop at a trigger,
+publish a notification, and wait for the engine's branch decision rather than
+rendering past the decision point.
+
+One official `CITYPROV.XMI` is 28,678 bytes, larger than the recovered DOS
+27,500-byte tune buffer. Portable builds enable the guarded
+`C2_FIX_LARGE_XMI_ASSETS` compatibility fix and use a 64-KiB buffer; disabling
+the feature retains the legacy limit. This avoids truncating a valid official
+asset without changing the reconstruction or mutating the asset.
 
 ## Intended dependency direction
 
@@ -214,18 +225,20 @@ the physical device. Portable common code owns formats and legacy semantics.
      XMIDI files before choosing the final synth packaging.
    - Load timbres from the user's assets and render into an SDL3 stream.
    - Add deterministic sequencer tests for every `RBRN` entry and an end-to-end
-     test that forces two moods and observes different branch selections.
-   - **Branch prerequisite implemented:** fork commit `7ca7092` provides the
-     public jump and restores converted XMIDI branch locations. Both branching
-     Caesar II scores were validated through the public API; SDL3 synthesis and
-     the recovered Miles adapter remain the next implementation slice.
+     test that observes the recovered callback and branch selection.
+   - **Implemented:** fork commit `7ca7092` provides the public jump and restores
+     converted XMIDI branch locations. The port's Unity test verifies every
+     numbered location in both official branching scores and rejects all
+     absent IDs. The recovered city-flow smoke waits for a real trigger,
+     `mood_modfication`, and branch selection before it passes. The Miles
+     adapter loads the user's timbre bank, uses the AIL volume model and Nuked
+     OPL emulator, and queues synthesis through the SDL3 audio boundary.
 4. **Cross-target validation**
    - Verify native Linux first, then Windows and macOS.
    - Measure decoder/synth code size and audio scheduling under Emscripten.
    - Keep audio unavailable through the existing capability contract on a
      target until its device and sequencing behavior are actually functional.
 
-This order makes effects and speech available without constraining either
-decoder choice, restores the visible movie paths next, and leaves the
-branch-sensitive music work until its licensing and API requirements have been
-explicitly resolved.
+The three native-Linux media slices now follow this dependency order. Remaining
+media work is cross-target validation, especially browser scheduling and size,
+plus broader audible/behavioral coverage of battle mood changes.

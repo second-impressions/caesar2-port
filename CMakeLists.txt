@@ -1,11 +1,27 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(caesar2-port VERSION 0.1.0 LANGUAGES C)
+project(caesar2-port VERSION 0.1.0 LANGUAGES C CXX)
 
 set(C2_TEST_SAVE_FIXTURE "" CACHE FILEPATH
     "Original 225745-byte Caesar II save used by compatibility tests")
 
 find_package(SDL3 3.4 CONFIG REQUIRED)
+
+set(libADLMIDI_STATIC ON CACHE BOOL "" FORCE)
+set(libADLMIDI_SHARED OFF CACHE BOOL "" FORCE)
+set(WITH_MIDI_SEQUENCER ON CACHE BOOL "" FORCE)
+set(WITH_EMBEDDED_BANKS ON CACHE BOOL "" FORCE)
+set(WITH_XMI_SUPPORT ON CACHE BOOL "" FORCE)
+set(USE_DOSBOX_EMULATOR OFF CACHE BOOL "" FORCE)
+set(USE_NUKED_EMULATOR ON CACHE BOOL "" FORCE)
+set(USE_OPAL_EMULATOR OFF CACHE BOOL "" FORCE)
+set(USE_JAVA_EMULATOR OFF CACHE BOOL "" FORCE)
+set(USE_ESFMU_EMULATOR OFF CACHE BOOL "" FORCE)
+set(USE_MAME_EMULATOR OFF CACHE BOOL "" FORCE)
+set(USE_YMFM_EMULATOR OFF CACHE BOOL "" FORCE)
+set(WITH_MIDIPLAY OFF CACHE BOOL "" FORCE)
+set(WITH_UNIT_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory(third_party/libADLMIDI EXCLUDE_FROM_ALL)
 
 add_library(c2_libsmacker STATIC third_party/libsmacker/smacker.c)
 target_compile_features(c2_libsmacker PRIVATE c_std_11)
@@ -21,6 +37,8 @@ option(C2_FIX_HELP_SMART_PUNCTUATION
     "Repair Windows smart punctuation embedded in help text" ON)
 option(C2_FIX_PLAYER_NAME_PADDING
     "Trim fixed-width trailing spaces before editing player names" ON)
+option(C2_FIX_LARGE_XMI_ASSETS
+    "Accept official XMIDI assets larger than the legacy tune buffer" ON)
 option(C2_ENABLE_TEXT_ASSET_COMPAT
     "Adapt versioned engine UI to the structure of the loaded text asset" ON)
 option(C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER
@@ -58,6 +76,11 @@ if(C2_FIX_PLAYER_NAME_PADDING)
     add_compile_definitions(C2_FIX_PLAYER_NAME_PADDING=1)
 else()
     add_compile_definitions(C2_FIX_PLAYER_NAME_PADDING=0)
+endif()
+if(C2_FIX_LARGE_XMI_ASSETS)
+    add_compile_definitions(C2_FIX_LARGE_XMI_ASSETS=1)
+else()
+    add_compile_definitions(C2_FIX_LARGE_XMI_ASSETS=0)
 endif()
 if(C2_ENABLE_TEXT_ASSET_COMPAT)
     add_compile_definitions(C2_FEAT_TEXT_ASSET_COMPAT=1)
@@ -170,6 +193,7 @@ target_include_directories(caesar2 PRIVATE
 target_link_libraries(caesar2 PRIVATE
     c2_asm_portable
     c2_libsmacker
+    ADLMIDI
     SDL3::SDL3)
 
 if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
@@ -355,6 +379,15 @@ if(BUILD_TESTING)
             ENVIRONMENT "C2_TEST_DATA_DIR=${C2_TEST_DATA_DIR}")
     endif()
 
+    add_executable(c2-adlmidi-test tests/c2_adlmidi_test.c)
+    target_compile_features(c2-adlmidi-test PRIVATE c_std_11)
+    target_link_libraries(c2-adlmidi-test PRIVATE ADLMIDI)
+    add_test(NAME adlmidi-branches COMMAND c2-adlmidi-test)
+    if(C2_TEST_DATA_DIR)
+        set_tests_properties(adlmidi-branches PROPERTIES
+            ENVIRONMENT "C2_TEST_DATA_DIR=${C2_TEST_DATA_DIR}")
+    endif()
+
     add_executable(c2-asm-memory-test tests/c2_asm_memory_test.c)
     target_compile_features(c2-asm-memory-test PRIVATE c_std_11)
     target_link_libraries(c2-asm-memory-test PRIVATE c2_asm_portable)
@@ -392,6 +425,7 @@ if(BUILD_TESTING)
         c2-user-files-test
         c2-sdl-audio-test
         c2-smacker-test
+        c2-adlmidi-test
         c2-asm-memory-test
         c2-asm-internal-raster-test
         c2-asm-sprite-test

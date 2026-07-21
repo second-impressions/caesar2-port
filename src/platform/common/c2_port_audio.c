@@ -1,5 +1,9 @@
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include <adlmidi.h>
 
 #include "ail.h"
 #include "c2_data.h"
@@ -8,8 +12,14 @@
 #include "pcsound.h"
 
 #define C2_SAMPLE_VOICE_COUNT 6
-#define C2_AUDIO_VOICE_COUNT 8
+#define C2_AUDIO_VOICE_COUNT 10
 #define C2_BEEP_VOICE 6
+#define C2_MUSIC_VOICE_FIRST 8
+#define C2_SEQUENCE_COUNT 2
+#define C2_SEQUENCE_BUFFER_SAMPLES 4096
+#define C2_SEQUENCE_QUEUE_TARGET_MS 100
+#define C2_SEQUENCE_DATA_LIMIT C2_TUNE_BUFFER_SIZE
+#define C2_CAESAR_BANK 40
 #define C2_SAMPLE_BUFFER_LIMIT 20000
 
 struct c2_ail_sample {
@@ -19,8 +29,22 @@ struct c2_ail_sample {
     int status;
 };
 
+struct c2_ail_sequence {
+    struct ADL_MIDIPlayer *player;
+    void (*callback)(int);
+    uint64_t fade_started_ms;
+    uint64_t fade_ends_ms;
+    float fade_started_gain;
+    float gain;
+    float target_gain;
+    int handle;
+    int status;
+};
+
 static struct c2_ail_sample c2_samples[C2_SAMPLE_VOICE_COUNT];
+static struct c2_ail_sequence c2_sequences[C2_SEQUENCE_COUNT];
 static int c2_next_sample_handle;
+static int c2_next_sequence_handle;
 static int c2_speech_paused;
 
 void _pos_ret3(void)
@@ -35,19 +59,219 @@ static uint32_t read_u32_le(const unsigned char *bytes)
            ((uint32_t)bytes[3] << 24);
 }
 
+static uint32_t read_u32_be(const unsigned char *bytes)
+{
+    return ((uint32_t)bytes[0] << 24) |
+           ((uint32_t)bytes[1] << 16) |
+           ((uint32_t)bytes[2] << 8) |
+           (uint32_t)bytes[3];
+}
+
 static struct c2_ail_sample *sample_from_handle(int handle)
 {
     if (handle < 1 || handle > C2_SAMPLE_VOICE_COUNT) return NULL;
     return &c2_samples[handle - 1];
 }
 
+static struct c2_ail_sequence *sequence_from_handle(int handle)
+{
+    if (handle < 1 || handle > C2_SEQUENCE_COUNT) return NULL;
+    return &c2_sequences[handle - 1];
+}
+
+static size_t xmi_size(const unsigned char *bytes)
+{
+    size_t xdir_size;
+    size_t cat_offset;
+    size_t cat_size;
+
+    if (bytes == NULL || memcmp(bytes, "FORM", 4) != 0) return 0;
+    xdir_size = (size_t)read_u32_be(bytes + 4);
+    if (xdir_size > C2_SEQUENCE_DATA_LIMIT - 8) return 0;
+    cat_offset = 8 + ((xdir_size + 1) & ~(size_t)1);
+    if (cat_offset > C2_SEQUENCE_DATA_LIMIT - 8 ||
+        memcmp(bytes + cat_offset, "CAT ", 4) != 0) {
+        return 0;
+    }
+    cat_size = (size_t)read_u32_be(bytes + cat_offset + 4);
+    if (cat_size > C2_SEQUENCE_DATA_LIMIT - cat_offset - 8) return 0;
+    return cat_offset + 8 + ((cat_size + 1) & ~(size_t)1);
+}
+
+static int load_miles_bank(struct ADL_MIDIPlayer *player)
+{
+    ADL_Bank bank;
+    ADL_BankId bank_id;
+    ADL_Instrument instrument;
+    unsigned char *data;
+    const unsigned char *entry;
+    const unsigned char *voice;
+    size_t data_size;
+    size_t entry_offset;
+    size_t instrument_offset;
+    unsigned int voice_count;
+    unsigned int voice_index;
+    int loaded;
+    uint16_t instrument_length;
+    signed char note_offset;
+
+    data = c2_port_load_asset("caesar.opl", &data_size);
+    if (data == NULL) data = c2_port_load_asset("caesar.ad", &data_size);
+    if (data == NULL) return 0;
+
+    loaded = 0;
+    for (entry_offset = 0; entry_offset + 6 <= data_size;
+         entry_offset += 6) {
+        entry = data + entry_offset;
+        if (entry[0] == 0xff || entry[1] == 0xff) break;
+        if (entry[0] > 127) goto fail;
+        instrument_offset = (size_t)read_u32_le(entry + 2);
+        if (instrument_offset + 3 > data_size) goto fail;
+        instrument_length = (uint16_t)data[instrument_offset] |
+                            ((uint16_t)data[instrument_offset + 1] << 8);
+        if (instrument_length < 14 ||
+            instrument_offset + instrument_length > data_size) {
+            goto fail;
+        }
+        voice_count = (instrument_length - 3) / 11;
+        if (voice_count == 0 || voice_count > 2) goto fail;
+
+        bank_id.percussive = entry[1] == 0x7f;
+        bank_id.msb = bank_id.percussive ? 0 : entry[1] >> 7;
+        bank_id.lsb = bank_id.percussive ? 0 : entry[1] & 0x7f;
+        if (adl_getBank(player, &bank_id, ADLMIDI_Bank_Create, &bank) < 0 ||
+            adl_getInstrument(player, &bank, entry[0], &instrument) < 0) {
+            goto fail;
+        }
+
+        note_offset = (signed char)data[instrument_offset + 2];
+        instrument.version = ADLMIDI_InstrumentVersion;
+        instrument.note_offset1 = bank_id.percussive ? 0 : note_offset;
+        instrument.note_offset2 = 0;
+        instrument.midi_velocity_offset = 0;
+        instrument.second_voice_detune = 0;
+        instrument.percussion_key_number = bank_id.percussive ?
+                                               (unsigned char)note_offset : 0;
+        instrument.inst_flags = voice_count == 2 ? ADLMIDI_Ins_4op :
+                                                   ADLMIDI_Ins_2op;
+        instrument.fb_conn1_C0 = data[instrument_offset + 8] & 0x0f;
+        instrument.fb_conn2_C0 = voice_count == 2 ?
+            (unsigned char)((data[instrument_offset + 8] & 0x0e) |
+                            (data[instrument_offset + 8] >> 7)) : 0;
+        memset(instrument.operators, 0, sizeof(instrument.operators));
+        for (voice_index = 0; voice_index < voice_count; voice_index++) {
+            voice = data + instrument_offset + 3 + voice_index * 11;
+            instrument.operators[voice_index * 2].avekf_20 = voice[0];
+            instrument.operators[voice_index * 2].ksl_l_40 = voice[1];
+            instrument.operators[voice_index * 2].atdec_60 = voice[2];
+            instrument.operators[voice_index * 2].susrel_80 = voice[3];
+            instrument.operators[voice_index * 2].waveform_E0 = voice[4];
+            instrument.operators[voice_index * 2 + 1].avekf_20 = voice[6];
+            instrument.operators[voice_index * 2 + 1].ksl_l_40 = voice[7];
+            instrument.operators[voice_index * 2 + 1].atdec_60 = voice[8];
+            instrument.operators[voice_index * 2 + 1].susrel_80 = voice[9];
+            instrument.operators[voice_index * 2 + 1].waveform_E0 = voice[10];
+        }
+        if (adl_setInstrument(player, &bank, entry[0], &instrument) < 0) {
+            goto fail;
+        }
+        loaded++;
+    }
+
+    free(data);
+    return loaded > 0;
+
+fail:
+    free(data);
+    return 0;
+}
+
+static void sequence_trigger(void *user_data, unsigned trigger, size_t track)
+{
+    struct c2_ail_sequence *sequence;
+
+    (void)trigger;
+    (void)track;
+    sequence = user_data;
+    if (sequence != NULL && sequence->callback != NULL) {
+        sequence->callback(sequence->handle);
+    }
+}
+
+static void update_sequence_gain(struct c2_ail_sequence *sequence)
+{
+    uint64_t now;
+    float progress;
+
+    if (sequence == NULL || sequence->fade_ends_ms == 0) return;
+    now = c2_host_ticks_ms();
+    if (now >= sequence->fade_ends_ms) {
+        sequence->gain = sequence->target_gain;
+        sequence->fade_started_ms = 0;
+        sequence->fade_ends_ms = 0;
+    } else {
+        progress = (float)(now - sequence->fade_started_ms) /
+                   (float)(sequence->fade_ends_ms - sequence->fade_started_ms);
+        sequence->gain = sequence->fade_started_gain +
+                         (sequence->target_gain - sequence->fade_started_gain) *
+                         progress;
+    }
+    c2_host_audio_set_voice_gain(C2_MUSIC_VOICE_FIRST + sequence->handle - 1,
+                                 sequence->gain);
+}
+
+static void pump_sequences(void)
+{
+    short pcm[C2_SEQUENCE_BUFFER_SAMPLES];
+    struct c2_ail_sequence *sequence;
+    int generated;
+    int index;
+    int voice;
+
+    for (index = 0; index < C2_SEQUENCE_COUNT; index++) {
+        sequence = &c2_sequences[index];
+        if (sequence->player == NULL || sequence->status != 4) continue;
+        voice = C2_MUSIC_VOICE_FIRST + index;
+        update_sequence_gain(sequence);
+        while (c2_host_audio_voice_queued_ms(voice) <
+               C2_SEQUENCE_QUEUE_TARGET_MS) {
+            generated = adl_play(sequence->player,
+                                 C2_SEQUENCE_BUFFER_SAMPLES, pcm);
+            if (generated <= 0) {
+                sequence->status = 2;
+                break;
+            }
+            if (!c2_host_audio_queue_pcm(voice, pcm,
+                    (size_t)generated * sizeof(*pcm), 44100, 2, 16,
+                    adl_atEnd(sequence->player))) {
+                sequence->status = 2;
+                break;
+            }
+            if (adl_atEnd(sequence->player)) {
+                sequence->status = 2;
+                break;
+            }
+        }
+    }
+}
+
 void AIL_shutdown(void)
 {
+    int index;
+
+    for (index = 0; index < C2_SEQUENCE_COUNT; index++) {
+        if (c2_sequences[index].player != NULL) {
+            adl_close(c2_sequences[index].player);
+        }
+    }
+    memset(c2_sequences, 0, sizeof(c2_sequences));
+    c2_next_sequence_handle = 0;
     c2_host_audio_shutdown();
 }
 
 int AIL_startup(void)
 {
+    c2_next_sequence_handle = 0;
     return 1;
 }
 
@@ -220,49 +444,151 @@ void AIL_set_GTL_filename_prefix(char *prefix)
 
 int AIL_install_MDI_INI(int *mdi_handle_out)
 {
-    (void)mdi_handle_out;
-    c2inf.tunes_on = 0;
-    return 1;
+    if (!c2_host_audio_init(C2_AUDIO_VOICE_COUNT)) {
+        c2inf.tunes_on = 0;
+        return 1;
+    }
+    if (mdi_handle_out != NULL) *mdi_handle_out = 1;
+    return 0;
 }
 
 int AIL_allocate_sequence_handle(int mdi_handle)
 {
+    struct c2_ail_sequence *sequence;
+
     (void)mdi_handle;
-    return 0;
+    if (c2_next_sequence_handle >= C2_SEQUENCE_COUNT) return 0;
+    sequence = &c2_sequences[c2_next_sequence_handle];
+    memset(sequence, 0, sizeof(*sequence));
+    sequence->player = adl_init(44100);
+    if (sequence->player == NULL) {
+        fprintf(stderr, "could not initialize libADLMIDI: %s\n",
+                adl_errorString());
+        return 0;
+    }
+    if (adl_setBank(sequence->player, C2_CAESAR_BANK) < 0 ||
+        adl_setNumChips(sequence->player, 1) < 0 ||
+        !load_miles_bank(sequence->player)) {
+        fprintf(stderr, "could not configure libADLMIDI: %s\n",
+                adl_errorInfo(sequence->player));
+        adl_close(sequence->player);
+        sequence->player = NULL;
+        return 0;
+    }
+    adl_setVolumeRangeModel(sequence->player, ADLMIDI_VolumeModel_AIL);
+    adl_setLoopEnabled(sequence->player, 1);
+    c2_next_sequence_handle++;
+    sequence->handle = c2_next_sequence_handle;
+    sequence->gain = 1.0f;
+    sequence->target_gain = 1.0f;
+    sequence->status = 2;
+    return sequence->handle;
 }
 
 int AIL_sequence_status(int handle)
 {
-    (void)handle;
-    return 2;
+    struct c2_ail_sequence *sequence;
+
+    sequence = sequence_from_handle(handle);
+    if (sequence == NULL) return 2;
+    return sequence->status;
 }
 
-void AIL_end_sequence(int handle) { (void)handle; }
-void AIL_stop_sequence(int handle) { (void)handle; }
+void AIL_end_sequence(int handle)
+{
+    struct c2_ail_sequence *sequence;
+
+    sequence = sequence_from_handle(handle);
+    if (sequence == NULL || sequence->player == NULL) return;
+    c2_host_audio_stop_voice(C2_MUSIC_VOICE_FIRST + handle - 1);
+    adl_positionRewind(sequence->player);
+    sequence->status = 2;
+}
+
+void AIL_stop_sequence(int handle)
+{
+    struct c2_ail_sequence *sequence;
+
+    sequence = sequence_from_handle(handle);
+    if (sequence == NULL || sequence->status != 4) return;
+    c2_host_audio_stop_voice(C2_MUSIC_VOICE_FIRST + handle - 1);
+    sequence->status = 8;
+}
+
 void AIL_set_sequence_volume(int handle, int volume, int milliseconds)
 {
-    (void)handle;
-    (void)volume;
-    (void)milliseconds;
+    struct c2_ail_sequence *sequence;
+    uint64_t now;
+
+    sequence = sequence_from_handle(handle);
+    if (sequence == NULL) return;
+    if (volume < 0) volume = 0;
+    if (volume > 127) volume = 127;
+    update_sequence_gain(sequence);
+    sequence->target_gain = (float)volume / 127.0f;
+    if (milliseconds <= 0) {
+        sequence->gain = sequence->target_gain;
+        sequence->fade_started_ms = 0;
+        sequence->fade_ends_ms = 0;
+        c2_host_audio_set_voice_gain(C2_MUSIC_VOICE_FIRST + handle - 1,
+                                     sequence->gain);
+        return;
+    }
+    now = c2_host_ticks_ms();
+    sequence->fade_started_gain = sequence->gain;
+    sequence->fade_started_ms = now;
+    sequence->fade_ends_ms = now + (uint64_t)milliseconds;
 }
 int AIL_init_sequence(int handle, void *bytes, int sequence_num)
 {
-    (void)handle;
-    (void)bytes;
+    struct c2_ail_sequence *sequence;
+    size_t size;
+
     (void)sequence_num;
-    return 0;
+    sequence = sequence_from_handle(handle);
+    size = xmi_size(bytes);
+    if (sequence == NULL || sequence->player == NULL || size == 0) return 0;
+    c2_host_audio_stop_voice(C2_MUSIC_VOICE_FIRST + handle - 1);
+    if (adl_openData(sequence->player, bytes, (unsigned long)size) < 0) return 0;
+    adl_setTriggerHandler(sequence->player, sequence_trigger, sequence);
+    sequence->status = 2;
+    return 1;
 }
-char *AIL_start_sequence(int handle) { (void)handle; return NULL; }
-char *AIL_resume_sequence(int handle) { (void)handle; return NULL; }
+
+char *AIL_start_sequence(int handle)
+{
+    struct c2_ail_sequence *sequence;
+
+    sequence = sequence_from_handle(handle);
+    if (sequence == NULL || sequence->player == NULL) return NULL;
+    sequence->status = 4;
+    pump_sequences();
+    return (char *)sequence;
+}
+
+char *AIL_resume_sequence(int handle)
+{
+    return AIL_start_sequence(handle);
+}
+
 void AIL_register_trigger_callback(int handle, void (*callback)())
 {
-    (void)handle;
-    (void)callback;
+    struct c2_ail_sequence *sequence;
+
+    sequence = sequence_from_handle(handle);
+    if (sequence == NULL) return;
+    sequence->callback = (void (*)(int))callback;
+    if (sequence->player != NULL) {
+        adl_setTriggerHandler(sequence->player, sequence_trigger, sequence);
+    }
 }
 void AIL_branch_index(int handle, int marker)
 {
-    (void)handle;
-    (void)marker;
+    struct c2_ail_sequence *sequence;
+
+    sequence = sequence_from_handle(handle);
+    if (sequence == NULL || sequence->player == NULL || marker < 0) return;
+    adl_jumpToBranch(sequence->player, (unsigned)marker);
 }
 
 void set_db_sound(char *filename)
@@ -287,6 +613,7 @@ void set_db_sound(char *filename)
 
 void continue_db(void)
 {
+    pump_sequences();
     if (db_playing != 0 && !c2_speech_paused &&
         !c2_host_audio_voice_playing(5)) {
         db_playing = 0;

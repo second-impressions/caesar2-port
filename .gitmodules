@@ -1,3 +1,6 @@
 [submodule "third_party/libsmacker"]
 	path = third_party/libsmacker
 	url = git@github.com:second-impressions/libsmacker.git
+[submodule "third_party/libADLMIDI"]
+	path = third_party/libADLMIDI
+	url = git@github.com:second-impressions/libADLMIDI.git
