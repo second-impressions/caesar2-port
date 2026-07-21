@@ -9,11 +9,13 @@
 #include "c2_data.h"
 #include "c2_host.h"
 #include "c2_port.h"
+#include "c2_port_miles_bank.h"
 #include "pcsound.h"
 
 #define C2_SAMPLE_VOICE_COUNT 6
 #define C2_AUDIO_VOICE_COUNT 10
 #define C2_BEEP_VOICE 6
+#define C2_DIGITAL_VOICE_COUNT 8
 #define C2_MUSIC_VOICE_FIRST 8
 #define C2_SEQUENCE_COUNT 2
 #define C2_SEQUENCE_BUFFER_SAMPLES 4096
@@ -100,90 +102,16 @@ static size_t xmi_size(const unsigned char *bytes)
 
 static int load_miles_bank(struct ADL_MIDIPlayer *player)
 {
-    ADL_Bank bank;
-    ADL_BankId bank_id;
-    ADL_Instrument instrument;
     unsigned char *data;
-    const unsigned char *entry;
-    const unsigned char *voice;
     size_t data_size;
-    size_t entry_offset;
-    size_t instrument_offset;
-    unsigned int voice_count;
-    unsigned int voice_index;
-    int loaded;
-    uint16_t instrument_length;
-    signed char note_offset;
+    int result;
 
     data = c2_port_load_asset("caesar.opl", &data_size);
     if (data == NULL) data = c2_port_load_asset("caesar.ad", &data_size);
     if (data == NULL) return 0;
-
-    loaded = 0;
-    for (entry_offset = 0; entry_offset + 6 <= data_size;
-         entry_offset += 6) {
-        entry = data + entry_offset;
-        if (entry[0] == 0xff || entry[1] == 0xff) break;
-        if (entry[0] > 127) goto fail;
-        instrument_offset = (size_t)read_u32_le(entry + 2);
-        if (instrument_offset + 3 > data_size) goto fail;
-        instrument_length = (uint16_t)data[instrument_offset] |
-                            ((uint16_t)data[instrument_offset + 1] << 8);
-        if (instrument_length < 14 ||
-            instrument_offset + instrument_length > data_size) {
-            goto fail;
-        }
-        voice_count = (instrument_length - 3) / 11;
-        if (voice_count == 0 || voice_count > 2) goto fail;
-
-        bank_id.percussive = entry[1] == 0x7f;
-        bank_id.msb = bank_id.percussive ? 0 : entry[1] >> 7;
-        bank_id.lsb = bank_id.percussive ? 0 : entry[1] & 0x7f;
-        if (adl_getBank(player, &bank_id, ADLMIDI_Bank_Create, &bank) < 0 ||
-            adl_getInstrument(player, &bank, entry[0], &instrument) < 0) {
-            goto fail;
-        }
-
-        note_offset = (signed char)data[instrument_offset + 2];
-        instrument.version = ADLMIDI_InstrumentVersion;
-        instrument.note_offset1 = bank_id.percussive ? 0 : note_offset;
-        instrument.note_offset2 = 0;
-        instrument.midi_velocity_offset = 0;
-        instrument.second_voice_detune = 0;
-        instrument.percussion_key_number = bank_id.percussive ?
-                                               (unsigned char)note_offset : 0;
-        instrument.inst_flags = voice_count == 2 ? ADLMIDI_Ins_4op :
-                                                   ADLMIDI_Ins_2op;
-        instrument.fb_conn1_C0 = data[instrument_offset + 8] & 0x0f;
-        instrument.fb_conn2_C0 = voice_count == 2 ?
-            (unsigned char)((data[instrument_offset + 8] & 0x0e) |
-                            (data[instrument_offset + 8] >> 7)) : 0;
-        memset(instrument.operators, 0, sizeof(instrument.operators));
-        for (voice_index = 0; voice_index < voice_count; voice_index++) {
-            voice = data + instrument_offset + 3 + voice_index * 11;
-            instrument.operators[voice_index * 2].avekf_20 = voice[0];
-            instrument.operators[voice_index * 2].ksl_l_40 = voice[1];
-            instrument.operators[voice_index * 2].atdec_60 = voice[2];
-            instrument.operators[voice_index * 2].susrel_80 = voice[3];
-            instrument.operators[voice_index * 2].waveform_E0 = voice[4];
-            instrument.operators[voice_index * 2 + 1].avekf_20 = voice[6];
-            instrument.operators[voice_index * 2 + 1].ksl_l_40 = voice[7];
-            instrument.operators[voice_index * 2 + 1].atdec_60 = voice[8];
-            instrument.operators[voice_index * 2 + 1].susrel_80 = voice[9];
-            instrument.operators[voice_index * 2 + 1].waveform_E0 = voice[10];
-        }
-        if (adl_setInstrument(player, &bank, entry[0], &instrument) < 0) {
-            goto fail;
-        }
-        loaded++;
-    }
-
+    result = c2_port_apply_miles_bank(player, data, data_size);
     free(data);
-    return loaded > 0;
-
-fail:
-    free(data);
-    return 0;
+    return result;
 }
 
 static void sequence_trigger(void *user_data, unsigned trigger, size_t track)
@@ -398,8 +326,12 @@ void AIL_resume_sample(int handle)
 
 void AIL_set_digital_master_volume(int dig_handle, int volume)
 {
+    int voice;
+
     (void)dig_handle;
-    c2_host_audio_set_master_gain((float)volume / 127.0f);
+    for (voice = 0; voice < C2_DIGITAL_VOICE_COUNT; voice++) {
+        c2_host_audio_set_voice_gain(voice, (float)volume / 127.0f);
+    }
 }
 
 void AIL_set_sample_type(int handle, int format, int flags)

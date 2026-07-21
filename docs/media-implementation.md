@@ -147,6 +147,20 @@ and port must retain their respective license notices; the port's eventual
 distribution terms must be compatible with libADLMIDI's GPLv3-covered complete
 synthesizer.
 
+Miles GTL voice records store the modulator's five OPL registers first, then
+the feedback/connection byte, then the carrier's five registers. libADLMIDI's
+public `ADL_Instrument` representation exposes the carrier first. The adapter
+performs that ordering conversion explicitly and its asset test checks known
+2-op and 4-op instruments against the embedded Caesar reference metadata.
+Copying the two blocks in file order reverses the synthesis roles, producing
+quiet, metallic-sounding instruments despite otherwise valid playback.
+
+The recovered digital-sample master volume and sequence volume are independent
+Miles controls. The common adapter applies the former only to effects, speech,
+PC-speaker feedback, and movie audio voices; it applies sequence fades and the
+tune slider only to the two music voices. Neither setting is multiplied into
+the other.
+
 FluidSynth may later be offered as an optional General MIDI backend. It should
 not be the default because it requires a separate SoundFont and would not
 reproduce the shipped DOS OPL timbres.

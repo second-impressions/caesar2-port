@@ -149,6 +149,7 @@ add_executable(caesar2
     src/platform/common/c2_port_compat.c
     src/platform/common/c2_port_input.c
     src/platform/common/c2_port_keymap.c
+    src/platform/common/c2_port_miles_bank.c
     src/platform/common/c2_port_save.c
     src/platform/common/c2_port_save_registry.c
     src/platform/common/c2_port_timing.c
@@ -249,6 +250,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/platform/common/c2_port_compat.c
         src/platform/common/c2_port_input.c
         src/platform/common/c2_port_keymap.c
+        src/platform/common/c2_port_miles_bank.c
         src/platform/common/c2_port_observation.c
         src/platform/common/c2_port_save.c
         src/platform/common/c2_port_save_registry.c
@@ -379,12 +381,15 @@ if(BUILD_TESTING)
             ENVIRONMENT "C2_TEST_DATA_DIR=${C2_TEST_DATA_DIR}")
     endif()
 
-    add_executable(c2-adlmidi-test tests/c2_adlmidi_test.c)
+    add_executable(c2-adlmidi-test
+        tests/c2_adlmidi_test.c
+        src/platform/common/c2_port_miles_bank.c)
     target_compile_features(c2-adlmidi-test PRIVATE c_std_11)
+    target_include_directories(c2-adlmidi-test PRIVATE src/platform/common)
     target_link_libraries(c2-adlmidi-test PRIVATE ADLMIDI)
-    add_test(NAME adlmidi-branches COMMAND c2-adlmidi-test)
+    add_test(NAME adlmidi-assets COMMAND c2-adlmidi-test)
     if(C2_TEST_DATA_DIR)
-        set_tests_properties(adlmidi-branches PROPERTIES
+        set_tests_properties(adlmidi-assets PROPERTIES
             ENVIRONMENT "C2_TEST_DATA_DIR=${C2_TEST_DATA_DIR}")
     endif()
 
