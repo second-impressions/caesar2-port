@@ -126,6 +126,15 @@ the recovered `get_mouse` press/release state machine throughout the game.
 `--smoke-test` generates input in the SDL test adapter only; it does not
 introduce a second game controller.
 
+Smoke-test synchronization is semantic rather than visual. Explicit
+engine-thread checkpoints publish an immutable `c2_observation` snapshot into
+the host boundary. The SDL test adapter can only read the latest snapshot and
+the cumulative reached bitset; it cannot mutate recovered globals. This lets
+tests wait for skill selection, province selection and confirmation, province
+initialization, city frames, messages, and the forum without framebuffer
+signatures or timing the renderer. Observation publication is enabled only for
+observed test runs.
+
 ### Audio and movies
 
 Audio commands carry immutable filenames or decoded buffers, volumes, loop
@@ -220,7 +229,8 @@ sequence.
 Scheduling work should add:
 
 - a headless deterministic worker runner;
-- framebuffer and palette hashes at frame publication;
+- additional semantic observations where new blocking boundaries require
+  deterministic tests;
 - scripted input playback through the host input queue;
 - tests that close the application while blocked in every exceptional wait;
 - ThreadSanitizer coverage for native debug builds; and

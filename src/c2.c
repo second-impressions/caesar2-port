@@ -5,6 +5,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #endif
+#if PLATFORM_PORTABLE
+#include "c2_observation.h"
+#endif
 
 #include "c2_data.h"
 #include "c2_bugfixes.h"
@@ -355,6 +358,9 @@ void main(int argc, char *argv[])
     refresh_zoom_mode(0);
     setup_svga_refresh_data();
     load_inf();
+#if PLATFORM_PORTABLE
+    c2_observe(C2_OBSERVATION_STARTUP, 0);
+#endif
     lead_in_logos();
     do_svga_smacked_anim("intro.smk");
     play_tune("forum1.xmi", 1);
@@ -547,6 +553,10 @@ void new_province(void)
     peace_rating            = 0;
     empire_rating           = 0;
     pax_romanum             = 0;
+
+#if PLATFORM_PORTABLE
+    c2_observe(C2_OBSERVATION_PROVINCE_INITIALIZED, 0);
+#endif
 }
 
 // Resets map, camera, command-window, placement, and cheat state for a game session.

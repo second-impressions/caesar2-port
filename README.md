@@ -29,9 +29,12 @@ build rather than threaded through shared code with compiler-specific tests.
 
 The native executable now enters the recovered `c2.c` program driver and uses
 the original startup, options, province-selection, province-initialization,
-simulation, modal, and UI control flow. All recovered engine translation units,
-including the full `lib32.c`, are compiled. The port directory does not contain
-a second startup state machine, duplicated hitboxes, or replacement screens.
+simulation, modal, and UI control flow. All recovered engine translation units
+needed by the current silent path, including the full `lib32.c`, are compiled.
+The recovered Miles/Smacker translation units remain excluded until their
+engine policy is separated from the unavailable media APIs. The port directory
+does not contain a second startup state machine, duplicated hitboxes, or
+replacement screens.
 
 The original `INTRO.SMK` and other Smacker playback are currently skipped, and
 Miles music and sound calls are silent. Save-file enumeration and name entry
@@ -62,19 +65,31 @@ Mouse interaction, button geometry, modal behavior, and province hit-testing
 all come from the recovered engine. The SDL backend only publishes input
 snapshots and frames.
 
-A display-free smoke test drives test input through the same host boundary,
-reaches the recovered province selector, and reports the final framebuffer
-hash. Province offers are randomized, so the hash is diagnostic rather than a
-fixed golden value:
+Display-free smoke tests drive input through that same host boundary. Their
+synchronization uses a read-only semantic observation stream rather than
+framebuffer signatures or fixed delays. The fast test stops at the recovered
+province selector:
 
 ```bash
 ./build/port/linux-debug/caesar2 --smoke-test --data-dir /path/to/CAESAR2
 ```
 
+The city-loop scenario selects and confirms a province, observes province
+initialization, dismisses recovered message modals, pauses and resumes, pans,
+zooms, opens and closes the recovered forum, and then verifies clean worker
+shutdown:
+
+```bash
+./build/port/linux-debug/caesar2 --city-smoke-test --data-dir /path/to/CAESAR2
+```
+
+Headless framebuffer hashes remain available as diagnostics, but are not test
+oracles.
+
 Pass `--screenshot output.ppm` to write the final headless frame or the current
 interactive startup state as a portable pixmap beneath the user-data root.
 
-To register that smoke test with CTest, configure with
+To register both smoke tests with CTest, configure with
 `-DC2_TEST_DATA_DIR=/path/to/CAESAR2` and run `ctest --preset linux-debug`.
 The `linux-tsan` configure/build/test preset runs the same worker-thread slice
 under Clang ThreadSanitizer. The `linux-asan` preset combines AddressSanitizer

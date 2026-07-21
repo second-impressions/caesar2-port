@@ -3,6 +3,7 @@
 #include <setjmp.h>
 
 #include "c2_host.h"
+#include "c2_observation.h"
 #include "c2_port.h"
 #include "c2_port_app.h"
 
@@ -42,6 +43,7 @@ enum c2_port_app_result c2_port_app_run(
 
     c2_exit_status = 0;
     c2_engine_running = 1;
+    c2_observe(C2_OBSERVATION_ENGINE_STARTED, 0);
     if (setjmp(c2_exit_target) == 0) {
         c2_engine_main(0, NULL);
         result = 0;
@@ -49,12 +51,10 @@ enum c2_port_app_result c2_port_app_run(
         result = c2_exit_status;
     }
     c2_engine_running = 0;
+    c2_observe(C2_OBSERVATION_ENGINE_STOPPED, result);
     if (config->headless) {
         printf("final framebuffer fnv1a64=%016" PRIx64 "\n",
                c2_port_frame_hash());
-    }
-    if (config->smoke_test && result == 0) {
-        printf("recovered province-selection smoke completed\n");
     }
     if (config->screenshot_filename != NULL &&
         !c2_port_save_screenshot(config->screenshot_filename)) {

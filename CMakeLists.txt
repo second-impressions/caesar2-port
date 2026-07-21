@@ -91,9 +91,11 @@ add_executable(caesar2
     src/platform/common/c2_port_audio.c
     src/platform/common/c2_port_compat.c
     src/platform/common/c2_port_input.c
+    src/platform/common/c2_port_observation.c
     src/platform/common/c2_port_video.c
     src/platform/sdl3/c2_sdl_main.c
     src/platform/sdl3/c2_sdl_host.c
+    src/platform/sdl3/c2_sdl_smoke.c
 )
 
 target_compile_features(caesar2 PRIVATE c_std_11)
@@ -160,10 +162,12 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
     set_source_files_properties(
         src/platform/sdl3/c2_sdl_main.c
         src/platform/sdl3/c2_sdl_host.c
+        src/platform/sdl3/c2_sdl_smoke.c
         src/platform/common/c2_port_app.c
         src/platform/common/c2_port_audio.c
         src/platform/common/c2_port_compat.c
         src/platform/common/c2_port_input.c
+        src/platform/common/c2_port_observation.c
         src/platform/common/c2_port_video.c
         PROPERTIES COMPILE_OPTIONS -Wpedantic
     )
@@ -216,13 +220,28 @@ endif()
 
 set(C2_TEST_DATA_DIR "" CACHE PATH "Original Caesar II data directory used by smoke tests")
 if(BUILD_TESTING AND C2_TEST_DATA_DIR)
-    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test-user-data")
+    file(MAKE_DIRECTORY
+        "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/province-smoke"
+        "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/city-smoke"
+    )
     add_test(
         NAME startup-reaches-province-selection
         COMMAND caesar2 --smoke-test --data-dir "${C2_TEST_DATA_DIR}"
-                --user-data-dir "${CMAKE_CURRENT_BINARY_DIR}/test-user-data"
+                --user-data-dir
+                "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/province-smoke"
     )
     set_tests_properties(startup-reaches-province-selection PROPERTIES
         PASS_REGULAR_EXPRESSION "recovered province-selection smoke completed"
+        TIMEOUT 50
+    )
+    add_test(
+        NAME recovered-city-loop-smoke
+        COMMAND caesar2 --city-smoke-test --data-dir "${C2_TEST_DATA_DIR}"
+                --user-data-dir
+                "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/city-smoke"
+    )
+    set_tests_properties(recovered-city-loop-smoke PROPERTIES
+        PASS_REGULAR_EXPRESSION "recovered city-loop smoke completed"
+        TIMEOUT 50
     )
 endif()

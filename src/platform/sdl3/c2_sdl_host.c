@@ -25,6 +25,7 @@ static unsigned char c2_palette[C2_PALETTE_BYTES];
 static unsigned char c2_present_palette[C2_PALETTE_BYTES];
 static struct c2_host_event c2_event_queue[C2_EVENT_QUEUE_CAPACITY];
 static struct c2_host_input c2_input;
+static struct c2_observation c2_observation;
 static char c2_asset_root[C2_PATH_CAPACITY];
 static char c2_user_data_root[C2_PATH_CAPACITY];
 static int c2_frame_width;
@@ -34,6 +35,7 @@ static int c2_frame_dirty;
 static int c2_event_read;
 static int c2_event_count;
 static int c2_shutdown;
+static int c2_observation_enabled;
 
 static int copy_root(char *destination, size_t capacity, const char *root)
 {
@@ -133,6 +135,8 @@ static enum c2_host_key translate_key(SDL_Keycode key)
     if (key == SDLK_LEFT) return C2_HOST_KEY_LEFT;
     if (key == SDLK_RIGHT) return C2_HOST_KEY_RIGHT;
     if (key == SDLK_P) return C2_HOST_KEY_P;
+    if (key == SDLK_F) return C2_HOST_KEY_F;
+    if (key == SDLK_MINUS) return C2_HOST_KEY_MINUS;
     return C2_HOST_KEY_UNKNOWN;
 }
 
@@ -190,7 +194,9 @@ int c2_host_init(const struct c2_host_config *config)
     c2_event_read = 0;
     c2_event_count = 0;
     c2_shutdown = 0;
+    c2_observation_enabled = config->enable_observation;
     memset(&c2_input, 0, sizeof(c2_input));
+    memset(&c2_observation, 0, sizeof(c2_observation));
     c2_input.focused = 1;
     pixel_count = (size_t)c2_frame_width * (size_t)c2_frame_height;
     c2_indexed_frame = calloc(pixel_count, sizeof(*c2_indexed_frame));
@@ -478,6 +484,35 @@ int c2_host_shutdown_requested(void)
     return shutdown;
 }
 
+void c2_host_publish_observation(const struct c2_observation *observation)
+{
+    if (!c2_observation_enabled) return;
+    SDL_LockMutex(c2_event_mutex);
+    c2_observation.sequence++;
+    if (observation->point > C2_OBSERVATION_NONE &&
+        observation->point < 64) {
+        c2_observation.reached |= UINT64_C(1) << observation->point;
+    }
+    c2_observation.point = observation->point;
+    c2_observation.detail = observation->detail;
+    c2_observation.province = observation->province;
+    c2_observation.map_mode = observation->map_mode;
+    c2_observation.zoom_level = observation->zoom_level;
+    c2_observation.paused = observation->paused;
+    c2_observation.peace_mode = observation->peace_mode;
+    c2_observation.in_forum = observation->in_forum;
+    c2_observation.map_x = observation->map_x;
+    c2_observation.map_y = observation->map_y;
+    SDL_UnlockMutex(c2_event_mutex);
+}
+
+void c2_host_observation_snapshot(struct c2_observation *observation)
+{
+    SDL_LockMutex(c2_event_mutex);
+    *observation = c2_observation;
+    SDL_UnlockMutex(c2_event_mutex);
+}
+
 void c2_sdl_host_set_headless_mouse(int x, int y, unsigned int buttons)
 {
     SDL_LockMutex(c2_event_mutex);
@@ -486,6 +521,16 @@ void c2_sdl_host_set_headless_mouse(int x, int y, unsigned int buttons)
     c2_input.mouse_buttons = buttons;
     c2_input.generation++;
     SDL_UnlockMutex(c2_event_mutex);
+}
+
+void c2_sdl_host_push_headless_key(enum c2_host_key key)
+{
+    struct c2_host_event event;
+
+    memset(&event, 0, sizeof(event));
+    event.type = C2_HOST_EVENT_KEY_DOWN;
+    event.key = key;
+    queue_event(&event);
 }
 
 void c2_sdl_host_handle_event(SDL_Event *event)

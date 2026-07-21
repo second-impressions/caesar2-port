@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "c2_observation.h"
+
 enum c2_host_capability {
     C2_HOST_CAPABILITY_MUSIC,
     C2_HOST_CAPABILITY_VIDEO
@@ -23,7 +25,9 @@ enum c2_host_key {
     C2_HOST_KEY_SPACE,
     C2_HOST_KEY_LEFT,
     C2_HOST_KEY_RIGHT,
-    C2_HOST_KEY_P
+    C2_HOST_KEY_P,
+    C2_HOST_KEY_F,
+    C2_HOST_KEY_MINUS
 };
 
 enum c2_host_mouse_button {
@@ -40,6 +44,7 @@ struct c2_host_config {
     int logical_height;
     int window_scale;
     int headless;
+    int enable_observation;
 };
 
 struct c2_host_event {
@@ -88,5 +93,8 @@ int c2_host_wait_event(struct c2_host_event *event,
 void c2_host_input_snapshot(struct c2_host_input *input);
 void c2_host_request_shutdown(void);
 int c2_host_shutdown_requested(void);
+
+void c2_host_publish_observation(const struct c2_observation *observation);
+void c2_host_observation_snapshot(struct c2_observation *observation);
 
 #endif /* C2_HOST_H */

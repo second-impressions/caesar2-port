@@ -45,8 +45,14 @@ The native port now follows that dependency direction:
   selected;
 - `src/platform/common/c2_port_app.c` only invokes `c2_engine_main`, traps the
   legacy exit boundary, and performs final cleanup;
+- `src/platform/common/c2_port_observation.c` copies selected engine state into
+  semantic observations at explicit recovered-code checkpoints; it is a
+  one-way, read-only instrumentation bridge and is disabled outside observed
+  test runs;
 - `src/platform/sdl3/c2_sdl_host.c` implements the host contract; and
-- `src/platform/sdl3/c2_sdl_main.c` is only the SDL lifecycle/thread adapter.
+- `src/platform/sdl3/c2_sdl_main.c` is only the SDL lifecycle/thread adapter,
+  while `c2_sdl_smoke.c` consumes observations and generates ordinary host
+  input for end-to-end tests.
 
 The native target compiles the complete recovered `c2.c` campaign driver and
 `lib32.c`. The former replacement bootstrap, port-side raster slice, and copied
@@ -57,6 +63,13 @@ link the original path.
 backend, that portable layers do not depend back on `c2_sdl_*`, and that the
 SDL callback does not mutate representative legacy globals. Extend this test
 whenever the boundary grows.
+
+The observation contract lives in `include/c2_observation.h`. Recovered code
+publishes lifecycle and modal checkpoints from the engine worker. Each record
+contains a monotonically increasing sequence, a cumulative reached bitset, and
+a small immutable snapshot of relevant game state. The host may copy that
+record, but has no API for writing engine state. Test input remains entirely
+separate and travels through the normal mouse/key publication path.
 
 ## Portable assembly interface scaffold
 

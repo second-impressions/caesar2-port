@@ -66,6 +66,8 @@ void get_key(void)
         else if (event.key == C2_HOST_KEY_LEFT) key_code = 0x4b;
         else if (event.key == C2_HOST_KEY_RIGHT) key_code = 0x4d;
         else if (event.key == C2_HOST_KEY_P) key_ascii = 'p';
+        else if (event.key == C2_HOST_KEY_F) key_ascii = 'f';
+        else if (event.key == C2_HOST_KEY_MINUS) key_ascii = '-';
         else key_ready = 0;
         return;
     }

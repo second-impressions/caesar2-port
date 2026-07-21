@@ -1,5 +1,8 @@
 #include "c2_data.h"
 #include "c2_types.h"
+#if PLATFORM_PORTABLE
+#include "c2_observation.h"
+#endif
 
 int mouse_styles[10] = { 0, 1, 2, 3, 9, 0, 2, 3, 4, 4 };
 
@@ -81,6 +84,10 @@ void main_game_loop(void)
 {
     int simulation_step_count;
     int simulation_step_idx;
+
+#if PLATFORM_PORTABLE
+    c2_observe(C2_OBSERVATION_CITY_LOOP, 0);
+#endif
 
     cycle_count++;
     button_time_flag = running_delay1();
@@ -769,6 +776,9 @@ void exit_game_loop(void)
 // FUNCTION: C2WIN 0x0041108e
 void skill1_game_loop(void)
 {
+#if PLATFORM_PORTABLE
+    c2_observe(C2_OBSERVATION_SKILL_SELECTION, 0);
+#endif
     gloop_start();
     show_buttons(0x50, 0x50, skill1_buttons, 4);
     gloop_end();
@@ -781,6 +791,9 @@ void skill1_game_loop(void)
 // FUNCTION: C2WIN 0x004110c9
 void skill2_game_loop(void)
 {
+#if PLATFORM_PORTABLE
+    c2_observe(C2_OBSERVATION_SKILL_DETAILS, c2inf.peace_mode);
+#endif
     gloop_start();
     if (gen_refresh1) {
         gen_refresh1 = 0;
@@ -806,6 +819,9 @@ void initreg_game_loop(void)
     gloop_start();
     if (out2 == 0) {
         get_region_over();
+#if PLATFORM_PORTABLE
+        c2_observe(C2_OBSERVATION_PROVINCE_SELECTION, region_over);
+#endif
         show_empire_top_slab();
         if (region_over != 0) {
             x_is = 0;
@@ -838,7 +854,7 @@ void initreg_game_loop(void)
     if (decision == 1) {
         out2 = 0x64;
         province_is = region_over - 1;
-        province_difficulty = empire_region_order[region_over + 10];
+        province_difficulty = provincial_difficulty[region_over - 1];
         empire[region_over - 1] = 6;
     }
     reshow_initreg_box();

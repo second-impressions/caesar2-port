@@ -42,6 +42,15 @@ def test_sdl_callback_does_not_mutate_legacy_game_state():
     assert not offenders, f"SDL callback reaches legacy state: {offenders}"
 
 
+def test_smoke_driver_observes_without_reaching_into_legacy_state():
+    smoke = (SDL_BACKEND / "c2_sdl_smoke.c").read_text()
+    forbidden = ("c2inf", "province_is", "pm_x", "pm_y", "internal_screen")
+    offenders = [symbol for symbol in forbidden if symbol in smoke]
+    assert not offenders, f"smoke driver reaches legacy state: {offenders}"
+    assert "c2_host_observation_snapshot" in smoke
+    assert "c2_sdl_host_set_headless_mouse" in smoke
+
+
 def test_optional_media_is_an_explicit_host_capability():
     header = HOST_HEADER.read_text()
     backend = (SDL_BACKEND / "c2_sdl_host.c").read_text()

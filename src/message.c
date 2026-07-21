@@ -2,6 +2,9 @@
 // Queued modal messages, imperial requests, and their message panels.
 #include "c2_data.h"
 #include "c2_types.h"
+#if PLATFORM_PORTABLE
+#include "c2_observation.h"
+#endif
 
 
 extern void put_a_font_string(char *str, int x, int y, unsigned char *font, int color);
@@ -118,6 +121,9 @@ void message(int message_idx, int is_emperor, int message_param) {
     decision = 0;
     if (tutorial_mode == 0 &&
         ((message_idx != 0x56 && message_idx != 0x59) || stolen_denarii > 0)) {
+#if PLATFORM_PORTABLE
+        c2_observe(C2_OBSERVATION_MESSAGE, message_idx);
+#endif
         clear_map_gfx_buffers();
         clear_battle_gfx_buffers();
         clear_keys();
