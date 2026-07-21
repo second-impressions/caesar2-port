@@ -40,6 +40,9 @@ reccmp-build.yml
 tmp/
 *.err
 
+# Legacy runtime state still written relative to the process working directory
+/history.dat
+
 # c2 build caches
 .c2-cache/
 
