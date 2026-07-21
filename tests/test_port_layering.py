@@ -84,6 +84,20 @@ def test_wasm_reuses_the_sdl_host_and_recovered_engine_worker():
     assert "src/platform/wasm" not in cmake
 
 
+def test_language_builds_split_artifacts_without_branching_the_engine():
+    cmake = (ROOT / "CMakeLists.txt").read_text()
+    assert 'set(C2_LANGUAGE "en" CACHE STRING' in cmake
+    assert 'OUTPUT_NAME "caesar2-${C2_LANGUAGE}"' in cmake
+    assert 'c2_require_language_asset("c2.eng")' in cmake
+    assert 'c2_require_language_asset("help.eng")' in cmake
+
+    offenders = []
+    for path in _source_files(SRC):
+        if "C2_LANGUAGE" in path.read_text():
+            offenders.append(str(path.relative_to(ROOT)))
+    assert not offenders, "language build tag escaped into the engine:\n" + "\n".join(offenders)
+
+
 def test_optional_media_is_an_explicit_host_capability():
     header = HOST_HEADER.read_text()
     backend = (SDL_BACKEND / "c2_sdl_host.c").read_text()

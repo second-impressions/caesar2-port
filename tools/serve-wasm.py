@@ -20,18 +20,31 @@ class Caesar2Handler(SimpleHTTPRequestHandler):
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("directory", type=Path)
+    parser.add_argument("--entry")
     parser.add_argument("--bind", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
 
     directory = args.directory.resolve()
-    if not (directory / "caesar2.html").is_file():
-        parser.error(f"{directory} does not contain caesar2.html")
+    if args.entry:
+        entry = directory / args.entry
+    else:
+        entries = sorted(directory.glob("caesar2-*.html"))
+        if not entries and (directory / "caesar2.html").is_file():
+            entries = [directory / "caesar2.html"]
+        if len(entries) != 1:
+            parser.error(
+                f"{directory} must contain one language build; "
+                "use --entry when it contains several"
+            )
+        entry = entries[0]
+    if entry.parent != directory or not entry.is_file():
+        parser.error(f"{entry} is not a build entry point")
 
     handler = partial(Caesar2Handler, directory=str(directory))
     server = ThreadingHTTPServer((args.bind, args.port), handler)
     port = server.server_address[1]
-    print(f"Serving http://{args.bind}:{port}/caesar2.html", flush=True)
+    print(f"Serving http://{args.bind}:{port}/{entry.name}", flush=True)
     server.serve_forever()
 
 

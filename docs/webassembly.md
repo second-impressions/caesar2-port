@@ -34,26 +34,33 @@ git submodule update --init --recursive
 nix develop
 ```
 
-Package an installed Caesar II asset tree and build the release bundle:
+Package one installed Caesar II language release and build its release bundle:
 
 ```bash
 emcmake cmake --preset wasm-release \
+  -B build/port/wasm-release-en \
+  -DC2_LANGUAGE=en \
   -DC2_WASM_ASSET_ROOT=/path/to/CAESAR2
-cmake --build --preset wasm-release
+cmake --build build/port/wasm-release-en
 ```
 
-The output directory contains `caesar2.html`, JavaScript, Wasm, and the
-generated asset data package. Original game assets remain local build inputs
-and are never stored in this repository.
+The output directory contains `caesar2-en.html`, JavaScript, Wasm, and the
+generated English asset data package. Configure `de`, `fr`, and `es` in
+separate build directories with their corresponding complete localized asset
+trees. This keeps localized text, RAW voices, and movies in separate downloads.
+Original game assets remain local build inputs and are never stored in this
+repository. See [localization.md](localization.md).
 
 For assertions, semantic observations, and the recovered province-selection
 smoke test:
 
 ```bash
 emcmake cmake --preset wasm-debug \
+  -B build/port/wasm-debug-en \
+  -DC2_LANGUAGE=en \
   -DC2_WASM_ASSET_ROOT=/path/to/CAESAR2
-cmake --build --preset wasm-debug
-node tools/smoke-wasm.mjs build/port/wasm-debug
+cmake --build build/port/wasm-debug-en
+node tools/smoke-wasm.mjs build/port/wasm-debug-en
 ```
 
 ## Serving and deployment
@@ -63,7 +70,7 @@ sets `Cross-Origin-Opener-Policy: same-origin` and
 `Cross-Origin-Embedder-Policy: require-corp`:
 
 ```bash
-python3 tools/serve-wasm.py build/port/wasm-release
+python3 tools/serve-wasm.py build/port/wasm-release-en
 ```
 
 A production host must serve the same headers for the HTML, JavaScript, Wasm,
@@ -87,8 +94,9 @@ bundles accept `?smoke-test=province` for automated semantic verification.
 
 - This is currently a threaded Wasm product and therefore requires browser
   support for `SharedArrayBuffer` plus the isolation headers above.
-- Original assets are packaged at link time. Streaming or separately hosted
-  asset delivery can be added below the same asset service later.
+- One complete localized asset tree is packaged at link time. Languages are
+  separate artifacts so a browser downloads only its selected text, speech,
+  and media.
 - The native and browser builds share engine, UI, media, save, and SDL host
   implementations. A browser-only replacement screen or control loop would
   violate the platform boundary.

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { spawn } from "node:child_process";
@@ -38,11 +38,18 @@ async function stop(child) {
 }
 
 try {
+  const entries = (await readdir(build)).filter(
+    (name) => /^caesar2-[a-z]{2}\.html$/.test(name)
+  );
+  if (entries.length !== 1) {
+    throw new Error(`${build} must contain exactly one language build`);
+  }
   server = spawn("python3", [
-    `${root}/tools/serve-wasm.py`, build, "--port", "0"
+    `${root}/tools/serve-wasm.py`, build, "--entry", entries[0],
+    "--port", "0"
   ], { stdio: ["ignore", "pipe", "inherit"] });
   const gameUrl = await waitForLine(server.stdout, (line) => {
-    const match = line.match(/Serving (http:\/\/\S+\/caesar2\.html)/);
+    const match = line.match(/Serving (http:\/\/\S+\.html)/);
     return match?.[1];
   });
 

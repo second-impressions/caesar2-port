@@ -4,6 +4,16 @@ project(caesar2-port VERSION 0.1.0 LANGUAGES C CXX)
 
 set(C2_TEST_SAVE_FIXTURE "" CACHE FILEPATH
     "Original 225745-byte Caesar II save used by compatibility tests")
+set(C2_LANGUAGE "en" CACHE STRING
+    "Two-letter language tag for this distribution artifact")
+string(TOLOWER "${C2_LANGUAGE}" C2_LANGUAGE)
+if(NOT C2_LANGUAGE MATCHES "^[a-z][a-z]$")
+    message(FATAL_ERROR
+        "Invalid C2_LANGUAGE '${C2_LANGUAGE}'; use a two-letter tag")
+endif()
+set(C2_LANGUAGE "${C2_LANGUAGE}" CACHE STRING
+    "Two-letter language tag for this distribution artifact" FORCE)
+message(STATUS "Caesar II language build: ${C2_LANGUAGE}")
 
 if(EMSCRIPTEN)
     if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL/CMakeLists.txt")
@@ -219,7 +229,9 @@ target_link_libraries(caesar2 PRIVATE
     SDL3::SDL3)
 
 if(EMSCRIPTEN)
-    set_target_properties(caesar2 PROPERTIES SUFFIX ".html")
+    set_target_properties(caesar2 PROPERTIES
+        OUTPUT_NAME "caesar2-${C2_LANGUAGE}"
+        SUFFIX ".html")
     target_compile_options(caesar2 PRIVATE
         -pthread
         -include "${CMAKE_CURRENT_SOURCE_DIR}/include/c2_wasm_implicit_void.h"
@@ -237,6 +249,27 @@ if(EMSCRIPTEN)
             message(FATAL_ERROR
                 "C2_WASM_ASSET_ROOT is not a directory: ${C2_WASM_ASSET_ROOT}")
         endif()
+        function(c2_require_language_asset filename)
+            file(GLOB root_entries LIST_DIRECTORIES false
+                "${C2_WASM_ASSET_ROOT}/*")
+            string(TOLOWER "${filename}" required_name)
+            set(found FALSE)
+            foreach(entry IN LISTS root_entries)
+                get_filename_component(entry_name "${entry}" NAME)
+                string(TOLOWER "${entry_name}" entry_name)
+                if(entry_name STREQUAL required_name)
+                    set(found TRUE)
+                    break()
+                endif()
+            endforeach()
+            if(NOT found)
+                message(FATAL_ERROR
+                    "The ${C2_LANGUAGE} asset tree is missing ${filename}: "
+                    "${C2_WASM_ASSET_ROOT}")
+            endif()
+        endfunction()
+        c2_require_language_asset("c2.eng")
+        c2_require_language_asset("help.eng")
         target_link_options(caesar2 PRIVATE
             "--preload-file=${C2_WASM_ASSET_ROOT}@/assets")
     else()

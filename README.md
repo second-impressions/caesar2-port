@@ -18,6 +18,8 @@ The durable port design is documented in:
   frame-publication, input, and browser scheduling;
 - [`docs/webassembly.md`](docs/webassembly.md) — browser build, deployment,
   persistence, and Wasm ABI adaptation;
+- [`docs/localization.md`](docs/localization.md) — separate native and browser
+  language builds, localized speech, and asset requirements;
 - [`docs/timing.md`](docs/timing.md) — the three original timing mechanisms and
   their monotonic, vertical-blank, and frame-paced portable counterparts;
 - [`docs/media-implementation.md`](docs/media-implementation.md) — the
@@ -76,6 +78,12 @@ cmake --preset linux-debug
 cmake --build --preset linux-debug
 ./build/port/linux-debug/caesar2 --asset-root /path/to/CAESAR2
 ```
+
+English is the default distribution tag. Pass `-DC2_LANGUAGE=de`, `fr`, or
+another two-letter tag at configure time and use the matching complete
+localized installation. Language packaging, including localized RAW voices,
+is documented in
+[docs/localization.md](docs/localization.md).
 
 For an optimized build, use `cmake --preset linux-release` followed by
 `cmake --build --preset linux-release`. Its native Unity suite is available as
