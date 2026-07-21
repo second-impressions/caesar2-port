@@ -1,6 +1,9 @@
 
 #include "c2_data.h"
 #include "c2_types.h"
+#if C2_FEAT_TEXT_ASSET_COMPAT
+#include "c2_text_compat.h"
+#endif
 
 int history_graph_years[5] = { 10, 20, 50, 100, 200 };
 
@@ -819,15 +822,30 @@ void show_skill1_box(void)
 // FUNCTION: C2WIN 0x0042483c
 void show_skill2_box(void)
 {
+#if C2_FEAT_TEXT_ASSET_COMPAT
+    int has_cancel;
+
+    has_cancel = c2_text_has_new_game_cancel();
+#endif
     cover_mouse_droppings();
     background_screen();
+#if C2_FEAT_TEXT_ASSET_COMPAT
+    show_a_system_window(0x50, 0x50, 0x1e,
+                         has_cancel ? 0x16 : 0x14);
+#else
     show_a_system_window(0x50, 0x50, 0x1e, 0x16);
+#endif
 #if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
 #endif
     font_list(0x2b, 0x10, 0x70, 0x68, font2, 0x10);
     font_list(0x2b, 0x11, 0x6a, 0x156, font1, 0x10);
+#if C2_FEAT_TEXT_ASSET_COMPAT
+    if (has_cancel)
+        font_list(0x2b, 0x12, 0x6a, 0x186, font1, 0x10);
+#else
     font_list(0x2b, 0x12, 0x6a, 0x186, font1, 0x10);
+#endif
     show_skill_level();
     show_peace_level();
     show_name_choice();
@@ -3778,7 +3796,14 @@ void show_region_query_panel(int y)
     } else if (quote_kind == 8) {
         quote = q_gfx - 0x33;
     } else if (quote_kind == 9) {
+#if C2_FEAT_TEXT_ASSET_COMPAT
+        if (q_wh_level <= 0) {
+            if (c2_text_has_late_region_quotes()) quote = 0x1e;
+            else quote = 0xd;
+        }
+#else
         if (q_wh_level <= 0) quote = 0x1e;
+#endif
         else if (q_wh_level < 4) quote = 0xd;
         else if (q_wh_level < 8) quote = 0xe;
         else if (q_wh_level < 0xf) quote = 0xf;
@@ -3809,7 +3834,11 @@ int reg_industry_quote(int x)
 {
     if (q_road == 0)        return 0x19;
     if (q_workhouse == 0)   return 0x1a;
+#if C2_FEAT_TEXT_ASSET_COMPAT
+    if (q_outside && c2_text_has_late_region_quotes()) return 0x1d;
+#else
     if (q_outside)          return 0x1d;
+#endif
     if (q_workhouse <= 1)   return 0x1b;
     return x + 0x11;
 }

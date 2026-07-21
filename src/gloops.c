@@ -1,5 +1,8 @@
 #include "c2_data.h"
 #include "c2_types.h"
+#if C2_FEAT_TEXT_ASSET_COMPAT
+#include "c2_text_compat.h"
+#endif
 #if C2_FEAT_DEBUG_OBSERVATION
 #include "c2_observation.h"
 #endif
@@ -791,8 +794,15 @@ void skill1_game_loop(void)
 // FUNCTION: C2WIN 0x004110c9
 void skill2_game_loop(void)
 {
+#if C2_FEAT_TEXT_ASSET_COMPAT
+    int button_count;
+#endif
+
 #if C2_FEAT_DEBUG_OBSERVATION
     c2_observe(C2_OBSERVATION_SKILL_DETAILS, c2inf.peace_mode);
+#endif
+#if C2_FEAT_TEXT_ASSET_COMPAT
+    button_count = c2_text_has_new_game_cancel() ? 6 : 5;
 #endif
     gloop_start();
     if (gen_refresh1) {
@@ -803,9 +813,17 @@ void skill2_game_loop(void)
         gen_refresh2 = 0;
         show_peace_level();
     }
+#if C2_FEAT_TEXT_ASSET_COMPAT
+    show_buttons(0x50, 0x50, skill2_buttons, button_count);
+#else
     show_buttons(0x50, 0x50, skill2_buttons, 6);
+#endif
     gloop_end();
+#if C2_FEAT_TEXT_ASSET_COMPAT
+    control_buttons(0x50, 0x50, skill2_buttons, button_count);
+#else
     control_buttons(0x50, 0x50, skill2_buttons, 6);
+#endif
 }
 
 // Handles initial province selection on the empire map and records the chosen province and

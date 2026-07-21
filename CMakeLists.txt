@@ -12,6 +12,8 @@ option(C2_FIX_GFX_BUFFER_DOUBLE_FREE
     "Clear released graphics pointers to prevent repeated frees" ON)
 option(C2_FIX_HELP_SMART_PUNCTUATION
     "Repair Windows smart punctuation embedded in help text" ON)
+option(C2_ENABLE_TEXT_ASSET_COMPAT
+    "Adapt versioned engine UI to the structure of the loaded text asset" ON)
 option(C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER
     "Install native fatal-signal diagnostics in POSIX Debug builds" ON)
 
@@ -43,6 +45,11 @@ if(C2_FIX_HELP_SMART_PUNCTUATION)
 else()
     add_compile_definitions(C2_FIX_HELP_SMART_PUNCTUATION=0)
 endif()
+if(C2_ENABLE_TEXT_ASSET_COMPAT)
+    add_compile_definitions(C2_FEAT_TEXT_ASSET_COMPAT=1)
+else()
+    add_compile_definitions(C2_FEAT_TEXT_ASSET_COMPAT=0)
+endif()
 if(C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR)
     target_compile_definitions(c2_asm_portable PUBLIC
         C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR=1)
@@ -65,6 +72,7 @@ add_executable(caesar2
     src/bbarian.c
     src/c2.c
     src/c2_bugfixes.c
+    src/c2_text_compat.c
     src/c2_vars.c
     src/census.c
     src/common.c
@@ -221,6 +229,13 @@ if(BUILD_TESTING)
     target_compile_features(c2-bugfixes-test PRIVATE c_std_11)
     target_include_directories(c2-bugfixes-test PRIVATE include)
     add_test(NAME bugfixes COMMAND c2-bugfixes-test)
+
+    add_executable(c2-text-compat-test
+        tests/c2_text_compat_test.c
+        src/c2_text_compat.c)
+    target_compile_features(c2-text-compat-test PRIVATE c_std_11)
+    target_include_directories(c2-text-compat-test PRIVATE include)
+    add_test(NAME text-compat COMMAND c2-text-compat-test)
 
     add_executable(c2-port-timing-test
         tests/c2_port_timing_test.c

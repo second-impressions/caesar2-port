@@ -5,6 +5,10 @@ indices, not characters passed to an operating-system text API. The portable
 backend must therefore preserve the original bytes and must not apply a global
 CP437, CP850, Windows-1252, or UTF-8 conversion.
 
+The main `C2.ENG` resources also changed alongside the engine. Their offset
+table revisions and the guarded runtime compatibility policy are documented in
+[text-asset-versions.md](text-asset-versions.md).
+
 ## Help smart-punctuation defect
 
 The full English `HELP.ENG` contains four `0x92` bytes in contractions and

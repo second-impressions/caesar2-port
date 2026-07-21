@@ -322,6 +322,13 @@ diagnostic screenshots use the user-file service. Save-game enumeration and
 the bulk `savegame` / `loadgame` streams still need to move behind that same
 boundary.
 
+Resource-version compatibility is not a filesystem responsibility. The host
+returns the selected asset unchanged. Engine/UI revisions that require
+different string indices or control counts are selected from the read-only
+`Textfile` structure behind `C2_FEAT_TEXT_ASSET_COMPAT`; see
+[text-asset-versions.md](text-asset-versions.md). The original recovered path
+must remain present when that feature is disabled.
+
 These functions mix serialization or game fixups with raw file descriptors:
 
 - `savegame` and `loadgame`;
