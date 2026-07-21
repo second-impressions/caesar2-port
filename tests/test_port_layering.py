@@ -107,7 +107,10 @@ def test_wasm_shell_is_unframed_and_reports_downloads_in_megabytes():
     assert "width: 100vw" in shell
     assert "height: 100vh" in shell
     assert "resizeCanvasToIntegerScale" in shell
+    assert "devicePixelRatio || 1" in shell
     assert "Math.floor(fit)" in shell
+    assert "--c2-canvas-width" in shell
+    assert "Math.ceil(logicalWidth * scale / density)" in shell
     assert "Number(match[1]) / 1_000_000" in shell
     assert "MB)…" in shell
 
@@ -198,3 +201,5 @@ def test_mouse_lock_is_cli_policy_above_a_backend_neutral_cursor():
 def test_sdl_uses_exact_nearest_neighbor_scaling():
     host = (SDL_BACKEND / "c2_sdl_host.c").read_text()
     assert "SDL_SetTextureScaleMode(c2_texture, SDL_SCALEMODE_NEAREST)" in host
+    assert "window_flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY" in host
+    assert "presentation = SDL_LOGICAL_PRESENTATION_INTEGER_SCALE" in host

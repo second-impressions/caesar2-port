@@ -497,6 +497,8 @@ static void queue_event(const struct c2_host_event *event)
 int c2_host_init(const struct c2_host_config *config)
 {
     SDL_InitFlags flags;
+    SDL_WindowFlags window_flags;
+    SDL_RendererLogicalPresentation presentation;
     size_t pixel_count;
 
     if (config == NULL || config->logical_width <= 0 ||
@@ -569,10 +571,16 @@ int c2_host_init(const struct c2_host_config *config)
     if (config->headless) {
         return 1;
     }
+    window_flags = SDL_WINDOW_RESIZABLE;
+    presentation = SDL_LOGICAL_PRESENTATION_LETTERBOX;
+#if C2_FEAT_BROWSER_RUNTIME
+    window_flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    presentation = SDL_LOGICAL_PRESENTATION_INTEGER_SCALE;
+#endif
     if (!SDL_CreateWindowAndRenderer(config->title,
                                      c2_frame_width * config->window_scale,
                                      c2_frame_height * config->window_scale,
-                                     SDL_WINDOW_RESIZABLE,
+                                     window_flags,
                                      &c2_window, &c2_renderer)) {
         fprintf(stderr, "SDL window creation failed: %s\n", SDL_GetError());
         c2_host_shutdown();
@@ -591,7 +599,7 @@ int c2_host_init(const struct c2_host_config *config)
     if (!SDL_SetRenderLogicalPresentation(c2_renderer,
                                           c2_frame_width,
                                           c2_frame_height,
-                                          SDL_LOGICAL_PRESENTATION_LETTERBOX)) {
+                                          presentation)) {
         fprintf(stderr, "SDL logical presentation failed: %s\n", SDL_GetError());
         c2_host_shutdown();
         return 0;

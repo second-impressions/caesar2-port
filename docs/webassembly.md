@@ -94,6 +94,19 @@ path support performs the initial synchronization and automatically flushes
 changes, so the recovered synchronous file operations remain on the engine
 worker.
 
+## Pixel-exact presentation
+
+The browser canvas uses a high-pixel-density SDL window and integer logical
+presentation. Its CSS size is chosen from `devicePixelRatio`, including browser
+zoom, so the 640×480 game image occupies an exact whole-number multiple in the
+canvas backing store. Any unavoidable remainder is black letterboxing rather
+than fractional resampling. CSS custom properties marked `!important` retain
+the chosen display size when Emscripten updates the canvas backing dimensions.
+
+This distinction is load-bearing: a 640×480 CSS rectangle is not necessarily a
+640×480 physical render target. Validation covers fractional display densities
+as well as ordinary 1× and 2× displays.
+
 The default pointer remains free so windowed play does not unexpectedly trap
 the browser cursor. Add `?mouse-lock=1` to request Pointer Lock; when browser
 policy requires a user gesture, the backend retries on the next click. Debug

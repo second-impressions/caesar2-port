@@ -29,8 +29,8 @@
     }
     canvas {
       display: block;
-      width: 640px;
-      height: 480px;
+      width: var(--c2-canvas-width, 640px) !important;
+      height: var(--c2-canvas-height, 480px) !important;
       image-rendering: pixelated;
       background: #000;
     }
@@ -58,10 +58,20 @@
     if (query.get("smoke-test") === "province") args.push("--smoke-test");
 
     function resizeCanvasToIntegerScale() {
-      const fit = Math.min(innerWidth / logicalWidth, innerHeight / logicalHeight);
-      const scale = fit >= 1 ? Math.floor(fit) : fit;
-      canvas.style.width = `${logicalWidth * scale}px`;
-      canvas.style.height = `${logicalHeight * scale}px`;
+      const density = devicePixelRatio || 1;
+      const fit = Math.min(
+        innerWidth * density / logicalWidth,
+        innerHeight * density / logicalHeight
+      );
+      const scale = Math.max(1, Math.floor(fit));
+      canvas.style.setProperty(
+        "--c2-canvas-width",
+        `${Math.ceil(logicalWidth * scale / density)}px`
+      );
+      canvas.style.setProperty(
+        "--c2-canvas-height",
+        `${Math.ceil(logicalHeight * scale / density)}px`
+      );
     }
 
     resizeCanvasToIntegerScale();
