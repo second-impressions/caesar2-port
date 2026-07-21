@@ -1,5 +1,6 @@
 
 #include "c2_data.h"
+#include "c2_bugfixes.h"
 #include "c2_types.h"
 #if C2_FEAT_DEBUG_OBSERVATION
 #include "c2_observation.h"
@@ -4509,6 +4510,10 @@ void act_choose_name(void)
     fb_count = insert_cursor;
 #else
     this_letter = 0;
+#endif
+#if C2_FIX_PLAYER_NAME_PADDING
+    c2_fix_player_name_padding(c2inf.player_name,
+                               sizeof(c2inf.player_name));
 #endif
     in_format_buffer(c2inf.player_name, 0x18, 0xa0, 2);
     show_new_name_box();

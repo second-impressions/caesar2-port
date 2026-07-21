@@ -94,6 +94,12 @@ static void drive_name_entry(struct c2_sdl_smoke *smoke, Uint64 now,
 
     if (!observation_is(observation, C2_OBSERVATION_NAME_ENTRY)) return;
     if (smoke->name_phase == NAME_SMOKE_WAIT_FOR_ENTRY) {
+        length = strlen(observation->player_name);
+        if (length != 0 && observation->player_name[length - 1] == ' ') {
+            fprintf(stderr, "name editor received trailing fixed-width padding\n");
+            smoke->name_failed = 1;
+            return;
+        }
         smoke->name_phase = NAME_SMOKE_CLEAR;
     }
     if (smoke->name_phase == NAME_SMOKE_CLEAR) {

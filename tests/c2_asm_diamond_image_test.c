@@ -1,4 +1,4 @@
-#include <assert.h>
+#include <unity/unity.h>
 #include <string.h>
 
 #include "c2_asm_routines.h"
@@ -85,7 +85,7 @@ static void test_full_parts(diamond_placer place, int height, int centre)
             }
             source_offset += width;
         }
-        assert(memcmp(pixels, expected, sizeof(pixels)) == 0);
+        TEST_ASSERT_TRUE(memcmp(pixels, expected, sizeof(pixels)) == 0);
     }
 }
 
@@ -127,7 +127,7 @@ static void test_half(diamond_placer place, int height, int centre,
             }
             source_offset += full_width;
         }
-        assert(memcmp(pixels, expected, sizeof(pixels)) == 0);
+        TEST_ASSERT_TRUE(memcmp(pixels, expected, sizeof(pixels)) == 0);
     }
 }
 
@@ -201,7 +201,7 @@ static void test_hat(diamond_placer write, int pair_count,
                 }
             }
         }
-        assert(memcmp(pixels, expected, sizeof(pixels)) == 0);
+        TEST_ASSERT_TRUE(memcmp(pixels, expected, sizeof(pixels)) == 0);
     }
 }
 
@@ -223,15 +223,15 @@ static void test_medium_right_hat_offset(void)
 
     base_offset = sprite_y * screen_width + sprite_x;
 #if C2_FIX_MEDIUM_RIGHT_HAT_OFFSET
-    assert(pixels[base_offset + 6] == 0x71);
-    assert(pixels[base_offset + 7] == 0x72);
-    assert(pixels[base_offset + 62] == 0xa5);
-    assert(pixels[base_offset + 63] == 0xa5);
+    TEST_ASSERT_TRUE(pixels[base_offset + 6] == 0x71);
+    TEST_ASSERT_TRUE(pixels[base_offset + 7] == 0x72);
+    TEST_ASSERT_TRUE(pixels[base_offset + 62] == 0xa5);
+    TEST_ASSERT_TRUE(pixels[base_offset + 63] == 0xa5);
 #else
-    assert(pixels[base_offset + 6] == 0xa5);
-    assert(pixels[base_offset + 7] == 0xa5);
-    assert(pixels[base_offset + 62] == 0x71);
-    assert(pixels[base_offset + 63] == 0x72);
+    TEST_ASSERT_TRUE(pixels[base_offset + 6] == 0xa5);
+    TEST_ASSERT_TRUE(pixels[base_offset + 7] == 0xa5);
+    TEST_ASSERT_TRUE(pixels[base_offset + 62] == 0x71);
+    TEST_ASSERT_TRUE(pixels[base_offset + 63] == 0x72);
 #endif
 }
 
@@ -314,7 +314,7 @@ static void test_half_hat(half_hat_writer write, int centre, int keep_left)
                                       sprites + source_offset + pair * 2);
                 }
             }
-            assert(memcmp(pixels, expected, sizeof(pixels)) == 0);
+            TEST_ASSERT_TRUE(memcmp(pixels, expected, sizeof(pixels)) == 0);
         }
     }
 }
@@ -380,16 +380,21 @@ static void test_half_roof(half_roof_writer write, int centre, int keep_left)
             }
             base_offset -= screen_width;
         }
-        assert(memcmp(pixels, expected, sizeof(pixels)) == 0);
+        TEST_ASSERT_TRUE(memcmp(pixels, expected, sizeof(pixels)) == 0);
     }
 }
 
-int main(void)
+static void configure_diamond_test(void)
 {
     screen_width = TEST_WIDTH + 1;
     sprite_start = 5;
     sprite_x = 3;
     sprite_y = 2;
+}
+
+static void test_image_diamonds(void)
+{
+    configure_diamond_test();
     test_full_parts(place_i_small_diamond, 6, 4);
     test_half(place_i_small_diamond_lefthalf, 6, 4, 1, 0);
     test_half(place_i_small_diamond_righthalf, 6, 4, 0, 0);
@@ -399,6 +404,11 @@ int main(void)
     test_full_parts(place_i_large_diamond, 30, 28);
     test_half(place_i_large_diamond_lefthalf, 30, 28, 1, 1);
     test_half(place_i_large_diamond_righthalf, 30, 28, 0, 1);
+}
+
+static void test_projected_hats(void)
+{
+    configure_diamond_test();
     sprite_y = 10;
     test_hat(write_small_diamond_hat, 5, TEST_HAT_FULL, 0);
     test_hat(write_small_diamond_lefthat, 5, TEST_HAT_KEEP_RIGHT, 0);
@@ -410,12 +420,23 @@ int main(void)
     test_hat(write_large_diamond_lefthat, 29, TEST_HAT_KEEP_RIGHT, 0);
     test_hat(write_large_diamond_righthat, 29, TEST_HAT_KEEP_LEFT, 0);
     test_medium_right_hat_offset();
+}
+
+static void test_half_hats(void)
+{
+    configure_diamond_test();
+    sprite_y = 10;
     test_half_hat(write_small_diamond_lefthalfhat, 2, 1);
     test_half_hat(write_small_diamond_righthalfhat, 2, 0);
     test_half_hat(write_medium_diamond_lefthalfhat, 6, 1);
     test_half_hat(write_medium_diamond_righthalfhat, 6, 0);
     test_half_hat(write_large_diamond_lefthalfhat, 14, 1);
     test_half_hat(write_large_diamond_righthalfhat, 14, 0);
+}
+
+static void test_half_roofs(void)
+{
+    configure_diamond_test();
     sprite_y = 20;
     test_half_roof(write_small_diamond_lefthalfroof, 2, 1);
     test_half_roof(write_small_diamond_righthalfroof, 2, 0);
@@ -423,5 +444,14 @@ int main(void)
     test_half_roof(write_medium_diamond_righthalfroof, 6, 0);
     test_half_roof(write_large_diamond_lefthalfroof, 14, 1);
     test_half_roof(write_large_diamond_righthalfroof, 14, 0);
-    return 0;
+}
+
+int main(void)
+{
+    UNITY_BEGIN();
+    RUN_TEST(test_image_diamonds);
+    RUN_TEST(test_projected_hats);
+    RUN_TEST(test_half_hats);
+    RUN_TEST(test_half_roofs);
+    return UNITY_END();
 }

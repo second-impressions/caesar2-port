@@ -1,6 +1,6 @@
 #include "c2_text_compat.h"
 
-#include <assert.h>
+#include <unity/unity.h>
 #include <string.h>
 
 char text_buffer[C2_TEXT_BUFFER_CAPACITY];
@@ -39,39 +39,54 @@ static void build_text_group(int group_index, int string_count)
     }
 
     end_offset = first_offset + (unsigned int)string_count * 2;
-    assert(end_offset < sizeof(text_buffer));
+    TEST_ASSERT_TRUE(end_offset < sizeof(text_buffer));
+}
+
+static void test_new_game_cancel_capability(void)
+{
+    build_text_group(0x2b, 18);
+    TEST_ASSERT_TRUE(c2_text_group_string_count_in_buffer(
+               text_buffer, sizeof(text_buffer), 0x2b) == 18);
+    TEST_ASSERT_TRUE(!c2_text_group_has_string(0x2b, 18));
+    TEST_ASSERT_TRUE(!c2_text_has_new_game_cancel());
+
+    build_text_group(0x2b, 19);
+    TEST_ASSERT_TRUE(c2_text_group_string_count_in_buffer(
+               text_buffer, sizeof(text_buffer), 0x2b) == 19);
+    TEST_ASSERT_TRUE(c2_text_group_has_string(0x2b, 18));
+    TEST_ASSERT_TRUE(c2_text_has_new_game_cancel());
+}
+
+static void test_late_region_quote_capability(void)
+{
+    build_text_group(0x45, 29);
+    TEST_ASSERT_TRUE(!c2_text_group_has_string(0x45, 29));
+    TEST_ASSERT_TRUE(!c2_text_group_has_string(0x45, 30));
+    TEST_ASSERT_TRUE(!c2_text_has_late_region_quotes());
+
+    build_text_group(0x45, 30);
+    TEST_ASSERT_TRUE(c2_text_group_has_string(0x45, 29));
+    TEST_ASSERT_TRUE(!c2_text_has_late_region_quotes());
+
+    build_text_group(0x45, 31);
+    TEST_ASSERT_TRUE(c2_text_group_has_string(0x45, 29));
+    TEST_ASSERT_TRUE(c2_text_group_has_string(0x45, 30));
+    TEST_ASSERT_TRUE(c2_text_has_late_region_quotes());
+}
+
+static void test_invalid_text_buffer(void)
+{
+    build_text_group(0x2b, 18);
+    text_buffer[0] = 0;
+    TEST_ASSERT_TRUE(c2_text_group_string_count_in_buffer(
+               text_buffer, sizeof(text_buffer), 0x2b) == -1);
 }
 
 int main(void)
 {
-    build_text_group(0x2b, 18);
-    assert(c2_text_group_string_count_in_buffer(
-               text_buffer, sizeof(text_buffer), 0x2b) == 18);
-    assert(!c2_text_group_has_string(0x2b, 18));
-    assert(!c2_text_has_new_game_cancel());
-
-    build_text_group(0x2b, 19);
-    assert(c2_text_group_string_count_in_buffer(
-               text_buffer, sizeof(text_buffer), 0x2b) == 19);
-    assert(c2_text_group_has_string(0x2b, 18));
-    assert(c2_text_has_new_game_cancel());
-
-    build_text_group(0x45, 29);
-    assert(!c2_text_group_has_string(0x45, 29));
-    assert(!c2_text_group_has_string(0x45, 30));
-    assert(!c2_text_has_late_region_quotes());
-
-    build_text_group(0x45, 30);
-    assert(c2_text_group_has_string(0x45, 29));
-    assert(!c2_text_has_late_region_quotes());
-
-    build_text_group(0x45, 31);
-    assert(c2_text_group_has_string(0x45, 29));
-    assert(c2_text_group_has_string(0x45, 30));
-    assert(c2_text_has_late_region_quotes());
-
-    text_buffer[0] = 0;
-    assert(c2_text_group_string_count_in_buffer(
-               text_buffer, sizeof(text_buffer), 0x2b) == -1);
-    return 0;
+    UNITY_BEGIN();
+    RUN_TEST(test_new_game_cancel_capability);
+    RUN_TEST(test_late_region_quote_capability);
+    RUN_TEST(test_invalid_text_buffer);
+    return UNITY_END();
 }

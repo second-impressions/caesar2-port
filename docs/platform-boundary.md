@@ -74,6 +74,13 @@ Home, End, and the arrow keys. The recovered `act_choose_name`,
 `new_name_game_loop`, and `edit_format_buffer` path is shared unchanged by the
 portable target.
 
+The shipped default name is a fixed-width field containing `Octavian` followed
+by sixteen spaces, and the recovered End handler counts that padding. Before
+the shared editor is initialized, the portable build trims trailing spaces
+under `C2_FIX_PLAYER_NAME_PADDING`. This handles both fresh defaults and old
+runtime files without replacing editor behavior. Disabling the same-named
+CMake option restores the padded input exactly.
+
 The native target compiles the complete recovered `c2.c` campaign driver and
 `lib32.c`. The former replacement bootstrap, port-side raster slice, and copied
 text subset were removed once the same-symbol boundary was complete enough to

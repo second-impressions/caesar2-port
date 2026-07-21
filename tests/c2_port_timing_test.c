@@ -1,4 +1,4 @@
-#include <assert.h>
+#include <unity/unity.h>
 #include <stdint.h>
 
 #include "c2_port.h"
@@ -26,48 +26,65 @@ void c2_host_wait_until_ms(uint64_t deadline_ms)
     if (fake_ticks < deadline_ms) fake_ticks = deadline_ms;
 }
 
-int main(void)
+static void test_dos_clock_observation(void)
+{
+    fake_ticks = 0;
+    fake_wall_seconds = 1234;
+    c2_port_timing_reset();
+    TEST_ASSERT_TRUE(running_delay1() == 999);
+    TEST_ASSERT_TRUE(time_is == 1234);
+    fake_ticks = 17;
+    TEST_ASSERT_TRUE(running_delay1() == 0);
+    fake_ticks = 54;
+    TEST_ASSERT_TRUE(running_delay1() == 0);
+    fake_ticks = 55;
+    TEST_ASSERT_TRUE(running_delay1() == 50);
+    fake_ticks = 110;
+    TEST_ASSERT_TRUE(running_delay1() == 50);
+    fake_ticks = 165;
+    TEST_ASSERT_TRUE(running_delay1() == 60);
+}
+
+static void test_dos_clock_wait(void)
+{
+    fake_ticks = 0;
+    c2_port_timing_reset();
+    TEST_ASSERT_TRUE(colour_cycle_delay1(60) == 0);
+    TEST_ASSERT_TRUE(c2_port_wait_dos_clock_tick());
+    TEST_ASSERT_TRUE(fake_ticks == 55);
+    TEST_ASSERT_TRUE(colour_cycle_delay1(60) == 0);
+    TEST_ASSERT_TRUE(c2_port_wait_dos_clock_tick());
+    TEST_ASSERT_TRUE(fake_ticks == 110);
+    TEST_ASSERT_TRUE(colour_cycle_delay1(60) == 1);
+}
+
+static void test_frame_deadlines(void)
 {
     int i;
     static const uint64_t frame_deadlines[6] = { 16, 33, 50, 66, 83, 100 };
 
     fake_ticks = 0;
-    fake_wall_seconds = 1234;
-    c2_port_timing_reset();
-    assert(running_delay1() == 999);
-    assert(time_is == 1234);
-    fake_ticks = 17;
-    assert(running_delay1() == 0);
-    fake_ticks = 54;
-    assert(running_delay1() == 0);
-    fake_ticks = 55;
-    assert(running_delay1() == 50);
-    fake_ticks = 110;
-    assert(running_delay1() == 50);
-    fake_ticks = 165;
-    assert(running_delay1() == 60);
-
-    fake_ticks = 0;
-    c2_port_timing_reset();
-    assert(colour_cycle_delay1(60) == 0);
-    assert(c2_port_wait_dos_clock_tick());
-    assert(fake_ticks == 55);
-    assert(colour_cycle_delay1(60) == 0);
-    assert(c2_port_wait_dos_clock_tick());
-    assert(fake_ticks == 110);
-    assert(colour_cycle_delay1(60) == 1);
-
-    fake_ticks = 0;
     c2_port_timing_reset();
     for (i = 0; i < 6; i++) {
         c2_port_wait_for_frame();
-        assert(fake_ticks == frame_deadlines[i]);
+        TEST_ASSERT_TRUE(fake_ticks == frame_deadlines[i]);
     }
+}
 
+static void test_vblank_deadline(void)
+{
     fake_ticks = 0;
     c2_port_timing_reset();
     c2_port_wait_vblank();
-    assert(fake_ticks == 16);
+    TEST_ASSERT_TRUE(fake_ticks == 16);
+}
 
-    return 0;
+int main(void)
+{
+    UNITY_BEGIN();
+    RUN_TEST(test_dos_clock_observation);
+    RUN_TEST(test_dos_clock_wait);
+    RUN_TEST(test_frame_deadlines);
+    RUN_TEST(test_vblank_deadline);
+    return UNITY_END();
 }

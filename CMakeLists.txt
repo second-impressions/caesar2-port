@@ -12,6 +12,8 @@ option(C2_FIX_GFX_BUFFER_DOUBLE_FREE
     "Clear released graphics pointers to prevent repeated frees" ON)
 option(C2_FIX_HELP_SMART_PUNCTUATION
     "Repair Windows smart punctuation embedded in help text" ON)
+option(C2_FIX_PLAYER_NAME_PADDING
+    "Trim fixed-width trailing spaces before editing player names" ON)
 option(C2_ENABLE_TEXT_ASSET_COMPAT
     "Adapt versioned engine UI to the structure of the loaded text asset" ON)
 option(C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER
@@ -44,6 +46,11 @@ if(C2_FIX_HELP_SMART_PUNCTUATION)
     add_compile_definitions(C2_FIX_HELP_SMART_PUNCTUATION=1)
 else()
     add_compile_definitions(C2_FIX_HELP_SMART_PUNCTUATION=0)
+endif()
+if(C2_FIX_PLAYER_NAME_PADDING)
+    add_compile_definitions(C2_FIX_PLAYER_NAME_PADDING=1)
+else()
+    add_compile_definitions(C2_FIX_PLAYER_NAME_PADDING=0)
 endif()
 if(C2_ENABLE_TEXT_ASSET_COMPAT)
     add_compile_definitions(C2_FEAT_TEXT_ASSET_COMPAT=1)
@@ -225,6 +232,14 @@ endif()
 include(CTest)
 
 if(BUILD_TESTING)
+    find_path(C2_UNITY_INCLUDE_DIR NAMES unity/unity.h REQUIRED)
+    find_library(C2_UNITY_LIBRARY NAMES unity REQUIRED)
+    add_library(c2_unity_framework UNKNOWN IMPORTED)
+    set_target_properties(c2_unity_framework PROPERTIES
+        IMPORTED_LOCATION "${C2_UNITY_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${C2_UNITY_INCLUDE_DIR}"
+    )
+
     add_executable(c2-bugfixes-test
         tests/c2_bugfixes_test.c
         src/c2_bugfixes.c)
@@ -283,6 +298,22 @@ if(BUILD_TESTING)
     target_compile_features(c2-asm-diamond-image-test PRIVATE c_std_11)
     target_link_libraries(c2-asm-diamond-image-test PRIVATE c2_asm_portable)
     add_test(NAME asm-diamond-image COMMAND c2-asm-diamond-image-test)
+
+    set(C2_UNITY_TEST_TARGETS
+        c2-bugfixes-test
+        c2-text-compat-test
+        c2-port-timing-test
+        c2-port-keymap-test
+        c2-asm-memory-test
+        c2-asm-internal-raster-test
+        c2-asm-sprite-test
+        c2-asm-diamond-ptr-test
+        c2-asm-diamond-image-test
+    )
+    foreach(test_target IN LISTS C2_UNITY_TEST_TARGETS)
+        target_sources(${test_target} PRIVATE tests/c2_unity.c)
+        target_link_libraries(${test_target} PRIVATE c2_unity_framework)
+    endforeach()
 endif()
 
 set(C2_TEST_DATA_DIR "" CACHE PATH "Original Caesar II data directory used by smoke tests")

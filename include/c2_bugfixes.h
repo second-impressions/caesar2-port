@@ -21,6 +21,10 @@
 #define C2_FIX_HELP_SMART_PUNCTUATION 1
 #endif
 
+#ifndef C2_FIX_PLAYER_NAME_PADDING
+#define C2_FIX_PLAYER_NAME_PADDING 1
+#endif
+
 #if C2_FIX_MEDIUM_RIGHT_HAT_OFFSET != 0 && \
     C2_FIX_MEDIUM_RIGHT_HAT_OFFSET != 1
 #error "C2_FIX_MEDIUM_RIGHT_HAT_OFFSET must be 0 or 1"
@@ -41,6 +45,12 @@
 #error "C2_FIX_HELP_SMART_PUNCTUATION must be 0 or 1"
 #endif
 
+#if C2_FIX_PLAYER_NAME_PADDING != 0 && \
+    C2_FIX_PLAYER_NAME_PADDING != 1
+#error "C2_FIX_PLAYER_NAME_PADDING must be 0 or 1"
+#endif
+
 void c2_fix_help_text(char *text, int length);
+void c2_fix_player_name_padding(char *name, int capacity);
 
 #endif

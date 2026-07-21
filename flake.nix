@@ -28,6 +28,7 @@
               pkgs.imagemagick
               pkgs.python313
               pkgs.uv
+              pkgs.unity-test
             ];
 
             # libstdc++/zlib must be resolvable so capstone (used by the

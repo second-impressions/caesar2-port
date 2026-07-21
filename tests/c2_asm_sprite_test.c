@@ -1,4 +1,4 @@
-#include <assert.h>
+#include <unity/unity.h>
 #include <string.h>
 
 #include "c2_asm_routines.h"
@@ -49,14 +49,14 @@ static void test_fonts(void)
     clear_pixels(7);
     font_style = 0;
     write_i_font(font);
-    assert(memcmp(pixels + 2 * TEST_WIDTH + 3, coloured, 4) == 0);
-    assert(memcmp(pixels + 3 * TEST_WIDTH + 3, coloured + 4, 4) == 0);
+    TEST_ASSERT_TRUE(memcmp(pixels + 2 * TEST_WIDTH + 3, coloured, 4) == 0);
+    TEST_ASSERT_TRUE(memcmp(pixels + 3 * TEST_WIDTH + 3, coloured + 4, 4) == 0);
 
     clear_pixels(7);
     font_style = 1;
     write_i_font(font);
-    assert(memcmp(pixels + 2 * TEST_WIDTH + 3, styled, 4) == 0);
-    assert(memcmp(pixels + 3 * TEST_WIDTH + 3, styled + 4, 4) == 0);
+    TEST_ASSERT_TRUE(memcmp(pixels + 2 * TEST_WIDTH + 3, styled, 4) == 0);
+    TEST_ASSERT_TRUE(memcmp(pixels + 3 * TEST_WIDTH + 3, styled + 4, 4) == 0);
 }
 
 static void test_one_clipped_font(void (*write_font)(unsigned char *))
@@ -73,10 +73,10 @@ static void test_one_clipped_font(void (*write_font)(unsigned char *))
     x_wrap = screen_width - x_length;
     clear_pixels(5);
     write_font(font);
-    assert(pixels[4 * TEST_WIDTH + 6] == 10);
-    assert(pixels[4 * TEST_WIDTH + 7] == 5);
-    assert(pixels[5 * TEST_WIDTH + 6] == 10);
-    assert(pixels[5 * TEST_WIDTH + 7] == 10);
+    TEST_ASSERT_TRUE(pixels[4 * TEST_WIDTH + 6] == 10);
+    TEST_ASSERT_TRUE(pixels[4 * TEST_WIDTH + 7] == 5);
+    TEST_ASSERT_TRUE(pixels[5 * TEST_WIDTH + 6] == 10);
+    TEST_ASSERT_TRUE(pixels[5 * TEST_WIDTH + 7] == 10);
 }
 
 static void test_sprite_writers(void)
@@ -90,13 +90,13 @@ static void test_sprite_writers(void)
     set_position_and_size(8, 2, 4, 2);
     clear_pixels(6);
     place_i_sprite(sprite);
-    assert(memcmp(pixels + 2 * TEST_WIDTH + 8, opaque, 4) == 0);
-    assert(memcmp(pixels + 3 * TEST_WIDTH + 8, opaque + 4, 4) == 0);
+    TEST_ASSERT_TRUE(memcmp(pixels + 2 * TEST_WIDTH + 8, opaque, 4) == 0);
+    TEST_ASSERT_TRUE(memcmp(pixels + 3 * TEST_WIDTH + 8, opaque + 4, 4) == 0);
 
     clear_pixels(6);
     write_i_sprite(sprite);
-    assert(memcmp(pixels + 2 * TEST_WIDTH + 8, transparent, 4) == 0);
-    assert(memcmp(pixels + 3 * TEST_WIDTH + 8, transparent + 4, 4) == 0);
+    TEST_ASSERT_TRUE(memcmp(pixels + 2 * TEST_WIDTH + 8, transparent, 4) == 0);
+    TEST_ASSERT_TRUE(memcmp(pixels + 3 * TEST_WIDTH + 8, transparent + 4, 4) == 0);
 }
 
 static void test_one_clipped_sprite(void (*write_sprite)(unsigned char *))
@@ -112,10 +112,10 @@ static void test_one_clipped_sprite(void (*write_sprite)(unsigned char *))
     x_wrap = screen_width - x_length;
     clear_pixels(5);
     write_sprite(sprite);
-    assert(pixels[4 * TEST_WIDTH + 10] == 1);
-    assert(pixels[4 * TEST_WIDTH + 11] == 5);
-    assert(pixels[5 * TEST_WIDTH + 10] == 2);
-    assert(pixels[5 * TEST_WIDTH + 11] == 3);
+    TEST_ASSERT_TRUE(pixels[4 * TEST_WIDTH + 10] == 1);
+    TEST_ASSERT_TRUE(pixels[4 * TEST_WIDTH + 11] == 5);
+    TEST_ASSERT_TRUE(pixels[5 * TEST_WIDTH + 10] == 2);
+    TEST_ASSERT_TRUE(pixels[5 * TEST_WIDTH + 11] == 3);
 }
 
 static void test_one_square_block(void (*place)(unsigned char *), int size,
@@ -145,7 +145,7 @@ static void test_one_square_block(void (*place)(unsigned char *), int size,
     clear_pixels(0);
     place(sprites);
     for (row = 0; row < size; row++) {
-        assert(memcmp(pixels + screen_width + sprite_x + row * TEST_WIDTH,
+        TEST_ASSERT_TRUE(memcmp(pixels + screen_width + sprite_x + row * TEST_WIDTH,
                       sprites + offset + row * size, (size_t)size) == 0);
     }
     screen_width = TEST_WIDTH;
@@ -156,6 +156,18 @@ static void test_square_blocks(void)
     test_one_square_block(place_16x16_block, 16, 0x100);
     test_one_square_block(place_24x24_block, 24, 0x200);
     test_one_square_block(place_32x32_block, 32, 0x300);
+}
+
+static void test_clipped_fonts(void)
+{
+    test_one_clipped_font(write_i_left_font);
+    test_one_clipped_font(write_i_right_font);
+}
+
+static void test_clipped_sprites(void)
+{
+    test_one_clipped_sprite(write_i_left_sprite);
+    test_one_clipped_sprite(write_i_right_sprite);
 }
 
 static void test_mouse_background(void)
@@ -179,7 +191,7 @@ static void test_mouse_background(void)
     put_down_mouse_background(background);
     for (row = 0; row < 24; row++) {
         for (column = 0; column < 24; column++) {
-            assert(pixels[sprite_y * screen_width + sprite_x +
+            TEST_ASSERT_TRUE(pixels[sprite_y * screen_width + sprite_x +
                           row * TEST_WIDTH + column] ==
                    (unsigned char)(row + column + 128));
         }
@@ -189,13 +201,12 @@ static void test_mouse_background(void)
 
 int main(void)
 {
-    test_fonts();
-    test_one_clipped_font(write_i_left_font);
-    test_one_clipped_font(write_i_right_font);
-    test_sprite_writers();
-    test_one_clipped_sprite(write_i_left_sprite);
-    test_one_clipped_sprite(write_i_right_sprite);
-    test_square_blocks();
-    test_mouse_background();
-    return 0;
+    UNITY_BEGIN();
+    RUN_TEST(test_fonts);
+    RUN_TEST(test_clipped_fonts);
+    RUN_TEST(test_sprite_writers);
+    RUN_TEST(test_clipped_sprites);
+    RUN_TEST(test_square_blocks);
+    RUN_TEST(test_mouse_background);
+    return UNITY_END();
 }

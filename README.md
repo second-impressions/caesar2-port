@@ -99,6 +99,9 @@ interactive startup state as a portable pixmap beneath the user-data root.
 
 To register both smoke tests with CTest, configure with
 `-DC2_TEST_DATA_DIR=/path/to/CAESAR2` and run `ctest --preset linux-debug`.
+Native C unit tests use Unity, supplied by the Nix development shell, while
+CTest remains the suite runner. Pytest covers repository tooling and static
+layering checks; the Debug-only smoke drivers cover recovered engine flows.
 The `linux-tsan` configure/build/test preset runs the same worker-thread slice
 under Clang ThreadSanitizer. The `linux-asan` preset combines AddressSanitizer
 and UndefinedBehaviorSanitizer. It disables ASan global instrumentation because
@@ -113,6 +116,12 @@ The handler is absent from release builds. ASan and TSan presets leave it off
 so the sanitizer runtimes retain their own signal diagnostics.
 Executable frames are printed with load-independent `+0x...` offsets; resolve
 one with `addr2line -e build/port/linux-debug/caesar2 -f -C 0xOFFSET`.
+
+The recovered fixed-width default player name contains sixteen trailing
+spaces. The portable build trims trailing spaces before entering the recovered
+editor so End targets the visible end of the name, including for old
+`caesar2.inf` files. Set `C2_FIX_PLAYER_NAME_PADDING=0`, or configure with
+`-DC2_FIX_PLAYER_NAME_PADDING=OFF`, to restore shipped behavior.
 
 ## Reconstruction baseline
 

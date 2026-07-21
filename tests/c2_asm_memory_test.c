@@ -1,4 +1,4 @@
-#include <assert.h>
+#include <unity/unity.h>
 #include <string.h>
 
 #include "c2_asm_routines.h"
@@ -14,7 +14,7 @@ static void test_call_address(void)
 {
     callback_count = 0;
     call_address(count_callback);
-    assert(callback_count == 1);
+    TEST_ASSERT_TRUE(callback_count == 1);
 }
 
 static void test_copy(void)
@@ -27,7 +27,7 @@ static void test_copy(void)
         source[i] = (unsigned char)(i * 3 + 1);
     }
     copy(source, destination, 64);
-    assert(memcmp(source, destination, sizeof(source)) == 0);
+    TEST_ASSERT_TRUE(memcmp(source, destination, sizeof(source)) == 0);
 }
 
 static void test_repeated_run(void)
@@ -39,10 +39,10 @@ static void test_repeated_run(void)
         11, 0, 0, 0, 5, 0, 0, 0, 4, 0, 'A'
     };
 
-    assert(compress(source, packed, sizeof(source)) == sizeof(expected));
-    assert(memcmp(packed, expected, sizeof(expected)) == 0);
-    assert(depress(unpacked, packed) == sizeof(source));
-    assert(memcmp(unpacked, source, sizeof(source)) == 0);
+    TEST_ASSERT_TRUE(compress(source, packed, sizeof(source)) == sizeof(expected));
+    TEST_ASSERT_TRUE(memcmp(packed, expected, sizeof(expected)) == 0);
+    TEST_ASSERT_TRUE(depress(unpacked, packed) == sizeof(source));
+    TEST_ASSERT_TRUE(memcmp(unpacked, source, sizeof(source)) == 0);
 }
 
 static void test_literal_run(void)
@@ -54,10 +54,10 @@ static void test_literal_run(void)
         14, 0, 0, 0, 4, 0, 0, 0, 3, 0x80, 1, 2, 3, 4
     };
 
-    assert(compress(source, packed, sizeof(source)) == sizeof(expected));
-    assert(memcmp(packed, expected, sizeof(expected)) == 0);
-    assert(depress(unpacked, packed) == sizeof(source));
-    assert(memcmp(unpacked, source, sizeof(source)) == 0);
+    TEST_ASSERT_TRUE(compress(source, packed, sizeof(source)) == sizeof(expected));
+    TEST_ASSERT_TRUE(memcmp(packed, expected, sizeof(expected)) == 0);
+    TEST_ASSERT_TRUE(depress(unpacked, packed) == sizeof(source));
+    TEST_ASSERT_TRUE(memcmp(unpacked, source, sizeof(source)) == 0);
 }
 
 static void test_mixed_round_trip(void)
@@ -68,17 +68,18 @@ static void test_mixed_round_trip(void)
     unsigned char packed[64] = { 0 };
     unsigned char unpacked[sizeof(source)] = { 0 };
 
-    assert(compress(source, packed, sizeof(source)) > 8);
-    assert(depress(unpacked, packed) == sizeof(source));
-    assert(memcmp(unpacked, source, sizeof(source)) == 0);
+    TEST_ASSERT_TRUE(compress(source, packed, sizeof(source)) > 8);
+    TEST_ASSERT_TRUE(depress(unpacked, packed) == sizeof(source));
+    TEST_ASSERT_TRUE(memcmp(unpacked, source, sizeof(source)) == 0);
 }
 
 int main(void)
 {
-    test_call_address();
-    test_copy();
-    test_repeated_run();
-    test_literal_run();
-    test_mixed_round_trip();
-    return 0;
+    UNITY_BEGIN();
+    RUN_TEST(test_call_address);
+    RUN_TEST(test_copy);
+    RUN_TEST(test_repeated_run);
+    RUN_TEST(test_literal_run);
+    RUN_TEST(test_mixed_round_trip);
+    return UNITY_END();
 }

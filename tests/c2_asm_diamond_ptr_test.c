@@ -1,4 +1,4 @@
-#include <assert.h>
+#include <unity/unity.h>
 #include <string.h>
 
 #include "c2_asm_routines.h"
@@ -66,7 +66,7 @@ static void test_full_writer(diamond_writer write, int height, int centre)
                 expect_word(row, right, 0x123);
             }
         }
-        assert(memcmp(pixels, expected, sizeof(pixels)) == 0);
+        TEST_ASSERT_TRUE(memcmp(pixels, expected, sizeof(pixels)) == 0);
     }
 }
 
@@ -84,14 +84,14 @@ static void test_side_writer(diamond_writer write, int height, int centre,
         column = right_edge ? centre * 2 - left : left;
         expect_word(row, column, 15);
     }
-    assert(memcmp(pixels, expected, sizeof(pixels)) == 0);
+    TEST_ASSERT_TRUE(memcmp(pixels, expected, sizeof(pixels)) == 0);
 
     reset_buffers();
     write(15, 1);
-    assert(memcmp(pixels, expected, sizeof(pixels)) == 0);
+    TEST_ASSERT_TRUE(memcmp(pixels, expected, sizeof(pixels)) == 0);
 }
 
-int main(void)
+static void test_all_diamond_pointer_writers(void)
 {
     screen_width = TEST_WIDTH + 1;
     lib_para1 = 3;
@@ -106,5 +106,11 @@ int main(void)
     test_full_writer(write_i_small_diamond_ptr, 6, 4);
     test_side_writer(write_i_small_diamond_ptr_left, 6, 4, 1);
     test_side_writer(write_i_small_diamond_ptr_right, 6, 4, 0);
-    return 0;
+}
+
+int main(void)
+{
+    UNITY_BEGIN();
+    RUN_TEST(test_all_diamond_pointer_writers);
+    return UNITY_END();
 }
