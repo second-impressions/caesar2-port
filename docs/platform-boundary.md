@@ -472,6 +472,10 @@ primitive.
 
 ## Audio services
 
+The concrete dependency choices, XMIDI branching requirement, implementation
+order, and compatibility tests are recorded in
+[`media-implementation.md`](media-implementation.md).
+
 Keep music mood and ambient policy in the engine:
 
 - `get_city_mood`, `get_battle_mood`, `get_old_mood`;
@@ -494,6 +498,9 @@ that fact through `C2_HOST_CAPABILITY_MUSIC`; callers must skip optional music
 rather than link a placeholder decoder or pretend playback succeeded.
 
 ## Movie services
+
+Decoder selection and the indexed-frame/audio integration plan are recorded in
+[`media-implementation.md`](media-implementation.md).
 
 Retain `start_smacking`, `continue_smacking`, `stop_smacking`, and
 `are_smacking` as the engine-facing API, with complete portable bodies. This

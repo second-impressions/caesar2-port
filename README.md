@@ -17,7 +17,9 @@ The durable port design is documented in:
 - [`docs/engine-scheduling.md`](docs/engine-scheduling.md) — worker-thread,
   frame-publication, input, and browser scheduling;
 - [`docs/timing.md`](docs/timing.md) — the three original timing mechanisms and
-  their monotonic, vertical-blank, and frame-paced portable counterparts; and
+  their monotonic, vertical-blank, and frame-paced portable counterparts;
+- [`docs/media-implementation.md`](docs/media-implementation.md) — the planned
+  SDL3 PCM, Smacker decoding, and branch-aware XMIDI/OPL3 media stack; and
 - [`docs/legacy-abi.md`](docs/legacy-abi.md) — packing, pointer width,
   signedness, serialization, and compiler semantics.
 
