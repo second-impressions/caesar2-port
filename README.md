@@ -58,11 +58,15 @@ development shell:
 nix develop
 cmake --preset linux-debug
 cmake --build --preset linux-debug
-./build/port/linux-debug/caesar2 --data-dir /path/to/CAESAR2
+./build/port/linux-debug/caesar2 --asset-root /path/to/CAESAR2
 ```
 
-Writable files use a separate user-data root, selected with
-`--user-data-dir PATH` or `C2_USER_DATA_DIR` (default: the current directory).
+Assets are read only from `--asset-root PATH` or `C2_ASSET_ROOT` (default: the
+current directory). Writable runtime files use the separate
+`--user-data-dir PATH` or `C2_USER_DATA_DIR` namespace. Without an override,
+SDL selects and creates the platform-standard application data directory
+(`$XDG_DATA_HOME/second-impressions/caesar2` on Linux, with the usual
+`~/.local/share` fallback).
 
 Mouse interaction, button geometry, modal behavior, and province hit-testing
 all come from the recovered engine. The SDL backend only publishes input
@@ -78,7 +82,7 @@ contain it or accept its command-line flags. The fast test stops at the
 recovered province selector:
 
 ```bash
-./build/port/linux-debug/caesar2 --smoke-test --data-dir /path/to/CAESAR2
+./build/port/linux-debug/caesar2 --smoke-test --asset-root /path/to/CAESAR2
 ```
 
 The city-loop scenario selects and confirms a province, observes province
@@ -87,7 +91,7 @@ zooms, opens and closes the recovered forum, and then verifies clean worker
 shutdown:
 
 ```bash
-./build/port/linux-debug/caesar2 --city-smoke-test --data-dir /path/to/CAESAR2
+./build/port/linux-debug/caesar2 --city-smoke-test --asset-root /path/to/CAESAR2
 ```
 
 Pass `--screenshot output.ppm` to write the final headless frame or the current

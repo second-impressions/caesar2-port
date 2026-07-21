@@ -294,7 +294,7 @@ if(BUILD_TESTING AND C2_TEST_DATA_DIR AND
     )
     add_test(
         NAME startup-reaches-province-selection
-        COMMAND caesar2 --smoke-test --data-dir "${C2_TEST_DATA_DIR}"
+        COMMAND caesar2 --smoke-test --asset-root "${C2_TEST_DATA_DIR}"
                 --user-data-dir
                 "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/province-smoke"
     )
@@ -305,7 +305,7 @@ if(BUILD_TESTING AND C2_TEST_DATA_DIR AND
     )
     add_test(
         NAME recovered-city-loop-smoke
-        COMMAND caesar2 --city-smoke-test --data-dir "${C2_TEST_DATA_DIR}"
+        COMMAND caesar2 --city-smoke-test --asset-root "${C2_TEST_DATA_DIR}"
                 --user-data-dir
                 "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/city-smoke"
     )

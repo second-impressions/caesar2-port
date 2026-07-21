@@ -21,6 +21,7 @@ struct c2_sdl_app {
     SDL_Thread *engine_thread;
     SDL_AtomicInt engine_result;
     struct c2_port_app_config engine_config;
+    char *default_user_data_root;
 #if C2_FEAT_DEBUG_OBSERVATION
     struct c2_sdl_smoke smoke;
     int smoke_failed;
@@ -32,19 +33,21 @@ static struct c2_sdl_app c2_app;
 
 static int parse_arguments(int argc, char *argv[], const char **asset_root,
                            const char **user_data_root,
-                           const char **screenshot_filename, int *headless,
-                           int *smoke_kind)
+                           char **default_user_data_root,
+                           const char **screenshot_filename,
+                           int *headless, int *smoke_kind)
 {
     int i;
 
-    *asset_root = getenv("C2_DATA_DIR");
+    *asset_root = getenv("C2_ASSET_ROOT");
     if (*asset_root == NULL || **asset_root == '\0') {
         *asset_root = ".";
     }
     *user_data_root = getenv("C2_USER_DATA_DIR");
     if (*user_data_root == NULL || **user_data_root == '\0') {
-        *user_data_root = ".";
+        *user_data_root = NULL;
     }
+    *default_user_data_root = NULL;
     *headless = 0;
     *smoke_kind = 0;
     *screenshot_filename = NULL;
@@ -60,7 +63,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
             *headless = 1;
             *smoke_kind = C2_SDL_SMOKE_CITY_LOOP;
 #endif
-        } else if (strcmp(argv[i], "--data-dir") == 0 && i + 1 < argc) {
+        } else if (strcmp(argv[i], "--asset-root") == 0 && i + 1 < argc) {
             *asset_root = argv[++i];
         } else if (strcmp(argv[i], "--user-data-dir") == 0 && i + 1 < argc) {
             *user_data_root = argv[++i];
@@ -69,18 +72,28 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
         } else {
 #if C2_FEAT_DEBUG_OBSERVATION
             fprintf(stderr,
-                    "usage: %s [--headless] [--data-dir PATH] "
+                    "usage: %s [--headless] [--asset-root PATH] "
                     "[--user-data-dir PATH] [--screenshot FILE] "
                     "[--smoke-test|--city-smoke-test]\n",
                     argv[0]);
 #else
             fprintf(stderr,
-                    "usage: %s [--headless] [--data-dir PATH] "
+                    "usage: %s [--headless] [--asset-root PATH] "
                     "[--user-data-dir PATH] [--screenshot FILE]\n",
                     argv[0]);
 #endif
             return 0;
         }
+    }
+    if (*user_data_root == NULL) {
+        *default_user_data_root =
+            SDL_GetPrefPath("second-impressions", "caesar2");
+        if (*default_user_data_root == NULL) {
+            fprintf(stderr, "could not select a user-data directory: %s\n",
+                    SDL_GetError());
+            return 0;
+        }
+        *user_data_root = *default_user_data_root;
     }
     return 1;
 }
@@ -123,6 +136,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     }
 #endif
     if (!parse_arguments(argc, argv, &asset_root, &user_data_root,
+                         &c2_app.default_user_data_root,
                          &screenshot_filename, &headless, &smoke_kind)) {
         return SDL_APP_FAILURE;
     }
@@ -139,6 +153,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     host_config.enable_observation = smoke_kind != C2_SDL_SMOKE_NONE;
 #endif
     if (!c2_host_init(&host_config)) {
+        SDL_free(c2_app.default_user_data_root);
+        c2_app.default_user_data_root = NULL;
         return SDL_APP_FAILURE;
     }
     c2_app.host_initialized = 1;
@@ -211,5 +227,9 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
     if (app != NULL && app->host_initialized) {
         c2_host_shutdown();
         app->host_initialized = 0;
+    }
+    if (app != NULL) {
+        SDL_free(app->default_user_data_root);
+        app->default_user_data_root = NULL;
     }
 }

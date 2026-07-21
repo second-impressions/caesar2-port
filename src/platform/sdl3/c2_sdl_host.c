@@ -252,6 +252,12 @@ int c2_host_init(const struct c2_host_config *config)
         fprintf(stderr, "SDL initialization failed: %s\n", SDL_GetError());
         return 0;
     }
+    if (!SDL_CreateDirectory(c2_user_data_root)) {
+        fprintf(stderr, "could not create user-data directory '%s': %s\n",
+                c2_user_data_root, SDL_GetError());
+        c2_host_shutdown();
+        return 0;
+    }
 
     c2_frame_width = config->logical_width;
     c2_frame_height = config->logical_height;

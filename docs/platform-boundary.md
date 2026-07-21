@@ -332,6 +332,15 @@ diagnostic screenshots use the user-file service. Save-game enumeration and
 the bulk `savegame` / `loadgame` streams still need to move behind that same
 boundary.
 
+The command-line names expose that ownership directly. `--asset-root` (or
+`C2_ASSET_ROOT`) selects the immutable installed/CD asset tree.
+`--user-data-dir` (or `C2_USER_DATA_DIR`) overrides the mutable runtime tree.
+When it is not overridden, the SDL backend uses its platform preference path:
+the XDG application-data location on Linux and the corresponding standard
+per-user location on Windows and macOS. Save games, `caesar2.inf`,
+`history.dat`, and screenshots all belong to this mutable namespace; asset
+fallback into it is forbidden.
+
 Resource-version compatibility is not a filesystem responsibility. The host
 returns the selected asset unchanged. Engine/UI revisions that require
 different string indices or control counts are selected from the read-only
