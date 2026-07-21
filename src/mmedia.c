@@ -1,5 +1,6 @@
 
 #include "mmedia.h"
+#include "c2_bugfixes.h"
 #include "c2_data.h"
 
 
@@ -177,6 +178,7 @@ void load_media_entry(void)
              this_help_page * 0x3a + 8);
     readfile(media_file, format_buffer, 0x7d0,
              this_media_entry.text_offset);
+    c2_fix_help_text(format_buffer, 0x7d0);
 
     if (my_strcmp(this_media_entry.left_file, "null.pl8", 8) != 0) {
         media_left_image = 1;

@@ -17,6 +17,10 @@
 #define C2_FIX_GFX_BUFFER_DOUBLE_FREE 1
 #endif
 
+#ifndef C2_FIX_HELP_SMART_PUNCTUATION
+#define C2_FIX_HELP_SMART_PUNCTUATION 1
+#endif
+
 #if C2_FIX_MEDIUM_RIGHT_HAT_OFFSET != 0 && \
     C2_FIX_MEDIUM_RIGHT_HAT_OFFSET != 1
 #error "C2_FIX_MEDIUM_RIGHT_HAT_OFFSET must be 0 or 1"
@@ -31,5 +35,12 @@
     C2_FIX_GFX_BUFFER_DOUBLE_FREE != 1
 #error "C2_FIX_GFX_BUFFER_DOUBLE_FREE must be 0 or 1"
 #endif
+
+#if C2_FIX_HELP_SMART_PUNCTUATION != 0 && \
+    C2_FIX_HELP_SMART_PUNCTUATION != 1
+#error "C2_FIX_HELP_SMART_PUNCTUATION must be 0 or 1"
+#endif
+
+void c2_fix_help_text(char *text, int length);
 
 #endif

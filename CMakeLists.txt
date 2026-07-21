@@ -10,6 +10,8 @@ option(C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR
     "Suppress the stray seam pair in the large right half-roof" ON)
 option(C2_FIX_GFX_BUFFER_DOUBLE_FREE
     "Clear released graphics pointers to prevent repeated frees" ON)
+option(C2_FIX_HELP_SMART_PUNCTUATION
+    "Repair Windows smart punctuation embedded in help text" ON)
 option(C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER
     "Install native fatal-signal diagnostics in POSIX Debug builds" ON)
 
@@ -36,6 +38,11 @@ if(C2_FIX_GFX_BUFFER_DOUBLE_FREE)
 else()
     add_compile_definitions(C2_FIX_GFX_BUFFER_DOUBLE_FREE=0)
 endif()
+if(C2_FIX_HELP_SMART_PUNCTUATION)
+    add_compile_definitions(C2_FIX_HELP_SMART_PUNCTUATION=1)
+else()
+    add_compile_definitions(C2_FIX_HELP_SMART_PUNCTUATION=0)
+endif()
 if(C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR)
     target_compile_definitions(c2_asm_portable PUBLIC
         C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR=1)
@@ -57,6 +64,7 @@ add_executable(caesar2
     src/battle.c
     src/bbarian.c
     src/c2.c
+    src/c2_bugfixes.c
     src/c2_vars.c
     src/census.c
     src/common.c
@@ -207,6 +215,13 @@ endif()
 include(CTest)
 
 if(BUILD_TESTING)
+    add_executable(c2-bugfixes-test
+        tests/c2_bugfixes_test.c
+        src/c2_bugfixes.c)
+    target_compile_features(c2-bugfixes-test PRIVATE c_std_11)
+    target_include_directories(c2-bugfixes-test PRIVATE include)
+    add_test(NAME bugfixes COMMAND c2-bugfixes-test)
+
     add_executable(c2-port-timing-test
         tests/c2_port_timing_test.c
         src/platform/common/c2_port_timing.c)
