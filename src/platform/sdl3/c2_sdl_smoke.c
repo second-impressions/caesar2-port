@@ -20,6 +20,11 @@ enum city_smoke_phase {
     CITY_SMOKE_DONE
 };
 
+enum {
+    CITY_FORUM_ICON_X = 560,
+    CITY_FORUM_ICON_Y = 251
+};
+
 static int observation_is(const struct c2_observation *observation,
                           enum c2_observation_point point)
 {
@@ -178,7 +183,8 @@ static enum c2_sdl_smoke_result drive_city(
     case CITY_SMOKE_ZOOM:
         if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
             observation->zoom_level != smoke->initial_zoom) {
-            if (press_key(smoke, now, C2_HOST_KEY_F)) {
+            if (click_mouse(smoke, now, CITY_FORUM_ICON_X,
+                            CITY_FORUM_ICON_Y, C2_HOST_MOUSE_LEFT)) {
                 smoke->phase = CITY_SMOKE_OPEN_FORUM;
             }
         } else if (observation_is(observation,
@@ -196,7 +202,8 @@ static enum c2_sdl_smoke_result drive_city(
         } else if (observation_is(observation,
                                   C2_OBSERVATION_CITY_LOOP) &&
                    now - smoke->last_input >= 250) {
-            press_key(smoke, now, C2_HOST_KEY_F);
+            click_mouse(smoke, now, CITY_FORUM_ICON_X,
+                        CITY_FORUM_ICON_Y, C2_HOST_MOUSE_LEFT);
         }
         break;
     case CITY_SMOKE_CLOSE_FORUM:
