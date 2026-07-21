@@ -44,6 +44,9 @@ The native port now follows that dependency direction:
   their DOS scan codes; recovered `lib32.c` still owns press/release edges,
   cursor state, text editing, timing, raster dispatch, and other engine
   support;
+- `src/platform/common/c2_port_mouse.c` owns the backend-neutral bounded
+  virtual cursor, active-resolution scaling, windowed edge zone, and
+  absolute/relative motion conversion;
 - `src/platform/common/c2_port_audio.c` implements the Miles sample surface
   over backend-neutral PCM voices, while `src/platform/sdl3/c2_sdl_audio.c`
   owns the SDL3 playback device, conversion, resampling, and mixing;
@@ -75,6 +78,23 @@ switchable repair for editor-era smart punctuation is documented in
 
 The SDL backend hides the operating-system cursor while its window exists;
 the recovered engine remains the sole owner of the visible in-game pointer.
+The original `set_mouse_limits`/`mouserange` contract remains authoritative:
+the portable host stores its inclusive bounds and scales the fixed renderer
+viewport into the active 320x200, 640x400, or 640x480 mouse coordinate space.
+`set_mouse` updates the virtual position and schedules an SDL warp when the
+backend is using absolute input.
+
+In unlocked windowed mode an eight-logical-pixel strip maps to each exact
+legacy limit, making edge and corner scrolling selectable without requiring
+pixel-perfect placement. Leaving the rendered viewport moves a boundary
+coordinate one unit inward, immediately cancelling stale scrolling. With
+`--mouse-lock`, SDL mouse grab and a content-area barrier confine native
+absolute input. If confinement is unavailable, SDL relative mode feeds deltas
+into the same bounded virtual cursor. SDL's Emscripten backend implements that
+relative mode with browser Pointer Lock, so the engine-facing contract and
+game-drawn cursor do not change for WebAssembly. `--no-mouse-lock` is the
+explicit spelling of the default free-pointer policy.
+
 SDL text-input events supply layout- and modifier-aware printable characters;
 key-down events are reserved for Escape, Enter, Backspace, Delete, Insert,
 Home, End, the arrow keys, F1--F5, and the recovered Alt hotkeys. The common
@@ -407,6 +427,12 @@ the common mapper emits the ASCII or DOS scan-code pairs already consumed by
 the recovered `sim_mouse`. Unit coverage enumerates every scan-code branch in
 that handler, including F1--F5, all supported Alt chords, and both wheel
 directions.
+
+Mouse confinement is policy, not engine control flow. The recovered
+`scroll()` continues to react only to the exact bounds supplied by
+`mouserange`; the common cursor adapter maps a host edge zone or relative
+motion onto those bounds. Native grab and browser Pointer Lock remain backend
+mechanisms selected below `c2_host.h`.
 
 ## Timing and waits
 

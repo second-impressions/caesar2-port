@@ -36,14 +36,12 @@ void read_mouse(void)
 
 void set_mouse(void)
 {
+    c2_host_set_mouse_position(mse_x, mse_y);
 }
 
 void mouserange(int xmin, int ymin, int xmax, int ymax)
 {
-    (void)xmin;
-    (void)ymin;
-    (void)xmax;
-    (void)ymax;
+    c2_host_set_mouse_bounds(xmin, ymin, xmax, ymax);
 }
 
 void get_key(void)

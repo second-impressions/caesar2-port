@@ -144,3 +144,14 @@ def test_portable_asm_manifest_does_not_reach_the_watcom_source_path():
         '#if PLATFORM_PORTABLE\n#include "c2_asm_routines.h"\n#endif'
     )
     assert guarded_include in data_header
+
+
+def test_mouse_lock_is_cli_policy_above_a_backend_neutral_cursor():
+    main = (SDL_BACKEND / "c2_sdl_main.c").read_text()
+    host = (SDL_BACKEND / "c2_sdl_host.c").read_text()
+    common_mouse = (PLATFORM_COMMON / "c2_port_mouse.c").read_text()
+    assert '"--mouse-lock"' in main
+    assert '"--no-mouse-lock"' in main
+    assert "SDL_SetWindowMouseGrab" in host
+    assert "SDL_SetWindowRelativeMouseMode" in host
+    assert "SDL_" not in common_mouse

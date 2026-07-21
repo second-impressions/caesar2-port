@@ -118,6 +118,11 @@ Mouse position, buttons, wheel state, focus, and quit state form an atomic or
 mutex-protected snapshot. Text and key transitions use a bounded event queue.
 The portable `read_mouse` copies the snapshot into legacy mouse globals;
 `get_key` dequeues and translates events into the legacy key representation.
+Engine-thread `set_mouse` and `mouserange` calls update the same protected
+virtual cursor; any required native pointer warp is deferred to the SDL main
+thread. Absolute desktop events and relative Pointer-Lock events therefore
+share one ordered engine-facing position without crossing SDL's main-thread
+boundary.
 
 Input remains responsive even when no new frame is ready because the main
 thread never waits for the worker. A condition signal wakes explicit engine

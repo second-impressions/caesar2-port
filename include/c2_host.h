@@ -73,6 +73,7 @@ struct c2_host_config {
     int logical_height;
     int window_scale;
     int headless;
+    int mouse_lock;
 #if C2_FEAT_DEBUG_OBSERVATION
     int enable_observation;
 #endif
@@ -95,6 +96,7 @@ struct c2_host_input {
     unsigned int mouse_buttons;
     int wheel_x;
     int wheel_y;
+    int mouse_inside;
     int focused;
     int quit_requested;
     uint64_t generation;
@@ -168,6 +170,8 @@ void c2_host_present(void);
 int c2_host_wait_event(struct c2_host_event *event,
                        unsigned int timeout_ms);
 void c2_host_input_snapshot(struct c2_host_input *input);
+void c2_host_set_mouse_position(int x, int y);
+void c2_host_set_mouse_bounds(int min_x, int min_y, int max_x, int max_y);
 void c2_host_request_shutdown(void);
 int c2_host_shutdown_requested(void);
 

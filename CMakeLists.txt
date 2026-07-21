@@ -148,6 +148,7 @@ add_executable(caesar2
     src/platform/common/c2_port_input.c
     src/platform/common/c2_port_keymap.c
     src/platform/common/c2_port_miles_bank.c
+    src/platform/common/c2_port_mouse.c
     src/platform/common/c2_port_save.c
     src/platform/common/c2_port_save_compat.c
     src/platform/common/c2_port_save_registry.c
@@ -252,6 +253,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/platform/common/c2_port_input.c
         src/platform/common/c2_port_keymap.c
         src/platform/common/c2_port_miles_bank.c
+        src/platform/common/c2_port_mouse.c
         src/platform/common/c2_port_observation.c
         src/platform/common/c2_port_save.c
         src/platform/common/c2_port_save_compat.c
@@ -320,6 +322,15 @@ if(BUILD_TESTING)
         src/platform/common)
     add_test(NAME port-keymap COMMAND c2-port-keymap-test)
 
+    add_executable(c2-port-mouse-test
+        tests/c2_port_mouse_test.c
+        src/platform/common/c2_port_mouse.c)
+    target_compile_features(c2-port-mouse-test PRIVATE c_std_11)
+    target_include_directories(c2-port-mouse-test PRIVATE
+        src/platform/common)
+    target_link_libraries(c2-port-mouse-test PRIVATE c2_unity_framework)
+    add_test(NAME port-mouse COMMAND c2-port-mouse-test)
+
     add_executable(c2-save-compat-test
         tests/c2_save_compat_test.c
         src/platform/common/c2_port_save_compat.c
@@ -340,6 +351,7 @@ if(BUILD_TESTING)
 
     add_executable(c2-port-save-test
         tests/c2_port_save_test.c
+        src/platform/common/c2_port_mouse.c
         src/platform/common/c2_port_save_compat.c
         src/platform/common/c2_port_save.c
         src/platform/common/c2_port_save_registry.c
@@ -356,12 +368,14 @@ if(BUILD_TESTING)
 
     add_executable(c2-user-files-test
         tests/c2_user_files_test.c
+        src/platform/common/c2_port_mouse.c
         src/platform/sdl3/c2_sdl_audio.c
         src/platform/sdl3/c2_sdl_host.c)
     target_compile_features(c2-user-files-test PRIVATE c_std_11)
     target_compile_definitions(c2-user-files-test PRIVATE PLATFORM_PORTABLE=1)
     target_include_directories(c2-user-files-test PRIVATE
         include
+        src/platform/common
         src/platform/sdl3)
     target_link_libraries(c2-user-files-test PRIVATE SDL3::SDL3)
     add_test(NAME user-files COMMAND c2-user-files-test)

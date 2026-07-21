@@ -101,6 +101,14 @@ Alt+F1, Alt+F3, Alt+D, Alt+X, and Alt+1--Alt+8 chords to their original DOS
 scan codes. Vertical mouse-wheel motion uses the engine's existing `+`/`-`
 zoom actions, so keyboard and wheel input retain the same game-side rules.
 
+Windowed play uses an eight-logical-pixel edge zone for the recovered map
+scrolling behavior and stops scrolling as soon as the pointer leaves the game
+viewport. The pointer is free to leave the window by default. Pass
+`--mouse-lock` to confine it to the rendered game area; `--no-mouse-lock`
+explicitly selects the default. The lock option uses native confinement where
+available and falls back to a relative virtual cursor, which is also the
+browser Pointer Lock model used by a future WebAssembly build.
+
 Display-free smoke tests drive input through that same host boundary. They edit
 and accept a player name through the recovered name dialog before continuing.
 Their

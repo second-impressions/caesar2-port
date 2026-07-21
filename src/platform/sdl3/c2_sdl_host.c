@@ -7,11 +7,13 @@
 #include <time.h>
 
 #include "c2_host.h"
+#include "c2_port_mouse.h"
 #include "c2_sdl_host.h"
 
 #define C2_PATH_CAPACITY 4096
 #define C2_PALETTE_BYTES (256 * 3)
 #define C2_EVENT_QUEUE_CAPACITY 64
+#define C2_MOUSE_EDGE_MARGIN 8
 
 static SDL_Window *c2_window;
 static SDL_Renderer *c2_renderer;
@@ -26,6 +28,7 @@ static unsigned char c2_palette[C2_PALETTE_BYTES];
 static unsigned char c2_present_palette[C2_PALETTE_BYTES];
 static struct c2_host_event c2_event_queue[C2_EVENT_QUEUE_CAPACITY];
 static struct c2_host_input c2_input;
+static struct c2_port_mouse c2_mouse;
 #if C2_FEAT_DEBUG_OBSERVATION
 static struct c2_observation c2_observation;
 #endif
@@ -38,6 +41,9 @@ static int c2_frame_dirty;
 static int c2_event_read;
 static int c2_event_count;
 static int c2_shutdown;
+static int c2_mouse_lock_requested;
+static int c2_mouse_relative;
+static int c2_mouse_warp_pending;
 #if C2_FEAT_DEBUG_OBSERVATION
 static int c2_observation_enabled;
 #endif
@@ -45,6 +51,79 @@ static int c2_observation_enabled;
 struct c2_host_user_stream {
     FILE *file;
 };
+
+static void sync_mouse_input(void)
+{
+    c2_input.mouse_x = c2_mouse.x;
+    c2_input.mouse_y = c2_mouse.y;
+    c2_input.mouse_inside = c2_mouse.inside;
+}
+
+static int update_mouse_confinement_rect(void)
+{
+    SDL_FRect content;
+    SDL_Rect barrier;
+    int right;
+    int bottom;
+
+    if (!SDL_GetRenderLogicalPresentationRect(c2_renderer, &content)) {
+        return 0;
+    }
+    barrier.x = (int)content.x;
+    barrier.y = (int)content.y;
+    if (barrier.x < content.x) barrier.x++;
+    if (barrier.y < content.y) barrier.y++;
+    right = (int)(content.x + content.w);
+    bottom = (int)(content.y + content.h);
+    barrier.w = right - barrier.x;
+    barrier.h = bottom - barrier.y;
+    if (barrier.w <= 0 || barrier.h <= 0) return 0;
+    return SDL_SetWindowMouseRect(c2_window, &barrier);
+}
+
+static int enable_mouse_lock(void)
+{
+    if (!c2_mouse_lock_requested) return 1;
+
+    SDL_ClearError();
+    if (update_mouse_confinement_rect() &&
+        SDL_SetWindowMouseGrab(c2_window, true)) {
+        c2_mouse_relative = 0;
+        return 1;
+    }
+
+    SDL_SetWindowMouseGrab(c2_window, false);
+    SDL_SetWindowMouseRect(c2_window, NULL);
+    SDL_ClearError();
+    if (SDL_SetWindowRelativeMouseMode(c2_window, true)) {
+        c2_mouse_relative = 1;
+        return 1;
+    }
+    fprintf(stderr, "could not lock the mouse: %s\n", SDL_GetError());
+    return 0;
+}
+
+static void apply_pending_mouse_warp(void)
+{
+    float frame_x;
+    float frame_y;
+    float window_x;
+    float window_y;
+    int pending;
+
+    SDL_LockMutex(c2_event_mutex);
+    pending = c2_mouse_warp_pending;
+    c2_mouse_warp_pending = 0;
+    c2_port_mouse_get_frame_position(&c2_mouse, &frame_x, &frame_y);
+    SDL_UnlockMutex(c2_event_mutex);
+
+    if (!pending || c2_mouse_relative) return;
+    if (!SDL_RenderCoordinatesToWindow(c2_renderer, frame_x, frame_y,
+                                       &window_x, &window_y)) {
+        return;
+    }
+    SDL_WarpMouseInWindow(c2_window, window_x, window_y);
+}
 
 static int copy_root(char *destination, size_t capacity, const char *root)
 {
@@ -441,6 +520,9 @@ int c2_host_init(const struct c2_host_config *config)
     c2_frame_width = config->logical_width;
     c2_frame_height = config->logical_height;
     c2_headless = config->headless;
+    c2_mouse_lock_requested = config->mouse_lock;
+    c2_mouse_relative = 0;
+    c2_mouse_warp_pending = 0;
     c2_frame_dirty = 0;
     c2_event_read = 0;
     c2_event_count = 0;
@@ -449,10 +531,17 @@ int c2_host_init(const struct c2_host_config *config)
     c2_observation_enabled = config->enable_observation;
 #endif
     memset(&c2_input, 0, sizeof(c2_input));
+    if (!c2_port_mouse_init(&c2_mouse, c2_frame_width, c2_frame_height,
+                            C2_MOUSE_EDGE_MARGIN)) {
+        fprintf(stderr, "invalid Caesar II mouse configuration\n");
+        c2_host_shutdown();
+        return 0;
+    }
 #if C2_FEAT_DEBUG_OBSERVATION
     memset(&c2_observation, 0, sizeof(c2_observation));
 #endif
     c2_input.focused = 1;
+    sync_mouse_input();
     pixel_count = (size_t)c2_frame_width * (size_t)c2_frame_height;
     c2_indexed_frame = calloc(pixel_count, sizeof(*c2_indexed_frame));
     c2_present_frame = calloc(pixel_count, sizeof(*c2_present_frame));
@@ -511,6 +600,10 @@ int c2_host_init(const struct c2_host_config *config)
         return 0;
     }
     SDL_SetRenderDrawColor(c2_renderer, 0, 0, 0, 255);
+    if (!enable_mouse_lock()) {
+        c2_host_shutdown();
+        return 0;
+    }
     return 1;
 }
 
@@ -518,6 +611,11 @@ void c2_host_shutdown(void)
 {
     c2_host_audio_shutdown();
     if (c2_window != NULL) {
+        if (c2_mouse_relative) {
+            SDL_SetWindowRelativeMouseMode(c2_window, false);
+        }
+        SDL_SetWindowMouseGrab(c2_window, false);
+        SDL_SetWindowMouseRect(c2_window, NULL);
         SDL_StopTextInput(c2_window);
         SDL_ShowCursor();
     }
@@ -533,6 +631,9 @@ void c2_host_shutdown(void)
     c2_texture = NULL;
     c2_renderer = NULL;
     c2_window = NULL;
+    c2_mouse_lock_requested = 0;
+    c2_mouse_relative = 0;
+    c2_mouse_warp_pending = 0;
 
     free(c2_rgba_frame);
     free(c2_present_frame);
@@ -862,6 +963,8 @@ void c2_host_present(void)
         return;
     }
 
+    apply_pending_mouse_warp();
+
     pixel_count = (size_t)c2_frame_width * (size_t)c2_frame_height;
     SDL_LockMutex(c2_frame_mutex);
     have_frame = c2_frame_dirty;
@@ -918,6 +1021,28 @@ void c2_host_input_snapshot(struct c2_host_input *input)
 {
     SDL_LockMutex(c2_event_mutex);
     *input = c2_input;
+    SDL_UnlockMutex(c2_event_mutex);
+}
+
+void c2_host_set_mouse_position(int x, int y)
+{
+    SDL_LockMutex(c2_event_mutex);
+    c2_port_mouse_set_position(&c2_mouse, x, y);
+    sync_mouse_input();
+    c2_mouse_warp_pending = !c2_headless;
+    c2_input.generation++;
+    SDL_UnlockMutex(c2_event_mutex);
+}
+
+void c2_host_set_mouse_bounds(int min_x, int min_y, int max_x, int max_y)
+{
+    SDL_LockMutex(c2_event_mutex);
+    if (c2_port_mouse_set_bounds(&c2_mouse,
+                                 min_x, min_y, max_x, max_y)) {
+        sync_mouse_input();
+        c2_mouse_warp_pending = !c2_headless;
+        c2_input.generation++;
+    }
     SDL_UnlockMutex(c2_event_mutex);
 }
 
@@ -984,8 +1109,8 @@ void c2_host_observation_snapshot(struct c2_observation *observation)
 void c2_sdl_host_set_headless_mouse(int x, int y, unsigned int buttons)
 {
     SDL_LockMutex(c2_event_mutex);
-    c2_input.mouse_x = x;
-    c2_input.mouse_y = y;
+    c2_port_mouse_set_position(&c2_mouse, x, y);
+    sync_mouse_input();
     c2_input.mouse_buttons = buttons;
     c2_input.generation++;
     SDL_UnlockMutex(c2_event_mutex);
@@ -1016,9 +1141,11 @@ void c2_sdl_host_handle_event(SDL_Event *event)
 {
     struct c2_host_event host_event;
     int publish;
+    int refresh_mouse_rect;
 
     memset(&host_event, 0, sizeof(host_event));
     publish = 0;
+    refresh_mouse_rect = 0;
     if (c2_renderer != NULL) {
         SDL_ConvertEventToRenderCoordinates(c2_renderer, event);
     }
@@ -1034,26 +1161,50 @@ void c2_sdl_host_handle_event(SDL_Event *event)
         c2_input.generation++;
     } else if (event->type == SDL_EVENT_WINDOW_FOCUS_LOST) {
         c2_input.focused = 0;
+        c2_input.mouse_buttons = 0;
+        c2_port_mouse_leave(&c2_mouse);
+        sync_mouse_input();
         c2_input.generation++;
+    } else if (event->type == SDL_EVENT_WINDOW_MOUSE_LEAVE) {
+        c2_port_mouse_leave(&c2_mouse);
+        sync_mouse_input();
+        c2_input.generation++;
+    } else if ((event->type == SDL_EVENT_WINDOW_RESIZED ||
+                event->type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) &&
+               c2_mouse_lock_requested && !c2_mouse_relative) {
+        refresh_mouse_rect = 1;
     } else if (event->type == SDL_EVENT_MOUSE_MOTION) {
-        c2_input.mouse_x = (int)event->motion.x;
-        c2_input.mouse_y = (int)event->motion.y;
+        if (c2_mouse_relative) {
+            c2_port_mouse_add_relative(&c2_mouse,
+                                       event->motion.xrel,
+                                       event->motion.yrel);
+        } else {
+            c2_port_mouse_set_absolute(&c2_mouse,
+                                       event->motion.x,
+                                       event->motion.y);
+        }
+        sync_mouse_input();
         c2_input.generation++;
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
                event->type == SDL_EVENT_MOUSE_BUTTON_UP) {
         unsigned int mask;
 
-        c2_input.mouse_x = (int)event->button.x;
-        c2_input.mouse_y = (int)event->button.y;
+        if (!c2_mouse_relative) {
+            c2_port_mouse_set_absolute(&c2_mouse,
+                                       event->button.x,
+                                       event->button.y);
+            sync_mouse_input();
+        }
         mask = translate_mouse_button(event->button.button);
-        if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+        if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
+            c2_mouse.inside && mask != 0) {
             c2_input.mouse_buttons |= mask;
             host_event.type = C2_HOST_EVENT_MOUSE_BUTTON_DOWN;
             host_event.mouse_x = c2_input.mouse_x;
             host_event.mouse_y = c2_input.mouse_y;
             host_event.mouse_button = mask;
             publish = 1;
-        } else {
+        } else if (event->type == SDL_EVENT_MOUSE_BUTTON_UP) {
             c2_input.mouse_buttons &= ~mask;
         }
         c2_input.generation++;
@@ -1073,10 +1224,12 @@ void c2_sdl_host_handle_event(SDL_Event *event)
             wheel_x = -wheel_x;
             wheel_y = -wheel_y;
         }
-        c2_input.wheel_x += wheel_x;
-        c2_input.wheel_y += wheel_y;
+        if (c2_mouse.inside) {
+            c2_input.wheel_x += wheel_x;
+            c2_input.wheel_y += wheel_y;
+        }
         c2_input.generation++;
-        if (wheel_y != 0) {
+        if (c2_mouse.inside && wheel_y != 0) {
             host_event.type = C2_HOST_EVENT_MOUSE_WHEEL;
             host_event.wheel_y = wheel_y;
             publish = 1;
@@ -1094,6 +1247,11 @@ void c2_sdl_host_handle_event(SDL_Event *event)
     }
     SDL_UnlockMutex(c2_event_mutex);
 
+    if (refresh_mouse_rect && !update_mouse_confinement_rect()) {
+        fprintf(stderr,
+                "warning: could not update mouse confinement: %s\n",
+                SDL_GetError());
+    }
     if (event->type == SDL_EVENT_TEXT_INPUT) {
         queue_text_input(event->text.text);
     } else if (publish) {

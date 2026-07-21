@@ -35,7 +35,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                            const char **user_data_root,
                            char **default_user_data_root,
                            const char **screenshot_filename,
-                           int *headless, int *smoke_kind)
+                           int *headless, int *mouse_lock, int *smoke_kind)
 {
     int i;
 
@@ -49,12 +49,17 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
     }
     *default_user_data_root = NULL;
     *headless = 0;
+    *mouse_lock = 0;
     *smoke_kind = 0;
     *screenshot_filename = NULL;
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--headless") == 0) {
             *headless = 1;
+        } else if (strcmp(argv[i], "--mouse-lock") == 0) {
+            *mouse_lock = 1;
+        } else if (strcmp(argv[i], "--no-mouse-lock") == 0) {
+            *mouse_lock = 0;
 #if C2_FEAT_DEBUG_OBSERVATION
         } else if (strcmp(argv[i], "--smoke-test") == 0) {
             *headless = 1;
@@ -80,13 +85,15 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
             fprintf(stderr,
                     "usage: %s [--headless] [--asset-root PATH] "
                     "[--user-data-dir PATH] [--screenshot FILE] "
+                    "[--mouse-lock|--no-mouse-lock] "
                     "[--smoke-test|--city-smoke-test|"
                     "--tutorial-smoke-test|--save-load-smoke-test]\n",
                     argv[0]);
 #else
             fprintf(stderr,
                     "usage: %s [--headless] [--asset-root PATH] "
-                    "[--user-data-dir PATH] [--screenshot FILE]\n",
+                    "[--user-data-dir PATH] [--screenshot FILE] "
+                    "[--mouse-lock|--no-mouse-lock]\n",
                     argv[0]);
 #endif
             return 0;
@@ -134,6 +141,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     const char *screenshot_filename;
     struct c2_host_config host_config;
     int headless;
+    int mouse_lock;
     int smoke_kind;
 
     *appstate = &c2_app;
@@ -144,7 +152,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 #endif
     if (!parse_arguments(argc, argv, &asset_root, &user_data_root,
                          &c2_app.default_user_data_root,
-                         &screenshot_filename, &headless, &smoke_kind)) {
+                         &screenshot_filename, &headless, &mouse_lock,
+                         &smoke_kind)) {
         return SDL_APP_FAILURE;
     }
 
@@ -156,6 +165,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     host_config.logical_height = C2_SCREEN_HEIGHT;
     host_config.window_scale = 2;
     host_config.headless = headless;
+    host_config.mouse_lock = mouse_lock;
 #if C2_FEAT_DEBUG_OBSERVATION
     host_config.enable_observation = smoke_kind != C2_SDL_SMOKE_NONE;
 #endif
