@@ -127,6 +127,8 @@ static FILE *open_asset(const char *filename)
     return fopen(path, "rb");
 }
 
+static void queue_event(const struct c2_host_event *event);
+
 static unsigned char expand_vga_channel(unsigned char channel)
 {
     return (unsigned char)((channel << 2) | (channel >> 4));
@@ -135,14 +137,73 @@ static unsigned char expand_vga_channel(unsigned char channel)
 static enum c2_host_key translate_key(SDL_Keycode key)
 {
     if (key == SDLK_ESCAPE) return C2_HOST_KEY_ESCAPE;
-    if (key == SDLK_RETURN) return C2_HOST_KEY_RETURN;
-    if (key == SDLK_SPACE) return C2_HOST_KEY_SPACE;
+    if (key == SDLK_RETURN || key == SDLK_KP_ENTER) return C2_HOST_KEY_RETURN;
+    if (key == SDLK_BACKSPACE) return C2_HOST_KEY_BACKSPACE;
+    if (key == SDLK_DELETE) return C2_HOST_KEY_DELETE;
+    if (key == SDLK_INSERT) return C2_HOST_KEY_INSERT;
+    if (key == SDLK_HOME) return C2_HOST_KEY_HOME;
+    if (key == SDLK_END) return C2_HOST_KEY_END;
     if (key == SDLK_LEFT) return C2_HOST_KEY_LEFT;
     if (key == SDLK_RIGHT) return C2_HOST_KEY_RIGHT;
-    if (key == SDLK_P) return C2_HOST_KEY_P;
-    if (key == SDLK_F) return C2_HOST_KEY_F;
-    if (key == SDLK_MINUS) return C2_HOST_KEY_MINUS;
+    if (key == SDLK_UP) return C2_HOST_KEY_UP;
+    if (key == SDLK_DOWN) return C2_HOST_KEY_DOWN;
     return C2_HOST_KEY_UNKNOWN;
+}
+
+static const char *decode_utf8(const char *text, uint32_t *codepoint)
+{
+    const unsigned char *bytes;
+    uint32_t value;
+    int continuation_count;
+    int i;
+
+    bytes = (const unsigned char *)text;
+    if (bytes[0] < 0x80) {
+        *codepoint = bytes[0];
+        return text + 1;
+    }
+    if (bytes[0] >= 0xc2 && bytes[0] <= 0xdf) {
+        value = bytes[0] & 0x1f;
+        continuation_count = 1;
+    } else if (bytes[0] >= 0xe0 && bytes[0] <= 0xef) {
+        value = bytes[0] & 0x0f;
+        continuation_count = 2;
+    } else if (bytes[0] >= 0xf0 && bytes[0] <= 0xf4) {
+        value = bytes[0] & 0x07;
+        continuation_count = 3;
+    } else {
+        *codepoint = 0xfffd;
+        return text + 1;
+    }
+    for (i = 1; i <= continuation_count; i++) {
+        if ((bytes[i] & 0xc0) != 0x80) {
+            *codepoint = 0xfffd;
+            return text + 1;
+        }
+        value = (value << 6) | (bytes[i] & 0x3f);
+    }
+    if ((continuation_count == 2 && value < 0x800) ||
+        (continuation_count == 3 && value < 0x10000) ||
+        (value >= 0xd800 && value <= 0xdfff) || value > 0x10ffff) {
+        *codepoint = 0xfffd;
+        return text + 1;
+    }
+    *codepoint = value;
+    return text + continuation_count + 1;
+}
+
+static void queue_text_input(const char *text)
+{
+    struct c2_host_event event;
+    const char *cursor;
+
+    cursor = text;
+    while (*cursor != '\0') {
+        memset(&event, 0, sizeof(event));
+        event.type = C2_HOST_EVENT_TEXT_INPUT;
+        cursor = decode_utf8(cursor, &event.codepoint);
+        queue_event(&event);
+    }
 }
 
 static unsigned int translate_mouse_button(Uint8 button)
@@ -241,6 +302,11 @@ int c2_host_init(const struct c2_host_config *config)
         c2_host_shutdown();
         return 0;
     }
+    if (!SDL_StartTextInput(c2_window)) {
+        fprintf(stderr, "could not start text input: %s\n", SDL_GetError());
+        c2_host_shutdown();
+        return 0;
+    }
     if (!SDL_SetRenderLogicalPresentation(c2_renderer,
                                           c2_frame_width,
                                           c2_frame_height,
@@ -266,6 +332,7 @@ int c2_host_init(const struct c2_host_config *config)
 void c2_host_shutdown(void)
 {
     if (c2_window != NULL) {
+        SDL_StopTextInput(c2_window);
         SDL_ShowCursor();
     }
     SDL_DestroyCondition(c2_event_condition);
@@ -543,6 +610,8 @@ void c2_host_publish_observation(const struct c2_observation *observation)
     c2_observation.in_forum = observation->in_forum;
     c2_observation.map_x = observation->map_x;
     c2_observation.map_y = observation->map_y;
+    memcpy(c2_observation.player_name, observation->player_name,
+           sizeof(c2_observation.player_name));
     SDL_UnlockMutex(c2_event_mutex);
 }
 
@@ -572,6 +641,16 @@ void c2_sdl_host_push_headless_key(enum c2_host_key key)
     memset(&event, 0, sizeof(event));
     event.type = C2_HOST_EVENT_KEY_DOWN;
     event.key = key;
+    queue_event(&event);
+}
+
+void c2_sdl_host_push_headless_text(uint32_t codepoint)
+{
+    struct c2_host_event event;
+
+    memset(&event, 0, sizeof(event));
+    event.type = C2_HOST_EVENT_TEXT_INPUT;
+    event.codepoint = codepoint;
     queue_event(&event);
 }
 #endif
@@ -629,11 +708,15 @@ void c2_sdl_host_handle_event(SDL_Event *event)
         host_event.type = C2_HOST_EVENT_KEY_DOWN;
         host_event.key = translate_key(event->key.key);
         c2_input.generation++;
-        publish = 1;
+        publish = host_event.key != C2_HOST_KEY_UNKNOWN;
+    } else if (event->type == SDL_EVENT_TEXT_INPUT) {
+        c2_input.generation++;
     }
     SDL_UnlockMutex(c2_event_mutex);
 
-    if (publish) {
+    if (event->type == SDL_EVENT_TEXT_INPUT) {
+        queue_text_input(event->text.text);
+    } else if (publish) {
         queue_event(&host_event);
     }
 }

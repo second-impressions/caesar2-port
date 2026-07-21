@@ -37,9 +37,13 @@ The native port now follows that dependency direction:
 - `include/c2_host.h` is the backend-neutral service contract;
 - `src/platform/common/c2_port_compat.c` owns same-symbol legacy shims such as
   `readfile`, user-data I/O, `refresh_svga_screen`, and palette publication;
-- `src/platform/common/c2_port_input.c` translates host snapshots into the
-  legacy mouse globals; recovered `lib32.c::get_mouse` still owns press/release
-  edges, cursor state, timing, text, raster dispatch, and other engine support;
+- `src/platform/common/c2_port_input.c` translates host snapshots and input
+  events into the legacy mouse and keyboard globals; printable input crosses
+  the host interface as Unicode code points and is converted to the CP850
+  bytes accepted by the recovered text editor, while navigation keys retain
+  their DOS scan codes; recovered `lib32.c` still owns press/release edges,
+  cursor state, text editing, timing, raster dispatch, and other engine
+  support;
 - `src/platform/common/c2_port_audio.c` and `c2_port_video.c` are explicit
   unavailable capability shims until real audio and Smacker backends are
   selected;
@@ -64,6 +68,11 @@ switchable repair for editor-era smart punctuation is documented in
 
 The SDL backend hides the operating-system cursor while its window exists;
 the recovered engine remains the sole owner of the visible in-game pointer.
+SDL text-input events supply layout- and modifier-aware printable characters;
+key-down events are reserved for Escape, Enter, Backspace, Delete, Insert,
+Home, End, and the arrow keys. The recovered `act_choose_name`,
+`new_name_game_loop`, and `edit_format_buffer` path is shared unchanged by the
+portable target.
 
 The native target compiles the complete recovered `c2.c` campaign driver and
 `lib32.c`. The former replacement bootstrap, port-side raster slice, and copied

@@ -1,5 +1,6 @@
 #include "c2_data.h"
 #include "c2_host.h"
+#include "c2_port_keymap.h"
 
 extern void exit_game(void);
 
@@ -48,6 +49,8 @@ void mouserange(int xmin, int ymin, int xmax, int ymax)
 void get_key(void)
 {
     struct c2_host_event event;
+    unsigned char ascii;
+    unsigned char scan_code;
 
     key_ready = 0;
     key_ascii = 0;
@@ -57,18 +60,11 @@ void get_key(void)
             exit_game();
             return;
         }
-        if (event.type != C2_HOST_EVENT_KEY_DOWN) continue;
+        if (!c2_port_event_to_legacy_key(&event, &ascii, &scan_code)) continue;
         key_ready = 1;
         key_ascii_was = key_ascii;
-        if (event.key == C2_HOST_KEY_ESCAPE) key_ascii = 0x1b;
-        else if (event.key == C2_HOST_KEY_RETURN) key_ascii = 0x0d;
-        else if (event.key == C2_HOST_KEY_SPACE) key_ascii = 0x20;
-        else if (event.key == C2_HOST_KEY_LEFT) key_code = 0x4b;
-        else if (event.key == C2_HOST_KEY_RIGHT) key_code = 0x4d;
-        else if (event.key == C2_HOST_KEY_P) key_ascii = 'p';
-        else if (event.key == C2_HOST_KEY_F) key_ascii = 'f';
-        else if (event.key == C2_HOST_KEY_MINUS) key_ascii = '-';
-        else key_ready = 0;
+        key_ascii = (char)ascii;
+        key_code = (char)scan_code;
         return;
     }
 }

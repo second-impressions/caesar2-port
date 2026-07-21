@@ -29,6 +29,8 @@ struct c2_sdl_smoke {
     int mouse_y;
     int initial_map_x;
     int initial_zoom;
+    int name_phase;
+    int name_failed;
 };
 
 void c2_sdl_smoke_init(struct c2_sdl_smoke *smoke,

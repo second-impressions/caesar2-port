@@ -4504,9 +4504,6 @@ void act_tog_peace(void)
 // FUNCTION: C2WIN 0x004b96d2
 void act_choose_name(void)
 {
-#if PLATFORM_PORTABLE
-    return;
-#else
     insert_cursor = 0;
 #if C2_FEAT_NAME_EDIT_FB_COUNT
     fb_count = insert_cursor;
@@ -4522,7 +4519,6 @@ void act_choose_name(void)
     show_skill2_box();
 #if C2_FEAT_TILE_REFRESH
     setup_whole_screen_refresh();
-#endif
 #endif
 }
 

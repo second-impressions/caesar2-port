@@ -20,13 +20,27 @@ enum city_smoke_phase {
     CITY_SMOKE_DONE
 };
 
+enum name_smoke_phase {
+    NAME_SMOKE_NOT_STARTED,
+    NAME_SMOKE_WAIT_FOR_ENTRY,
+    NAME_SMOKE_CLEAR,
+    NAME_SMOKE_TYPE,
+    NAME_SMOKE_SUBMIT,
+    NAME_SMOKE_WAIT_FOR_ACCEPT,
+    NAME_SMOKE_ACCEPTED
+};
+
 enum {
     CITY_FORUM_ICON_X = 560,
     CITY_FORUM_ICON_Y = 251,
+    NAME_BUTTON_X = 280,
+    NAME_BUTTON_Y = 297,
     PROVINCE_SCAN_WIDTH = 40,
     PROVINCE_SCAN_HEIGHT = 40,
     PROVINCE_SCAN_STEP = 2
 };
+
+static const char smoke_player_name[] = "Portia";
 
 static int observation_is(const struct c2_observation *observation,
                           enum c2_observation_point point)
@@ -64,6 +78,53 @@ static int press_key(struct c2_sdl_smoke *smoke, Uint64 now,
     return 1;
 }
 
+static int type_character(struct c2_sdl_smoke *smoke, Uint64 now,
+                          uint32_t codepoint)
+{
+    if (now - smoke->last_input < 120) return 0;
+    c2_sdl_host_push_headless_text(codepoint);
+    smoke->last_input = now;
+    return 1;
+}
+
+static void drive_name_entry(struct c2_sdl_smoke *smoke, Uint64 now,
+                             const struct c2_observation *observation)
+{
+    size_t length;
+
+    if (!observation_is(observation, C2_OBSERVATION_NAME_ENTRY)) return;
+    if (smoke->name_phase == NAME_SMOKE_WAIT_FOR_ENTRY) {
+        smoke->name_phase = NAME_SMOKE_CLEAR;
+    }
+    if (smoke->name_phase == NAME_SMOKE_CLEAR) {
+        if (observation->player_name[0] != '\0') {
+            press_key(smoke, now, C2_HOST_KEY_DELETE);
+            return;
+        }
+        smoke->name_phase = NAME_SMOKE_TYPE;
+    }
+    if (smoke->name_phase == NAME_SMOKE_TYPE) {
+        length = strlen(observation->player_name);
+        if (length > strlen(smoke_player_name) ||
+            memcmp(observation->player_name, smoke_player_name, length) != 0) {
+            fprintf(stderr, "name editor produced unexpected text '%s'\n",
+                    observation->player_name);
+            smoke->name_failed = 1;
+            return;
+        }
+        if (smoke_player_name[length] != '\0') {
+            type_character(smoke, now,
+                           (unsigned char)smoke_player_name[length]);
+            return;
+        }
+        smoke->name_phase = NAME_SMOKE_SUBMIT;
+    }
+    if (smoke->name_phase == NAME_SMOKE_SUBMIT &&
+        press_key(smoke, now, C2_HOST_KEY_RETURN)) {
+        smoke->name_phase = NAME_SMOKE_WAIT_FOR_ACCEPT;
+    }
+}
+
 static void drive_startup(struct c2_sdl_smoke *smoke, Uint64 now,
                           const struct c2_observation *observation)
 {
@@ -73,9 +134,23 @@ static void drive_startup(struct c2_sdl_smoke *smoke, Uint64 now,
                               C2_OBSERVATION_SKILL_SELECTION)) {
         click_mouse(smoke, now, 410, 195, C2_HOST_MOUSE_LEFT);
     } else if (observation_is(observation, C2_OBSERVATION_SKILL_DETAILS)) {
-        if (observation->peace_mode) {
+        if (smoke->name_phase == NAME_SMOKE_NOT_STARTED) {
+            if (click_mouse(smoke, now, NAME_BUTTON_X, NAME_BUTTON_Y,
+                            C2_HOST_MOUSE_LEFT)) {
+                smoke->name_phase = NAME_SMOKE_WAIT_FOR_ENTRY;
+            }
+        } else if (smoke->name_phase == NAME_SMOKE_WAIT_FOR_ACCEPT) {
+            if (strcmp(observation->player_name, smoke_player_name) != 0) {
+                fprintf(stderr, "accepted player name is '%s', expected '%s'\n",
+                        observation->player_name, smoke_player_name);
+                smoke->name_failed = 1;
+            } else {
+                smoke->name_phase = NAME_SMOKE_ACCEPTED;
+            }
+        } else if (smoke->name_phase == NAME_SMOKE_ACCEPTED &&
+                   observation->peace_mode) {
             click_mouse(smoke, now, 280, 250, C2_HOST_MOUSE_LEFT);
-        } else {
+        } else if (smoke->name_phase == NAME_SMOKE_ACCEPTED) {
             click_mouse(smoke, now, 280, 345, C2_HOST_MOUSE_LEFT);
         }
     } else if (observation_is(observation,
@@ -148,7 +223,7 @@ static enum c2_sdl_smoke_result drive_city(
     case CITY_SMOKE_SETTLE:
         if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
             now - smoke->city_quiet_since >= 300) {
-            if (press_key(smoke, now, C2_HOST_KEY_P)) {
+            if (type_character(smoke, now, 'p')) {
                 smoke->phase = CITY_SMOKE_PAUSE;
             }
         }
@@ -156,13 +231,13 @@ static enum c2_sdl_smoke_result drive_city(
     case CITY_SMOKE_PAUSE:
         if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
             observation->paused) {
-            if (press_key(smoke, now, C2_HOST_KEY_P)) {
+            if (type_character(smoke, now, 'p')) {
                 smoke->phase = CITY_SMOKE_UNPAUSE;
             }
         } else if (observation_is(observation,
                                   C2_OBSERVATION_CITY_LOOP) &&
                    now - smoke->last_input >= 250) {
-            press_key(smoke, now, C2_HOST_KEY_P);
+            type_character(smoke, now, 'p');
         }
         break;
     case CITY_SMOKE_UNPAUSE:
@@ -177,7 +252,7 @@ static enum c2_sdl_smoke_result drive_city(
         } else if (observation_is(observation,
                                   C2_OBSERVATION_CITY_LOOP) &&
                    now - smoke->last_input >= 250) {
-            press_key(smoke, now, C2_HOST_KEY_P);
+            type_character(smoke, now, 'p');
         }
         break;
     case CITY_SMOKE_PAN:
@@ -187,7 +262,7 @@ static enum c2_sdl_smoke_result drive_city(
             smoke->mouse_x = 320;
             smoke->mouse_y = 240;
             smoke->initial_zoom = observation->zoom_level;
-            if (press_key(smoke, now, C2_HOST_KEY_MINUS)) {
+            if (type_character(smoke, now, '-')) {
                 smoke->phase = CITY_SMOKE_ZOOM;
             }
         }
@@ -202,7 +277,7 @@ static enum c2_sdl_smoke_result drive_city(
         } else if (observation_is(observation,
                                   C2_OBSERVATION_CITY_LOOP) &&
                    now - smoke->last_input >= 250) {
-            press_key(smoke, now, C2_HOST_KEY_MINUS);
+            type_character(smoke, now, '-');
         }
         break;
     case CITY_SMOKE_OPEN_FORUM:
@@ -259,6 +334,8 @@ enum c2_sdl_smoke_result c2_sdl_smoke_iterate(
     }
 
     drive_startup(smoke, now, &observation);
+    drive_name_entry(smoke, now, &observation);
+    if (smoke->name_failed) return C2_SDL_SMOKE_FAILURE;
     if (observation_is(&observation,
                        C2_OBSERVATION_PROVINCE_SELECTION)) {
         if (smoke->kind == C2_SDL_SMOKE_PROVINCE_SELECTION) {

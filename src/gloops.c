@@ -886,6 +886,9 @@ void new_name_game_loop(void)
 {
     int field_y;
 
+#if C2_FEAT_DEBUG_OBSERVATION
+    c2_observe(C2_OBSERVATION_NAME_ENTRY, this_letter);
+#endif
     hold_hot_keys = 1;
     gloop_start();
     if (edit_format_buffer())

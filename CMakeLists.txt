@@ -109,6 +109,7 @@ add_executable(caesar2
     src/platform/common/c2_port_audio.c
     src/platform/common/c2_port_compat.c
     src/platform/common/c2_port_input.c
+    src/platform/common/c2_port_keymap.c
     src/platform/common/c2_port_timing.c
     src/platform/common/c2_port_video.c
     src/platform/sdl3/c2_sdl_main.c
@@ -199,6 +200,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/platform/common/c2_port_audio.c
         src/platform/common/c2_port_compat.c
         src/platform/common/c2_port_input.c
+        src/platform/common/c2_port_keymap.c
         src/platform/common/c2_port_observation.c
         src/platform/common/c2_port_timing.c
         src/platform/common/c2_port_video.c
@@ -245,6 +247,15 @@ if(BUILD_TESTING)
         include
         src/platform/common)
     add_test(NAME port-timing COMMAND c2-port-timing-test)
+
+    add_executable(c2-port-keymap-test
+        tests/c2_port_keymap_test.c
+        src/platform/common/c2_port_keymap.c)
+    target_compile_features(c2-port-keymap-test PRIVATE c_std_11)
+    target_include_directories(c2-port-keymap-test PRIVATE
+        include
+        src/platform/common)
+    add_test(NAME port-keymap COMMAND c2-port-keymap-test)
 
     add_executable(c2-asm-memory-test tests/c2_asm_memory_test.c)
     target_compile_features(c2-asm-memory-test PRIVATE c_std_11)

@@ -39,10 +39,11 @@ does not contain a second startup state machine, duplicated hitboxes, or
 replacement screens.
 
 The original `INTRO.SMK` and other Smacker playback are currently skipped, and
-Miles music and sound calls are silent. Save-file enumeration and name entry
-still need complete portable services. These are missing platform capabilities,
-not alternate game-flow implementations: after a province is confirmed, the
-recovered code initializes it and enters the recovered city game loop.
+Miles music and sound calls are silent. Save-file enumeration and bulk
+save/load streams still need complete portable services. These are missing
+platform capabilities, not alternate game-flow implementations: name entry
+uses the recovered editor, and after a province is confirmed the recovered
+code initializes it and enters the recovered city game loop.
 
 The recovered startup flow runs on an engine worker. The SDL main thread owns
 events and presentation, communicating through the backend-neutral
@@ -67,7 +68,9 @@ Mouse interaction, button geometry, modal behavior, and province hit-testing
 all come from the recovered engine. The SDL backend only publishes input
 snapshots and frames.
 
-Display-free smoke tests drive input through that same host boundary. Their
+Display-free smoke tests drive input through that same host boundary. They edit
+and accept a player name through the recovered name dialog before continuing.
+Their
 synchronization uses a read-only semantic observation stream rather than
 framebuffer signatures or fixed delays. The entire observation and smoke-test
 surface is compiled only in Debug configurations; release binaries do not

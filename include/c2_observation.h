@@ -16,6 +16,7 @@ enum c2_observation_point {
     C2_OBSERVATION_CITY_LOOP,
     C2_OBSERVATION_MESSAGE,
     C2_OBSERVATION_FORUM,
+    C2_OBSERVATION_NAME_ENTRY,
     C2_OBSERVATION_ENGINE_STOPPED
 };
 
@@ -32,6 +33,7 @@ struct c2_observation {
     int in_forum;
     int map_x;
     int map_y;
+    char player_name[26];
 };
 
 void c2_observe(enum c2_observation_point point, int detail);

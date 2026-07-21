@@ -19,6 +19,7 @@ enum c2_host_event_type {
     C2_HOST_EVENT_NONE,
     C2_HOST_EVENT_QUIT,
     C2_HOST_EVENT_KEY_DOWN,
+    C2_HOST_EVENT_TEXT_INPUT,
     C2_HOST_EVENT_MOUSE_BUTTON_DOWN
 };
 
@@ -26,12 +27,15 @@ enum c2_host_key {
     C2_HOST_KEY_UNKNOWN,
     C2_HOST_KEY_ESCAPE,
     C2_HOST_KEY_RETURN,
-    C2_HOST_KEY_SPACE,
+    C2_HOST_KEY_BACKSPACE,
+    C2_HOST_KEY_DELETE,
+    C2_HOST_KEY_INSERT,
+    C2_HOST_KEY_HOME,
+    C2_HOST_KEY_END,
     C2_HOST_KEY_LEFT,
     C2_HOST_KEY_RIGHT,
-    C2_HOST_KEY_P,
-    C2_HOST_KEY_F,
-    C2_HOST_KEY_MINUS
+    C2_HOST_KEY_UP,
+    C2_HOST_KEY_DOWN
 };
 
 enum c2_host_mouse_button {
@@ -56,6 +60,7 @@ struct c2_host_config {
 struct c2_host_event {
     enum c2_host_event_type type;
     enum c2_host_key key;
+    uint32_t codepoint;
     int mouse_x;
     int mouse_y;
     unsigned int mouse_button;
