@@ -53,9 +53,16 @@ int check_file_exists(char *filename)
 
 void get_directory(char *pattern)
 {
-    (void)pattern;
-    no_of_entries = 0;
+    no_of_entries = (int)c2_host_user_file_list(pattern,
+                                                (char *)directory,
+                                                sizeof(directory[0]),
+                                                C2_DIRECTORY_MAX_ENTRIES);
     first_entry = 0;
+}
+
+int check_user_file_exists(const char *filename)
+{
+    return c2_host_user_file_exists(filename);
 }
 
 int is_file_on_harddrive(char *filename)

@@ -11,6 +11,7 @@
 
 #if PLATFORM_PORTABLE
 #define O_BINARY 0
+#include "c2_host.h"
 #endif
 
 // Backing buffer for the eight-key debug-cheat ring.
@@ -277,9 +278,25 @@ char sim_mouse(void)
 // FUNCTION: C2 0x28e13
 void capture_shot(char *filename)
 {
+#if PLATFORM_PORTABLE
+    struct c2_host_user_stream *screenshot_file;
+#else
     int screenshot_fd;
+#endif
 
     go_16m_palette(&current_palette);
+#if PLATFORM_PORTABLE
+    screenshot_file = c2_host_user_stream_open(filename,
+                                               C2_HOST_USER_STREAM_WRITE);
+    if (screenshot_file != NULL) {
+        c2_host_user_stream_write(screenshot_file, &LBM_HEADER1, 0x30);
+        c2_host_user_stream_write(screenshot_file, &current_palette, 0x300);
+        c2_host_user_stream_write(screenshot_file, &LBM_HEADER2, 8);
+        c2_host_user_stream_write(screenshot_file, internal_screen, 0x4b000);
+        c2_host_user_stream_close(screenshot_file);
+        go_64k_palette(&current_palette);
+    }
+#else
     screenshot_fd = open(filename,
               O_BINARY | O_TRUNC | O_CREAT | O_WRONLY,
               S_IRUSR | S_IWUSR);
@@ -291,4 +308,5 @@ void capture_shot(char *filename)
         close(screenshot_fd);
         go_64k_palette(&current_palette);
     }
+#endif
 }

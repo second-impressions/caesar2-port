@@ -77,6 +77,13 @@ struct c2_host_input {
     uint64_t generation;
 };
 
+enum c2_host_user_stream_mode {
+    C2_HOST_USER_STREAM_READ,
+    C2_HOST_USER_STREAM_WRITE
+};
+
+struct c2_host_user_stream;
+
 int c2_host_init(const struct c2_host_config *config);
 void c2_host_shutdown(void);
 
@@ -94,6 +101,16 @@ int c2_host_user_file_write(const char *filename, const void *buffer,
                             size_t size);
 int c2_host_user_file_write_at(const char *filename, const void *buffer,
                                size_t size, size_t offset);
+int c2_host_user_file_exists(const char *filename);
+size_t c2_host_user_file_list(const char *pattern, char *names,
+                              size_t name_capacity, size_t max_names);
+struct c2_host_user_stream *c2_host_user_stream_open(
+    const char *filename, enum c2_host_user_stream_mode mode);
+size_t c2_host_user_stream_read(struct c2_host_user_stream *stream,
+                                void *buffer, size_t size);
+size_t c2_host_user_stream_write(struct c2_host_user_stream *stream,
+                                 const void *buffer, size_t size);
+int c2_host_user_stream_close(struct c2_host_user_stream *stream);
 
 int c2_host_publish_indexed_frame(const unsigned char *pixels,
                                   int width, int height, int pitch,

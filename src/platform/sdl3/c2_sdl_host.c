@@ -42,6 +42,10 @@ static int c2_shutdown;
 static int c2_observation_enabled;
 #endif
 
+struct c2_host_user_stream {
+    FILE *file;
+};
+
 static int copy_root(char *destination, size_t capacity, const char *root)
 {
     size_t length;
@@ -125,6 +129,56 @@ static FILE *open_asset(const char *filename)
         return NULL;
     }
     return fopen(path, "rb");
+}
+
+static int compare_filenames(const void *left, const void *right)
+{
+    const char *const *left_name;
+    const char *const *right_name;
+    int result;
+
+    left_name = left;
+    right_name = right;
+    result = SDL_strcasecmp(*left_name, *right_name);
+    return result != 0 ? result : strcmp(*left_name, *right_name);
+}
+
+static int resolve_user_path(char *path, size_t capacity,
+                             const char *filename, int allow_missing)
+{
+    char **entries;
+    int entry_count;
+    int i;
+
+    if (!build_path(path, capacity, c2_user_data_root, filename, 0)) {
+        return 0;
+    }
+    if (SDL_GetPathInfo(path, NULL)) {
+        return 1;
+    }
+    if (strchr(filename, '/') == NULL && strchr(filename, '\\') == NULL) {
+        entries = SDL_GlobDirectory(c2_user_data_root, filename,
+                                    SDL_GLOB_CASEINSENSITIVE, &entry_count);
+        if (entries != NULL) {
+            qsort(entries, (size_t)entry_count, sizeof(*entries),
+                  compare_filenames);
+            for (i = 0; i < entry_count; i++) {
+                if (strchr(entries[i], '/') == NULL &&
+                    strchr(entries[i], '\\') == NULL &&
+                    SDL_strcasecmp(entries[i], filename) == 0 &&
+                    build_path(path, capacity, c2_user_data_root,
+                               entries[i], 0)) {
+                    SDL_free(entries);
+                    return 1;
+                }
+            }
+            SDL_free(entries);
+        }
+    }
+    if (!allow_missing) {
+        return 0;
+    }
+    return build_path(path, capacity, c2_user_data_root, filename, 0);
 }
 
 static void queue_event(const struct c2_host_event *event);
@@ -427,7 +481,7 @@ int c2_host_user_file_write(const char *filename, const void *buffer,
     FILE *file;
     int ok;
 
-    if (!build_path(path, sizeof(path), c2_user_data_root, filename, 0)) {
+    if (!resolve_user_path(path, sizeof(path), filename, 1)) {
         return 0;
     }
     file = fopen(path, "wb");
@@ -448,7 +502,7 @@ size_t c2_host_user_file_read(const char *filename, void *buffer,
     FILE *file;
     size_t bytes_read;
 
-    if (!build_path(path, sizeof(path), c2_user_data_root, filename, 0)) {
+    if (!resolve_user_path(path, sizeof(path), filename, 0)) {
         return 0;
     }
     file = fopen(path, "rb");
@@ -468,7 +522,7 @@ int c2_host_user_file_write_at(const char *filename, const void *buffer,
     FILE *file;
     int ok;
 
-    if (!build_path(path, sizeof(path), c2_user_data_root, filename, 0)) {
+    if (!resolve_user_path(path, sizeof(path), filename, 1)) {
         return 0;
     }
     file = fopen(path, "r+b");
@@ -479,6 +533,120 @@ int c2_host_user_file_write_at(const char *filename, const void *buffer,
     }
     ok = fwrite(buffer, 1, size, file) == size;
     if (fclose(file) != 0) ok = 0;
+    return ok;
+}
+
+int c2_host_user_file_exists(const char *filename)
+{
+    char path[C2_PATH_CAPACITY];
+    SDL_PathInfo info;
+
+    return resolve_user_path(path, sizeof(path), filename, 0) &&
+           SDL_GetPathInfo(path, &info) && info.type == SDL_PATHTYPE_FILE;
+}
+
+size_t c2_host_user_file_list(const char *pattern, char *names,
+                              size_t name_capacity, size_t max_names)
+{
+    char path[C2_PATH_CAPACITY];
+    char **entries;
+    SDL_PathInfo info;
+    size_t result_count;
+    size_t length;
+    size_t j;
+    int entry_count;
+    int i;
+
+    if (names == NULL || name_capacity == 0 || max_names == 0 ||
+        !is_safe_relative_path(pattern) || strchr(pattern, '/') != NULL ||
+        strchr(pattern, '\\') != NULL) {
+        return 0;
+    }
+    entries = SDL_GlobDirectory(c2_user_data_root, pattern,
+                                SDL_GLOB_CASEINSENSITIVE, &entry_count);
+    if (entries == NULL) {
+        return 0;
+    }
+    qsort(entries, (size_t)entry_count, sizeof(*entries), compare_filenames);
+    result_count = 0;
+    for (i = 0; i < entry_count && result_count < max_names; i++) {
+        length = strlen(entries[i]);
+        if (length == 0 || length >= name_capacity ||
+            strchr(entries[i], '/') != NULL ||
+            strchr(entries[i], '\\') != NULL ||
+            (result_count != 0 &&
+             SDL_strcasecmp(names + (result_count - 1) * name_capacity,
+                            entries[i]) == 0) ||
+            !build_path(path, sizeof(path), c2_user_data_root,
+                        entries[i], 0) ||
+            !SDL_GetPathInfo(path, &info) || info.type != SDL_PATHTYPE_FILE) {
+            continue;
+        }
+        for (j = 0; j < length; j++) {
+            names[result_count * name_capacity + j] =
+                (char)toupper((unsigned char)entries[i][j]);
+        }
+        names[result_count * name_capacity + length] = '\0';
+        result_count++;
+    }
+    SDL_free(entries);
+    return result_count;
+}
+
+struct c2_host_user_stream *c2_host_user_stream_open(
+    const char *filename, enum c2_host_user_stream_mode mode)
+{
+    char path[C2_PATH_CAPACITY];
+    struct c2_host_user_stream *stream;
+    int allow_missing;
+
+    if (mode != C2_HOST_USER_STREAM_READ &&
+        mode != C2_HOST_USER_STREAM_WRITE) {
+        return NULL;
+    }
+    allow_missing = mode == C2_HOST_USER_STREAM_WRITE;
+    if (!resolve_user_path(path, sizeof(path), filename, allow_missing)) {
+        return NULL;
+    }
+    stream = malloc(sizeof(*stream));
+    if (stream == NULL) {
+        return NULL;
+    }
+    stream->file = fopen(path, mode == C2_HOST_USER_STREAM_READ ? "rb" : "wb");
+    if (stream->file == NULL) {
+        free(stream);
+        return NULL;
+    }
+    return stream;
+}
+
+size_t c2_host_user_stream_read(struct c2_host_user_stream *stream,
+                                void *buffer, size_t size)
+{
+    if (stream == NULL || stream->file == NULL) {
+        return 0;
+    }
+    return fread(buffer, 1, size, stream->file);
+}
+
+size_t c2_host_user_stream_write(struct c2_host_user_stream *stream,
+                                 const void *buffer, size_t size)
+{
+    if (stream == NULL || stream->file == NULL) {
+        return 0;
+    }
+    return fwrite(buffer, 1, size, stream->file);
+}
+
+int c2_host_user_stream_close(struct c2_host_user_stream *stream)
+{
+    int ok;
+
+    if (stream == NULL) {
+        return 0;
+    }
+    ok = stream->file != NULL && fclose(stream->file) == 0;
+    free(stream);
     return ok;
 }
 

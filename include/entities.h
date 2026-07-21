@@ -30,6 +30,13 @@
 #ifndef ENTITIES_H
 #define ENTITIES_H
 
+/* Watcom laid the recovered engine records out with one-byte packing.  Keep
+ * that contract for the portable engine records as well; host/backend records
+ * live outside this header and retain their native ABI. */
+#if PLATFORM_PORTABLE
+#pragma pack(push, 1)
+#endif
+
 /* Entity list extern declarations.
  * These override the generic types in c2_data.h. */
 #if !PLATFORM_PORTABLE
@@ -1805,5 +1812,9 @@ struct mouse_cbd {
 };
 
 extern struct mouse_cbd cbd;
+
+#if PLATFORM_PORTABLE
+#pragma pack(pop)
+#endif
 
 #endif /* ENTITIES_H */

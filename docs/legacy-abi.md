@@ -116,14 +116,19 @@ translates a normal portable result to the legacy representation.
 
 ## Save and asset compatibility
 
-Raw state-block save/load currently relies on exact record sizes. Before a
-portable build writes user saves, it must have:
+The portable save path retains the original raw state-block order and guards
+it with:
 
-- compile-time size/offset assertions for every registered block;
-- fixture tests reading original saves;
+- compile-time size/offset assertions for every structured registered block;
+- an optional fixture test reading an original save;
 - round-trip tests that compare all serialized bytes intentionally preserved;
 - explicit treatment of any pointer or process-local handle; and
-- versioning for later portable-only extensions.
+- a rule requiring versioning for later portable-only extensions.
+
+This is implemented by `c2_save_compat`: scoped one-byte packing restores the
+Watcom layouts, while `figure_rec` and `arrow_rec` receive explicit disk
+conversion because their runtime pointers are native-width. See
+[user-data.md](user-data.md).
 
 Asset readers must similarly distinguish byte offsets from native structure
 indices. The numerous city, region, and battle map cursors are historical byte

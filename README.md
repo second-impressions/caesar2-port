@@ -39,9 +39,10 @@ does not contain a second startup state machine, duplicated hitboxes, or
 replacement screens.
 
 The original `INTRO.SMK` and other Smacker playback are currently skipped, and
-Miles music and sound calls are silent. Save-file enumeration and bulk
-save/load streams still need complete portable services. These are missing
-platform capabilities, not alternate game-flow implementations: name entry
+Miles music and sound calls are silent. Save-file enumeration, original-format
+save/load streams, preferences, history, autosaves, and screenshots use the
+portable user-data service described in [docs/user-data.md](docs/user-data.md).
+These are platform capabilities, not alternate game-flow implementations: name entry
 uses the recovered editor, and after a province is confirmed the recovered
 code initializes it and enters the recovered city game loop.
 
@@ -67,6 +68,11 @@ current directory). Writable runtime files use the separate
 SDL selects and creates the platform-standard application data directory
 (`$XDG_DATA_HOME/second-impressions/caesar2` on Linux, with the usual
 `~/.local/share` fallback).
+
+Save names retain the recovered 8.3-style UI limit. Lookup and overwrite are
+case-insensitive even on case-sensitive hosts. Set the CMake cache path
+`C2_TEST_SAVE_FIXTURE` to an original save to include fixture compatibility in
+the Unity suite; original game files are never committed.
 
 Mouse interaction, button geometry, modal behavior, and province hit-testing
 all come from the recovered engine. The SDL backend only publishes input

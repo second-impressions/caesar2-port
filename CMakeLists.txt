@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.25)
 
 project(caesar2-port VERSION 0.1.0 LANGUAGES C)
 
+set(C2_TEST_SAVE_FIXTURE "" CACHE FILEPATH
+    "Original 225745-byte Caesar II save used by compatibility tests")
+
 find_package(SDL3 3.2 CONFIG REQUIRED)
 
 option(C2_FIX_MEDIUM_RIGHT_HAT_OFFSET
@@ -79,6 +82,7 @@ add_executable(caesar2
     src/bbarian.c
     src/c2.c
     src/c2_bugfixes.c
+    src/c2_save_compat.c
     src/c2_text_compat.c
     src/c2_vars.c
     src/census.c
@@ -272,6 +276,32 @@ if(BUILD_TESTING)
         src/platform/common)
     add_test(NAME port-keymap COMMAND c2-port-keymap-test)
 
+    add_executable(c2-save-compat-test
+        tests/c2_save_compat_test.c
+        src/c2_save_compat.c)
+    target_compile_features(c2-save-compat-test PRIVATE c_std_11)
+    target_compile_definitions(c2-save-compat-test PRIVATE PLATFORM_PORTABLE=1)
+    target_include_directories(c2-save-compat-test PRIVATE include)
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
+        target_compile_options(c2-save-compat-test PRIVATE -fms-extensions)
+    endif()
+    add_test(NAME save-compat COMMAND c2-save-compat-test)
+    if(C2_TEST_SAVE_FIXTURE)
+        set_tests_properties(save-compat PROPERTIES
+            ENVIRONMENT "C2_TEST_SAVE_FIXTURE=${C2_TEST_SAVE_FIXTURE}")
+    endif()
+
+    add_executable(c2-user-files-test
+        tests/c2_user_files_test.c
+        src/platform/sdl3/c2_sdl_host.c)
+    target_compile_features(c2-user-files-test PRIVATE c_std_11)
+    target_compile_definitions(c2-user-files-test PRIVATE PLATFORM_PORTABLE=1)
+    target_include_directories(c2-user-files-test PRIVATE
+        include
+        src/platform/sdl3)
+    target_link_libraries(c2-user-files-test PRIVATE SDL3::SDL3)
+    add_test(NAME user-files COMMAND c2-user-files-test)
+
     add_executable(c2-asm-memory-test tests/c2_asm_memory_test.c)
     target_compile_features(c2-asm-memory-test PRIVATE c_std_11)
     target_link_libraries(c2-asm-memory-test PRIVATE c2_asm_portable)
@@ -304,6 +334,8 @@ if(BUILD_TESTING)
         c2-text-compat-test
         c2-port-timing-test
         c2-port-keymap-test
+        c2-save-compat-test
+        c2-user-files-test
         c2-asm-memory-test
         c2-asm-internal-raster-test
         c2-asm-sprite-test

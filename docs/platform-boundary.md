@@ -333,11 +333,11 @@ The browser backend may mount persistent storage asynchronously before the
 engine starts, after which the legacy worker may continue to perform
 synchronous file operations.
 
-The native host already separates `asset_root` and `user_data_root`.
-`readfile` uses the asset service, while preferences, history data, and
-diagnostic screenshots use the user-file service. Save-game enumeration and
-the bulk `savegame` / `loadgame` streams still need to move behind that same
-boundary.
+The native host separates `asset_root` and `user_data_root`. `readfile` uses
+the asset service, while save-game enumeration, bulk `savegame` / `loadgame`
+streams, preferences, history data, autosaves, and screenshots use the
+user-file service. The completed contract and save-layout treatment are
+documented in [user-data.md](user-data.md).
 
 The command-line names expose that ownership directly. `--asset-root` (or
 `C2_ASSET_ROOT`) selects the immutable installed/CD asset tree.
@@ -363,9 +363,11 @@ These functions mix serialization or game fixups with raw file descriptors:
 - `setup_history_data`, `save_history`, and `get_history_in_buffer`; and
 - `capture_shot`.
 
-Keep their game behavior shared. Replace their open/read/write/seek/close
-operations with a small stream interface or narrowly guarded calls. Complete
-function duplication would duplicate save-format and post-load behavior.
+Their game behavior remains shared. Narrow portable guards replace only their
+open/read/write/seek/close operations with whole-file calls or the sequential
+user stream. The two native-pointer-bearing entity arrays are converted by an
+engine-side save codec; save ordering and post-load behavior are not
+duplicated in the platform layer.
 
 `test_cd_drive` is different: DOS drive validation is its entire purpose, so
 the portable target should provide a complete body that validates or selects

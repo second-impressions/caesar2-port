@@ -4541,9 +4541,6 @@ void act_back_to_front_panel(void)
 // FUNCTION: C2WIN 0x004b974a
 void act_preload(void)
 {
-#if PLATFORM_PORTABLE
-    return;
-#else
     load_a_game();
     if (file_loaded_status != 0) {
         out1 = 1;
@@ -4556,7 +4553,6 @@ void act_preload(void)
     setup_whole_screen_refresh();
 #endif
     hold_mouse_replace = 1;
-#endif
 }
 
 // Pop the census panel and idle until the user dismisses it. Battle mode is silently ignored.
