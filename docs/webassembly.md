@@ -73,6 +73,15 @@ sets `Cross-Origin-Opener-Policy: same-origin` and
 python3 tools/serve-wasm.py build/port/wasm-release-en
 ```
 
+For testing from another machine, use HTTPS so the threaded runtime remains a
+secure context. The server accepts an existing certificate and private key:
+
+```bash
+python3 tools/serve-wasm.py build/port/wasm-release-en \
+  --bind 0.0.0.0 --port 8444 \
+  --certfile /path/to/fullchain.pem --keyfile /path/to/key.pem
+```
+
 A production host must serve the same headers for the HTML, JavaScript, Wasm,
 worker, and asset data files. It should also serve `.wasm` as
 `application/wasm`. Opening the HTML directly from disk cannot satisfy this
