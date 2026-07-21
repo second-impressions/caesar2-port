@@ -121,6 +121,8 @@ add_executable(caesar2
     src/platform/common/c2_port_compat.c
     src/platform/common/c2_port_input.c
     src/platform/common/c2_port_keymap.c
+    src/platform/common/c2_port_save.c
+    src/platform/common/c2_port_save_registry.c
     src/platform/common/c2_port_timing.c
     src/platform/common/c2_port_video.c
     src/platform/sdl3/c2_sdl_main.c
@@ -213,6 +215,8 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/platform/common/c2_port_input.c
         src/platform/common/c2_port_keymap.c
         src/platform/common/c2_port_observation.c
+        src/platform/common/c2_port_save.c
+        src/platform/common/c2_port_save_registry.c
         src/platform/common/c2_port_timing.c
         src/platform/common/c2_port_video.c
         PROPERTIES COMPILE_OPTIONS -Wpedantic
@@ -278,10 +282,13 @@ if(BUILD_TESTING)
 
     add_executable(c2-save-compat-test
         tests/c2_save_compat_test.c
-        src/c2_save_compat.c)
+        src/c2_save_compat.c
+        src/platform/common/c2_port_save_registry.c)
     target_compile_features(c2-save-compat-test PRIVATE c_std_11)
     target_compile_definitions(c2-save-compat-test PRIVATE PLATFORM_PORTABLE=1)
-    target_include_directories(c2-save-compat-test PRIVATE include)
+    target_include_directories(c2-save-compat-test PRIVATE
+        include
+        src/platform/common)
     if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         target_compile_options(c2-save-compat-test PRIVATE -fms-extensions)
     endif()
@@ -290,6 +297,21 @@ if(BUILD_TESTING)
         set_tests_properties(save-compat PROPERTIES
             ENVIRONMENT "C2_TEST_SAVE_FIXTURE=${C2_TEST_SAVE_FIXTURE}")
     endif()
+
+    add_executable(c2-port-save-test
+        tests/c2_port_save_test.c
+        src/c2_save_compat.c
+        src/platform/common/c2_port_save.c
+        src/platform/common/c2_port_save_registry.c
+        src/platform/sdl3/c2_sdl_host.c)
+    target_compile_features(c2-port-save-test PRIVATE c_std_11)
+    target_compile_definitions(c2-port-save-test PRIVATE PLATFORM_PORTABLE=1)
+    target_include_directories(c2-port-save-test PRIVATE
+        include
+        src/platform/common
+        src/platform/sdl3)
+    target_link_libraries(c2-port-save-test PRIVATE SDL3::SDL3)
+    add_test(NAME port-save COMMAND c2-port-save-test)
 
     add_executable(c2-user-files-test
         tests/c2_user_files_test.c
@@ -335,6 +357,7 @@ if(BUILD_TESTING)
         c2-port-timing-test
         c2-port-keymap-test
         c2-save-compat-test
+        c2-port-save-test
         c2-user-files-test
         c2-asm-memory-test
         c2-asm-internal-raster-test

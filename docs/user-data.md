@@ -30,8 +30,8 @@ probing is not a user-data operation.
 The shared engine keeps its recovered save ordering, post-load repair, history
 ring, and dialogs. The host boundary provides:
 
-- whole-file and offset reads/writes for small preference/history operations;
-- sequential user-file streams for bulk saves;
+- whole-file and offset reads/writes for preferences, history, and complete
+  validated save streams;
 - lossless PNG encoding from the read-only indexed frame and VGA palette;
 - existence checks in the mutable namespace; and
 - bounded wildcard enumeration for the recovered `char directory[100][13]`
@@ -51,6 +51,15 @@ LBM writer and `shotN.lbm` names; only the portable feature branch uses PNG.
 The engine worker uses these synchronous operations. A future browser backend
 must mount and synchronize its persistent store before starting that worker;
 it does not need to make the recovered save code asynchronous.
+
+Portable save serialization is owned by `src/platform/common`. The recovered
+registry contains exactly 500 live entries rather than a shorter list followed
+by a zero sentinel; the portable validator accepts either representation only
+when its blocks total the original 221,745-byte state payload. Loading first
+reads and validates the complete 225,745-byte file and writes its history
+sidecar before applying any state blocks, so a truncated or oversized file
+cannot leave the running engine partially deserialized. The recovered DOS and
+Windows file-descriptor implementations remain unchanged.
 
 ## Save compatibility
 

@@ -1,10 +1,8 @@
 
 #include <fcntl.h>       /* O_BINARY: 0x200 under Watcom, 0x8000 under MSVC */
 #if PLATFORM_PORTABLE
-#include <stdlib.h>
 #include <string.h>
-#include "c2_host.h"
-#include "c2_save_compat.h"
+#include "c2_port_save.h"
 #endif
 #include "c2_data.h"
 #include "c2_types.h"
@@ -17,28 +15,6 @@ extern int read_userfile(const char *filename, void *buffer, int size,
 extern int writefile(const char *filename, char *buffer, int size);
 extern int write_to_file(char *filename, char *buffer, int size, int offset);
 extern int check_user_file_exists(const char *filename);
-
-static int portable_save_registry_valid(void)
-{
-    size_t state_size;
-    int i;
-
-    state_size = 0;
-    for (i = 0; i < 500; i++) {
-        if (savegame_entries[i].size == 0) {
-            return state_size == C2_SAVE_STATE_SIZE;
-        }
-        if (savegame_entries[i].size < 0 ||
-            (savegame_entries[i].buf == figure_list &&
-             savegame_entries[i].size != C2_SAVE_FIGURES_SIZE) ||
-            (savegame_entries[i].buf == arrow_list &&
-             savegame_entries[i].size != C2_SAVE_ARROWS_SIZE)) {
-            return 0;
-        }
-        state_size += (size_t)savegame_entries[i].size;
-    }
-    return 0;
-}
 #endif
 
 struct save_entry model_entries[40] = {
@@ -637,12 +613,23 @@ void load_a_game(void)
                 font_list(0x2a, 1, 0x40, 0x16c, font1, 0x10);
                 setup_whole_screen_refresh();
                 refresh_svga_screen();
+#if PLATFORM_PORTABLE
+                if (loadgame(filename) != 0) {
+                    pre_loaded_status = 2;
+                    restart_flag = 1;
+                } else {
+                    done = 0;
+                    show_loadsave_box(0x28);
+                    font_list(0x2a, 0, 0x40, 0x16c, font1, 0x10);
+                }
+#else
                 loadgame(filename);
 #if C2_FEAT_POST_FILE_BUSY_WAIT
                 for (i = 0; i < 200; i++) just_idle_game_loop();
 #endif
                 pre_loaded_status = 2;
                 restart_flag = 1;
+#endif
             }
         } else {
             done = 1;
@@ -693,11 +680,21 @@ void save_a_game(void)
                 font_list(0x2a, 3, 0x40, 0x16c, font1, 0x10);
                 setup_whole_screen_refresh();
                 refresh_svga_screen();
+#if PLATFORM_PORTABLE
+                if (savegame(filename) != 0) {
+                    decision = 1;
+                } else {
+                    done = 0;
+                    decision = 0;
+                    show_loadsave_box(0x29);
+                }
+#else
                 savegame(filename);
 #if C2_FEAT_POST_FILE_BUSY_WAIT
                 for (i = 0; i < 1000; i++) just_idle_game_loop();
 #endif
                 decision = 1;
+#endif
             }
         } else {
             done = 1;
@@ -815,76 +812,15 @@ void act_cancel_file_op(void) { out1 = 1; }
 // FUNCTION: C2WIN 0x0048309c
 int savegame(char *save_filename)
 {
-#if PLATFORM_PORTABLE
-    struct c2_host_user_stream *save_file;
-    struct c2_host_user_stream *history_file;
-    unsigned char *record_buffer;
-    const void *block;
-    size_t block_size;
-    int save_closed;
-    int history_closed;
-#else
+#if !PLATFORM_PORTABLE
     int save_fd;
     int history_fd;
-#endif
     int i;
+#endif
 
 #if PLATFORM_PORTABLE
-    if (!portable_save_registry_valid()) return 0;
-    save_file = c2_host_user_stream_open(save_filename,
-                                         C2_HOST_USER_STREAM_WRITE);
-    if (save_file == NULL) return 0;
-
-    history_file = c2_host_user_stream_open("history.dat",
-                                            C2_HOST_USER_STREAM_READ);
-    if (history_file == NULL) {
-        c2_host_user_stream_close(save_file);
-        return 0;
-    }
-    record_buffer = malloc(C2_SAVE_FIGURES_SIZE);
-    if (record_buffer == NULL) {
-        c2_host_user_stream_close(save_file);
-        c2_host_user_stream_close(history_file);
-        return 0;
-    }
-
-    for (i = 0; i < 500; i++) {
-        if (savegame_entries[i].size == 0) break;
-        block = savegame_entries[i].buf;
-        block_size = (size_t)savegame_entries[i].size;
-        if (block == figure_list) {
-            c2_save_pack_figures(record_buffer, figure_list);
-            block = record_buffer;
-            block_size = C2_SAVE_FIGURES_SIZE;
-        } else if (block == arrow_list) {
-            c2_save_pack_arrows(record_buffer, arrow_list);
-            block = record_buffer;
-            block_size = C2_SAVE_ARROWS_SIZE;
-        }
-        if (c2_host_user_stream_write(save_file, block, block_size) !=
-            block_size) {
-            free(record_buffer);
-            c2_host_user_stream_close(save_file);
-            c2_host_user_stream_close(history_file);
-            return 0;
-        }
-    }
-
-    if (c2_host_user_stream_read(history_file, scratch_buffer, 0xfa0) !=
-            0xfa0 ||
-        c2_host_user_stream_write(save_file, scratch_buffer, 0xfa0) !=
-            0xfa0) {
-        free(record_buffer);
-        c2_host_user_stream_close(save_file);
-        c2_host_user_stream_close(history_file);
-        return 0;
-    }
-    free(record_buffer);
-    save_closed = c2_host_user_stream_close(save_file);
-    history_closed = c2_host_user_stream_close(history_file);
-    if (!save_closed || !history_closed) {
-        return 0;
-    }
+    if (!c2_port_save_game_state(save_filename, savegame_entries, 500,
+                                 figure_list, arrow_list)) return 0;
 #else
     save_fd = open(save_filename, 0x261, 0x180);
     if (save_fd == -1) return 0;
@@ -918,82 +854,18 @@ int savegame(char *save_filename)
 // FUNCTION: C2WIN 0x004832e3
 int loadgame(char *save_filename)
 {
-#if PLATFORM_PORTABLE
-    struct c2_host_user_stream *save_file;
-    struct c2_host_user_stream *history_file;
-    unsigned char *record_buffer;
-    void *block;
-    size_t block_size;
-    int save_closed;
-    int history_closed;
-#else
+#if !PLATFORM_PORTABLE
     int save_fd;
     int history_fd;
-#endif
     int i;
+#endif
 
     file_loaded_status = 0;
     clear_messages();
 
 #if PLATFORM_PORTABLE
-    if (!portable_save_registry_valid()) return 0;
-    save_file = c2_host_user_stream_open(save_filename,
-                                         C2_HOST_USER_STREAM_READ);
-    if (save_file == NULL) return 0;
-
-    history_file = c2_host_user_stream_open("history.dat",
-                                            C2_HOST_USER_STREAM_WRITE);
-    if (history_file == NULL) {
-        c2_host_user_stream_close(save_file);
-        return 0;
-    }
-    record_buffer = malloc(C2_SAVE_FIGURES_SIZE);
-    if (record_buffer == NULL) {
-        c2_host_user_stream_close(save_file);
-        c2_host_user_stream_close(history_file);
-        return 0;
-    }
-
-    for (i = 0; i < 500; i++) {
-        if (savegame_entries[i].size == 0) break;
-        block = savegame_entries[i].buf;
-        block_size = (size_t)savegame_entries[i].size;
-        if (block == figure_list) {
-            block = record_buffer;
-            block_size = C2_SAVE_FIGURES_SIZE;
-        } else if (block == arrow_list) {
-            block = record_buffer;
-            block_size = C2_SAVE_ARROWS_SIZE;
-        }
-        if (c2_host_user_stream_read(save_file, block, block_size) !=
-            block_size) {
-            free(record_buffer);
-            c2_host_user_stream_close(save_file);
-            c2_host_user_stream_close(history_file);
-            return 0;
-        }
-        if (savegame_entries[i].buf == figure_list) {
-            c2_save_unpack_figures(figure_list, record_buffer);
-        } else if (savegame_entries[i].buf == arrow_list) {
-            c2_save_unpack_arrows(arrow_list, record_buffer);
-        }
-    }
-
-    if (c2_host_user_stream_read(save_file, scratch_buffer, 0xfa0) !=
-            0xfa0 ||
-        c2_host_user_stream_write(history_file, scratch_buffer, 0xfa0) !=
-            0xfa0) {
-        free(record_buffer);
-        c2_host_user_stream_close(save_file);
-        c2_host_user_stream_close(history_file);
-        return 0;
-    }
-    free(record_buffer);
-    save_closed = c2_host_user_stream_close(save_file);
-    history_closed = c2_host_user_stream_close(history_file);
-    if (!save_closed || !history_closed) {
-        return 0;
-    }
+    if (!c2_port_load_game_state(save_filename, savegame_entries, 500,
+                                 figure_list, arrow_list)) return 0;
 #else
     save_fd = open(save_filename, O_BINARY);
     if (save_fd == -1) return 0;

@@ -3,6 +3,7 @@
 #include "c2_data.h"
 #include "c2_host.h"
 #include "c2_port.h"
+#include "c2_port_save.h"
 
 static char c2_language_filename[13];
 static char c2_media_filename[13];
@@ -19,6 +20,10 @@ static void publish_frame(void)
 
 int c2_port_compat_init(void)
 {
+    if (!c2_port_save_registry_valid(savegame_entries, 500,
+                                     figure_list, arrow_list)) {
+        return 0;
+    }
     lang_file = c2_language_filename;
     media_file = c2_media_filename;
     return 1;

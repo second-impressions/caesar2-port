@@ -364,10 +364,17 @@ These functions mix serialization or game fixups with raw file descriptors:
 - `capture_shot`.
 
 Their game behavior remains shared. Narrow portable guards replace only their
-open/read/write/seek/close operations with whole-file calls or the sequential
-user stream. The two native-pointer-bearing entity arrays are converted by an
-engine-side save codec; save ordering and post-load behavior are not
-duplicated in the platform layer.
+open/read/write/seek/close operations with the complete-file platform service.
+The two native-pointer-bearing entity arrays are converted by an engine-side
+save codec; save ordering and post-load behavior are not duplicated in the
+platform layer.
+
+The complete portable save stream is assembled and validated in
+`src/platform/common/c2_port_save.c`. Engine call sites only delegate across
+that boundary and honor its success result. The platform implementation
+accepts the recovered registry's full 500-entry form, validates the exact
+legacy payload size, and reads a complete file before changing live state.
+DOS and Windows continue through the recovered descriptor/file operations.
 
 For screenshots, the shared engine passes the current indexed framebuffer and
 VGA palette read-only across the host boundary. The SDL backend encodes PNG

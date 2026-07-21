@@ -5,7 +5,41 @@
 
 #include <unity/unity.h>
 
+#include "c2_port_save.h"
 #include "c2_save_compat.h"
+
+static void test_full_500_entry_registry_is_valid(void)
+{
+    struct save_entry entries[500];
+    struct figure_rec figures[1];
+    struct arrow_rec arrows[1];
+    unsigned char ordinary_block;
+    size_t remaining_size;
+    size_t i;
+
+    memset(entries, 0, sizeof(entries));
+    for (i = 0; i < 500; i++) {
+        entries[i].buf = &ordinary_block;
+        entries[i].size = 1;
+    }
+    entries[10].buf = figures;
+    entries[10].size = C2_SAVE_FIGURES_SIZE;
+    entries[11].buf = arrows;
+    entries[11].size = C2_SAVE_ARROWS_SIZE;
+    remaining_size = C2_SAVE_STATE_SIZE - C2_SAVE_FIGURES_SIZE -
+                     C2_SAVE_ARROWS_SIZE - 497;
+    entries[0].size = (int)remaining_size;
+
+    TEST_ASSERT_TRUE(c2_port_save_registry_valid(entries, 500,
+                                                  figures, arrows));
+    entries[499].size = 0;
+    TEST_ASSERT_FALSE(c2_port_save_registry_valid(entries, 500,
+                                                   figures, arrows));
+    entries[499].size = 1;
+    entries[10].size--;
+    TEST_ASSERT_FALSE(c2_port_save_registry_valid(entries, 500,
+                                                   figures, arrows));
+}
 
 static void test_figure_records_round_trip_without_native_pointers(void)
 {
@@ -185,6 +219,7 @@ static void test_original_save_fixture_records(void)
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_full_500_entry_registry_is_valid);
     RUN_TEST(test_figure_records_round_trip_without_native_pointers);
     RUN_TEST(test_arrow_records_round_trip_without_native_pointers);
     RUN_TEST(test_original_save_fixture_records);
