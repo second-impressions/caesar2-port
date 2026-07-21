@@ -121,6 +121,13 @@
  * Shipped targets retain the recovered indexed LBM writer and filenames. */
 #define C2_FEAT_PNG_SCREENSHOTS PLATFORM_PORTABLE
 
+/* Browser application callbacks already run at the display cadence and must
+ * return without a native main-thread sleep. Build systems select this only
+ * for a portable browser backend. */
+#ifndef C2_FEAT_BROWSER_RUNTIME
+#  define C2_FEAT_BROWSER_RUNTIME 0
+#endif
+
 /* Read-only engine observations and their smoke driver are development
  * instrumentation. CMake selects them only for portable Debug builds. */
 #if defined(C2_DEBUG_BUILD)

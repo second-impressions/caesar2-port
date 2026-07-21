@@ -321,8 +321,8 @@ media directories heuristically.
 
 Mutable storage is a separate namespace from assets. Save games,
 `caesar2.inf`, `history.dat`, and screenshots use a writable user-data root.
-The browser backend may mount persistent storage asynchronously before the
-engine starts, after which the legacy worker may continue to perform
+The Emscripten SDL backend mounts and synchronizes IDBFS-backed `/user-data`
+before the engine starts, after which the legacy worker continues to perform
 synchronous file operations.
 
 The native host separates `asset_root` and `user_data_root`. `readfile` uses

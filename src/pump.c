@@ -1,5 +1,9 @@
 #include "pump.h"
 #include "c2_data.h"
+#if PLATFORM_PORTABLE
+#include <stdlib.h>
+#include <string.h>
+#endif
 
 unsigned char p_len[64] = { 3, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8 };
 
@@ -42,9 +46,11 @@ unsigned char getlen;
 #define R           (T - 1)
 #define MAX_FREQ    0x8000
 
+#if !PLATFORM_PORTABLE
 extern void  memmove(void *dst, const void *src, unsigned int n);
 extern void *calloc(unsigned int nmemb, unsigned int size);
 extern void free(void *);
+#endif
 /* Forward declarations (functions defined later in this file). */
 void free_pumping_memory(void);
 

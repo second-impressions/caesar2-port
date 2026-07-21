@@ -69,9 +69,19 @@ def test_observation_sources_are_debug_only():
 def test_posix_crash_handler_is_debug_only_and_sanitizer_safe():
     cmake = (ROOT / "CMakeLists.txt").read_text()
     presets = (ROOT / "CMakePresets.json").read_text()
-    assert "if(UNIX AND C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER)" in cmake
+    assert "if(UNIX AND NOT EMSCRIPTEN AND C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER)" in cmake
     assert "$<$<CONFIG:Debug>:src/platform/posix/c2_posix_debug.c>" in cmake
     assert presets.count('"C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER": "OFF"') == 2
+
+
+def test_wasm_reuses_the_sdl_host_and_recovered_engine_worker():
+    cmake = (ROOT / "CMakeLists.txt").read_text()
+    main = (SDL_BACKEND / "c2_sdl_main.c").read_text()
+    assert "SDL_EMSCRIPTEN_PERSISTENT_PATH" in cmake
+    assert "-sPTHREAD_POOL_SIZE=2" in cmake
+    assert "c2_wasm_implicit_void.h" in cmake
+    assert "#if !C2_FEAT_BROWSER_RUNTIME" in main
+    assert "src/platform/wasm" not in cmake
 
 
 def test_optional_media_is_an_explicit_host_capability():

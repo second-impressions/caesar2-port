@@ -52,6 +52,25 @@
         "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined",
         "C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER": "OFF"
       }
+    },
+    {
+      "name": "wasm-release",
+      "displayName": "WebAssembly release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/port/wasm-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_TESTING": "OFF"
+      }
+    },
+    {
+      "name": "wasm-debug",
+      "displayName": "WebAssembly debug",
+      "inherits": "wasm-release",
+      "binaryDir": "${sourceDir}/build/port/wasm-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
     }
   ],
   "buildPresets": [
@@ -70,6 +89,14 @@
     {
       "name": "linux-asan",
       "configurePreset": "linux-asan"
+    },
+    {
+      "name": "wasm-release",
+      "configurePreset": "wasm-release"
+    },
+    {
+      "name": "wasm-debug",
+      "configurePreset": "wasm-debug"
     }
   ],
   "testPresets": [

@@ -224,7 +224,9 @@ SDL_AppResult SDL_AppIterate(void *appstate)
         return to_sdl_result(result);
     }
     c2_host_present();
+#if !C2_FEAT_BROWSER_RUNTIME
     c2_host_sleep_ms(8);
+#endif
     return SDL_APP_CONTINUE;
 }
 

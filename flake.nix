@@ -19,8 +19,11 @@
         {
           default = pkgs.mkShell {
             packages = [
+              pkgs.chromium
               pkgs.cmake
+              pkgs.emscripten
               pkgs.ninja
+              pkgs.nodejs
               pkgs.pkg-config
               pkgs.sdl3
               pkgs.clang

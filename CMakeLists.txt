@@ -5,7 +5,24 @@ project(caesar2-port VERSION 0.1.0 LANGUAGES C CXX)
 set(C2_TEST_SAVE_FIXTURE "" CACHE FILEPATH
     "Original 225745-byte Caesar II save used by compatibility tests")
 
-find_package(SDL3 3.4 CONFIG REQUIRED)
+if(EMSCRIPTEN)
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL/CMakeLists.txt")
+        message(FATAL_ERROR
+            "The WASM build requires the SDL submodule; run "
+            "'git submodule update --init --recursive'")
+    endif()
+    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+    set(SDL_STATIC ON CACHE BOOL "" FORCE)
+    set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+    set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+    set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+    set(SDL_PTHREADS ON CACHE BOOL "" FORCE)
+    set(SDL_EMSCRIPTEN_PERSISTENT_PATH "/user-data" CACHE STRING "" FORCE)
+    add_subdirectory(third_party/SDL EXCLUDE_FROM_ALL)
+else()
+    find_package(SDL3 3.4 CONFIG REQUIRED)
+endif()
 
 set(libADLMIDI_STATIC ON CACHE BOOL "" FORCE)
 set(libADLMIDI_SHARED OFF CACHE BOOL "" FORCE)
@@ -43,6 +60,8 @@ option(C2_ENABLE_TEXT_ASSET_COMPAT
     "Adapt versioned engine UI to the structure of the loaded text asset" ON)
 option(C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER
     "Install native fatal-signal diagnostics in POSIX Debug builds" ON)
+set(C2_WASM_ASSET_ROOT "" CACHE PATH
+    "Original Caesar II asset directory to package into the WASM build")
 
 add_library(c2_asm_portable STATIC
     src/asm/c2_asm_diamond_image.c
@@ -174,10 +193,11 @@ set_target_properties(caesar2 PROPERTIES
 
 target_compile_definitions(caesar2 PRIVATE
     PLATFORM_PORTABLE=1
+    $<$<BOOL:${EMSCRIPTEN}>:C2_FEAT_BROWSER_RUNTIME=1>
     $<$<CONFIG:Debug>:C2_DEBUG_BUILD=1>
 )
 
-if(UNIX AND C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER)
+if(UNIX AND NOT EMSCRIPTEN AND C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER)
     target_sources(caesar2 PRIVATE
         $<$<CONFIG:Debug>:src/platform/posix/c2_posix_debug.c>
     )
@@ -197,6 +217,34 @@ target_link_libraries(caesar2 PRIVATE
     c2_libsmacker
     ADLMIDI
     SDL3::SDL3)
+
+if(EMSCRIPTEN)
+    set_target_properties(caesar2 PROPERTIES SUFFIX ".html")
+    target_compile_options(caesar2 PRIVATE
+        -pthread
+        -include "${CMAKE_CURRENT_SOURCE_DIR}/include/c2_wasm_implicit_void.h"
+    )
+    target_link_options(caesar2 PRIVATE
+        -pthread
+        -sPTHREAD_POOL_SIZE=2
+        -sALLOW_MEMORY_GROWTH=1
+        -sMAXIMUM_MEMORY=1073741824
+        -sEXIT_RUNTIME=0
+        "--shell-file=${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2.html"
+    )
+    if(C2_WASM_ASSET_ROOT)
+        if(NOT IS_DIRECTORY "${C2_WASM_ASSET_ROOT}")
+            message(FATAL_ERROR
+                "C2_WASM_ASSET_ROOT is not a directory: ${C2_WASM_ASSET_ROOT}")
+        endif()
+        target_link_options(caesar2 PRIVATE
+            "--preload-file=${C2_WASM_ASSET_ROOT}@/assets")
+    else()
+        message(WARNING
+            "C2_WASM_ASSET_ROOT is empty; the web bundle will build but "
+            "cannot start the game without Caesar II assets")
+    endif()
+endif()
 
 if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
     set_source_files_properties(src/display.c PROPERTIES

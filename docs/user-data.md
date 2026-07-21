@@ -8,9 +8,10 @@ The portable target has two deliberately disjoint filesystem namespaces:
 - `--user-data-dir` contains every file created or changed by the game.
 
 Without an override, SDL selects the platform preference directory for
-`second-impressions/caesar2`. The engine never falls back from one namespace
-to the other. This keeps an installed game tree read-only and gives browser
-ports one persistent mount to synchronize.
+`second-impressions/caesar2`. On WebAssembly this resolves beneath the
+IDBFS-backed `/user-data` mount. The engine never falls back from one namespace
+to the other. This keeps an installed game tree read-only and gives the
+browser one persistent mount to synchronize.
 
 The mutable files currently supported by the recovered engine are:
 
@@ -48,9 +49,10 @@ Portable screenshot encoding is implemented by the SDL backend and requires
 SDL 3.4 or newer. The recovered DOS and Windows targets retain their original
 LBM writer and `shotN.lbm` names; only the portable feature branch uses PNG.
 
-The engine worker uses these synchronous operations. A future browser backend
-must mount and synchronize its persistent store before starting that worker;
-it does not need to make the recovered save code asynchronous.
+The engine worker uses these synchronous operations. In the browser, SDL
+mounts and completes the initial synchronization of `/user-data` before
+`SDL_AppInit` starts that worker. Automatic persistence flushes later changes;
+the recovered save code does not become asynchronous.
 
 Portable save serialization is owned by `src/platform/common`. The recovered
 registry contains exactly 500 live entries rather than a shorter list followed

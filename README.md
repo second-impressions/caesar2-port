@@ -16,6 +16,8 @@ The durable port design is documented in:
   function, subsystem, and assembly boundary;
 - [`docs/engine-scheduling.md`](docs/engine-scheduling.md) — worker-thread,
   frame-publication, input, and browser scheduling;
+- [`docs/webassembly.md`](docs/webassembly.md) — browser build, deployment,
+  persistence, and Wasm ABI adaptation;
 - [`docs/timing.md`](docs/timing.md) — the three original timing mechanisms and
   their monotonic, vertical-blank, and frame-paced portable counterparts;
 - [`docs/media-implementation.md`](docs/media-implementation.md) — the
@@ -60,7 +62,9 @@ The recovered startup flow runs on an engine worker. The SDL main thread owns
 events and presentation, communicating through the backend-neutral
 `c2_host_*` API. The engine thread pumps music into private SDL streams, so
 XMIDI triggers and their resulting branch decisions never mutate recovered
-state from an audio callback.
+state from an audio callback. The WebAssembly target uses this same recovered
+engine, SDL callback host, and worker split. Build and deployment instructions
+are in [docs/webassembly.md](docs/webassembly.md).
 
 Original game data is required and is never committed.  From the Nix
 development shell:
@@ -107,7 +111,8 @@ viewport. The pointer is free to leave the window by default. Pass
 `--mouse-lock` to confine it to the rendered game area; `--no-mouse-lock`
 explicitly selects the default. The lock option uses native confinement where
 available and falls back to a relative virtual cursor, which is also the
-browser Pointer Lock model used by a future WebAssembly build.
+browser target's Pointer Lock model. Browsers which require a user gesture
+retry the request on the next click.
 
 Display-free smoke tests drive input through that same host boundary. They edit
 and accept a player name through the recovered name dialog before continuing.

@@ -43,6 +43,7 @@ static int c2_event_count;
 static int c2_shutdown;
 static int c2_mouse_lock_requested;
 static int c2_mouse_relative;
+static int c2_mouse_lock_pending;
 static int c2_mouse_warp_pending;
 #if C2_FEAT_DEBUG_OBSERVATION
 static int c2_observation_enabled;
@@ -83,12 +84,16 @@ static int update_mouse_confinement_rect(void)
 
 static int enable_mouse_lock(void)
 {
-    if (!c2_mouse_lock_requested) return 1;
+    if (!c2_mouse_lock_requested) {
+        c2_mouse_lock_pending = 0;
+        return 1;
+    }
 
     SDL_ClearError();
     if (update_mouse_confinement_rect() &&
         SDL_SetWindowMouseGrab(c2_window, true)) {
         c2_mouse_relative = 0;
+        c2_mouse_lock_pending = 0;
         return 1;
     }
 
@@ -97,9 +102,10 @@ static int enable_mouse_lock(void)
     SDL_ClearError();
     if (SDL_SetWindowRelativeMouseMode(c2_window, true)) {
         c2_mouse_relative = 1;
+        c2_mouse_lock_pending = 0;
         return 1;
     }
-    fprintf(stderr, "could not lock the mouse: %s\n", SDL_GetError());
+    c2_mouse_lock_pending = 1;
     return 0;
 }
 
@@ -522,6 +528,7 @@ int c2_host_init(const struct c2_host_config *config)
     c2_headless = config->headless;
     c2_mouse_lock_requested = config->mouse_lock;
     c2_mouse_relative = 0;
+    c2_mouse_lock_pending = 0;
     c2_mouse_warp_pending = 0;
     c2_frame_dirty = 0;
     c2_event_read = 0;
@@ -601,8 +608,9 @@ int c2_host_init(const struct c2_host_config *config)
     }
     SDL_SetRenderDrawColor(c2_renderer, 0, 0, 0, 255);
     if (!enable_mouse_lock()) {
-        c2_host_shutdown();
-        return 0;
+        fprintf(stderr,
+                "mouse lock is waiting for a pointer click: %s\n",
+                SDL_GetError());
     }
     return 1;
 }
@@ -633,6 +641,7 @@ void c2_host_shutdown(void)
     c2_window = NULL;
     c2_mouse_lock_requested = 0;
     c2_mouse_relative = 0;
+    c2_mouse_lock_pending = 0;
     c2_mouse_warp_pending = 0;
 
     free(c2_rgba_frame);
@@ -1142,10 +1151,12 @@ void c2_sdl_host_handle_event(SDL_Event *event)
     struct c2_host_event host_event;
     int publish;
     int refresh_mouse_rect;
+    int retry_mouse_lock;
 
     memset(&host_event, 0, sizeof(host_event));
     publish = 0;
     refresh_mouse_rect = 0;
+    retry_mouse_lock = 0;
     if (c2_renderer != NULL) {
         SDL_ConvertEventToRenderCoordinates(c2_renderer, event);
     }
@@ -1204,6 +1215,7 @@ void c2_sdl_host_handle_event(SDL_Event *event)
             host_event.mouse_y = c2_input.mouse_y;
             host_event.mouse_button = mask;
             publish = 1;
+            retry_mouse_lock = c2_mouse_lock_pending;
         } else if (event->type == SDL_EVENT_MOUSE_BUTTON_UP) {
             c2_input.mouse_buttons &= ~mask;
         }
@@ -1247,6 +1259,9 @@ void c2_sdl_host_handle_event(SDL_Event *event)
     }
     SDL_UnlockMutex(c2_event_mutex);
 
+    if (retry_mouse_lock && !enable_mouse_lock()) {
+        fprintf(stderr, "could not lock the mouse: %s\n", SDL_GetError());
+    }
     if (refresh_mouse_rect && !update_mouse_confinement_rect()) {
         fprintf(stderr,
                 "warning: could not update mouse confinement: %s\n",

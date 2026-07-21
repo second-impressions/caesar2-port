@@ -157,10 +157,10 @@ implementation detail. They do not acquire access to legacy game state.
 
 ### Filesystem
 
-Asset and save APIs may remain synchronous on the engine worker. Native hosts
-perform normal blocking I/O there. Browser startup must complete any
-asynchronous package or persistent-filesystem mounting before starting the
-engine worker.
+Asset and save APIs remain synchronous on the engine worker. Native hosts
+perform normal blocking I/O there. The Emscripten build packages assets at
+`/assets`; SDL completes its IDBFS synchronization for `/user-data` before
+calling `SDL_AppInit`, and only then starts the engine worker.
 
 ## Wait semantics
 
@@ -193,15 +193,17 @@ events from inside compatibility shims. That would preserve responsiveness,
 but it creates a different architecture from the browser and makes later
 main-thread-only services harder to reason about.
 
-The shared design instead keeps SDL callbacks on the main thread and the
-legacy loop on the engine worker for Linux, Windows, macOS, and threaded Wasm.
+The implemented shared design keeps SDL callbacks on the main thread and the
+legacy loop on the engine worker for Linux and threaded Wasm, with the same
+structure intended for native Windows and macOS.
 The browser build consequently requires pthread support and deployment with
 the cross-origin isolation headers needed for `SharedArrayBuffer`. Threaded
 and non-threaded Wasm artifacts should be treated as separate build products.
 
-The main browser thread must not synchronously wait for the worker. It returns
-from every application callback and drains published frames and requests on
-later iterations.
+The main browser thread does not synchronously wait for the worker during
+normal execution. It returns from every application callback and drains
+published frames and requests on later iterations. SDL's browser callback
+cadence replaces the native per-iteration sleep.
 
 ## Alternatives
 
