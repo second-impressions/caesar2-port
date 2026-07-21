@@ -193,3 +193,8 @@ def test_mouse_lock_is_cli_policy_above_a_backend_neutral_cursor():
     assert "SDL_SetWindowMouseGrab" in host
     assert "SDL_SetWindowRelativeMouseMode" in host
     assert "SDL_" not in common_mouse
+
+
+def test_sdl_uses_non_integer_pixel_art_scaling():
+    host = (SDL_BACKEND / "c2_sdl_host.c").read_text()
+    assert "SDL_SetTextureScaleMode(c2_texture, SDL_SCALEMODE_PIXELART)" in host

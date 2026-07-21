@@ -601,7 +601,7 @@ int c2_host_init(const struct c2_host_config *config)
                                    SDL_TEXTUREACCESS_STREAMING,
                                    c2_frame_width, c2_frame_height);
     if (c2_texture == NULL ||
-        !SDL_SetTextureScaleMode(c2_texture, SDL_SCALEMODE_NEAREST)) {
+        !SDL_SetTextureScaleMode(c2_texture, SDL_SCALEMODE_PIXELART)) {
         fprintf(stderr, "SDL texture setup failed: %s\n", SDL_GetError());
         c2_host_shutdown();
         return 0;
