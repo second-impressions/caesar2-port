@@ -87,9 +87,6 @@ shutdown:
 ./build/port/linux-debug/caesar2 --city-smoke-test --data-dir /path/to/CAESAR2
 ```
 
-Headless framebuffer hashes remain available as diagnostics, but are not test
-oracles.
-
 Pass `--screenshot output.ppm` to write the final headless frame or the current
 interactive startup state as a portable pixmap beneath the user-data root.
 

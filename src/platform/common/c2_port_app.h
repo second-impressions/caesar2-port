@@ -9,7 +9,6 @@ enum c2_port_app_result {
 
 struct c2_port_app_config {
     const char *screenshot_filename;
-    int headless;
 };
 
 enum c2_port_app_result c2_port_app_run(

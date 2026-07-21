@@ -144,7 +144,6 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     c2_app.host_initialized = 1;
 
     c2_app.engine_config.screenshot_filename = screenshot_filename;
-    c2_app.engine_config.headless = headless;
 #if C2_FEAT_DEBUG_OBSERVATION
     c2_sdl_smoke_init(&c2_app.smoke, smoke_kind, SDL_GetTicks());
 #else

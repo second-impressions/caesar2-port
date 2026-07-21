@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define SCREEN_ROWS 64
 #define SOURCE_SIZE 4096
@@ -52,17 +53,21 @@ void write_medium_diamond_righthalfroof(unsigned char *, int);
 void write_large_diamond_lefthalfroof(unsigned char *, int);
 void write_large_diamond_righthalfroof(unsigned char *, int);
 
-static unsigned int framebuffer_hash(void)
+static void emit_framebuffer(void)
 {
-    unsigned int hash;
-    unsigned int index;
+    unsigned int total;
 
-    hash = 2166136261U;
-    for (index = 0; index < sizeof(framebuffer); index++) {
-        hash ^= framebuffer[index];
-        hash *= 16777619U;
+    total = 0;
+    while (total < sizeof(framebuffer)) {
+        int written;
+
+        written = write(1, framebuffer + total,
+                        (unsigned int)sizeof(framebuffer) - total);
+        if (written <= 0) {
+            exit(EXIT_FAILURE);
+        }
+        total += (unsigned int)written;
     }
-    return hash;
 }
 
 static void reset_fixture(void)
@@ -86,6 +91,7 @@ static void run_hat(const char *name, hat_writer writer)
     unsigned int depth_index;
     unsigned int length_index;
 
+    (void)name;
     for (depth_index = 0;
          depth_index < sizeof(depths) / sizeof(depths[0]); depth_index++) {
         for (length_index = 0;
@@ -94,8 +100,7 @@ static void run_hat(const char *name, hat_writer writer)
             reset_fixture();
             y_length = lengths[length_index];
             writer(source_data, depths[depth_index]);
-            printf("%s d%d h%d %08x\n", name, depths[depth_index], y_length,
-                   framebuffer_hash());
+            emit_framebuffer();
         }
     }
 }
@@ -105,12 +110,13 @@ static void run_roof(const char *name, roof_writer writer)
     static const int lengths[] = {1, 4, 8, 16};
     unsigned int length_index;
 
+    (void)name;
     for (length_index = 0;
          length_index < sizeof(lengths) / sizeof(lengths[0]); length_index++) {
         reset_fixture();
         y_length = lengths[length_index];
         writer(source_data);
-        printf("%s h%d %08x\n", name, y_length, framebuffer_hash());
+        emit_framebuffer();
     }
 }
 
@@ -123,6 +129,7 @@ static void run_half_hat(const char *name, half_hat_writer writer)
     unsigned int length_index;
     unsigned int seam_index;
 
+    (void)name;
     for (depth_index = 0;
          depth_index < sizeof(depths) / sizeof(depths[0]); depth_index++) {
         for (length_index = 0;
@@ -135,9 +142,7 @@ static void run_half_hat(const char *name, half_hat_writer writer)
                 y_length = lengths[length_index];
                 writer(source_data, depths[depth_index],
                        edge_seams[seam_index]);
-                printf("%s d%d h%d s%d %08x\n", name,
-                       depths[depth_index], y_length,
-                       edge_seams[seam_index], framebuffer_hash());
+                emit_framebuffer();
             }
         }
     }
@@ -150,6 +155,7 @@ static void run_half_roof(const char *name, half_roof_writer writer)
     unsigned int length_index;
     unsigned int seam_index;
 
+    (void)name;
     for (length_index = 0;
          length_index < sizeof(lengths) / sizeof(lengths[0]); length_index++) {
         for (seam_index = 0;
@@ -158,8 +164,7 @@ static void run_half_roof(const char *name, half_roof_writer writer)
             reset_fixture();
             y_length = lengths[length_index];
             writer(source_data, edge_seams[seam_index]);
-            printf("%s h%d s%d %08x\n", name, y_length,
-                   edge_seams[seam_index], framebuffer_hash());
+            emit_framebuffer();
         }
     }
 }

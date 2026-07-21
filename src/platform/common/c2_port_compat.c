@@ -171,21 +171,3 @@ int c2_port_save_screenshot(const char *filename)
     free(ppm);
     return i;
 }
-
-uint64_t c2_port_frame_hash(void)
-{
-    uint64_t hash;
-    int i;
-
-    if (internal_screen == NULL) return 0;
-    hash = UINT64_C(14695981039346656037);
-    for (i = 0; i < C2_SCREEN_PIXELS; i++) {
-        hash ^= internal_screen[i];
-        hash *= UINT64_C(1099511628211);
-    }
-    for (i = 0; i < C2_PALETTE_BYTES; i++) {
-        hash ^= current_palette[i];
-        hash *= UINT64_C(1099511628211);
-    }
-    return hash;
-}

@@ -1,4 +1,3 @@
-#include <inttypes.h>
 #include <stdio.h>
 #include <setjmp.h>
 
@@ -59,10 +58,6 @@ enum c2_port_app_result c2_port_app_run(
 #if C2_FEAT_DEBUG_OBSERVATION
     c2_observe(C2_OBSERVATION_ENGINE_STOPPED, result);
 #endif
-    if (config->headless) {
-        printf("final framebuffer fnv1a64=%016" PRIx64 "\n",
-               c2_port_frame_hash());
-    }
     if (config->screenshot_filename != NULL &&
         !c2_port_save_screenshot(config->screenshot_filename)) {
         fprintf(stderr, "could not write screenshot to %s\n",

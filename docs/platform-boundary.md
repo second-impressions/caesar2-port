@@ -170,10 +170,11 @@ reproduce shipped cleanup behavior.
 `tests/test_diamond_asm_oracle.py` provides the executable semantic oracle for
 this family. It builds a statically linked 32-bit Linux fixture with OpenWatcom
 and the original recovered assembly, builds the same fixture against the
-portable C with renderer bug fixes disabled, and compares complete-framebuffer
-hashes across parameter cases. The ordinary C test runs with the corrected
-defaults, including focused assertions for the corrected destinations. Extend
-the shared harness whenever another diamond routine is translated.
+portable C with renderer bug fixes disabled, and compares complete framebuffer
+contents byte-for-byte across parameter cases. The ordinary C test runs with
+the corrected defaults, including focused assertions for the corrected
+destinations. Extend the shared harness whenever another diamond routine is
+translated.
 
 The nine full and screen-edge left/right roof writers use the corresponding
 upward-growing V projection: source row `r` draws pairs at most `r` steps from
