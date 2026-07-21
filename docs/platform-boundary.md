@@ -47,8 +47,13 @@ The native port now follows that dependency direction:
 - `src/platform/common/c2_port_audio.c` implements the Miles sample surface
   over backend-neutral PCM voices, while `src/platform/sdl3/c2_sdl_audio.c`
   owns the SDL3 playback device, conversion, resampling, and mixing;
-  `c2_port_video.c` remains an unavailable capability shim until its
-  libsmacker backend is complete;
+- `src/platform/common/c2_port_video.c` implements the recovered Smacker
+  surface with libsmacker and delegates only indexed-frame publication and
+  PCM queuing to the host;
+- `src/platform/common/c2_port_bugfixes.c`,
+  `c2_port_save_compat.c`, and `c2_port_text_compat.c` contain portable-only
+  compatibility policy; they deliberately do not live beside recovered
+  translation units at the `src/` root;
 - `src/platform/common/c2_port_timing.c` reproduces the recovered Watcom/DOS
   clock's 18.2 Hz, 50-to-60-ms increments while replacing VGA blank waits and
   CPU-throughput frame timing with separate explicit host deadlines; the three
@@ -93,9 +98,10 @@ text subset were removed once the same-symbol boundary was complete enough to
 link the original path.
 
 `tests/test_port_layering.py` enforces that SDL API names do not escape the
-backend, that portable layers do not depend back on `c2_sdl_*`, and that the
-SDL callback does not mutate representative legacy globals. Extend this test
-whenever the boundary grows.
+backend, recovered files do not call `c2_host_*` directly, portable common
+code does not depend back on `c2_sdl_*`, portable-only translation units stay
+out of the recovered source root, and the SDL callback does not mutate
+representative legacy globals. Extend this test whenever the boundary grows.
 
 The observation contract lives in `include/c2_observation.h`. Recovered code
 publishes lifecycle and modal checkpoints from the engine worker. Each record
@@ -103,11 +109,11 @@ contains a monotonically increasing sequence, a cumulative reached bitset, and
 a small immutable snapshot of relevant game state. The host may copy that
 record, but has no API for writing engine state. Test input remains entirely
 separate and travels through the normal mouse/key publication path.
-`C2_ENABLE_OBSERVATION` is supplied by CMake only for the Debug configuration;
-non-Debug builds omit the adapter sources, host storage, checkpoint calls,
-smoke driver, and smoke command-line options.
+`C2_DEBUG_BUILD` is supplied by CMake only for the Debug configuration and
+selects `C2_FEAT_DEBUG_OBSERVATION`; non-Debug builds omit the adapter sources,
+host storage, checkpoint calls, smoke driver, and smoke command-line options.
 
-## Portable assembly interface scaffold
+## Portable assembly interface
 
 Before translating individual assembly bodies, the complete callable ABI is
 represented by `include/c2_asm_routines.def`. It contains exactly 87
@@ -115,56 +121,17 @@ function slots: one for every callable `PUBLIC` export in the eight recovered
 assembly files. `include/c2_asm_routines.h` turns the manifest into engine
 declarations. Each entry is explicitly marked `C2_ASM_STUB` or
 `C2_ASM_IMPLEMENTED`; `src/asm/c2_asm_stubs.c` supplies only the
-remaining empty bodies.
+remaining hardware-facing bodies. The header is exposed to recovered callers
+only for `PLATFORM_PORTABLE`; Watcom retains the recovered call surface and
+never parses the portable manifest macros.
 
-The first implemented batch is `copy`, `compress`, and `depress` in
-`src/asm/c2_asm_memory.c`. Their byte-oriented implementation avoids
-unaligned typed accesses and is covered by exact encoded-form and round-trip
-tests. `copy` preserves the assembly routine's contract: callers provide a
-positive byte count in 32-byte units, and the implementation copies whole
-32-byte chunks.
-
-The internal-screen point writers, zero-only two-pixel writer, 2/4/6/8-pixel
-block placers, and fast rectangle filler are implemented in
-`src/asm/c2_asm_internal_raster.c`. These retain the original fixed
-640-pixel stride in the block placers and in `show_internal_2x8`; the other
-point writers and the fast rectangle filler retain their variable
-`screen_width` stride. Tests cover both behaviors directly against framebuffer
-rows. The live inventory is therefore 13 implemented and 74 blank routines.
-
-The seven font/sprite blitters, three fixed-size block loaders, and two mouse
-background copies are implemented in `src/asm/c2_asm_sprite.c`.
-Their source transparency, clipping skips, embedded little-endian sprite-table
-offsets, and mixed variable-initial/fixed-640 row addressing have direct tests.
-The `char *` mouse-background ABI is retained, while its arbitrary pixel bytes
-are accessed through the C-defined `unsigned char` representation view. The
-live inventory is therefore 25 implemented and 62 blank routines.
-
-The nine map-pointer diamond writers are implemented in
-`src/asm/c2_asm_diamond_ptr.c`. They are rasterizers despite their
-historical `ptr` names: each writes a two-byte color word around a large,
-medium, or small diamond. The portable geometry preserves the original
-top/bottom selection, clipped-side suppression, variable-stride origin, and
-fixed 640-pixel row offsets without unaligned typed stores. The live inventory
-is therefore 34 implemented and 53 blank routines.
-
-The basic small, medium, and large image-diamond placers are implemented in
-`src/asm/c2_asm_diamond_image.c`, including opaque pixels, half
-selection, screen-edge source cropping, and the variable-origin/fixed-row
-addressing split. The shared kernel follows the recovered 6/14/30-row symmetric
-geometry; the small clipped pair retains its assembly-specific ignored `part`
-argument. The live inventory is therefore 43 implemented and 44 blank
-routines.
-
-`call_address` is implemented as the ordinary no-argument, return-discarding
-callback invocation encoded by its assembly trampoline. The live inventory is
-therefore 44 implemented and 43 blank routines.
-
-The nine full and screen-edge left/right diamond-hat writers share a proven
-two-pixel-pair projection kernel. It preserves transparent pixels, `y_length`,
-the variable-stride upward origin walk, fixed-640 projected rows, and the
-post-depth outer-pair clipping encoded by the unrolled assembly. The live
-inventory is therefore 53 implemented and 34 blank routines.
+All 74 CPU-only exports are implemented in ordinary C. They cover memory and
+compression, internal-screen primitives, font and sprite blitters, block and
+mouse-background copies, callback invocation, map-pointer diamond writers,
+and every small, medium, and large diamond image/hat/roof variant. Their
+implementations preserve the recovered clipping, transparency, fixed-640
+projected-row, variable-stride origin, and byte-oriented unaligned-access
+semantics.
 
 Compatibility note: `write_medium_diamond_righthat` contains one asymmetric
 literal store inherited from `dia_medi.asm`. In the third post-depth clipped
@@ -198,20 +165,12 @@ the corrected defaults, including focused assertions for the corrected
 destinations. Extend the shared harness whenever another diamond routine is
 translated.
 
-The nine full and screen-edge left/right roof writers use the corresponding
-upward-growing V projection: source row `r` draws pairs at most `r` steps from
-the center while the origin walks upward with `screen_width`. Their portable
-kernel is covered by the compiled assembly oracle. The live inventory is
-therefore 62 implemented and 25 blank routines.
-
-The six half-width hat writers and six half-width roof writers complete the
-CPU-only diamond family. Their source rows contain 3, 7, or 15 two-byte pairs;
-the `edge_seam` argument is the recovered `0`/`2` choice that retains or
-suppresses the joining pair at a viewport edge. The right-half encoding has an
-unused leading hat pair and a special first roof row, both preserved by the
-shared portable kernels and verified against compiled assembly. The live
-inventory is therefore 74 implemented and 13 blank routines. The remaining
-13 routines are all hardware-facing video, refresh, cursor, or palette paths.
+The remaining 13 manifest slots are deliberately unimplemented DOS hardware
+operations: direct VGA/VESA writes, bank selection, vertical blank, physical
+screen and cursor copies, dirty-tile bank refresh, and RAD palette callbacks.
+They are unreachable in the portable build because the corresponding callers
+select the framebuffer, timing, cursor, refresh, and movie adapters instead.
+They are not outstanding CPU translations.
 
 The DOS diamond modules use the 20-byte Smacker/Miles `sndinit` array as four
 unaligned transient dword slots at byte offsets 2, 6, 10, and 14. Each affected
@@ -220,11 +179,10 @@ Portable translations must replace these assembly register-spill slots with
 local variables; renderer state must not remain coupled to the deferred sound
 backend.
 
-The translated CPU routines remain a separate `c2_asm_portable` library, now
-linked into the running port. The recovered UI and simulation exercise its
-sprite writers and fixed-size block loaders through recovered `display.c` and
-`screens.c` call paths. The thirteen hardware-facing slots remain empty and
-unreachable from the portable framebuffer publication path.
+The translated CPU routines remain a separate `c2_asm_portable` library linked
+into the running port. The recovered UI and simulation exercise its sprite
+writers and fixed-size block loaders through recovered `display.c` and
+`screens.c` call paths.
 `tests/test_asm_portable_surface.py` derives the assembly exports from source
 and requires exact set equality with the manifest.
 

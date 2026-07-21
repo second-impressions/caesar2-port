@@ -88,9 +88,10 @@ instead of selecting index 29. The 1996 engine adds the two new choices.
 
 ## Port implementation boundary
 
-`src/c2_text_compat.c` parses the in-memory offset table read-only. It neither
-changes the asset file nor rewrites `text_buffer`. It exposes named structural
-capabilities for the two verified code/resource evolution points.
+`src/platform/common/c2_port_text_compat.c` parses the in-memory offset table
+read-only. It neither changes the asset file nor rewrites `text_buffer`. It
+exposes named structural capabilities for the two verified code/resource
+evolution points.
 
 The recovered 1996 engine source remains the default path. The few places
 where constants and game/UI selection genuinely changed are guarded by

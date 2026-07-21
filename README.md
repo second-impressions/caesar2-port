@@ -19,9 +19,12 @@ The durable port design is documented in:
 - [`docs/timing.md`](docs/timing.md) — the three original timing mechanisms and
   their monotonic, vertical-blank, and frame-paced portable counterparts;
 - [`docs/media-implementation.md`](docs/media-implementation.md) — the
-  SDL3 PCM, Smacker decoding, and branch-aware XMIDI/OPL3 media stack; and
+  SDL3 PCM, Smacker decoding, and branch-aware XMIDI/OPL3 media stack;
 - [`docs/legacy-abi.md`](docs/legacy-abi.md) — packing, pointer width,
-  signedness, serialization, and compiler semantics.
+  signedness, serialization, and compiler semantics; and
+- [`docs/recovered-source-delta-audit.md`](docs/recovered-source-delta-audit.md)
+  — the justification and enforcement status of every port-only edit to a
+  recovered source file.
 
 Source ownership follows the same boundary: recovered engine C remains in
 `src/`, CPU-only translations of recovered assembly live in `src/asm/`,
