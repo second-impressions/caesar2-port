@@ -56,3 +56,27 @@ def test_portable_lib32_slice_remains_engine_side():
         if "c2_host_" in path.read_text():
             offenders.append(str(path.relative_to(ROOT)))
     assert not offenders, "legacy engine support reaches the host:\n" + "\n".join(offenders)
+
+
+def test_port_adapter_does_not_reimplement_engine_control_flow():
+    app = (PORT / "c2_port_app.c").read_text()
+    forbidden = (
+        "skill1_buttons",
+        "skill2_buttons",
+        "show_skill",
+        "initreg_game_loop",
+        "c2inf",
+        "startup_stage",
+    )
+    offenders = [symbol for symbol in forbidden if symbol in app]
+    assert not offenders, f"port adapter owns recovered game flow: {offenders}"
+    assert "c2_engine_main(0, NULL)" in app
+
+
+def test_build_uses_recovered_driver_and_lib32():
+    cmake = (ROOT / "CMakeLists.txt").read_text()
+    assert "src/c2.c" in cmake
+    assert "src/lib32.c" in cmake
+    assert "src/port/c2_port_bootstrap.c" not in cmake
+    assert "src/port/c2_port_raster.c" not in cmake
+    assert "src/portable/lib32/c2_lib32_text.c" not in cmake

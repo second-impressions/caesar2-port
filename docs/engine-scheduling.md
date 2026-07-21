@@ -70,11 +70,11 @@ The host must not inspect or mutate arbitrary legacy globals. Doing so would
 turn the whole data segment into an undocumented shared-memory API. Every
 cross-thread value is instead copied through a defined boundary.
 
-This split is active in the Linux bootstrap. SDL callbacks enqueue neutral
-events and present frames on the main thread. A named `caesar2-engine` worker
-owns the recovered startup/options flow and every mutation of `c2inf` made by
-that flow. The same worker will absorb the campaign driver as more recovered
-translation units enter the native build.
+This split is active in the Linux port. SDL callbacks enqueue neutral events
+and present frames on the main thread. A named `caesar2-engine` worker enters
+the recovered `c2_engine_main` driver and owns startup, campaign, simulation,
+modal flow, and ordinary legacy-global mutation. The SDL lifecycle adapter
+never selects screens or calls engine actions.
 
 ## Boundary data
 
@@ -121,9 +121,10 @@ input waits.
 The initial queue holds 64 neutral events and drops the oldest event on
 overflow so host callbacks can never block behind the engine. Mouse state,
 focus, wheel motion, quit state, and a generation counter are also available
-as a mutex-protected snapshot. The startup flow uses the event queue, while the
-connected province loop copies the snapshot through portable `read_mouse` into
-the recovered `get_mouse` press/release state machine.
+as a mutex-protected snapshot. Portable `read_mouse` copies that snapshot into
+the recovered `get_mouse` press/release state machine throughout the game.
+`--smoke-test` generates input in the SDL test adapter only; it does not
+introduce a second game controller.
 
 ### Audio and movies
 

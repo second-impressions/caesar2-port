@@ -11,8 +11,8 @@ typedef void (*diamond_writer)(int, int);
 static unsigned char pixels[(TEST_WIDTH + 1) * TEST_HEIGHT];
 static unsigned char expected[(TEST_WIDTH + 1) * TEST_HEIGHT];
 unsigned char *internal_screen = pixels;
-int lib_para1;
-int lib_para2;
+extern int lib_para1;
+extern int lib_para2;
 int screen_width;
 
 static int diamond_left(int row, int height, int centre)

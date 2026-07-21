@@ -19,19 +19,19 @@ The durable port design is documented in:
 - [`docs/legacy-abi.md`](docs/legacy-abi.md) — packing, pointer width,
   signedness, serialization, and compiler semantics.
 
-## Native Linux bootstrap
+## Native Linux port
 
-The native bootstrap presents both original publisher splashes, enters the
-recovered `Caesar II - Game Options` and `New Game Options` screens, and reaches
-the recovered initial-province selection screen through SDL3. It deliberately
-links recovered display, screen, control, empire, refresh, and data translation
-units, so this is a vertical engine-to-platform slice rather than a replacement
-UI. The splashes advance after two seconds or on input. Escape exits from the
-front screen and returns from the detailed game-options screen.
+The native executable now enters the recovered `c2.c` program driver and uses
+the original startup, options, province-selection, province-initialization,
+simulation, modal, and UI control flow. All recovered engine translation units,
+including the full `lib32.c`, are compiled. The port directory does not contain
+a second startup state machine, duplicated hitboxes, or replacement screens.
 
-The original `INTRO.SMK` between the publisher splashes and front screen is
-currently skipped. Loading games, tutorials, name entry, and starting the
-simulation after province confirmation remain to be connected.
+The original `INTRO.SMK` and other Smacker playback are currently skipped, and
+Miles music and sound calls are silent. Save-file enumeration and name entry
+still need complete portable services. These are missing platform capabilities,
+not alternate game-flow implementations: after a province is confirmed, the
+recovered code initializes it and enters the recovered city game loop.
 
 The recovered startup flow runs on an engine worker. The SDL main thread owns
 events and presentation, communicating through the backend-neutral
@@ -52,19 +52,17 @@ cmake --build --preset linux-debug
 Writable files use a separate user-data root, selected with
 `--user-data-dir PATH` or `C2_USER_DATA_DIR` (default: the current directory).
 
-The game-options screen supports Start New Game by mouse or Enter/Space. In the
-detailed options, Left/Right changes difficulty, `P` toggles peaceful campaign
-mode, the Back row returns to the front screen, and Start This Game enters the
-province map. Hover and click handling now run through the recovered
-`initreg_game_loop`, including its original region hit-testing and confirmation
-dialog. Handing the confirmed province into game initialization is the next
-startup boundary.
+Mouse interaction, button geometry, modal behavior, and province hit-testing
+all come from the recovered engine. The SDL backend only publishes input
+snapshots and frames.
 
-A display-free smoke test loads the same PL8, font, text, and palette files and
-reports deterministic framebuffer hashes for the complete sequence:
+A display-free smoke test drives test input through the same host boundary,
+reaches the recovered province selector, and reports the final framebuffer
+hash. Province offers are randomized, so the hash is diagnostic rather than a
+fixed golden value:
 
 ```bash
-./build/port/linux-debug/caesar2 --headless --data-dir /path/to/CAESAR2
+./build/port/linux-debug/caesar2 --smoke-test --data-dir /path/to/CAESAR2
 ```
 
 Pass `--screenshot output.ppm` to write the final headless frame or the current
@@ -75,9 +73,8 @@ To register that smoke test with CTest, configure with
 The `linux-tsan` configure/build/test preset runs the same worker-thread slice
 under Clang ThreadSanitizer. The `linux-asan` preset combines AddressSanitizer
 and UndefinedBehaviorSanitizer. It disables ASan global instrumentation because
-that instrumentation retains every otherwise-dead legacy data section and
-defeats the bootstrap's deliberate link-time source slicing; heap, stack, and
-the live startup path remain instrumented.
+the recovered program has a very large legacy global data segment; heap,
+stack, and the live engine path remain instrumented.
 
 ## Reconstruction baseline
 

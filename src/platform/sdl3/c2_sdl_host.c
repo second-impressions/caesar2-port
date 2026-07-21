@@ -323,6 +323,47 @@ int c2_host_user_file_write(const char *filename, const void *buffer,
     return ok;
 }
 
+size_t c2_host_user_file_read(const char *filename, void *buffer,
+                              size_t size, size_t offset)
+{
+    char path[C2_PATH_CAPACITY];
+    FILE *file;
+    size_t bytes_read;
+
+    if (!build_path(path, sizeof(path), c2_user_data_root, filename, 0)) {
+        return 0;
+    }
+    file = fopen(path, "rb");
+    if (file == NULL || fseek(file, (long)offset, SEEK_SET) != 0) {
+        if (file != NULL) fclose(file);
+        return 0;
+    }
+    bytes_read = fread(buffer, 1, size, file);
+    fclose(file);
+    return bytes_read;
+}
+
+int c2_host_user_file_write_at(const char *filename, const void *buffer,
+                               size_t size, size_t offset)
+{
+    char path[C2_PATH_CAPACITY];
+    FILE *file;
+    int ok;
+
+    if (!build_path(path, sizeof(path), c2_user_data_root, filename, 0)) {
+        return 0;
+    }
+    file = fopen(path, "r+b");
+    if (file == NULL) file = fopen(path, "wb");
+    if (file == NULL || fseek(file, (long)offset, SEEK_SET) != 0) {
+        if (file != NULL) fclose(file);
+        return 0;
+    }
+    ok = fwrite(buffer, 1, size, file) == size;
+    if (fclose(file) != 0) ok = 0;
+    return ok;
+}
+
 int c2_host_publish_indexed_frame(const unsigned char *pixels,
                                   int width, int height, int pitch,
                                   const unsigned char *palette,
@@ -396,7 +437,7 @@ int c2_host_wait_event(struct c2_host_event *event,
     int got_event;
 
     SDL_LockMutex(c2_event_mutex);
-    if (c2_event_count == 0 && !c2_shutdown) {
+    if (c2_event_count == 0 && !c2_shutdown && timeout_ms != 0) {
         SDL_WaitConditionTimeout(c2_event_condition, c2_event_mutex,
                                  (Sint32)timeout_ms);
     }
@@ -435,6 +476,16 @@ int c2_host_shutdown_requested(void)
     shutdown = c2_shutdown;
     SDL_UnlockMutex(c2_event_mutex);
     return shutdown;
+}
+
+void c2_sdl_host_set_headless_mouse(int x, int y, unsigned int buttons)
+{
+    SDL_LockMutex(c2_event_mutex);
+    c2_input.mouse_x = x;
+    c2_input.mouse_y = y;
+    c2_input.mouse_buttons = buttons;
+    c2_input.generation++;
+    SDL_UnlockMutex(c2_event_mutex);
 }
 
 void c2_sdl_host_handle_event(SDL_Event *event)

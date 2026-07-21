@@ -10,7 +10,6 @@
 
 int c2_port_compat_init(void);
 void c2_port_compat_shutdown(void);
-int c2_port_load_startup_ui(void);
 int c2_port_save_screenshot(const char *filename);
 uint64_t c2_port_frame_hash(void);
 

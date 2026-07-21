@@ -1,12 +1,25 @@
 
 #include "c2_data.h"
 
+#if PLATFORM_DOS || PLATFORM_WINDOWS
 #include <io.h>          /* open, close, write            */
+#else
+#include <unistd.h>
+#endif
 #include <fcntl.h>       /* O_BINARY / O_TRUNC / O_CREAT  */
 #include <sys/stat.h>    /* S_IRUSR, S_IWUSR              */
 
+#if PLATFORM_PORTABLE
+#define O_BINARY 0
+#endif
+
 // Backing buffer for the eight-key debug-cheat ring.
+#if PLATFORM_PORTABLE
+static char portable_old_key_buffer[9] = "        ";
+char *old_key_buffer = portable_old_key_buffer;
+#else
 char *old_key_buffer = "        ";
+#endif
 
 int LBM_HEADER1[12] = { 1297239878, 817038336, 541934160, 1145589058, 335544320, -536772606, 0, 8, 16908032, -536772606, 1346456899, 196608 };
 
@@ -18,10 +31,12 @@ int LBM_PADDING = 0;
 #define S_IWUSR 0200
 #endif
 
+#if !PLATFORM_PORTABLE
 extern void __cdecl code_01871D(void);
 extern void __cdecl code_018738(void);
 extern void __cdecl code_0187A9(void);
 extern void __cdecl code_0187BF(void);
+#endif
 /* Forward declarations (functions defined later in this file). */
 void capture_shot(char *filename);
 

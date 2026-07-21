@@ -41,7 +41,7 @@ void restore_city_from_undo_buffer(void);
 void restore_region_from_undo_buffer(void);
 /* Callers before this point treat the return as implicit int;
    only the Windows build sees the prototype. */
-#if PLATFORM_WINDOWS
+#if PLATFORM_WINDOWS || PLATFORM_PORTABLE
 void clear_all_cm(char layer);
 #endif
 void set_route_elastic_range(int radius);

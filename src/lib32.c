@@ -1,16 +1,27 @@
 #include "lib32.h"
 #include "c2_data.h"
-#include <conio.h>             /* inp(), outpw() */
 #if PLATFORM_DOS
+#include <conio.h>             /* inp(), outpw() */
 #include <i86.h>              /* int386, union REGS, sound/nosound/delay */
-#endif
 #include <io.h>                /* open, close, read, write */
+#include <dos.h>               /* _dos_setdrive */
+#include <direct.h>            /* chdir */
+#else
+#include <unistd.h>
+#endif
 #include <fcntl.h>             /* O_BINARY */
 #include <stdlib.h>            /* free, malloc */
 #include <string.h>            /* memset */
-#include <dos.h>               /* _dos_setdrive */
-#include <direct.h>            /* chdir */
 #include <sys/timeb.h>         /* ftime, struct timeb */
+
+#if PLATFORM_PORTABLE
+#define O_BINARY 0
+#define _lseek lseek
+#define __far
+#define __cdecl
+extern void c2_port_exit(int status);
+#define exit c2_port_exit
+#endif
 
 struct mouse_cbd cbd = { 0, 0, 0, 0, 0, 0, 0, 0 };
 int steves_security_false1[7] = {
@@ -317,6 +328,9 @@ extern void __cdecl code_018D36(void);
 extern void __cdecl code_018D50(void);
 char get_insert_letter(void);
 char sim_mouse(void);
+#if PLATFORM_PORTABLE
+int one_letter(unsigned char *font, unsigned char letter);
+#endif
 
 extern void __far click_handler(unsigned int ax,
                                 unsigned int bx,
@@ -459,6 +473,7 @@ char get_filename_length(char *filename)
     return length;
 }
 
+#if !PLATFORM_PORTABLE
 // Try to open `fname` (after cd_path) and report whether it exists. Always restores the working
 // directory via main_path before returning.
 // FUNCTION: C2 0x24446
@@ -575,6 +590,7 @@ char read_config(char *filename, char *buffer)
     search_ptr += 7;
     return *search_ptr;
 }
+#endif
 
 // Decode an IFF ILBM image into a palette and raster buffer.
 // FUNCTION: C2 0x2460f
@@ -1395,6 +1411,7 @@ void grey_a_screen(void)
     }
 }
 
+#if !PLATFORM_PORTABLE
 // Wipe all four 64K mode-X memory regions.
 // FUNCTION: C2 0x25845
 void clear_all_screens(void)
@@ -1404,6 +1421,7 @@ void clear_all_screens(void)
     cls_256x(0x8000, 0x10000);
     cls_256x(0xa000, 0x10000);
 }
+#endif
 
 // Handle CBC completion without performing any action.
 // FUNCTION: C2 0x25880
@@ -1779,6 +1797,7 @@ int mouse_in_area(int x, int y, int w, int h)
     return 0;
 }
 
+#if !PLATFORM_PORTABLE
 // Non-blocking keyboard poll.
 // FUNCTION: C2 0x26056
 // FUNCTION: C2WIN 0x0044c7aa
@@ -1796,6 +1815,7 @@ void get_key(void)
         }
     }
 }
+#endif
 
 // Drain the keyboard buffer then block until the next key event.
 // FUNCTION: C2 0x260ab
@@ -2692,7 +2712,11 @@ void font_list(int entry_idx, int word_count, int x, int y, unsigned char *font,
 void font_no(int value, char pad_char, char *suffix, int x,
              int y, unsigned char *font, int color)
 {
+#if PLATFORM_PORTABLE
+    char buffer[17] = "                ";
+#else
     char *buffer = "                ";  /* 16 spaces plus NUL */
+#endif
     char *buffer_ptr;
     int i;
     char had_zero;
@@ -3729,6 +3753,7 @@ void start_game(void)
     start_system();
 }
 
+#if !PLATFORM_PORTABLE
 // Tear-down counterpart of start_system: stop the runtime, print the goodbye banner, and exit(0).
 // FUNCTION: C2 0x28470
 // FUNCTION: C2WIN 0x0044ff24
@@ -3738,6 +3763,7 @@ void exit_game(void)
     printf("\nExiting Caesar II.\n");
     exit(0);
 }
+#endif
 
 // Initialize random state, video, framebuffers, audio, scratch memory, and mouse limits.
 // FUNCTION: C2 0x283fa REORDERED
@@ -3851,8 +3877,14 @@ void stop_system(void)
 {
     if (internal_screen != 0) free(internal_screen);
     free_scratch_buffer();
+#if PLATFORM_PORTABLE
+    internal_screen = 0;
+    scratch_buffer = 0;
+    stop_sounds();
+#else
     if (screen_mode == 1) unset_vga_256x();
     dos_cls();
     set_mode3();
     stop_sounds();
+#endif
 }

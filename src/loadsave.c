@@ -1,7 +1,19 @@
 
 #include <fcntl.h>       /* O_BINARY: 0x200 under Watcom, 0x8000 under MSVC */
+#if PLATFORM_PORTABLE
+#include <string.h>
+#endif
 #include "c2_data.h"
 #include "c2_types.h"
+
+#if PLATFORM_PORTABLE
+#define O_BINARY 0
+#define _lseek lseek
+extern int read_userfile(const char *filename, void *buffer, int size,
+                         int offset);
+extern int writefile(const char *filename, char *buffer, int size);
+extern int write_to_file(char *filename, char *buffer, int size, int offset);
+#endif
 
 struct save_entry model_entries[40] = {
     { skill_to_imperial_request, 20 },
@@ -844,6 +856,9 @@ int loadgame(char *save_filename)
 // FUNCTION: C2WIN 0x00483554
 void save_inf(void)
 {
+#if PLATFORM_PORTABLE
+    writefile("caesar2.inf", (char *)&c2inf, 0x40);
+#else
     int inf_fd;
 
     inf_fd = open("caesar2.inf", 0x261, 0x180);
@@ -851,6 +866,7 @@ void save_inf(void)
         write(inf_fd, &c2inf, 0x40);
         close(inf_fd);
     }
+#endif
 }
 
 // Load caesar2.inf while preserving the runtime drive settings initialized before the read.
@@ -860,7 +876,9 @@ void load_inf(void)
 {
     int old_cd_letter;
     int old_drive_init;
+#if !PLATFORM_PORTABLE
     int inf_fd;
+#endif
 
     old_cd_letter = c2inf.cd_letter;
     old_drive_init = c2inf.drive_init;
@@ -877,10 +895,14 @@ void load_inf(void)
     basic_inf_settings();
     set_language(c2inf.config37);
 
+#if PLATFORM_PORTABLE
+    if (read_userfile("caesar2.inf", &c2inf, 0x40, 0) == 0x40) {
+#else
     inf_fd = open("caesar2.inf", 0x8404);
     if (inf_fd != -1) {
         read(inf_fd, &c2inf, 0x40);
         close(inf_fd);
+#endif
         test_inf_settings();
         set_language(c2inf.config37);
         c2inf._unused_writeonly38 = 0;
@@ -1158,17 +1180,27 @@ int out_of_sync(void)
 // FUNCTION: C2WIN 0x00483fd3 REORDERED
 void setup_history_data(void)
 {
+#if PLATFORM_PORTABLE
+    int history_buffer[1000];
+#else
     int history_fd;
+#endif
     int i;
 
     for (i = 0; i < 5; i++)
         history_entry[i] = 0;
+#if PLATFORM_PORTABLE
+    memset(history_buffer, 0, sizeof(history_buffer));
+    if (writefile("history.dat", (char *)history_buffer,
+                  sizeof(history_buffer)) == sizeof(history_buffer)) {
+#else
     history_fd = open("history.dat", 0x261, 0x180);
     if (history_fd != -1) {
         for (i = 0; i < 200; ++i) {
             write(history_fd, history_entry, 0x14);
         }
         close(history_fd);
+#endif
         history_start_ptr = 0;
         history_end_ptr = 0;
         history_entries = 0;
@@ -1180,15 +1212,22 @@ void setup_history_data(void)
 // FUNCTION: C2WIN 0x00484094
 void save_history(void)
 {
+#if !PLATFORM_PORTABLE
     int history_fd;
+#endif
     int file_offset;
 
     file_offset = history_end_ptr * 20;
+#if PLATFORM_PORTABLE
+    if (write_to_file("history.dat", (char *)history_entry, 0x14,
+                      file_offset) == 0x14) {
+#else
     history_fd = open("history.dat", 0x221, 0x180);
     if (history_fd != -1) {
         _lseek(history_fd, file_offset, 0);
         write(history_fd, history_entry, 0x14);
         close(history_fd);
+#endif
         history_entries++;
         if (history_entries > 0xc8)
             history_entries = 0xc8;
@@ -1204,6 +1243,9 @@ void save_history(void)
 // FUNCTION: C2WIN 0x0048414d
 void get_history_in_buffer(int *history_buf)
 {
+#if PLATFORM_PORTABLE
+    read_userfile("history.dat", history_buf, 0xfa0, 0);
+#else
     int history_fd;
 
     history_fd = open("history.dat", O_BINARY);
@@ -1211,6 +1253,7 @@ void get_history_in_buffer(int *history_buf)
         read(history_fd, history_buf, 0xfa0);
         close(history_fd);
     }
+#endif
 }
 
 // Return one value from a buffered five-column history entry.

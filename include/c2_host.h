@@ -70,8 +70,12 @@ int c2_host_has_capability(enum c2_host_capability capability);
 
 size_t c2_host_asset_read(const char *filename, void *buffer,
                           size_t size, size_t offset);
+size_t c2_host_user_file_read(const char *filename, void *buffer,
+                              size_t size, size_t offset);
 int c2_host_user_file_write(const char *filename, const void *buffer,
                             size_t size);
+int c2_host_user_file_write_at(const char *filename, const void *buffer,
+                               size_t size, size_t offset);
 
 int c2_host_publish_indexed_frame(const unsigned char *pixels,
                                   int width, int height, int pitch,

@@ -32,24 +32,25 @@ allows headless and non-SDL backends to exercise the same engine.
 
 ## Implemented boundary
 
-The native bootstrap now follows that dependency direction:
+The native port now follows that dependency direction:
 
 - `include/c2_host.h` is the backend-neutral service contract;
 - `src/port/c2_port_compat.c` owns same-symbol legacy shims such as
-  `readfile`, `refresh_svga_screen`, and palette publication;
-- `src/port/c2_port_raster.c` owns the small sprite clipping/dispatch surface
-  historically embedded in `lib32.c` while delegating pixel work to the
-  translated assembly routines;
+  `readfile`, user-data I/O, `refresh_svga_screen`, and palette publication;
 - `src/port/c2_port_input.c` translates host snapshots into the legacy mouse
-  globals while preserving the recovered press/release edge state machine,
-  cursor background handling, frame timing, and optional-audio boundary;
-- `src/portable/lib32/c2_lib32_text.c` contains the currently selected
-  platform-independent text/font helpers and legacy globals from `lib32.c`;
-  these remain engine support code and do not call the host;
-- `src/port/c2_port_app.c` owns the currently connected recovered startup
-  flow and consumes only neutral host events;
+  globals; recovered `lib32.c::get_mouse` still owns press/release edges,
+  cursor state, timing, text, raster dispatch, and other engine support;
+- `src/port/c2_port_audio.c` and `c2_port_video.c` are explicit unavailable
+  capability shims until real audio and Smacker backends are selected;
+- `src/port/c2_port_app.c` only invokes `c2_engine_main`, traps the legacy exit
+  boundary, and performs final cleanup;
 - `src/platform/sdl3/c2_sdl_host.c` implements the host contract; and
 - `src/platform/sdl3/c2_sdl_main.c` is only the SDL lifecycle/thread adapter.
+
+The native target compiles the complete recovered `c2.c` campaign driver and
+`lib32.c`. The former replacement bootstrap, port-side raster slice, and copied
+text subset were removed once the same-symbol boundary was complete enough to
+link the original path.
 
 `tests/test_port_layering.py` enforces that SDL API names do not escape the
 backend, that portable layers do not depend back on `c2_sdl_*`, and that the
@@ -131,6 +132,13 @@ is the portable default. Set `C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR` to `0`,
 or use the same-named CMake option with `OFF`, to reproduce the shipped row-10
 store.
 
+The recovered graphics-buffer cleanup functions retain dangling pointers, and
+some original paths call both map and battle cleanup while `fixt_data` names the
+same allocation. Modern allocators reject the resulting repeated free. The
+portable build clears every released graphics pointer by default under
+`C2_FIX_GFX_BUFFER_DOUBLE_FREE`; set the same-named CMake option to `OFF` to
+reproduce shipped cleanup behavior.
+
 `tests/test_diamond_asm_oracle.py` provides the executable semantic oracle for
 this family. It builds a statically linked 32-bit Linux fixture with OpenWatcom
 and the original recovered assembly, builds the same fixture against the
@@ -162,7 +170,7 @@ local variables; renderer state must not remain coupled to the deferred sound
 backend.
 
 The translated CPU routines remain a separate `c2_asm_portable` library, now
-linked into the running bootstrap. The province-selection slice exercises its
+linked into the running port. The recovered UI and simulation exercise its
 sprite writers and fixed-size block loaders through recovered `display.c` and
 `screens.c` call paths. The thirteen hardware-facing slots remain empty and
 unreachable from the portable framebuffer publication path.
@@ -226,7 +234,7 @@ portable executable:
 | Miles AIL objects/import machinery | Modern audio backend |
 | RAD Smacker objects/import machinery | Modern movie backend |
 | `sndail.c`, `sndnull.c`, and `smackinp.c` vendor bridge state | Exclude once the portable backends own the corresponding state |
-| DOS entry/CD-drive policy | Portable application and asset-root bootstrap |
+| DOS entry/CD-drive policy | Guarded DOS policy; recovered driver entered by the portable lifecycle adapter |
 | VGA, VESA, DPMI, port-I/O, and INT 33h bodies | DOS-only bodies plus portable same-symbol implementations |
 | Banked physical-screen refresh | Portable `refresh_svga_screen` body that publishes a framebuffer |
 
@@ -381,7 +389,7 @@ sequence marker; the engine calculates a new mood and requests a numbered
 branch. The portable music service therefore needs marker callbacks and a
 branch operation in addition to open, play, volume, and stop.
 
-Music is intentionally unavailable in the current bootstrap. The host reports
+Music is intentionally unavailable in the current port. The host reports
 that fact through `C2_HOST_CAPABILITY_MUSIC`; callers must skip optional music
 rather than link a placeholder decoder or pretend playback succeeded.
 
@@ -393,7 +401,7 @@ surface covers both full-screen cinematics and movies embedded in message
 dialogs. Prefer decoding into the indexed framebuffer and palette model so
 movie playback does not impose a second renderer on the engine.
 
-Video is intentionally unavailable in the current bootstrap and reported as
+Video is intentionally unavailable in the current port and reported as
 such through `C2_HOST_CAPABILITY_VIDEO`. Startup therefore omits `INTRO.SMK`.
 The capability is the temporary boundary; a decoder API should be designed
 when a concrete media library and the embedded-message movie path are brought

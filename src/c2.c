@@ -1,8 +1,19 @@
 
 #include <stdlib.h>
 #include <fcntl.h>             /* O_BINARY */
+#if PLATFORM_PORTABLE
+#include <stdio.h>
+#include <unistd.h>
+#endif
 
 #include "c2_data.h"
+#include "c2_bugfixes.h"
+
+#if PLATFORM_PORTABLE
+extern void c2_port_exit(int status);
+#define exit c2_port_exit
+#define main c2_engine_main
+#endif
 
 struct gfx_entry c2_map_gfx[48] = {
     { "ltlmen1b.pl8", 60000 },
@@ -206,21 +217,27 @@ struct gfx_entry c2_battle_aux_gfx[68] = {
 /* Persistent game settings and player information. */
 struct c2inf_rec c2inf;
 
+#if !PLATFORM_PORTABLE
 extern void *malloc(unsigned int size);
 extern void  printf(const char *fmt, ...);
 extern void  exit(int status);
+#endif
 
 extern int read_config();
 extern int to_upper();
 
+#if !PLATFORM_PORTABLE
 extern int   _getdrive(void);
 extern int   getch(void);
+#endif
 extern void  demo_lead_in_slideshow(void);
 extern void  free_tune_buffer(void);
 void *load_a_battle_gfx_file(int battle_zoom, int troop_gfx_idx, int use_aux);
 extern void get_pseudo_map(int n);
+#if !PLATFORM_PORTABLE
 extern unsigned _dos_setdrive(unsigned drive, unsigned *total);
 extern unsigned _dos_getdrive(unsigned *drive);
+#endif
 extern int      chdir(const char *path);
 extern int      open(const char *path, int flags, ...);
 extern int      close(int fd);
@@ -242,21 +259,25 @@ void flush_sb_buffer(void);
 // FUNCTION: C2WIN 0x00443733
 void main(int argc, char *argv[])
 {
+#if !PLATFORM_PORTABLE
     unsigned int cd_drive_config;
     int cd_error;
+#endif
     int graphics_error;
     int init_error;
 
     demo_mode = 1;
     demo_mode = 0;
 
+#if PLATFORM_PORTABLE
+    drive_name = 0;
+    c2inf.cd_letter = 0;
+    c2inf.drive_init = 0;
+#else
     drive_name = _getdrive() + 0x40;
-
     if (getcwd(path_name, 0x50) == NULL) goto end;
-
     c2inf.cd_letter  = 0;
     c2inf.drive_init = 1;
-
     cd_drive_config = (unsigned char)read_config("resource.cfg", misc);
     c2inf.cd_letter = to_upper(cd_drive_config);
     if (cd_drive_config == 1) {
@@ -295,6 +316,7 @@ void main(int argc, char *argv[])
             break;
         }
     }
+#endif
 
     map_mode   = 0;
     zoom_level = 0;
@@ -834,6 +856,9 @@ void clear_map_gfx_buffers(void)
     if (building_data3) free(building_data3);
     if (building_data4) free(building_data4);
     if (tops_data)      free(tops_data);
+#if PLATFORM_PORTABLE && C2_FIX_GFX_BUFFER_DOUBLE_FREE
+    init_map_gfx_buffers();
+#endif
 }
 
 // Marks all battle graphics buffers as empty.
@@ -870,6 +895,9 @@ void clear_battle_gfx_buffers(void)
     if (figure8_data)  free(figure8_data);
     if (figure9_data)  free(figure9_data);
     if (figure10_data) free(figure10_data);
+#if PLATFORM_PORTABLE && C2_FIX_GFX_BUFFER_DOUBLE_FREE
+    init_battle_gfx_buffers();
+#endif
 }
 
 // Loads boot-time graphics, text, palettes, and interface data into their fixed buffers.
@@ -926,6 +954,9 @@ void do_neg(void)
 // FUNCTION: C2WIN 0x004457c4
 int test_cd_drive(void)
 {
+#if PLATFORM_PORTABLE
+    return 0;
+#else
     int            error_code;
     int            drive;
     int            drive_count;
@@ -972,4 +1003,5 @@ int test_cd_drive(void)
     }
 
     return error_code;
+#endif
 }

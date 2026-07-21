@@ -15,6 +15,8 @@ struct c2_sdl_app {
     SDL_Thread *engine_thread;
     SDL_AtomicInt engine_result;
     struct c2_port_app_config engine_config;
+    Uint64 headless_started;
+    int smoke_test;
     int host_initialized;
 };
 
@@ -22,7 +24,8 @@ static struct c2_sdl_app c2_app;
 
 static int parse_arguments(int argc, char *argv[], const char **asset_root,
                            const char **user_data_root,
-                           const char **screenshot_filename, int *headless)
+                           const char **screenshot_filename, int *headless,
+                           int *smoke_test)
 {
     int i;
 
@@ -35,11 +38,15 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
         *user_data_root = ".";
     }
     *headless = 0;
+    *smoke_test = 0;
     *screenshot_filename = NULL;
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--headless") == 0) {
             *headless = 1;
+        } else if (strcmp(argv[i], "--smoke-test") == 0) {
+            *headless = 1;
+            *smoke_test = 1;
         } else if (strcmp(argv[i], "--data-dir") == 0 && i + 1 < argc) {
             *asset_root = argv[++i];
         } else if (strcmp(argv[i], "--user-data-dir") == 0 && i + 1 < argc) {
@@ -49,7 +56,8 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
         } else {
             fprintf(stderr,
                     "usage: %s [--headless] [--data-dir PATH] "
-                    "[--user-data-dir PATH] [--screenshot FILE]\n",
+                    "[--user-data-dir PATH] [--screenshot FILE] "
+                    "[--smoke-test]\n",
                     argv[0]);
             return 0;
         }
@@ -63,20 +71,7 @@ static int engine_main(void *data)
     enum c2_port_app_result result;
 
     app = data;
-    result = c2_port_app_start(&app->engine_config);
-    while (result == C2_PORT_APP_CONTINUE &&
-           !c2_host_shutdown_requested()) {
-        struct c2_host_event event;
-
-        result = c2_port_app_update();
-        if (result != C2_PORT_APP_CONTINUE) {
-            break;
-        }
-        if (c2_host_wait_event(&event, 16)) {
-            result = c2_port_app_handle_event(&event);
-        }
-    }
-    c2_port_app_stop();
+    result = c2_port_app_run(&app->engine_config);
     SDL_SetAtomicInt(&app->engine_result, result);
     return (int)result;
 }
@@ -99,10 +94,11 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     const char *screenshot_filename;
     struct c2_host_config host_config;
     int headless;
+    int smoke_test;
 
     *appstate = &c2_app;
     if (!parse_arguments(argc, argv, &asset_root, &user_data_root,
-                         &screenshot_filename, &headless)) {
+                         &screenshot_filename, &headless, &smoke_test)) {
         return SDL_APP_FAILURE;
     }
 
@@ -121,6 +117,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 
     c2_app.engine_config.screenshot_filename = screenshot_filename;
     c2_app.engine_config.headless = headless;
+    c2_app.engine_config.smoke_test = smoke_test;
+    c2_app.smoke_test = smoke_test;
+    c2_app.headless_started = SDL_GetTicks();
     SDL_SetAtomicInt(&c2_app.engine_result, C2_PORT_APP_CONTINUE);
     c2_app.engine_thread = SDL_CreateThread(engine_main, "caesar2-engine", &c2_app);
     if (c2_app.engine_thread == NULL) {
@@ -143,6 +142,42 @@ SDL_AppResult SDL_AppIterate(void *appstate)
     int result;
 
     app = appstate;
+    if (app->smoke_test) {
+        Uint64 elapsed;
+        unsigned int buttons;
+        int x;
+        int y;
+
+        elapsed = SDL_GetTicks() - app->headless_started;
+        buttons = 0;
+        x = 10;
+        y = 10;
+        if (elapsed < 4000) {
+            if ((elapsed / 250) % 2 == 0) {
+                buttons = C2_HOST_MOUSE_LEFT;
+            }
+        } else if (elapsed < 6000) {
+            x = 410;
+            y = 195;
+            if ((elapsed / 250) % 2 == 0) {
+                buttons = C2_HOST_MOUSE_LEFT;
+            }
+        } else if (elapsed < 6100) {
+            x = 280;
+            y = 250;
+            buttons = C2_HOST_MOUSE_LEFT;
+        } else if (elapsed >= 6500 && elapsed < 6600) {
+            x = 280;
+            y = 345;
+            buttons = C2_HOST_MOUSE_LEFT;
+        } else if (elapsed >= 7200 && elapsed < 7300) {
+            buttons = C2_HOST_MOUSE_RIGHT;
+        }
+        c2_sdl_host_set_headless_mouse(x, y, buttons);
+        if (elapsed >= 9000) {
+            c2_host_request_shutdown();
+        }
+    }
     result = SDL_GetAtomicInt(&app->engine_result);
     if (result != C2_PORT_APP_CONTINUE) {
         return to_sdl_result(result);

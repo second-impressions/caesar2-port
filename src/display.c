@@ -3,6 +3,10 @@
 #include <stdlib.h>     /* exit   */
 
 #include "c2_data.h"
+#if PLATFORM_PORTABLE
+extern void c2_port_exit(int status);
+#define exit c2_port_exit
+#endif
 #include "c2_types.h"     /* struct request_message */
 
 extern void place_32x32_block(unsigned char *panel_data_ptr);
@@ -495,6 +499,9 @@ void show_cursor(unsigned char *font_ptr)
 // FUNCTION: C2WIN 0x00460c28
 void do_vga_smacked_anim(char *filename)
 {
+#if PLATFORM_PORTABLE
+    (void)filename;
+#else
     if (check_file_exists(filename) == 0) return;
     black_out();
     wvbl2();
@@ -538,6 +545,7 @@ void do_vga_smacked_anim(char *filename)
     set_mouse_limits();
     init_map_gfx_buffers();
     init_battle_gfx_buffers();
+#endif
 }
 
 // Play a mouse-skippable Smacker animation in SVGA mode and restore the graphics buffers.
@@ -545,6 +553,9 @@ void do_vga_smacked_anim(char *filename)
 // FUNCTION: C2WIN 0x00460db5
 void do_svga_smacked_anim(char *filename)
 {
+#if PLATFORM_PORTABLE
+    (void)filename;
+#else
     int saved_anims_on;
 
     saved_anims_on = c2inf.anims_on;
@@ -575,4 +586,5 @@ void do_svga_smacked_anim(char *filename)
     c2inf.anims_on = saved_anims_on;
     init_map_gfx_buffers();
     init_battle_gfx_buffers();
+#endif
 }
