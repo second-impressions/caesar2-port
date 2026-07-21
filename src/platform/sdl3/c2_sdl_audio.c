@@ -8,6 +8,7 @@
 static SDL_AudioDeviceID c2_audio_device;
 struct c2_audio_voice {
     SDL_AudioStream *stream;
+    SDL_AudioSpec source_spec;
     Uint64 deadline_ms;
     Uint64 pause_started_ms;
     int paused;
@@ -27,17 +28,28 @@ static void destroy_voice(int voice)
     if (!valid_voice(voice) || c2_audio_voices[voice].stream == NULL) return;
     SDL_DestroyAudioStream(c2_audio_voices[voice].stream);
     c2_audio_voices[voice].stream = NULL;
+    SDL_zero(c2_audio_voices[voice].source_spec);
     c2_audio_voices[voice].deadline_ms = 0;
     c2_audio_voices[voice].pause_started_ms = 0;
     c2_audio_voices[voice].paused = 0;
 }
 
-static int play_pcm(int voice, const SDL_AudioSpec *spec,
-                    const void *data, size_t size, int loop_count)
+static int same_spec(const SDL_AudioSpec *left, const SDL_AudioSpec *right)
+{
+    return left->format == right->format &&
+           left->channels == right->channels &&
+           left->freq == right->freq;
+}
+
+static int queue_pcm(int voice, const SDL_AudioSpec *spec,
+                     const void *data, size_t size, int loop_count,
+                     int replace, int flush)
 {
     SDL_AudioStream *stream;
     Uint64 byte_rate;
     Uint64 duration_ms;
+    Uint64 now;
+    Uint64 start_ms;
     int loop;
 
     if (!valid_voice(voice) || data == NULL || size == 0 ||
@@ -46,30 +58,39 @@ static int play_pcm(int voice, const SDL_AudioSpec *spec,
     }
     if (loop_count < 1) loop_count = 1;
 
-    destroy_voice(voice);
-    stream = SDL_CreateAudioStream(spec, NULL);
-    if (stream == NULL ||
-        !SDL_BindAudioStream(c2_audio_device, stream) ||
-        !SDL_SetAudioStreamGain(stream, c2_audio_master_gain)) {
-        SDL_DestroyAudioStream(stream);
+    if (replace) destroy_voice(voice);
+    stream = c2_audio_voices[voice].stream;
+    if (stream == NULL) {
+        stream = SDL_CreateAudioStream(spec, NULL);
+        if (stream == NULL ||
+            !SDL_BindAudioStream(c2_audio_device, stream) ||
+            !SDL_SetAudioStreamGain(stream, c2_audio_master_gain)) {
+            SDL_DestroyAudioStream(stream);
+            return 0;
+        }
+        c2_audio_voices[voice].stream = stream;
+        c2_audio_voices[voice].source_spec = *spec;
+    } else if (!same_spec(&c2_audio_voices[voice].source_spec, spec)) {
         return 0;
     }
     for (loop = 0; loop < loop_count; loop++) {
         if (!SDL_PutAudioStreamData(stream, data, (int)size)) {
-            SDL_DestroyAudioStream(stream);
+            destroy_voice(voice);
             return 0;
         }
     }
-    if (!SDL_FlushAudioStream(stream)) {
-        SDL_DestroyAudioStream(stream);
+    if (flush && !SDL_FlushAudioStream(stream)) {
+        destroy_voice(voice);
         return 0;
     }
     byte_rate = (Uint64)SDL_AUDIO_BYTESIZE(spec->format) *
                 (Uint64)spec->channels * (Uint64)spec->freq;
     duration_ms = ((Uint64)size * (Uint64)loop_count * 1000 +
                    byte_rate - 1) / byte_rate;
-    c2_audio_voices[voice].stream = stream;
-    c2_audio_voices[voice].deadline_ms = SDL_GetTicks() + duration_ms;
+    now = SDL_GetTicks();
+    start_ms = c2_audio_voices[voice].deadline_ms;
+    if (start_ms < now) start_ms = now;
+    c2_audio_voices[voice].deadline_ms = start_ms + duration_ms;
     return 1;
 }
 
@@ -129,7 +150,7 @@ int c2_host_audio_play_wav(int voice, const void *data, size_t size,
     if (io == NULL || !SDL_LoadWAV_IO(io, true, &spec, &pcm, &pcm_size)) {
         return 0;
     }
-    result = play_pcm(voice, &spec, pcm, pcm_size, loop_count);
+    result = queue_pcm(voice, &spec, pcm, pcm_size, loop_count, 1, 1);
     SDL_free(pcm);
     return result;
 }
@@ -144,7 +165,26 @@ int c2_host_audio_play_pcm_u8(int voice, const void *data, size_t size,
     spec.format = SDL_AUDIO_U8;
     spec.channels = channels;
     spec.freq = sample_rate;
-    return play_pcm(voice, &spec, data, size, loop_count);
+    return queue_pcm(voice, &spec, data, size, loop_count, 1, 1);
+}
+
+int c2_host_audio_queue_pcm(int voice, const void *data, size_t size,
+                            int sample_rate, int channels, int bit_depth,
+                            int final_chunk)
+{
+    SDL_AudioSpec spec;
+
+    if (sample_rate <= 0 || channels <= 0) return 0;
+    if (bit_depth == 8) {
+        spec.format = SDL_AUDIO_U8;
+    } else if (bit_depth == 16) {
+        spec.format = SDL_AUDIO_S16LE;
+    } else {
+        return 0;
+    }
+    spec.channels = channels;
+    spec.freq = sample_rate;
+    return queue_pcm(voice, &spec, data, size, 1, 0, final_chunk);
 }
 
 int c2_host_audio_voice_playing(int voice)

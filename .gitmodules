@@ -1,0 +1,3 @@
+[submodule "third_party/libsmacker"]
+	path = third_party/libsmacker
+	url = git@github.com:second-impressions/libsmacker.git

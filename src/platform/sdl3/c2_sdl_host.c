@@ -577,8 +577,7 @@ void c2_host_wait_until_ms(uint64_t deadline_ms)
 
 int c2_host_has_capability(enum c2_host_capability capability)
 {
-    (void)capability;
-    return 0;
+    return capability == C2_HOST_CAPABILITY_VIDEO;
 }
 
 size_t c2_host_asset_read(const char *filename, void *buffer,

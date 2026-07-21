@@ -1,8 +1,8 @@
 # Audio and movie implementation decision record
 
 Status: accepted architecture, recorded 2026-07-21. SDL3 effects and speech
-are implemented. Libsmacker movies and the project-owned libADLMIDI fork are
-the next two stages.
+and libsmacker movies are implemented. The project-owned libADLMIDI fork is
+the next stage.
 
 ## Outcome
 
@@ -88,6 +88,16 @@ runtime dependency, a fallback, nor a comparison oracle. Compatibility work
 must be driven from the official Caesar II movie corpus and libsmacker itself.
 If libsmacker does not handle an official asset variant, fix the decoder or
 the narrow adapter and add that asset shape to the libsmacker-facing tests.
+
+The port consumes the Second Impressions libsmacker fork as an SSH git
+submodule. The fork currently carries three narrow portability fixes: an
+absent Huffman tree no longer consumes a nonexistent terminator bit, failed
+opens can release partially initialized decoder state, and public/internal
+error results are explicitly signed for unsigned-`char` consumers. The first
+fix is required by the shipped 640x480 `INTRO.SMK`; the other thirteen examined
+movies happened not to exercise it. Commit `24531a7` fully decodes all 14
+examined official movies under AddressSanitizer and UndefinedBehaviorSanitizer,
+and malformed input now returns an error rather than asserting during cleanup.
 
 ## XMIDI music is a sequencer, not file playback
 
@@ -178,6 +188,16 @@ the physical device. Portable common code owns formats and legacy semantics.
      and malformed-input behavior.
    - Add semantic end-to-end tests for intro completion/skip and an embedded
      message movie.
+   - **Implemented:** the common adapter loads movies through the asset
+     service, schedules frames from libsmacker's microsecond duration, copies
+     indexed pixels and palettes into the recovered framebuffer, and appends
+     frame audio to a dedicated SDL3 voice. The recovered intro, VGA cinematic,
+     message placement, and mouse-skip loops remain in control. VGA-era
+     320x200 playback is mapped to the port's 640x480 4:3 framebuffer with
+     nearest-neighbour integer coverage rather than introducing a second
+     renderer. The decoder test walks every frame of all available known
+     official movies and includes a malformed-input case; recovered-flow smoke
+     tests exercise intro skipping and animated message cleanup.
 3. **Music**
    - Create the project-owned libADLMIDI fork and add the external numbered
      branch API before integrating music into the port.

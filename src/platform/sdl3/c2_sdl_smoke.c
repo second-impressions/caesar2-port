@@ -287,7 +287,7 @@ static enum c2_sdl_smoke_result drive_save_load(
 {
     if (observation_is(observation, C2_OBSERVATION_MESSAGE)) {
         smoke->city_quiet_since = now;
-        click_mouse(smoke, now, 10, 10, C2_HOST_MOUSE_RIGHT);
+        click_mouse(smoke, now, 0, 479, C2_HOST_MOUSE_RIGHT);
         return C2_SDL_SMOKE_RUNNING;
     }
     if (observation_is(observation, C2_OBSERVATION_CONFIRMATION) &&
@@ -473,7 +473,7 @@ static enum c2_sdl_smoke_result drive_city(
 {
     if (observation_is(observation, C2_OBSERVATION_MESSAGE)) {
         smoke->city_quiet_since = now;
-        click_mouse(smoke, now, 10, 10, C2_HOST_MOUSE_RIGHT);
+        click_mouse(smoke, now, 0, 479, C2_HOST_MOUSE_RIGHT);
         return C2_SDL_SMOKE_RUNNING;
     }
 

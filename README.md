@@ -34,30 +34,33 @@ build rather than threaded through shared code with compiler-specific tests.
 The native executable now enters the recovered `c2.c` program driver and uses
 the original startup, options, province-selection, province-initialization,
 simulation, modal, and UI control flow. All recovered engine translation units
-needed by the current silent path, including the full `lib32.c`, are compiled.
-The recovered Miles/Smacker translation units remain excluded until their
-engine policy is separated from the unavailable media APIs. The port directory
-does not contain a second startup state machine, duplicated hitboxes, or
-replacement screens.
+needed by the current path, including the full `lib32.c` and `pcsound.c`, are
+compiled. The historical Miles and RAD device translation units remain
+excluded; narrow common adapters implement their device/codec edge. The port
+directory does not contain a second startup state machine, duplicated hitboxes,
+or replacement screens.
 
-The original `INTRO.SMK` and other Smacker playback are currently skipped, and
-Miles music and sound calls are silent. Save-file enumeration, original-format
-save/load streams, preferences, history, autosaves, and screenshots use the
-portable user-data service described in [docs/user-data.md](docs/user-data.md).
+WAV effects and RAW speech use SDL3 audio streams. `INTRO.SMK`, embedded
+message movies, and the VGA-era cinematics are decoded by the pinned Second
+Impressions libsmacker fork and run through the recovered playback loops.
+Branch-aware XMIDI music is the remaining silent media service. Save-file
+enumeration, original-format save/load streams, preferences, history,
+autosaves, and screenshots use the portable user-data service described in
+[docs/user-data.md](docs/user-data.md).
 These are platform capabilities, not alternate game-flow implementations: name entry
 uses the recovered editor, and after a province is confirmed the recovered
 code initializes it and enters the recovered city game loop.
 
 The recovered startup flow runs on an engine worker. The SDL main thread owns
 events and presentation, communicating through the backend-neutral
-`c2_host_*` API. Music and video are explicit unavailable host capabilities in
-this milestone; no placeholder media libraries or false-success stubs are
-linked.
+`c2_host_*` API. Music remains an explicit unavailable host capability; no
+placeholder decoder or false-success stub is linked.
 
 Original game data is required and is never committed.  From the Nix
 development shell:
 
 ```bash
+git submodule update --init
 nix develop
 cmake --preset linux-debug
 cmake --build --preset linux-debug

@@ -55,6 +55,22 @@ static void test_wav_is_decoded_by_sdl(void)
     c2_host_audio_shutdown();
 }
 
+static void test_pcm_chunks_append_to_one_voice(void)
+{
+    unsigned char pcm[100];
+
+    memset(pcm, 128, sizeof(pcm));
+    TEST_ASSERT_TRUE(c2_host_audio_init(1));
+    TEST_ASSERT_TRUE(c2_host_audio_queue_pcm(0, pcm, sizeof(pcm),
+                                             1000, 1, 8, 0));
+    TEST_ASSERT_TRUE(c2_host_audio_queue_pcm(0, pcm, sizeof(pcm),
+                                             1000, 1, 8, 1));
+    TEST_ASSERT_FALSE(c2_host_audio_queue_pcm(0, pcm, sizeof(pcm),
+                                              1000, 1, 12, 1));
+    TEST_ASSERT_TRUE(c2_host_audio_voice_playing(0));
+    c2_host_audio_shutdown();
+}
+
 int main(void)
 {
     SDL_SetHint(SDL_HINT_AUDIO_DRIVER, "dummy");
@@ -62,5 +78,6 @@ int main(void)
     RUN_TEST(test_raw_voice_lifetime_and_stop);
     RUN_TEST(test_pause_is_per_voice);
     RUN_TEST(test_wav_is_decoded_by_sdl);
+    RUN_TEST(test_pcm_chunks_append_to_one_voice);
     return UNITY_END();
 }

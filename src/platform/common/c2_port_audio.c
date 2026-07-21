@@ -4,14 +4,13 @@
 #include "ail.h"
 #include "c2_data.h"
 #include "c2_host.h"
+#include "c2_port.h"
 #include "pcsound.h"
 
 #define C2_SAMPLE_VOICE_COUNT 6
-#define C2_AUDIO_VOICE_COUNT 7
+#define C2_AUDIO_VOICE_COUNT 8
 #define C2_BEEP_VOICE 6
 #define C2_SAMPLE_BUFFER_LIMIT 20000
-#define C2_ASSET_CHUNK_SIZE 65536
-#define C2_ASSET_SIZE_LIMIT (64u * 1024u * 1024u)
 
 struct c2_ail_sample {
     const unsigned char *wav;
@@ -40,46 +39,6 @@ static struct c2_ail_sample *sample_from_handle(int handle)
 {
     if (handle < 1 || handle > C2_SAMPLE_VOICE_COUNT) return NULL;
     return &c2_samples[handle - 1];
-}
-
-static void *read_asset(const char *filename, size_t *size_out)
-{
-    unsigned char *data;
-    unsigned char *grown;
-    size_t capacity;
-    size_t size;
-    size_t bytes_read;
-
-    capacity = C2_ASSET_CHUNK_SIZE;
-    data = malloc(capacity);
-    if (data == NULL) return NULL;
-
-    size = 0;
-    for (;;) {
-        if (size == capacity) {
-            if (capacity >= C2_ASSET_SIZE_LIMIT) {
-                free(data);
-                return NULL;
-            }
-            capacity *= 2;
-            grown = realloc(data, capacity);
-            if (grown == NULL) {
-                free(data);
-                return NULL;
-            }
-            data = grown;
-        }
-        bytes_read = c2_host_asset_read(filename, data + size,
-                                        capacity - size, size);
-        size += bytes_read;
-        if (bytes_read == 0 || size < capacity) break;
-    }
-    if (size == 0) {
-        free(data);
-        return NULL;
-    }
-    *size_out = size;
-    return data;
 }
 
 void AIL_shutdown(void)
@@ -316,7 +275,7 @@ void set_db_sound(char *filename)
         *filename == 0) {
         return;
     }
-    data = read_asset(filename, &size);
+    data = c2_port_load_asset(filename, &size);
     if (data == NULL) return;
     if (c2_host_audio_play_pcm_u8(5, data, size, 22050, 1, 1)) {
         db_file = filename;

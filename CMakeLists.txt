@@ -7,6 +7,10 @@ set(C2_TEST_SAVE_FIXTURE "" CACHE FILEPATH
 
 find_package(SDL3 3.4 CONFIG REQUIRED)
 
+add_library(c2_libsmacker STATIC third_party/libsmacker/smacker.c)
+target_compile_features(c2_libsmacker PRIVATE c_std_11)
+target_include_directories(c2_libsmacker PUBLIC third_party)
+
 option(C2_FIX_MEDIUM_RIGHT_HAT_OFFSET
     "Correct the misplaced pixel pair in the medium right diamond hat" ON)
 option(C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR
@@ -163,7 +167,10 @@ target_include_directories(caesar2 PRIVATE
     src/platform/sdl3
 )
 
-target_link_libraries(caesar2 PRIVATE c2_asm_portable SDL3::SDL3)
+target_link_libraries(caesar2 PRIVATE
+    c2_asm_portable
+    c2_libsmacker
+    SDL3::SDL3)
 
 if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
     set_source_files_properties(src/display.c PROPERTIES
@@ -339,6 +346,15 @@ if(BUILD_TESTING)
     target_link_libraries(c2-sdl-audio-test PRIVATE SDL3::SDL3)
     add_test(NAME sdl-audio COMMAND c2-sdl-audio-test)
 
+    add_executable(c2-smacker-test tests/c2_smacker_test.c)
+    target_compile_features(c2-smacker-test PRIVATE c_std_11)
+    target_link_libraries(c2-smacker-test PRIVATE c2_libsmacker)
+    add_test(NAME smacker-decoder COMMAND c2-smacker-test)
+    if(C2_TEST_DATA_DIR)
+        set_tests_properties(smacker-decoder PROPERTIES
+            ENVIRONMENT "C2_TEST_DATA_DIR=${C2_TEST_DATA_DIR}")
+    endif()
+
     add_executable(c2-asm-memory-test tests/c2_asm_memory_test.c)
     target_compile_features(c2-asm-memory-test PRIVATE c_std_11)
     target_link_libraries(c2-asm-memory-test PRIVATE c2_asm_portable)
@@ -375,6 +391,7 @@ if(BUILD_TESTING)
         c2-port-save-test
         c2-user-files-test
         c2-sdl-audio-test
+        c2-smacker-test
         c2-asm-memory-test
         c2-asm-internal-raster-test
         c2-asm-sprite-test

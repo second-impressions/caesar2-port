@@ -123,6 +123,9 @@ int c2_host_audio_play_wav(int voice, const void *data, size_t size,
 int c2_host_audio_play_pcm_u8(int voice, const void *data, size_t size,
                               int sample_rate, int channels,
                               int loop_count);
+int c2_host_audio_queue_pcm(int voice, const void *data, size_t size,
+                            int sample_rate, int channels, int bit_depth,
+                            int final_chunk);
 int c2_host_audio_voice_playing(int voice);
 void c2_host_audio_stop_voice(int voice);
 void c2_host_audio_pause_voice(int voice);

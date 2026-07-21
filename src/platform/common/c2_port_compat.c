@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdlib.h>
 
 #include "c2_data.h"
 #include "c2_host.h"
@@ -7,6 +8,50 @@
 
 static char c2_language_filename[13];
 static char c2_media_filename[13];
+
+#define C2_ASSET_CHUNK_SIZE 65536
+#define C2_ASSET_SIZE_LIMIT (64u * 1024u * 1024u)
+
+void *c2_port_load_asset(const char *filename, size_t *size_out)
+{
+    unsigned char *data;
+    unsigned char *grown;
+    size_t capacity;
+    size_t size;
+    size_t bytes_read;
+
+    if (filename == NULL || size_out == NULL) return NULL;
+    capacity = C2_ASSET_CHUNK_SIZE;
+    data = malloc(capacity);
+    if (data == NULL) return NULL;
+
+    size = 0;
+    for (;;) {
+        if (size == capacity) {
+            if (capacity >= C2_ASSET_SIZE_LIMIT) {
+                free(data);
+                return NULL;
+            }
+            capacity *= 2;
+            grown = realloc(data, capacity);
+            if (grown == NULL) {
+                free(data);
+                return NULL;
+            }
+            data = grown;
+        }
+        bytes_read = c2_host_asset_read(filename, data + size,
+                                        capacity - size, size);
+        size += bytes_read;
+        if (bytes_read == 0 || size < capacity) break;
+    }
+    if (size == 0) {
+        free(data);
+        return NULL;
+    }
+    *size_out = size;
+    return data;
+}
 
 static void publish_frame(void)
 {

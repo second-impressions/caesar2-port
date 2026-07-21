@@ -424,9 +424,11 @@ in `fade_to_palette`. Replace `set_vga_palette` and
 mixed function because it also waits and polls input; its portable path needs
 an explicit timed engine yield.
 
-`do_vga_smacked_anim` and `do_svga_smacked_anim` warrant complete portable
-bodies. Their game-visible filename and skip behavior remains, while VGA mode
-switching and graphics-buffer destruction do not.
+`do_svga_smacked_anim` now uses the recovered body on every target.
+`do_vga_smacked_anim` has a narrow portable branch that retains the recovered
+filename, input, skip, and cleanup loop while omitting VGA mode changes and
+banked-buffer destruction. Its 320x200 logical canvas is scaled into the
+640x480 indexed framebuffer at the adapter boundary.
 
 ## Input services
 
@@ -521,11 +523,14 @@ surface covers both full-screen cinematics and movies embedded in message
 dialogs. Prefer decoding into the indexed framebuffer and palette model so
 movie playback does not impose a second renderer on the engine.
 
-Video is intentionally unavailable in the current port and reported as
-such through `C2_HOST_CAPABILITY_VIDEO`. Startup therefore omits `INTRO.SMK`.
-The capability is the temporary boundary; a decoder API should be designed
-when a concrete media library and the embedded-message movie path are brought
-up together.
+Video is available through the Second Impressions libsmacker fork and reported
+through `C2_HOST_CAPABILITY_VIDEO`. The common adapter owns the private decoder
+handle, frame deadline, asset buffer, palette conversion, indexed-frame copy,
+and dedicated movie-audio voice. Startup therefore runs the recovered
+`INTRO.SMK` loop, while message dialogs continue to call the same embedded
+movie API they used under DOS. The SDL backend remains unaware of Smacker and
+only receives indexed frames and PCM chunks through the existing host
+interfaces.
 
 ## Startup, shutdown, and errors
 

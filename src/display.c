@@ -500,7 +500,30 @@ void show_cursor(unsigned char *font_ptr)
 void do_vga_smacked_anim(char *filename)
 {
 #if PLATFORM_PORTABLE
-    (void)filename;
+    black_out();
+    clear_a_screen();
+    start_smacking(filename, 0, 0x18, 2);
+    if (are_smacking()) {
+        out2 = 0;
+        out1 = 0;
+        while (out1 != 1) {
+            hold_hot_keys = 1;
+            get_mouse();
+            continue_smacking(0, 0x18, 2);
+            if (mouse_right_click) {
+                out1 = 1;
+                out2 = 1;
+            }
+            if (mouse_left_click) {
+                out1 = 1;
+                out2 = 1;
+            }
+            if (!are_smacking()) out1 = 1;
+        }
+        stop_smacking();
+    }
+    black_out();
+    clear_a_screen();
 #else
     if (check_file_exists(filename) == 0) return;
     black_out();
@@ -553,9 +576,6 @@ void do_vga_smacked_anim(char *filename)
 // FUNCTION: C2WIN 0x00460db5
 void do_svga_smacked_anim(char *filename)
 {
-#if PLATFORM_PORTABLE
-    (void)filename;
-#else
     int saved_anims_on;
 
     saved_anims_on = c2inf.anims_on;
@@ -586,5 +606,4 @@ void do_svga_smacked_anim(char *filename)
     c2inf.anims_on = saved_anims_on;
     init_map_gfx_buffers();
     init_battle_gfx_buffers();
-#endif
 }
