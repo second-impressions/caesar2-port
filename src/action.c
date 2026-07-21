@@ -4446,9 +4446,6 @@ void this_region(void)
 // FUNCTION: C2WIN 0x004b9590
 void act_tutorial(void)
 {
-#if PLATFORM_PORTABLE
-    return;
-#else
     do_tutorial();
     if (continue_tutorial_status == 0) {
         show_skill1_box();
@@ -4456,7 +4453,6 @@ void act_tutorial(void)
     } else {
         out1 = 1;
     }
-#endif
 }
 
 // New-game flow: "quit to DOS" — set exit_flag and dismiss the modal.

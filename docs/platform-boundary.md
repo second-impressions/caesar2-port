@@ -327,6 +327,14 @@ changing the process working directory. The resolver searches a configured
 data root case-insensitively and preserves the old install/CD overlay rules
 without exposing drives to callers.
 
+The overlay lookup order is the asset-root top level first, followed by the
+original extension-selected CD media directory: `pl8/` for `.pl8`, `raw/` for
+`.raw`, `xmi/` for `.xmi`, and `smk/` for `.smk`. Both directory and file names
+are matched case-insensitively. Root assets take precedence when both locations
+contain the same name, matching `readfile`'s original hard-drive-first lookup.
+Other extensions remain root-only; the resolver must not search unrelated
+media directories heuristically.
+
 Mutable storage is a separate namespace from assets. Save games,
 `caesar2.inf`, `history.dat`, and screenshots use a writable user-data root.
 The browser backend may mount persistent storage asynchronously before the

@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 
 #include <SDL3/SDL.h>
@@ -5,7 +6,25 @@
 
 #include "c2_host.h"
 
+#define TEST_ASSET_ROOT "c2-asset-files-test-data"
 #define TEST_USER_ROOT "c2-user-files-test-data"
+
+static void remove_test_assets(void)
+{
+    SDL_RemovePath(TEST_ASSET_ROOT "/Shared.PL8");
+    SDL_RemovePath(TEST_ASSET_ROOT "/Root.CaSe");
+    SDL_RemovePath(TEST_ASSET_ROOT "/pl8/shared.pl8");
+    SDL_RemovePath(TEST_ASSET_ROOT "/pl8/Tutorial.Pl8");
+    SDL_RemovePath(TEST_ASSET_ROOT "/pl8/hidden.dat");
+    SDL_RemovePath(TEST_ASSET_ROOT "/RaW/Voice.RAW");
+    SDL_RemovePath(TEST_ASSET_ROOT "/XMI/Tune.Xmi");
+    SDL_RemovePath(TEST_ASSET_ROOT "/sMk/Intro.SMK");
+    SDL_RemovePath(TEST_ASSET_ROOT "/pl8");
+    SDL_RemovePath(TEST_ASSET_ROOT "/RaW");
+    SDL_RemovePath(TEST_ASSET_ROOT "/XMI");
+    SDL_RemovePath(TEST_ASSET_ROOT "/sMk");
+    SDL_RemovePath(TEST_ASSET_ROOT);
+}
 
 static void remove_test_files(void)
 {
@@ -14,6 +33,73 @@ static void remove_test_files(void)
     SDL_RemovePath(TEST_USER_ROOT "/notes.txt");
     SDL_RemovePath(TEST_USER_ROOT "/screen.png");
     SDL_RemovePath(TEST_USER_ROOT);
+}
+
+static void write_test_asset(const char *filename, char value)
+{
+    FILE *file;
+
+    file = fopen(filename, "wb");
+    TEST_ASSERT_NOT_NULL(file);
+    TEST_ASSERT_EQUAL_size_t(1, fwrite(&value, 1, 1, file));
+    TEST_ASSERT_EQUAL_INT(0, fclose(file));
+}
+
+static void test_assets_use_install_then_cd_media_lookup(void)
+{
+    struct c2_host_config config;
+    unsigned char byte;
+
+    remove_test_assets();
+    TEST_ASSERT_TRUE(SDL_CreateDirectory(TEST_ASSET_ROOT "/pl8"));
+    TEST_ASSERT_TRUE(SDL_CreateDirectory(TEST_ASSET_ROOT "/RaW"));
+    TEST_ASSERT_TRUE(SDL_CreateDirectory(TEST_ASSET_ROOT "/XMI"));
+    TEST_ASSERT_TRUE(SDL_CreateDirectory(TEST_ASSET_ROOT "/sMk"));
+    write_test_asset(TEST_ASSET_ROOT "/Shared.PL8", 'R');
+    write_test_asset(TEST_ASSET_ROOT "/Root.CaSe", 'C');
+    write_test_asset(TEST_ASSET_ROOT "/pl8/shared.pl8", 'M');
+    write_test_asset(TEST_ASSET_ROOT "/pl8/Tutorial.Pl8", 'P');
+    write_test_asset(TEST_ASSET_ROOT "/pl8/hidden.dat", 'H');
+    write_test_asset(TEST_ASSET_ROOT "/RaW/Voice.RAW", 'W');
+    write_test_asset(TEST_ASSET_ROOT "/XMI/Tune.Xmi", 'X');
+    write_test_asset(TEST_ASSET_ROOT "/sMk/Intro.SMK", 'S');
+
+    memset(&config, 0, sizeof(config));
+    config.title = "Caesar II asset lookup test";
+    config.asset_root = TEST_ASSET_ROOT;
+    config.user_data_root = TEST_USER_ROOT;
+    config.logical_width = 1;
+    config.logical_height = 1;
+    config.window_scale = 1;
+    config.headless = 1;
+    TEST_ASSERT_TRUE(c2_host_init(&config));
+
+    TEST_ASSERT_EQUAL_size_t(1,
+        c2_host_asset_read("shared.pl8", &byte, 1, 0));
+    TEST_ASSERT_EQUAL_UINT8('R', byte);
+    TEST_ASSERT_EQUAL_size_t(1,
+        c2_host_asset_read("root.case", &byte, 1, 0));
+    TEST_ASSERT_EQUAL_UINT8('C', byte);
+    TEST_ASSERT_EQUAL_size_t(1,
+        c2_host_asset_read("tutorial.pl8", &byte, 1, 0));
+    TEST_ASSERT_EQUAL_UINT8('P', byte);
+    TEST_ASSERT_EQUAL_size_t(1,
+        c2_host_asset_read("voice.raw", &byte, 1, 0));
+    TEST_ASSERT_EQUAL_UINT8('W', byte);
+    TEST_ASSERT_EQUAL_size_t(1,
+        c2_host_asset_read("tune.xmi", &byte, 1, 0));
+    TEST_ASSERT_EQUAL_UINT8('X', byte);
+    TEST_ASSERT_EQUAL_size_t(1,
+        c2_host_asset_read("intro.smk", &byte, 1, 0));
+    TEST_ASSERT_EQUAL_UINT8('S', byte);
+    TEST_ASSERT_EQUAL_size_t(0,
+        c2_host_asset_read("hidden.dat", &byte, 1, 0));
+    TEST_ASSERT_EQUAL_size_t(0,
+        c2_host_asset_read("../Shared.PL8", &byte, 1, 0));
+
+    c2_host_shutdown();
+    remove_test_assets();
+    remove_test_files();
 }
 
 static void test_indexed_screenshot_is_saved_as_png(void)
@@ -130,6 +216,7 @@ static void test_user_streams_and_dos_style_directory_listing(void)
 int main(void)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_assets_use_install_then_cd_media_lookup);
     RUN_TEST(test_user_streams_and_dos_style_directory_listing);
     RUN_TEST(test_indexed_screenshot_is_saved_as_png);
     return UNITY_END();

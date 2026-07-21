@@ -138,7 +138,11 @@ static void drive_startup(struct c2_sdl_smoke *smoke, Uint64 now,
         click_mouse(smoke, now, 10, 10, C2_HOST_MOUSE_LEFT);
     } else if (observation_is(observation,
                               C2_OBSERVATION_SKILL_SELECTION)) {
-        click_mouse(smoke, now, 410, 195, C2_HOST_MOUSE_LEFT);
+        if (smoke->kind == C2_SDL_SMOKE_TUTORIAL) {
+            click_mouse(smoke, now, 410, 290, C2_HOST_MOUSE_LEFT);
+        } else {
+            click_mouse(smoke, now, 410, 195, C2_HOST_MOUSE_LEFT);
+        }
     } else if (observation_is(observation, C2_OBSERVATION_SKILL_DETAILS)) {
         if (smoke->name_phase == NAME_SMOKE_NOT_STARTED) {
             if (click_mouse(smoke, now, NAME_BUTTON_X, NAME_BUTTON_Y,
@@ -340,6 +344,12 @@ enum c2_sdl_smoke_result c2_sdl_smoke_iterate(
     }
 
     drive_startup(smoke, now, &observation);
+    if (smoke->kind == C2_SDL_SMOKE_TUTORIAL &&
+        observation_is(&observation, C2_OBSERVATION_TUTORIAL_PAGE)) {
+        printf("recovered tutorial smoke reached page %d\n",
+               observation.detail + 1);
+        return C2_SDL_SMOKE_SUCCESS;
+    }
     drive_name_entry(smoke, now, &observation);
     if (smoke->name_failed) return C2_SDL_SMOKE_FAILURE;
     if (observation_is(&observation,

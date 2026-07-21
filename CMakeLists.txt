@@ -377,6 +377,7 @@ if(BUILD_TESTING AND C2_TEST_DATA_DIR AND
     file(MAKE_DIRECTORY
         "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/province-smoke"
         "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/city-smoke"
+        "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/tutorial-smoke"
     )
     add_test(
         NAME startup-reaches-province-selection
@@ -398,6 +399,18 @@ if(BUILD_TESTING AND C2_TEST_DATA_DIR AND
     set_tests_properties(recovered-city-loop-smoke PROPERTIES
         CONFIGURATIONS Debug
         PASS_REGULAR_EXPRESSION "recovered city-loop smoke completed"
+        TIMEOUT 50
+    )
+    add_test(
+        NAME recovered-tutorial-entry-smoke
+        COMMAND caesar2 --tutorial-smoke-test
+                --asset-root "${C2_TEST_DATA_DIR}"
+                --user-data-dir
+                "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/tutorial-smoke"
+    )
+    set_tests_properties(recovered-tutorial-entry-smoke PROPERTIES
+        CONFIGURATIONS Debug
+        PASS_REGULAR_EXPRESSION "recovered tutorial smoke reached page 1"
         TIMEOUT 50
     )
 endif()

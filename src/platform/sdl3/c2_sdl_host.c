@@ -113,24 +113,6 @@ static int build_path(char *path, size_t capacity, const char *root,
     return 1;
 }
 
-static FILE *open_asset(const char *filename)
-{
-    char path[C2_PATH_CAPACITY];
-    FILE *file;
-
-    if (!build_path(path, sizeof(path), c2_asset_root, filename, 0)) {
-        return NULL;
-    }
-    file = fopen(path, "rb");
-    if (file != NULL) {
-        return file;
-    }
-    if (!build_path(path, sizeof(path), c2_asset_root, filename, 1)) {
-        return NULL;
-    }
-    return fopen(path, "rb");
-}
-
 static int compare_filenames(const void *left, const void *right)
 {
     const char *const *left_name;
@@ -141,6 +123,133 @@ static int compare_filenames(const void *left, const void *right)
     right_name = right;
     result = SDL_strcasecmp(*left_name, *right_name);
     return result != 0 ? result : strcmp(*left_name, *right_name);
+}
+
+static FILE *open_file_in_directory(const char *directory,
+                                    const char *filename)
+{
+    char path[C2_PATH_CAPACITY];
+    char **entries;
+    FILE *file;
+    int entry_count;
+    int i;
+
+    if (!build_path(path, sizeof(path), directory, filename, 0)) {
+        return NULL;
+    }
+    file = fopen(path, "rb");
+    if (file != NULL) {
+        return file;
+    }
+    if (!build_path(path, sizeof(path), directory, filename, 1)) {
+        return NULL;
+    }
+    file = fopen(path, "rb");
+    if (file != NULL) {
+        return file;
+    }
+
+    if (strchr(filename, '/') != NULL || strchr(filename, '\\') != NULL) {
+        return NULL;
+    }
+    entries = SDL_GlobDirectory(directory, filename,
+                                SDL_GLOB_CASEINSENSITIVE, &entry_count);
+    if (entries == NULL) {
+        return NULL;
+    }
+    qsort(entries, (size_t)entry_count, sizeof(*entries), compare_filenames);
+    file = NULL;
+    for (i = 0; i < entry_count; i++) {
+        if (strchr(entries[i], '/') == NULL &&
+            strchr(entries[i], '\\') == NULL &&
+            SDL_strcasecmp(entries[i], filename) == 0 &&
+            build_path(path, sizeof(path), directory, entries[i], 0)) {
+            file = fopen(path, "rb");
+            if (file != NULL) {
+                break;
+            }
+        }
+    }
+    SDL_free(entries);
+    return file;
+}
+
+static const char *asset_media_directory(const char *filename)
+{
+    const char *extension;
+
+    extension = strrchr(filename, '.');
+    if (extension == NULL) return NULL;
+    if (SDL_strcasecmp(extension, ".pl8") == 0) return "pl8";
+    if (SDL_strcasecmp(extension, ".raw") == 0) return "raw";
+    if (SDL_strcasecmp(extension, ".xmi") == 0) return "xmi";
+    if (SDL_strcasecmp(extension, ".smk") == 0) return "smk";
+    return NULL;
+}
+
+static int resolve_asset_directory(char *path, size_t capacity,
+                                   const char *directory)
+{
+    char **entries;
+    SDL_PathInfo info;
+    int entry_count;
+    int i;
+
+    if (!build_path(path, capacity, c2_asset_root, directory, 0)) {
+        return 0;
+    }
+    if (SDL_GetPathInfo(path, &info) && info.type == SDL_PATHTYPE_DIRECTORY) {
+        return 1;
+    }
+    if (!build_path(path, capacity, c2_asset_root, directory, 1)) {
+        return 0;
+    }
+    if (SDL_GetPathInfo(path, &info) && info.type == SDL_PATHTYPE_DIRECTORY) {
+        return 1;
+    }
+
+    entries = SDL_GlobDirectory(c2_asset_root, directory,
+                                SDL_GLOB_CASEINSENSITIVE, &entry_count);
+    if (entries == NULL) {
+        return 0;
+    }
+    qsort(entries, (size_t)entry_count, sizeof(*entries), compare_filenames);
+    for (i = 0; i < entry_count; i++) {
+        if (strchr(entries[i], '/') == NULL &&
+            strchr(entries[i], '\\') == NULL &&
+            SDL_strcasecmp(entries[i], directory) == 0 &&
+            build_path(path, capacity, c2_asset_root, entries[i], 0) &&
+            SDL_GetPathInfo(path, &info) &&
+            info.type == SDL_PATHTYPE_DIRECTORY) {
+            SDL_free(entries);
+            return 1;
+        }
+    }
+    SDL_free(entries);
+    return 0;
+}
+
+static FILE *open_asset(const char *filename)
+{
+    char media_path[C2_PATH_CAPACITY];
+    const char *media_directory;
+    FILE *file;
+
+    if (!is_safe_relative_path(filename)) {
+        return NULL;
+    }
+    file = open_file_in_directory(c2_asset_root, filename);
+    if (file != NULL) {
+        return file;
+    }
+
+    media_directory = asset_media_directory(filename);
+    if (media_directory == NULL ||
+        !resolve_asset_directory(media_path, sizeof(media_path),
+                                 media_directory)) {
+        return NULL;
+    }
+    return open_file_in_directory(media_path, filename);
 }
 
 static int resolve_user_path(char *path, size_t capacity,

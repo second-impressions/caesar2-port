@@ -69,6 +69,11 @@ SDL selects and creates the platform-standard application data directory
 (`$XDG_DATA_HOME/second-impressions/caesar2` on Linux, with the usual
 `~/.local/share` fallback).
 
+The asset root may retain the original CD layout. Files are resolved
+case-insensitively from its top level first, then `.pl8`, `.raw`, `.xmi`, and
+`.smk` assets fall back to the matching `pl8/`, `raw/`, `xmi/`, and `smk/`
+media directories.
+
 Save names retain the recovered 8.3-style UI limit. Lookup and overwrite are
 case-insensitive even on case-sensitive hosts. Set the CMake cache path
 `C2_TEST_SAVE_FIXTURE` to an original save to include fixture compatibility in
@@ -98,6 +103,13 @@ shutdown:
 
 ```bash
 ./build/port/linux-debug/caesar2 --city-smoke-test --asset-root /path/to/CAESAR2
+```
+
+The tutorial-entry scenario selects the recovered Tutorial action and verifies
+that its first page is loaded through the original CD media overlay:
+
+```bash
+./build/port/linux-debug/caesar2 --tutorial-smoke-test --asset-root /path/to/CAESAR2
 ```
 
 Pass `--screenshot output.png` to write the final headless frame or the current

@@ -6,7 +6,8 @@
 enum c2_sdl_smoke_kind {
     C2_SDL_SMOKE_NONE,
     C2_SDL_SMOKE_PROVINCE_SELECTION,
-    C2_SDL_SMOKE_CITY_LOOP
+    C2_SDL_SMOKE_CITY_LOOP,
+    C2_SDL_SMOKE_TUTORIAL
 };
 
 enum c2_sdl_smoke_result {

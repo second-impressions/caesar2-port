@@ -2,6 +2,9 @@
 #include "mmedia.h"
 #include "c2_bugfixes.h"
 #include "c2_data.h"
+#if C2_FEAT_DEBUG_OBSERVATION
+#include "c2_observation.h"
+#endif
 
 
 extern void put_a_font_string(char *str, int x, int y, unsigned char *font, int color);
@@ -592,6 +595,9 @@ void do_a_tutorial_page(void)
     hold_mouse_replace = 1;
     refresh_svga_screen();
     set_palette(temp_palette);
+#if C2_FEAT_DEBUG_OBSERVATION
+    c2_observe(C2_OBSERVATION_TUTORIAL_PAGE, tutorial_page);
+#endif
 
     if (media_voc) set_db_sound(this_media_entry.voc_file);
 
