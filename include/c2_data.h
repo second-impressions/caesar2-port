@@ -5,7 +5,9 @@
 
 /* Shared structs/macros (figure_list, city_map, ...). */
 #include "c2_types.h"
+#if PLATFORM_PORTABLE
 #include "c2_asm_routines.h"
+#endif
 
 /* ── Data externs ───────────────────────────────────── */
 

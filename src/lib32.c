@@ -3,26 +3,23 @@
 #if PLATFORM_DOS
 #include <conio.h>             /* inp(), outpw() */
 #include <i86.h>              /* int386, union REGS, sound/nosound/delay */
-#include <io.h>                /* open, close, read, write */
 #include <dos.h>               /* _dos_setdrive */
-#include <direct.h>            /* chdir */
-#else
-#include <unistd.h>
 #endif
+#if PLATFORM_DOS || PLATFORM_WINDOWS
+#include <io.h>                /* open, close, read, write */
+#include <direct.h>            /* chdir */
 #include <fcntl.h>             /* O_BINARY */
+#endif
 #include <stdlib.h>            /* free, malloc */
 #include <string.h>            /* memset */
 #if !PLATFORM_PORTABLE
 #include <sys/timeb.h>         /* ftime, struct timeb */
 #else
+#include <stdio.h>             /* printf */
 #include "c2_port.h"
 #endif
 
 #if PLATFORM_PORTABLE
-#define O_BINARY 0
-#define _lseek lseek
-#define __far
-#define __cdecl
 extern void c2_port_exit(int status);
 #define exit c2_port_exit
 #endif
@@ -288,7 +285,9 @@ extern void write_i_left_font(unsigned char *font);
 extern void write_i_right_font(unsigned char *font);
 
 extern int _dx;
+#if PLATFORM_DOS
 #pragma aux _dx "*"
+#endif
 extern void __cdecl code_0188AD(void);
 extern void __cdecl code_0188B7(void);
 extern void __cdecl code_0188ED(void);
@@ -1459,7 +1458,9 @@ void dos_cls(void)
 }
 #endif /* PLATFORM_DOS */
 
+#if PLATFORM_DOS
 #pragma aux click_handler __loadds parm [eax] [ebx] [ecx] [edx] [esi] [edi];
+#endif
 
 // Real-mode mouse-callback (DOS int 0x33 function 0x0C). Installed by `install_mouse`; the mouse
 // driver calls this with AX = event mask, BX = button state, CX = X, DX = Y, SI = mickey-X, DI =
@@ -1480,7 +1481,9 @@ void __far click_handler(unsigned int ax, unsigned int bx,
         cbd.click_flag = 1;
 }
 
+#if PLATFORM_DOS
 #pragma on(check_stack);
+#endif
 
 #if PLATFORM_DOS
 

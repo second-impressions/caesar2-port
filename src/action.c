@@ -1,6 +1,8 @@
 
 #include "c2_data.h"
+#if PLATFORM_PORTABLE
 #include "c2_bugfixes.h"
+#endif
 #include "c2_types.h"
 #if C2_FEAT_DEBUG_OBSERVATION
 #include "c2_observation.h"
@@ -4507,7 +4509,7 @@ void act_choose_name(void)
 #else
     this_letter = 0;
 #endif
-#if C2_FIX_PLAYER_NAME_PADDING
+#if PLATFORM_PORTABLE && C2_FIX_PLAYER_NAME_PADDING
     c2_fix_player_name_padding(c2inf.player_name,
                                sizeof(c2inf.player_name));
 #endif

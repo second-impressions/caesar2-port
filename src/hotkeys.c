@@ -1,17 +1,14 @@
 
 #include "c2_data.h"
 
-#if PLATFORM_DOS || PLATFORM_WINDOWS
+#if !PLATFORM_PORTABLE
 #include <io.h>          /* open, close, write            */
-#else
-#include <unistd.h>
-#endif
 #include <fcntl.h>       /* O_BINARY / O_TRUNC / O_CREAT  */
 #include <sys/stat.h>    /* S_IRUSR, S_IWUSR              */
+#endif
 
 #if PLATFORM_PORTABLE
-#define O_BINARY 0
-#include "c2_host.h"
+#include "c2_port.h"
 #endif
 
 // Backing buffer for the eight-key debug-cheat ring.
@@ -294,13 +291,7 @@ void capture_shot(char *filename)
 #endif
 
 #if C2_FEAT_PNG_SCREENSHOTS
-    c2_host_save_indexed_png(filename,
-                             internal_screen,
-                             640,
-                             480,
-                             640,
-                             current_palette,
-                             0x300);
+    c2_port_save_screenshot(filename);
 #else
     go_16m_palette(&current_palette);
     screenshot_fd = open(filename,

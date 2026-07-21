@@ -1,6 +1,8 @@
 
 #include "mmedia.h"
+#if PLATFORM_PORTABLE
 #include "c2_bugfixes.h"
+#endif
 #include "c2_data.h"
 #if C2_FEAT_DEBUG_OBSERVATION
 #include "c2_observation.h"
@@ -181,7 +183,9 @@ void load_media_entry(void)
              this_help_page * 0x3a + 8);
     readfile(media_file, format_buffer, 0x7d0,
              this_media_entry.text_offset);
+#if PLATFORM_PORTABLE && C2_FIX_HELP_SMART_PUNCTUATION
     c2_fix_help_text(format_buffer, 0x7d0);
+#endif
 
     if (my_strcmp(this_media_entry.left_file, "null.pl8", 8) != 0) {
         media_left_image = 1;

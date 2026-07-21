@@ -108,9 +108,6 @@ add_executable(caesar2
     src/battle.c
     src/bbarian.c
     src/c2.c
-    src/c2_bugfixes.c
-    src/c2_save_compat.c
-    src/c2_text_compat.c
     src/c2_vars.c
     src/census.c
     src/common.c
@@ -146,12 +143,15 @@ add_executable(caesar2
     src/web.c
     src/platform/common/c2_port_app.c
     src/platform/common/c2_port_audio.c
+    src/platform/common/c2_port_bugfixes.c
     src/platform/common/c2_port_compat.c
     src/platform/common/c2_port_input.c
     src/platform/common/c2_port_keymap.c
     src/platform/common/c2_port_miles_bank.c
     src/platform/common/c2_port_save.c
+    src/platform/common/c2_port_save_compat.c
     src/platform/common/c2_port_save_registry.c
+    src/platform/common/c2_port_text_compat.c
     src/platform/common/c2_port_timing.c
     src/platform/common/c2_port_video.c
     src/platform/sdl3/c2_sdl_audio.c
@@ -247,13 +247,16 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/platform/sdl3/c2_sdl_smoke.c
         src/platform/common/c2_port_app.c
         src/platform/common/c2_port_audio.c
+        src/platform/common/c2_port_bugfixes.c
         src/platform/common/c2_port_compat.c
         src/platform/common/c2_port_input.c
         src/platform/common/c2_port_keymap.c
         src/platform/common/c2_port_miles_bank.c
         src/platform/common/c2_port_observation.c
         src/platform/common/c2_port_save.c
+        src/platform/common/c2_port_save_compat.c
         src/platform/common/c2_port_save_registry.c
+        src/platform/common/c2_port_text_compat.c
         src/platform/common/c2_port_timing.c
         src/platform/common/c2_port_video.c
         PROPERTIES COMPILE_OPTIONS -Wpedantic
@@ -287,14 +290,14 @@ if(BUILD_TESTING)
 
     add_executable(c2-bugfixes-test
         tests/c2_bugfixes_test.c
-        src/c2_bugfixes.c)
+        src/platform/common/c2_port_bugfixes.c)
     target_compile_features(c2-bugfixes-test PRIVATE c_std_11)
     target_include_directories(c2-bugfixes-test PRIVATE include)
     add_test(NAME bugfixes COMMAND c2-bugfixes-test)
 
     add_executable(c2-text-compat-test
         tests/c2_text_compat_test.c
-        src/c2_text_compat.c)
+        src/platform/common/c2_port_text_compat.c)
     target_compile_features(c2-text-compat-test PRIVATE c_std_11)
     target_include_directories(c2-text-compat-test PRIVATE include)
     add_test(NAME text-compat COMMAND c2-text-compat-test)
@@ -319,7 +322,7 @@ if(BUILD_TESTING)
 
     add_executable(c2-save-compat-test
         tests/c2_save_compat_test.c
-        src/c2_save_compat.c
+        src/platform/common/c2_port_save_compat.c
         src/platform/common/c2_port_save_registry.c)
     target_compile_features(c2-save-compat-test PRIVATE c_std_11)
     target_compile_definitions(c2-save-compat-test PRIVATE PLATFORM_PORTABLE=1)
@@ -337,7 +340,7 @@ if(BUILD_TESTING)
 
     add_executable(c2-port-save-test
         tests/c2_port_save_test.c
-        src/c2_save_compat.c
+        src/platform/common/c2_port_save_compat.c
         src/platform/common/c2_port_save.c
         src/platform/common/c2_port_save_registry.c
         src/platform/sdl3/c2_sdl_audio.c

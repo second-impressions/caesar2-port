@@ -22,6 +22,7 @@
  * [...]` clause tells Watcom these registers may be clobbered, so any
  * calling __watcall function will save them in its prologue and skip
  * tail-call optimization for direct AIL calls. */
+#if PLATFORM_DOS
 #pragma aux AIL_shutdown                  "_*" parm caller [] modify [eax ebx ecx edx]
 #pragma aux AIL_sample_status             "_*" parm caller [] modify [eax ebx ecx edx]
 #pragma aux AIL_end_sample                "_*" parm caller [] modify [eax ebx ecx edx]
@@ -52,6 +53,7 @@
 #pragma aux AIL_resume_sequence            "_*" parm caller [] modify [eax ebx ecx edx]
 #pragma aux AIL_register_trigger_callback  "_*" parm caller [] modify [eax ebx ecx edx]
 #pragma aux AIL_allocate_sample_handle     "_*" parm caller [] modify [eax ebx ecx edx]
+#endif
 
 /* The Windows build links the Miles library as wail32.dll: every AIL
  * entry point is a DLL import, so CAESAR2.EXE call sites are indirect

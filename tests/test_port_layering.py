@@ -26,6 +26,14 @@ def test_sdl_api_stays_below_the_host_boundary():
     assert not offenders, "SDL escaped its backend:\n" + "\n".join(offenders)
 
 
+def test_recovered_sources_do_not_call_the_host_boundary_directly():
+    offenders = []
+    for path in sorted((*SRC.glob("*.c"), *SRC.glob("*.h"))):
+        if "c2_host_" in path.read_text():
+            offenders.append(str(path.relative_to(ROOT)))
+    assert not offenders, "recovered source calls the host directly:\n" + "\n".join(offenders)
+
+
 def test_common_platform_layer_does_not_reach_into_sdl_backend():
     offenders = []
     for path in [HOST_HEADER, *_source_files(PLATFORM_COMMON)]:
@@ -113,3 +121,26 @@ def test_source_layout_has_one_platform_hierarchy():
     assert not (SRC / "portable").exists()
     assert PLATFORM_COMMON.is_dir()
     assert SDL_BACKEND.is_dir()
+
+
+def test_portable_helpers_do_not_pose_as_recovered_translation_units():
+    misplaced = [
+        SRC / "c2_bugfixes.c",
+        SRC / "c2_save_compat.c",
+        SRC / "c2_text_compat.c",
+    ]
+    assert not [path for path in misplaced if path.exists()]
+    expected = [
+        PLATFORM_COMMON / "c2_port_bugfixes.c",
+        PLATFORM_COMMON / "c2_port_save_compat.c",
+        PLATFORM_COMMON / "c2_port_text_compat.c",
+    ]
+    assert all(path.is_file() for path in expected)
+
+
+def test_portable_asm_manifest_does_not_reach_the_watcom_source_path():
+    data_header = (ROOT / "include" / "c2_data.h").read_text()
+    guarded_include = (
+        '#if PLATFORM_PORTABLE\n#include "c2_asm_routines.h"\n#endif'
+    )
+    assert guarded_include in data_header

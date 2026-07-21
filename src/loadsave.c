@@ -1,7 +1,10 @@
 
+#if !PLATFORM_PORTABLE
 #include <fcntl.h>       /* O_BINARY: 0x200 under Watcom, 0x8000 under MSVC */
+#endif
 #if PLATFORM_PORTABLE
 #include <string.h>
+#include "lib32.h"
 #include "c2_port_save.h"
 #endif
 #include "c2_data.h"
@@ -11,8 +14,6 @@
 #endif
 
 #if PLATFORM_PORTABLE
-#define O_BINARY 0
-#define _lseek lseek
 extern int read_userfile(const char *filename, void *buffer, int size,
                          int offset);
 extern int writefile(const char *filename, char *buffer, int size);
@@ -1045,17 +1046,34 @@ void basic_inf_settings(void)
 // FUNCTION: C2WIN 0x00483834
 int loadmodel(char *model_filename)
 {
+#if PLATFORM_PORTABLE
+    int model_offset;
+#else
     int model_file;
+#endif
     int i;
 
+#if PLATFORM_PORTABLE
+    model_offset = 0;
+#else
     model_file = open(model_filename, O_BINARY);
     if (model_file == -1) return 0;
+#endif
 
     for (i = 0; i < 100; i++) {
         if (model_entries[i].size == 0) break;
+#if PLATFORM_PORTABLE
+        if (readfile(model_filename, model_entries[i].buf,
+                     model_entries[i].size, model_offset)
+                != model_entries[i].size) return 0;
+        model_offset += model_entries[i].size;
+#else
         read(model_file, model_entries[i].buf, model_entries[i].size);
+#endif
     }
+#if !PLATFORM_PORTABLE
     close(model_file);
+#endif
     return 1;
 }
 

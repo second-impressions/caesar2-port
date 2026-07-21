@@ -134,13 +134,6 @@ int write_to_file(char *filename, char *buffer, int size, int offset)
         ? size : 0;
 }
 
-char read_config(char *filename, char *buffer)
-{
-    (void)filename;
-    (void)buffer;
-    return 0;
-}
-
 int set_svga_640_480(int mode)
 {
     (void)mode;

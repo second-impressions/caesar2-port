@@ -102,3 +102,13 @@ def test_every_bugfix_macro_is_defined_in_the_bugfix_header():
     assert not missing, f"bug-fix macros used but not defined: {sorted(missing)}"
     unused = defined - used
     assert not unused, f"bug-fix macros defined but never used: {sorted(unused)}"
+
+
+def test_bugfixes_default_to_the_portable_target_only():
+    """A retained shipped-target build must not acquire port bug fixes."""
+    text = BUGFIX_HEADER.read_text()
+    defined = set(re.findall(r"#\s*define\s+(C2_FIX_\w+)", text))
+    for name in defined:
+        assert re.search(
+            rf"#\s*define\s+{name}\s+PLATFORM_PORTABLE\b", text
+        ), f"{name} does not default to PLATFORM_PORTABLE"

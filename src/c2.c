@@ -1,12 +1,15 @@
 
 #include <stdlib.h>
+#if !PLATFORM_PORTABLE
 #include <fcntl.h>             /* O_BINARY */
+#endif
 #if PLATFORM_PORTABLE
 #include <stdio.h>
-#include <unistd.h>
 #endif
 #include "c2_data.h"
+#if PLATFORM_PORTABLE
 #include "c2_bugfixes.h"
+#endif
 #if C2_FEAT_DEBUG_OBSERVATION
 #include "c2_observation.h"
 #endif
@@ -225,7 +228,9 @@ extern void  printf(const char *fmt, ...);
 extern void  exit(int status);
 #endif
 
+#if !PLATFORM_PORTABLE
 extern int read_config();
+#endif
 extern int to_upper();
 
 #if !PLATFORM_PORTABLE
@@ -240,9 +245,11 @@ extern void get_pseudo_map(int n);
 extern unsigned _dos_setdrive(unsigned drive, unsigned *total);
 extern unsigned _dos_getdrive(unsigned *drive);
 #endif
-extern int      chdir(const char *path);
-extern int      open(const char *path, int flags, ...);
-extern int      close(int fd);
+#if !PLATFORM_PORTABLE
+extern int chdir(const char *path);
+extern int open(const char *path, int flags, ...);
+extern int close(int fd);
+#endif
 /* Forward declarations (functions defined later in this file). */
 void deal_with_battles(void);
 void start_a_new_game(void);
@@ -957,15 +964,13 @@ void do_neg(void)
     neg_sound();
 }
 
+#if !PLATFORM_PORTABLE
 // Checks the configured CD drive for cd.dat and restores the startup drive and path.
 // Returns zero on success or an error code identifying the failed step.
 // FUNCTION: C2 0x11095
 // FUNCTION: C2WIN 0x004457c4
 int test_cd_drive(void)
 {
-#if PLATFORM_PORTABLE
-    return 0;
-#else
     int            error_code;
     int            drive;
     int            drive_count;
@@ -1012,5 +1017,5 @@ int test_cd_drive(void)
     }
 
     return error_code;
-#endif
 }
+#endif

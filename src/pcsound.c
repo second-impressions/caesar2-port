@@ -1,9 +1,12 @@
-
-#pragma aux _ds "*"
 #include "pcsound.h"
 #include "c2_data.h"
+#if !PLATFORM_PORTABLE
 #include "smacker.h"
 #include <fcntl.h>             /* O_BINARY */
+#endif
+#if PLATFORM_DOS
+#pragma aux _ds "*"
+#endif
 #if PLATFORM_PORTABLE
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +17,9 @@ char __far *MK_FP(int off, int seg);
 #elif PLATFORM_WINDOWS || PLATFORM_PORTABLE
 static char __far *MK_FP(unsigned off, unsigned seg) { return 0; }
 #endif
-extern int  open(const char *path, int flags, ...);
+#if !PLATFORM_PORTABLE
+extern int open(const char *path, int flags, ...);
+#endif
 void __cdecl mood_modfication(int seq);
 
 /* Sound module globals. */
@@ -53,9 +58,13 @@ struct ambient_rec ambient_list[25];
 
 /* Miles startup hooks return far-pointer status values. */
 char __far *start_samples(void);
+#if PLATFORM_DOS
 #pragma aux start_samples modify exact [eax gs];
+#endif
 char __far *start_sequences(void);
+#if PLATFORM_DOS
 #pragma aux start_sequences modify exact [eax gs];
+#endif
 char __far *start_sound(char *sample_data, int loop_count);
 char __far *start_tune(unsigned char *sequence_data, int sequence_num, int sequence_idx);
 void init_ss_entires(void);
@@ -309,7 +318,9 @@ void stop_all_sounds(void)
     }
 }
 
+#if PLATFORM_DOS
 #pragma aux _pos_ret3 = "xor edx,edx" "mov eax,3" modify exact [eax edx]
+#endif
 
 // Play the preloaded positive-feedback sound on the dedicated feedback voice.
 // FUNCTION: C2 0x11e92
@@ -341,6 +352,7 @@ void neg_sound(void)
     }
 }
 
+#if !PLATFORM_PORTABLE
 // Refill the next available half of an AIL double-buffered sample stream.
 // FUNCTION: C2 0x11fb9
 void serve_sample(int sample_handle, unsigned char **buffers, int buffer_size)
@@ -354,7 +366,6 @@ void serve_sample(int sample_handle, unsigned char **buffers, int buffer_size)
     AIL_load_sample_buffer(sample_handle, buffer_idx, buffers[buffer_idx], bytes_read);
 }
 
-#if !PLATFORM_PORTABLE
 // Open a speech sample and prepare the dedicated double-buffered streaming voice.
 // FUNCTION: C2 0x12003
 // FUNCTION: C2WIN 0x00401c57
@@ -658,6 +669,7 @@ int check_old_sslots(char *filename)
     return 0;
 }
 
+#if !PLATFORM_PORTABLE
 // Connect Smacker audio playback to the active AIL digital driver.
 // FUNCTION: C2 0x12a25
 // FUNCTION: C2WIN 0x00402abd
@@ -670,6 +682,7 @@ int link_to_smacker(void)
     smacker_open = 1;
     return 1;
 }
+#endif
 
 // True when the AIL digital subsystem is running.
 // FUNCTION: C2 0x12a5c
