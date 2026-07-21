@@ -106,8 +106,8 @@ def test_wasm_shell_is_unframed_and_reports_downloads_in_megabytes():
     assert "box-shadow" not in shell
     assert "width: 100vw" in shell
     assert "height: 100vh" in shell
-    assert "width: min(100vw, 133.333333vh)" in shell
-    assert "height: min(100vh, 75vw)" in shell
+    assert "resizeCanvasToIntegerScale" in shell
+    assert "Math.floor(fit)" in shell
     assert "Number(match[1]) / 1_000_000" in shell
     assert "MB)…" in shell
 
@@ -195,6 +195,6 @@ def test_mouse_lock_is_cli_policy_above_a_backend_neutral_cursor():
     assert "SDL_" not in common_mouse
 
 
-def test_sdl_uses_non_integer_pixel_art_scaling():
+def test_sdl_uses_exact_nearest_neighbor_scaling():
     host = (SDL_BACKEND / "c2_sdl_host.c").read_text()
-    assert "SDL_SetTextureScaleMode(c2_texture, SDL_SCALEMODE_PIXELART)" in host
+    assert "SDL_SetTextureScaleMode(c2_texture, SDL_SCALEMODE_NEAREST)" in host

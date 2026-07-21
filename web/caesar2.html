@@ -29,8 +29,8 @@
     }
     canvas {
       display: block;
-      width: min(100vw, 133.333333vh);
-      height: min(100vh, 75vw);
+      width: 640px;
+      height: 480px;
       image-rendering: pixelated;
       background: #000;
     }
@@ -52,8 +52,20 @@
     const status = document.getElementById("status");
     const query = new URLSearchParams(location.search);
     const args = ["--asset-root", "/assets"];
+    const logicalWidth = 640;
+    const logicalHeight = 480;
     if (query.get("mouse-lock") === "1") args.push("--mouse-lock");
     if (query.get("smoke-test") === "province") args.push("--smoke-test");
+
+    function resizeCanvasToIntegerScale() {
+      const fit = Math.min(innerWidth / logicalWidth, innerHeight / logicalHeight);
+      const scale = fit >= 1 ? Math.floor(fit) : fit;
+      canvas.style.width = `${logicalWidth * scale}px`;
+      canvas.style.height = `${logicalHeight * scale}px`;
+    }
+
+    resizeCanvasToIntegerScale();
+    addEventListener("resize", resizeCanvasToIntegerScale);
 
     function formatStatus(text) {
       const match = /^Downloading data\.\.\. \((\d+)\/(\d+)\)$/.exec(text);
