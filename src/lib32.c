@@ -382,7 +382,7 @@ void get_directory(char *pattern)
 
     first_entry = 0;
 }
-#else
+#elif PLATFORM_WINDOWS
 void get_directory(char *pattern)
 {
     struct _finddata_t find_buf;
@@ -406,6 +406,7 @@ void get_directory(char *pattern)
 }
 #endif /* PLATFORM_DOS */
 
+#if !PLATFORM_PORTABLE
 // Switch to the CD drive and media subdirectory selected by the file extension.
 // FUNCTION: C2 0x2426e
 // FUNCTION: C2WIN 0x0044a8ae
@@ -430,7 +431,7 @@ void cd_path(const char *filename)
 
 #if PLATFORM_DOS
     _dos_setdrive(c2inf.cd_letter - 0x40, &saved_drive);
-#else
+#elif PLATFORM_WINDOWS
     _chdrive(c2inf.cd_letter - 0x40);
 #endif /* PLATFORM_DOS */
     drive_letter = c2inf.cd_letter;
@@ -453,11 +454,12 @@ void main_path(void)
     if (c2inf.drive_init != 1) return;
 #if PLATFORM_DOS
     _dos_setdrive(drive_name - 0x40, &drive_count);
-#else
+#elif PLATFORM_WINDOWS
     _chdrive(drive_name - 0x40);
 #endif /* PLATFORM_DOS */
     chdir(path_name);
 }
+#endif /* !PLATFORM_PORTABLE */
 
 // Walk past the filename to the '.' separator and copy the 3-char extension into the global
 // `extension[]` buffer (NUL-terminated).
@@ -1318,7 +1320,7 @@ void wvbl2(void)
     while (inp(0x3DA) & 8) ;
     while (!(inp(0x3DA) & 8)) ;
 }
-#else
+#elif PLATFORM_WINDOWS
 void wvbl2(void)
 {
 }
@@ -1344,7 +1346,7 @@ void swap_screens(void)
         cscreen = 0x4000;
     }
 }
-#else
+#elif PLATFORM_WINDOWS
 void swap_screens(void)
 {
 }
@@ -3183,7 +3185,7 @@ void low_beep(void)
     delay(50);
     nosound();
 }
-#else
+#elif PLATFORM_WINDOWS
 void vhigh_beep(void);
 
 void high_beep(void)
@@ -3244,7 +3246,7 @@ void vhigh_beep(void)
     delay(150);
     nosound();
 }
-#else
+#elif PLATFORM_WINDOWS
 void vhigh_beep(void)
 {
     Beep(0x6b8, 150);
