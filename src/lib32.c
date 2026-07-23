@@ -1670,6 +1670,7 @@ void read_mouse(void)
 #else
 extern int mouserange();
 
+#if PLATFORM_WINDOWS
 // WIN: 0x0044c055
 void set_mouse(void)
 {
@@ -1701,6 +1702,7 @@ void read_mouse(void)
         }
     }
 }
+#endif
 #endif /* PLATFORM_DOS */
 
 // Poll the mouse until the user clicks any button.
