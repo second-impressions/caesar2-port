@@ -2859,42 +2859,33 @@ void font_no(int value, char pad_char, char *suffix, int x,
 #if PLATFORM_PORTABLE
     char buffer[17] = "                ";
 #else
-    char *buffer = "                ";  /* 16 spaces plus NUL */
+    char *buffer;
 #endif
-    char *buffer_ptr;
     int i;
-    char had_zero;
+    char zero;
 
-    had_zero = 0;
-    buffer_ptr = buffer;
-    if (pad_char != 0) {
-        for (i = 9; i >= 0; i--)
-            buffer_ptr[i] = pad_char;
-    }
+    zero = 0;
+#if !PLATFORM_PORTABLE
+    buffer = "                ";  /* 16 spaces plus NUL */
+#endif
+    if (pad_char != 0) for (i = 9; i >= 0; i--) buffer[i] = pad_char;
 
     i = 10;
     while (*suffix != 0) {
-        buffer_ptr[i] = *suffix++;
-        i++;
-        if (i >= 16) break;
+        buffer[i] = *suffix++;
+        i++; if (i >= 16) break;
     }
-    buffer_ptr[i] = 0;
+    buffer[i] = 0;
 
     for (i = 9; i >= 0; i--) {
-        if (value <= 0 && i != 9 && !had_zero) {
-            had_zero = 1; goto next;
-        }
-        if (value <= 0 && i != 9 && had_zero) {
-            buffer_ptr[i] = ' ';
-        } else {
-            buffer_ptr[i] = (char)((value % 10) + '0');
-        }
-    next:
+        if ((value <= 0) && (i != 9) && !zero) zero = 1;
+        else if ((value <= 0) && (i != 9) && zero) buffer[i] = ' ';
+        else buffer[i] = (char)((value % 10) + '0');
         value = value / 10;
     }
 
-    strip_leading_space((signed char *)buffer_ptr);
-    put_a_font_string(buffer_ptr, x, y, font, color);
+    strip_leading_space((signed char *)buffer);
+    put_a_font_string(buffer, x, y, font, color);
     font_screen_limit = 0;
 }
 
