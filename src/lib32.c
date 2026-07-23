@@ -1723,7 +1723,11 @@ void read_mouse(void)
     mse_button = r.w.bx;
 }
 #else
+#if PLATFORM_WINDOWS
 extern int mouserange();
+#else
+extern void mouserange();
+#endif
 
 #if PLATFORM_WINDOWS
 // WIN: 0x0044c055
