@@ -4,6 +4,8 @@
 #include <conio.h>             /* inp(), outpw() */
 #include <i86.h>              /* int386, union REGS, sound/nosound/delay */
 #include <dos.h>               /* _dos_setdrive */
+#elif PLATFORM_WINDOWS
+#include <windows.h>          /* Beep */
 #endif
 #if PLATFORM_DOS || PLATFORM_WINDOWS
 #include <io.h>                /* open, close, read, write */
@@ -3124,6 +3126,7 @@ int timer(int mode)
 
 // Play a short 880 Hz beep.
 // FUNCTION: C2 0x2759c
+// FUNCTION: C2WIN 0x0044e9f8
 void high_beep(void)
 {
     sound(0x370);
@@ -3138,6 +3141,11 @@ void low_beep(void)
     sound(0xdc);
     delay(50);
     nosound();
+}
+#else
+void high_beep(void)
+{
+    Beep(0x370, 50);
 }
 #endif /* PLATFORM_DOS */
 
