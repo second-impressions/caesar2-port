@@ -22,10 +22,6 @@ void mid_slider_var(struct slider_rec *slider_ptr, int track_position);
 void down_slider_var(struct slider_rec *slider_ptr);
 void up_slider_var(struct slider_rec *slider_ptr);
 void de_toggle_all_icons(struct icon_rec *icon_list, int icon_count);
-#if PLATFORM_PORTABLE
-int check_selection_goods_list(short goods_kind);
-int check_highlight_list(short goods_kind);
-#endif
 void show_menu_items(struct menu_item_rec *, int, int, int, int, int);
 
 
