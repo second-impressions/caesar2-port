@@ -104,6 +104,11 @@
  * (verified at C2WIN 0x4b96d2 vs C2 0x34cfa). */
 #define C2_FEAT_NAME_EDIT_FB_COUNT PLATFORM_WINDOWS
 
+/* The Windows audio port applies the configured effects volume to each
+ * allocated sample handle; DOS sets the digital driver's master volume
+ * (verified at C2WIN 0x40149b vs C2 0x11a53). */
+#define C2_FEAT_PER_SAMPLE_VOLUME PLATFORM_WINDOWS
+
 /* The portable target accepts the text resources shipped with both the
  * original 1995 engine and the expanded 1996/Windows UI.  The shipped DOS
  * and Windows targets retain their version-specific source paths. */
