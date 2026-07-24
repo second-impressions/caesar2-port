@@ -154,6 +154,16 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     int smoke_kind;
 
     *appstate = &c2_app;
+#if PLATFORM_WASM
+    /*
+     * Native hosts service SDL events and the frame mailbox every 8 ms.
+     * SDL's browser default is one callback per requestAnimationFrame,
+     * which adds avoidable latency to the engine-rendered mouse pointer.
+     * A 120 Hz host callback keeps the native service cadence without
+     * changing the engine's independent 60 Hz frame deadline.
+     */
+    SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, "120");
+#endif
 #if C2_FEAT_DEBUG_CRASH_HANDLER
     if (!c2_debug_install_crash_handlers()) {
         fprintf(stderr, "warning: could not install debug crash handlers\n");

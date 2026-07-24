@@ -206,8 +206,12 @@ and non-threaded Wasm artifacts should be treated as separate build products.
 
 The main browser thread does not synchronously wait for the worker during
 normal execution. It returns from every application callback and drains
-published frames and requests on later iterations. SDL's browser callback
-cadence replaces the native per-iteration sleep.
+published frames and requests on later iterations. The native host services
+events and the frame mailbox every 8 ms. SDL's browser callback therefore
+requests 120 Hz instead of its default one-callback-per-animation-frame mode,
+keeping input publication and mailbox pickup close to the native cadence.
+This host-service rate does not alter the engine worker's independent 60 Hz
+frame deadline or the browser compositor's display refresh rate.
 
 ## Alternatives
 

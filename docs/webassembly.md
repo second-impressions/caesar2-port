@@ -125,6 +125,12 @@ the browser cursor. Add `?mouse-lock=1` to request Pointer Lock; when browser
 policy requires a user gesture, the backend retries on the next click. Debug
 bundles accept `?smoke-test=province` for automated semantic verification.
 
+The browser main thread services input and the published-frame mailbox at
+120 Hz, matching the native host's roughly 8 ms service interval. The
+recovered engine remains paced independently at 60 Hz; the faster host
+callback only reduces the time between a browser pointer event, engine input
+publication, and pickup of the next completed cursor-bearing frame.
+
 ## Deliberate constraints
 
 - This is currently a threaded Wasm product and therefore requires browser
