@@ -76,6 +76,7 @@ enum {
     MUSIC_SAMPLE_DURATION_MS = 8000,
     MUSIC_SAMPLE_LOG_INTERVAL_MS = 250,
     MUSIC_MIN_SAFE_QUEUE_MS = 40,
+    CAMPANIA_CONFIRM_DELAY_MS = 3000,
     SMOKE_TIMEOUT_MS = 45000,
     SAVE_LOAD_SMOKE_TIMEOUT_MS = 90000
 };
@@ -943,14 +944,26 @@ enum c2_sdl_smoke_result c2_sdl_smoke_iterate(
         drive_province_selection(smoke, now, &observation);
     } else if (observation_is(&observation,
                               C2_OBSERVATION_PROVINCE_CONFIRMATION)) {
+        if (smoke->kind == C2_SDL_SMOKE_CAMPANIA_TRANSITION &&
+            smoke->confirmation_seen_at == 0) {
+            smoke->confirmation_seen_at = now;
+        }
         if (!observation.speech_playing) {
             fprintf(stderr,
                     "Campania confirmation did not start its speech line\n");
             return C2_SDL_SMOKE_FAILURE;
         }
         if (!smoke->confirmation_clicked &&
+            (smoke->kind != C2_SDL_SMOKE_CAMPANIA_TRANSITION ||
+             now - smoke->confirmation_seen_at >=
+                 CAMPANIA_CONFIRM_DELAY_MS) &&
             click_mouse(smoke, now, 410, 330, C2_HOST_MOUSE_LEFT)) {
             smoke->confirmation_clicked = 1;
+            if (smoke->kind == C2_SDL_SMOKE_CAMPANIA_TRANSITION) {
+                printf("Campania confirmation clicked after %llu ms\n",
+                       (unsigned long long)(
+                           now - smoke->confirmation_seen_at));
+            }
         }
     }
 

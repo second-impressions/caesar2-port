@@ -23,6 +23,7 @@ struct c2_sdl_smoke {
     enum c2_sdl_smoke_kind kind;
     Uint64 started;
     Uint64 last_input;
+    Uint64 confirmation_seen_at;
     Uint64 city_quiet_since;
     Uint64 release_mouse_at;
     int phase;

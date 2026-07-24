@@ -103,6 +103,10 @@ function smokeWait(socket, navigate, getEntry) {
       if (smokeKind === "music" && entry.text.includes("music-buffer")) {
         console.log(entry.text);
       }
+      if (smokeKind === "campania" &&
+          entry.text.includes("Campania confirmation clicked")) {
+        console.log(entry.text);
+      }
       if (entry.text.includes(smokeResults[smokeKind])) {
         clearTimeout(timer);
         resolveSmoke();
@@ -259,6 +263,12 @@ async function runFirefox(gameUrl) {
     if (consoleLines.some(
       (line) => line.includes(smokeResults[smokeKind])
     )) {
+      if (smokeKind === "campania") {
+        const timing = consoleLines.find(
+          (line) => line.includes("Campania confirmation clicked")
+        );
+        if (timing) console.log(timing);
+      }
       socket.close();
       return;
     }
