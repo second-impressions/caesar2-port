@@ -19,6 +19,8 @@ static void fill_observation(struct c2_observation *observation)
     observation->in_forum = in_the_forum;
     observation->map_x = pm_x;
     observation->map_y = pm_y;
+    observation->construction_plebs = slave_requirements[0].current;
+    observation->required_construction_plebs = slave_requirements[0].max;
     observation->sequences_running = sequences_running;
     observation->speech_playing = db_playing;
     observation->query_type = q_type;

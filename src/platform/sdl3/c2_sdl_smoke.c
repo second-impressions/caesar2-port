@@ -542,6 +542,14 @@ static enum c2_sdl_smoke_result drive_city(
                         "observation\n");
                 return C2_SDL_SMOKE_FAILURE;
             }
+            if (observation->construction_plebs !=
+                observation->required_construction_plebs) {
+                fprintf(stderr,
+                        "new province has %d of %d construction plebs\n",
+                        observation->construction_plebs,
+                        observation->required_construction_plebs);
+                return C2_SDL_SMOKE_FAILURE;
+            }
             smoke->initial_map_x = observation->map_x;
             smoke->initial_zoom = observation->zoom_level;
             smoke->city_quiet_since = now;
