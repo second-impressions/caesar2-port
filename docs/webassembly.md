@@ -74,6 +74,7 @@ node tools/smoke-wasm.mjs build/port/wasm-debug-en
 node tools/smoke-wasm.mjs build/port/wasm-debug-en city
 node tools/smoke-wasm.mjs build/port/wasm-debug-en music
 node tools/smoke-wasm.mjs build/port/wasm-debug-en campania firefox
+node tools/smoke-wasm.mjs build/port/wasm-debug-en contextmenu firefox
 ```
 
 ## Serving and deployment
@@ -124,6 +125,8 @@ The default pointer remains free so windowed play does not unexpectedly trap
 the browser cursor. Add `?mouse-lock=1` to request Pointer Lock; when browser
 policy requires a user gesture, the backend retries on the next click. Debug
 bundles accept `?smoke-test=province` for automated semantic verification.
+The document suppresses the browser context menu at capture time so right
+click remains an ordinary game input in Firefox as well as Chromium.
 
 The browser main thread services input and the published-frame mailbox at
 120 Hz, matching the native host's roughly 8 ms service interval. The

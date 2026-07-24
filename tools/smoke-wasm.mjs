@@ -15,6 +15,7 @@ const smokeResults = {
   province: "recovered province-selection smoke completed",
   city: "recovered city-loop smoke completed",
   campania: "Campania speech transition smoke completed",
+  contextmenu: "browser context menu suppressed",
   music: "music buffer smoke completed",
 };
 if (!(smokeKind in smokeResults)) {
@@ -155,9 +156,31 @@ async function runChromium(gameUrl) {
 
   await smokeWait(
     socket,
-    () => send("Page.navigate", {
-      url: `${gameUrl}?smoke-test=${smokeKind}`
-    }),
+    () => {
+      send("Page.navigate", {
+        url: `${gameUrl}?smoke-test=${smokeKind}`
+      });
+      if (smokeKind === "contextmenu") {
+        setTimeout(() => {
+          send("Input.dispatchMouseEvent", {
+            type: "mousePressed",
+            x: 400,
+            y: 300,
+            button: "right",
+            buttons: 2,
+            clickCount: 1
+          });
+          send("Input.dispatchMouseEvent", {
+            type: "mouseReleased",
+            x: 400,
+            y: 300,
+            button: "right",
+            buttons: 0,
+            clickCount: 1
+          });
+        }, 500);
+      }
+    },
     (message) => {
       if (message.method === "Runtime.exceptionThrown") {
         return {
@@ -241,6 +264,21 @@ async function runFirefox(gameUrl) {
     url: `${gameUrl}?smoke-test=${smokeKind}`,
     wait: "complete"
   });
+  if (smokeKind === "contextmenu") {
+    await send("input.performActions", {
+      context,
+      actions: [{
+        type: "pointer",
+        id: "mouse",
+        parameters: { pointerType: "mouse" },
+        actions: [
+          { type: "pointerMove", x: 400, y: 300, origin: "viewport" },
+          { type: "pointerDown", button: 2 },
+          { type: "pointerUp", button: 2 }
+        ]
+      }]
+    });
+  }
   const deadline = Date.now() + 60_000;
   let consoleLines = [];
   while (Date.now() < deadline) {

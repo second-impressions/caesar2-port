@@ -44,7 +44,7 @@
 </head>
 <body>
   <main>
-    <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
+    <canvas id="canvas" tabindex="0"></canvas>
     <p id="status" role="status">Loading Caesar II…</p>
   </main>
   <script>
@@ -55,6 +55,18 @@
     const args = ["--asset-root", "/assets"];
     const logicalWidth = 640;
     const logicalHeight = 480;
+    document.addEventListener(
+      "contextmenu",
+      (event) => {
+        event.preventDefault();
+        if (query.get("smoke-test") === "contextmenu") {
+          const message = "browser context menu suppressed";
+          smokeOutput.push(message);
+          console.log(message);
+        }
+      },
+      { capture: true }
+    );
     if (query.get("mouse-lock") === "1") args.push("--mouse-lock");
     if (query.get("smoke-test") === "province") args.push("--smoke-test");
     if (query.get("smoke-test") === "city") args.push("--city-smoke-test");
