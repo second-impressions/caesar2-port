@@ -24,6 +24,7 @@ enum c2_observation_point {
     C2_OBSERVATION_LOAD_COMPLETE,
     C2_OBSERVATION_MENU_BAR,
     C2_OBSERVATION_MENU_ITEMS,
+    C2_OBSERVATION_QUERY_PANEL,
     C2_OBSERVATION_ENGINE_STOPPED
 };
 
@@ -36,6 +37,7 @@ struct c2_observation {
     int detail;
     int province;
     int map_mode;
+    int pointer_mode;
     int zoom_level;
     int paused;
     int peace_mode;
@@ -44,6 +46,17 @@ struct c2_observation {
     int map_x;
     int map_y;
     int sequences_running;
+    int speech_playing;
+    int query_type;
+    int out1;
+    int out2;
+    int out3;
+    int mouse_left_button;
+    int mouse_left_preclick;
+    int mouse_left_click;
+    int mouse_right_button;
+    int mouse_right_preclick;
+    int mouse_right_click;
     int tune_branch;
     int tune_branch_count;
     int menu_count;

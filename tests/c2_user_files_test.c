@@ -5,6 +5,7 @@
 #include <unity/unity.h>
 
 #include "c2_host.h"
+#include "c2_sdl_host.h"
 
 #define TEST_ASSET_ROOT "c2-asset-files-test-data"
 #define TEST_USER_ROOT "c2-user-files-test-data"
@@ -213,11 +214,49 @@ static void test_user_streams_and_dos_style_directory_listing(void)
     remove_test_files();
 }
 
+static void test_mouse_edges_survive_between_engine_polls(void)
+{
+    struct c2_host_config config;
+    struct c2_host_input input;
+    SDL_Event event;
+
+    remove_test_files();
+    memset(&config, 0, sizeof(config));
+    config.title = "Caesar II input transition test";
+    config.asset_root = ".";
+    config.user_data_root = TEST_USER_ROOT;
+    config.logical_width = 640;
+    config.logical_height = 480;
+    config.window_scale = 1;
+    config.headless = 1;
+    TEST_ASSERT_TRUE(c2_host_init(&config));
+
+    memset(&event, 0, sizeof(event));
+    event.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    event.button.button = SDL_BUTTON_LEFT;
+    event.button.x = 320.0f;
+    event.button.y = 240.0f;
+    c2_sdl_host_handle_event(&event);
+    event.type = SDL_EVENT_MOUSE_BUTTON_UP;
+    c2_sdl_host_handle_event(&event);
+
+    c2_host_input_snapshot(&input);
+    TEST_ASSERT_EQUAL_UINT(0, input.mouse_buttons);
+    c2_host_input_poll(&input);
+    TEST_ASSERT_EQUAL_UINT(C2_HOST_MOUSE_LEFT, input.mouse_buttons);
+    c2_host_input_poll(&input);
+    TEST_ASSERT_EQUAL_UINT(0, input.mouse_buttons);
+
+    c2_host_shutdown();
+    remove_test_files();
+}
+
 int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_assets_use_install_then_cd_media_lookup);
     RUN_TEST(test_user_streams_and_dos_style_directory_listing);
     RUN_TEST(test_indexed_screenshot_is_saved_as_png);
+    RUN_TEST(test_mouse_edges_survive_between_engine_polls);
     return UNITY_END();
 }

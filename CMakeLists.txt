@@ -565,6 +565,7 @@ if(BUILD_TESTING AND C2_TEST_DATA_DIR AND
         "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/tutorial-smoke"
         "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/save-load-smoke"
         "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/music-buffer-smoke"
+        "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/campania-transition-smoke"
     )
     add_test(
         NAME startup-reaches-province-selection
@@ -586,6 +587,19 @@ if(BUILD_TESTING AND C2_TEST_DATA_DIR AND
     set_tests_properties(recovered-city-loop-smoke PROPERTIES
         CONFIGURATIONS Debug
         PASS_REGULAR_EXPRESSION "recovered city-loop smoke completed"
+        TIMEOUT 50
+    )
+    add_test(
+        NAME recovered-campania-transition-smoke
+        COMMAND caesar2 --campania-transition-smoke-test
+                --asset-root "${C2_TEST_DATA_DIR}"
+                --user-data-dir
+                "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/campania-transition-smoke"
+    )
+    set_tests_properties(recovered-campania-transition-smoke PROPERTIES
+        CONFIGURATIONS Debug
+        PASS_REGULAR_EXPRESSION
+            "Campania speech transition smoke completed"
         TIMEOUT 50
     )
     add_test(

@@ -170,6 +170,7 @@ void c2_host_present(void);
 int c2_host_wait_event(struct c2_host_event *event,
                        unsigned int timeout_ms);
 void c2_host_input_snapshot(struct c2_host_input *input);
+void c2_host_input_poll(struct c2_host_input *input);
 void c2_host_set_mouse_position(int x, int y);
 void c2_host_set_mouse_bounds(int min_x, int min_y, int max_x, int max_y);
 void c2_host_request_shutdown(void);

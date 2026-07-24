@@ -160,6 +160,10 @@ including the recovered hit boxes, and opens both File and Options through the
 ordinary mouse path. The portable target deliberately selects the DOS
 software-menu renderer because, unlike the shipped Windows target, it has no
 native platform menu bar.
+The Campania transition smoke confirms that province while its localized
+speech sample is active, reaches the city, then opens and closes an empty-land
+query panel. This covers both modal mouse drains in the reported browser
+missed-click path without inspecting framebuffer pixels.
 `C2_DEBUG_BUILD` is supplied by CMake only for the Debug configuration and
 selects `C2_FEAT_DEBUG_OBSERVATION`; non-Debug builds omit the adapter sources,
 host storage, checkpoint calls, smoke driver, and smoke command-line options.
@@ -451,13 +455,16 @@ replay input, movement, button edges, and legacy global state rather than host
 event collection. The full recovered `lib32.c` now supplies both functions;
 `src/platform/common/c2_port_input.c` supplies only the same-symbol hardware
 edge (`init_mouse`, `read_mouse`, `set_mouse`, `mouserange`, and `get_key`).
-The host publishes a normalized input snapshot and a keyboard event queue. SDL
-event handlers must not directly mutate `c2inf`, menu decisions, or control
-state. SDL key/modifier and wheel events are normalized at this boundary, then
-the common mapper emits the ASCII or DOS scan-code pairs already consumed by
-the recovered `sim_mouse`. Unit coverage enumerates every scan-code branch in
-that handler, including F1--F5, all supported Alt chords, and both wheel
-directions.
+The host publishes a normalized input snapshot, an ordered mouse-button sample
+queue, and a keyboard event queue. A press and release that both occur between
+two engine polls are replayed as two samples; otherwise the original
+`get_mouse` edge detector would never see the click. SDL event handlers must
+not directly mutate `c2inf`, menu decisions, or control state. SDL
+key/modifier and wheel events are normalized at this boundary, then the common
+mapper emits the ASCII or DOS scan-code pairs already consumed by the
+recovered `sim_mouse`. Unit coverage enumerates every scan-code branch in that
+handler, including F1--F5, all supported Alt chords, both wheel directions,
+and the between-polls mouse transition case.
 
 Mouse confinement is policy, not engine control flow. The recovered
 `scroll()` continues to react only to the exact bounds supplied by

@@ -4630,6 +4630,9 @@ void act_query(void)
         nof_query_buttons = 3;
     }
     show_query_panel();
+#if C2_FEAT_DEBUG_OBSERVATION
+    c2_observe(C2_OBSERVATION_QUERY_PANEL, q_type);
+#endif
     clear_mouse();
     out3 = 0;
     while (out3 != 1) {

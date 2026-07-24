@@ -9,7 +9,8 @@ enum c2_sdl_smoke_kind {
     C2_SDL_SMOKE_CITY_LOOP,
     C2_SDL_SMOKE_TUTORIAL,
     C2_SDL_SMOKE_SAVE_LOAD,
-    C2_SDL_SMOKE_MUSIC_BUFFER
+    C2_SDL_SMOKE_MUSIC_BUFFER,
+    C2_SDL_SMOKE_CAMPANIA_TRANSITION
 };
 
 enum c2_sdl_smoke_result {

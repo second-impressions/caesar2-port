@@ -54,6 +54,13 @@ enum save_load_smoke_phase {
     SAVE_LOAD_WAIT_FOR_LOADED_CITY
 };
 
+enum campania_smoke_phase {
+    CAMPANIA_SMOKE_WAIT_FOR_CITY,
+    CAMPANIA_SMOKE_SETTLE,
+    CAMPANIA_SMOKE_WAIT_FOR_QUERY,
+    CAMPANIA_SMOKE_WAIT_FOR_QUERY_CLOSE
+};
+
 enum {
     CITY_FORUM_ICON_X = 560,
     CITY_FORUM_ICON_Y = 251,
@@ -61,9 +68,9 @@ enum {
     NAME_BUTTON_Y = 297,
     TUTORIAL_FORWARD_X = 112,
     TUTORIAL_FORWARD_Y = 432,
-    PROVINCE_SCAN_WIDTH = 40,
-    PROVINCE_SCAN_HEIGHT = 40,
-    PROVINCE_SCAN_STEP = 2,
+    CAMPANIA_REGION = 2,
+    CAMPANIA_X = 301,
+    CAMPANIA_Y = 280,
     MUSIC_VOICE_FIRST = 8,
     MUSIC_VOICE_COUNT = 2,
     MUSIC_SAMPLE_DURATION_MS = 8000,
@@ -446,34 +453,17 @@ static void drive_province_selection(
     struct c2_sdl_smoke *smoke, Uint64 now,
     const struct c2_observation *observation)
 {
-    int x;
-    int y;
-
     if (!observation_is(observation,
                         C2_OBSERVATION_PROVINCE_SELECTION)) return;
-    x = 286 + (smoke->scan_offset %
-               (PROVINCE_SCAN_WIDTH / PROVINCE_SCAN_STEP)) *
-        PROVINCE_SCAN_STEP;
-    y = 223 + (smoke->scan_offset /
-               (PROVINCE_SCAN_WIDTH / PROVINCE_SCAN_STEP)) *
-        PROVINCE_SCAN_STEP;
-    if (observation->detail == 13) {
-        click_mouse(smoke, now, x, y, C2_HOST_MOUSE_LEFT);
+    if (observation->detail == CAMPANIA_REGION) {
+        click_mouse(smoke, now, CAMPANIA_X, CAMPANIA_Y,
+                    C2_HOST_MOUSE_LEFT);
         return;
     }
     if (smoke->mouse_down || now - smoke->last_input < 12) return;
-    smoke->scan_offset = (smoke->scan_offset + 1) %
-        ((PROVINCE_SCAN_WIDTH / PROVINCE_SCAN_STEP) *
-         (PROVINCE_SCAN_HEIGHT / PROVINCE_SCAN_STEP));
-    x = 286 + (smoke->scan_offset %
-               (PROVINCE_SCAN_WIDTH / PROVINCE_SCAN_STEP)) *
-        PROVINCE_SCAN_STEP;
-    y = 223 + (smoke->scan_offset /
-               (PROVINCE_SCAN_WIDTH / PROVINCE_SCAN_STEP)) *
-        PROVINCE_SCAN_STEP;
-    c2_sdl_host_set_headless_mouse(x, y, 0);
-    smoke->mouse_x = x;
-    smoke->mouse_y = y;
+    c2_sdl_host_set_headless_mouse(CAMPANIA_X, CAMPANIA_Y, 0);
+    smoke->mouse_x = CAMPANIA_X;
+    smoke->mouse_y = CAMPANIA_Y;
     smoke->last_input = now;
 }
 
@@ -694,6 +684,66 @@ static enum c2_sdl_smoke_result drive_city(
     return C2_SDL_SMOKE_RUNNING;
 }
 
+static enum c2_sdl_smoke_result drive_campania_transition(
+    struct c2_sdl_smoke *smoke, Uint64 now,
+    const struct c2_observation *observation)
+{
+    if (observation_is(observation, C2_OBSERVATION_MESSAGE)) {
+        smoke->city_quiet_since = now;
+        click_mouse(smoke, now, 0, 479, C2_HOST_MOUSE_RIGHT);
+        return C2_SDL_SMOKE_RUNNING;
+    }
+
+    switch (smoke->phase) {
+    case CAMPANIA_SMOKE_WAIT_FOR_CITY:
+        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP)) {
+            if (observation->province != CAMPANIA_REGION - 1) {
+                fprintf(stderr, "entered province %d instead of Campania\n",
+                        observation->province);
+                return C2_SDL_SMOKE_FAILURE;
+            }
+            if (observation->speech_playing) {
+                fprintf(stderr,
+                        "Campania speech remained active after city entry\n");
+                return C2_SDL_SMOKE_FAILURE;
+            }
+            smoke->city_quiet_since = now;
+            smoke->phase = CAMPANIA_SMOKE_SETTLE;
+        }
+        break;
+    case CAMPANIA_SMOKE_SETTLE:
+        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
+            now - smoke->city_quiet_since >= 300 &&
+            click_mouse(smoke, now, 320, 240, C2_HOST_MOUSE_RIGHT)) {
+            smoke->phase = CAMPANIA_SMOKE_WAIT_FOR_QUERY;
+        }
+        break;
+    case CAMPANIA_SMOKE_WAIT_FOR_QUERY:
+        if (observation_is(observation, C2_OBSERVATION_QUERY_PANEL)) {
+            if (click_mouse(smoke, now, 10, 10,
+                            C2_HOST_MOUSE_RIGHT)) {
+                smoke->phase = CAMPANIA_SMOKE_WAIT_FOR_QUERY_CLOSE;
+            }
+        } else if (observation_is(observation,
+                                  C2_OBSERVATION_CITY_LOOP) &&
+                   now - smoke->last_input >= 250) {
+            click_mouse(smoke, now, 320, 240, C2_HOST_MOUSE_RIGHT);
+        }
+        break;
+    case CAMPANIA_SMOKE_WAIT_FOR_QUERY_CLOSE:
+        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP)) {
+            printf("Campania speech transition smoke completed\n");
+            return C2_SDL_SMOKE_SUCCESS;
+        }
+        if (observation_is(observation, C2_OBSERVATION_QUERY_PANEL) &&
+            now - smoke->last_input >= 250) {
+            click_mouse(smoke, now, 10, 10, C2_HOST_MOUSE_RIGHT);
+        }
+        break;
+    }
+    return C2_SDL_SMOKE_RUNNING;
+}
+
 static int capture_music_voices(
     struct c2_host_audio_observation observations[MUSIC_VOICE_COUNT])
 {
@@ -855,11 +905,23 @@ enum c2_sdl_smoke_result c2_sdl_smoke_iterate(
              ? SAVE_LOAD_SMOKE_TIMEOUT_MS : SMOKE_TIMEOUT_MS)) {
         fprintf(stderr,
                 "smoke test timed out at observation %d detail %d phase %d "
-                "paused %d zoom %d map (%d,%d) music %d branch %d count %d "
+                "paused %d zoom %d map (%d,%d) mode %d pointer %d query %d "
+                "out %d/%d/%d mouse %d/%d/%d %d/%d/%d speech %d "
+                "music %d branch %d count %d "
                 "file '%s'\n",
                 observation.point, observation.detail, smoke->phase,
                 observation.paused, observation.zoom_level,
                 observation.map_x, observation.map_y,
+                observation.map_mode, observation.pointer_mode,
+                observation.query_type,
+                observation.out1, observation.out2, observation.out3,
+                observation.mouse_left_button,
+                observation.mouse_left_preclick,
+                observation.mouse_left_click,
+                observation.mouse_right_button,
+                observation.mouse_right_preclick,
+                observation.mouse_right_click,
+                observation.speech_playing,
                 observation.sequences_running, observation.tune_branch,
                 observation.tune_branch_count,
                 observation.filename);
@@ -881,6 +943,11 @@ enum c2_sdl_smoke_result c2_sdl_smoke_iterate(
         drive_province_selection(smoke, now, &observation);
     } else if (observation_is(&observation,
                               C2_OBSERVATION_PROVINCE_CONFIRMATION)) {
+        if (!observation.speech_playing) {
+            fprintf(stderr,
+                    "Campania confirmation did not start its speech line\n");
+            return C2_SDL_SMOKE_FAILURE;
+        }
         if (!smoke->confirmation_clicked &&
             click_mouse(smoke, now, 410, 330, C2_HOST_MOUSE_LEFT)) {
             smoke->confirmation_clicked = 1;
@@ -889,6 +956,9 @@ enum c2_sdl_smoke_result c2_sdl_smoke_iterate(
 
     if (smoke->kind == C2_SDL_SMOKE_CITY_LOOP) {
         return drive_city(smoke, now, &observation);
+    }
+    if (smoke->kind == C2_SDL_SMOKE_CAMPANIA_TRANSITION) {
+        return drive_campania_transition(smoke, now, &observation);
     }
     if (smoke->kind == C2_SDL_SMOKE_MUSIC_BUFFER) {
         return drive_music_buffer(smoke, now, &observation);

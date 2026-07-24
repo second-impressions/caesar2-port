@@ -114,10 +114,13 @@ their portable mapping.
 
 ### Input publication
 
-Mouse position, buttons, wheel state, focus, and quit state form an atomic or
-mutex-protected snapshot. Text and key transitions use a bounded event queue.
-The portable `read_mouse` copies the snapshot into legacy mouse globals;
-`get_key` dequeues and translates events into the legacy key representation.
+Mouse position, wheel state, focus, quit state, and the current button state
+form a mutex-protected snapshot. Button-state transitions additionally use a
+bounded sample queue. The portable `read_mouse` consumes queued press/release
+samples before falling back to the current snapshot, so a complete browser
+click between two legacy polls is not lost. Text and key transitions use a
+separate bounded event queue. `get_key` dequeues and translates those events
+into the legacy key representation.
 Engine-thread `set_mouse` and `mouserange` calls update the same protected
 virtual cursor; any required native pointer warp is deferred to the SDL main
 thread. Absolute desktop events and relative Pointer-Lock events therefore
@@ -128,11 +131,12 @@ Input remains responsive even when no new frame is ready because the main
 thread never waits for the worker. A condition signal wakes explicit engine
 input waits.
 
-The initial queue holds 64 neutral events and drops the oldest event on
-overflow so host callbacks can never block behind the engine. Mouse state,
-focus, wheel motion, quit state, and a generation counter are also available
-as a mutex-protected snapshot. Portable `read_mouse` copies that snapshot into
-the recovered `get_mouse` press/release state machine throughout the game.
+The neutral-event queue and mouse-transition queue each hold 64 records and
+drop the oldest record on overflow so host callbacks can never block behind
+the engine. Mouse state, focus, wheel motion, quit state, and a generation
+counter remain available as a mutex-protected snapshot. Portable `read_mouse`
+feeds the transition queue and then that snapshot into the recovered
+`get_mouse` press/release state machine throughout the game.
 `--smoke-test` generates input in the SDL test adapter only; it does not
 introduce a second game controller.
 

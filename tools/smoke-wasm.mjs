@@ -13,6 +13,7 @@ const smokeKind = process.argv[3] ?? "province";
 const smokeResults = {
   province: "recovered province-selection smoke completed",
   city: "recovered city-loop smoke completed",
+  campania: "Campania speech transition smoke completed",
   music: "music buffer smoke completed",
 };
 if (!(smokeKind in smokeResults)) {
@@ -96,8 +97,12 @@ try {
   send("Page.enable");
 
   await new Promise((resolveSmoke, reject) => {
+    const consoleLines = [];
     const timer = setTimeout(() => {
-      reject(new Error(`Wasm ${smokeKind} smoke timed out`));
+      const suffix = consoleLines.length === 0
+        ? ""
+        : `\nBrowser console:\n${consoleLines.join("\n")}`;
+      reject(new Error(`Wasm ${smokeKind} smoke timed out${suffix}`));
     }, 60_000);
     socket.addEventListener("message", (event) => {
       const message = JSON.parse(event.data);
@@ -110,6 +115,8 @@ try {
       const text = message.params.args
         .map((arg) => arg.value ?? arg.description ?? "")
         .join(" ");
+      consoleLines.push(text);
+      if (consoleLines.length > 40) consoleLines.shift();
       if (smokeKind === "music" && text.includes("music-buffer")) {
         console.log(text);
       }

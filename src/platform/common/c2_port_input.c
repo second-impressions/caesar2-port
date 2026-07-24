@@ -19,7 +19,7 @@ void read_mouse(void)
 {
     struct c2_host_input input;
 
-    c2_host_input_snapshot(&input);
+    c2_host_input_poll(&input);
     mse_x = (short)input.mouse_x;
     mse_y = (short)input.mouse_y;
     mse_button = 0;

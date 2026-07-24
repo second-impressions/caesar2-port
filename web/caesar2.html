@@ -57,6 +57,9 @@
     if (query.get("mouse-lock") === "1") args.push("--mouse-lock");
     if (query.get("smoke-test") === "province") args.push("--smoke-test");
     if (query.get("smoke-test") === "city") args.push("--city-smoke-test");
+    if (query.get("smoke-test") === "campania") {
+      args.push("--campania-transition-smoke-test");
+    }
     if (query.get("smoke-test") === "music") args.push("--music-buffer-smoke-test");
 
     function resizeCanvasToIntegerScale() {

@@ -13,6 +13,7 @@
 #define C2_PATH_CAPACITY 4096
 #define C2_PALETTE_BYTES (256 * 3)
 #define C2_EVENT_QUEUE_CAPACITY 64
+#define C2_INPUT_QUEUE_CAPACITY 64
 #define C2_MOUSE_EDGE_MARGIN 8
 
 static SDL_Window *c2_window;
@@ -27,6 +28,7 @@ static unsigned char *c2_present_frame;
 static unsigned char c2_palette[C2_PALETTE_BYTES];
 static unsigned char c2_present_palette[C2_PALETTE_BYTES];
 static struct c2_host_event c2_event_queue[C2_EVENT_QUEUE_CAPACITY];
+static struct c2_host_input c2_input_queue[C2_INPUT_QUEUE_CAPACITY];
 static struct c2_host_input c2_input;
 static struct c2_port_mouse c2_mouse;
 #if C2_FEAT_DEBUG_OBSERVATION
@@ -40,6 +42,8 @@ static int c2_headless;
 static int c2_frame_dirty;
 static int c2_event_read;
 static int c2_event_count;
+static int c2_input_read;
+static int c2_input_count;
 static int c2_shutdown;
 static int c2_mouse_lock_requested;
 static int c2_mouse_relative;
@@ -58,6 +62,21 @@ static void sync_mouse_input(void)
     c2_input.mouse_x = c2_mouse.x;
     c2_input.mouse_y = c2_mouse.y;
     c2_input.mouse_inside = c2_mouse.inside;
+}
+
+static void queue_input_sample(void)
+{
+    int write_index;
+
+    if (c2_input_count == C2_INPUT_QUEUE_CAPACITY) {
+        c2_input_read =
+            (c2_input_read + 1) % C2_INPUT_QUEUE_CAPACITY;
+        c2_input_count--;
+    }
+    write_index =
+        (c2_input_read + c2_input_count) % C2_INPUT_QUEUE_CAPACITY;
+    c2_input_queue[write_index] = c2_input;
+    c2_input_count++;
 }
 
 static int update_mouse_confinement_rect(void)
@@ -535,6 +554,8 @@ int c2_host_init(const struct c2_host_config *config)
     c2_frame_dirty = 0;
     c2_event_read = 0;
     c2_event_count = 0;
+    c2_input_read = 0;
+    c2_input_count = 0;
     c2_shutdown = 0;
 #if C2_FEAT_DEBUG_OBSERVATION
     c2_observation_enabled = config->enable_observation;
@@ -1041,6 +1062,20 @@ void c2_host_input_snapshot(struct c2_host_input *input)
     SDL_UnlockMutex(c2_event_mutex);
 }
 
+void c2_host_input_poll(struct c2_host_input *input)
+{
+    SDL_LockMutex(c2_event_mutex);
+    if (c2_input_count != 0) {
+        *input = c2_input_queue[c2_input_read];
+        c2_input_read =
+            (c2_input_read + 1) % C2_INPUT_QUEUE_CAPACITY;
+        c2_input_count--;
+    } else {
+        *input = c2_input;
+    }
+    SDL_UnlockMutex(c2_event_mutex);
+}
+
 void c2_host_set_mouse_position(int x, int y)
 {
     SDL_LockMutex(c2_event_mutex);
@@ -1097,6 +1132,7 @@ void c2_host_publish_observation(const struct c2_observation *observation)
     c2_observation.detail = observation->detail;
     c2_observation.province = observation->province;
     c2_observation.map_mode = observation->map_mode;
+    c2_observation.pointer_mode = observation->pointer_mode;
     c2_observation.zoom_level = observation->zoom_level;
     c2_observation.paused = observation->paused;
     c2_observation.peace_mode = observation->peace_mode;
@@ -1105,6 +1141,17 @@ void c2_host_publish_observation(const struct c2_observation *observation)
     c2_observation.map_x = observation->map_x;
     c2_observation.map_y = observation->map_y;
     c2_observation.sequences_running = observation->sequences_running;
+    c2_observation.speech_playing = observation->speech_playing;
+    c2_observation.query_type = observation->query_type;
+    c2_observation.out1 = observation->out1;
+    c2_observation.out2 = observation->out2;
+    c2_observation.out3 = observation->out3;
+    c2_observation.mouse_left_button = observation->mouse_left_button;
+    c2_observation.mouse_left_preclick = observation->mouse_left_preclick;
+    c2_observation.mouse_left_click = observation->mouse_left_click;
+    c2_observation.mouse_right_button = observation->mouse_right_button;
+    c2_observation.mouse_right_preclick = observation->mouse_right_preclick;
+    c2_observation.mouse_right_click = observation->mouse_right_click;
     c2_observation.tune_branch = observation->tune_branch;
     c2_observation.tune_branch_count = observation->tune_branch_count;
     c2_observation.menu_count = observation->menu_count;
@@ -1134,11 +1181,15 @@ void c2_host_observation_snapshot(struct c2_observation *observation)
 #if C2_FEAT_DEBUG_OBSERVATION
 void c2_sdl_host_set_headless_mouse(int x, int y, unsigned int buttons)
 {
+    unsigned int old_buttons;
+
     SDL_LockMutex(c2_event_mutex);
+    old_buttons = c2_input.mouse_buttons;
     c2_port_mouse_set_position(&c2_mouse, x, y);
     sync_mouse_input();
     c2_input.mouse_buttons = buttons;
     c2_input.generation++;
+    if (old_buttons != buttons) queue_input_sample();
     SDL_UnlockMutex(c2_event_mutex);
 }
 
@@ -1189,11 +1240,18 @@ void c2_sdl_host_handle_event(SDL_Event *event)
         c2_input.generation++;
     } else if (event->type == SDL_EVENT_WINDOW_FOCUS_LOST) {
         c2_input.focused = 0;
-        c2_input.mouse_buttons = 0;
+        if (c2_input.mouse_buttons != 0) {
+            c2_input.mouse_buttons = 0;
+            queue_input_sample();
+        }
         c2_port_mouse_leave(&c2_mouse);
         sync_mouse_input();
         c2_input.generation++;
     } else if (event->type == SDL_EVENT_WINDOW_MOUSE_LEAVE) {
+        if (c2_input.mouse_buttons != 0) {
+            c2_input.mouse_buttons = 0;
+            queue_input_sample();
+        }
         c2_port_mouse_leave(&c2_mouse);
         sync_mouse_input();
         c2_input.generation++;
@@ -1227,14 +1285,17 @@ void c2_sdl_host_handle_event(SDL_Event *event)
         if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
             c2_mouse.inside && mask != 0) {
             c2_input.mouse_buttons |= mask;
+            queue_input_sample();
             host_event.type = C2_HOST_EVENT_MOUSE_BUTTON_DOWN;
             host_event.mouse_x = c2_input.mouse_x;
             host_event.mouse_y = c2_input.mouse_y;
             host_event.mouse_button = mask;
             publish = 1;
             retry_mouse_lock = c2_mouse_lock_pending;
-        } else if (event->type == SDL_EVENT_MOUSE_BUTTON_UP) {
+        } else if (event->type == SDL_EVENT_MOUSE_BUTTON_UP &&
+                   mask != 0) {
             c2_input.mouse_buttons &= ~mask;
+            queue_input_sample();
         }
         c2_input.generation++;
     } else if (event->type == SDL_EVENT_MOUSE_WHEEL) {

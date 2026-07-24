@@ -11,6 +11,7 @@ static void fill_observation(struct c2_observation *observation)
     memset(observation, 0, sizeof(*observation));
     observation->province = province_is;
     observation->map_mode = map_mode;
+    observation->pointer_mode = pointer_mode;
     observation->zoom_level = zoom_level;
     observation->paused = c2inf.paused;
     observation->peace_mode = c2inf.peace_mode;
@@ -19,6 +20,17 @@ static void fill_observation(struct c2_observation *observation)
     observation->map_x = pm_x;
     observation->map_y = pm_y;
     observation->sequences_running = sequences_running;
+    observation->speech_playing = db_playing;
+    observation->query_type = q_type;
+    observation->out1 = out1;
+    observation->out2 = out2;
+    observation->out3 = out3;
+    observation->mouse_left_button = mouse_left_button;
+    observation->mouse_left_preclick = mouse_left_preclick;
+    observation->mouse_left_click = mouse_left_click;
+    observation->mouse_right_button = mouse_right_button;
+    observation->mouse_right_preclick = mouse_right_preclick;
+    observation->mouse_right_click = mouse_right_click;
     observation->tune_branch = tune_branch;
     observation->tune_branch_count = tune_branch_count;
     observation->menu_count = C2_OBSERVATION_MENU_LIMIT;
