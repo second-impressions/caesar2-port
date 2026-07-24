@@ -308,6 +308,47 @@ static void test_arrow_keys_publish_held_state_without_repeat_events(void)
     remove_test_files();
 }
 
+static void test_host_interactivity_tracks_focus_and_physical_pointer(void)
+{
+    struct c2_host_config config;
+    SDL_Event event;
+
+    remove_test_files();
+    memset(&config, 0, sizeof(config));
+    config.title = "Caesar II host activity test";
+    config.asset_root = ".";
+    config.user_data_root = TEST_USER_ROOT;
+    config.logical_width = 640;
+    config.logical_height = 480;
+    config.window_scale = 1;
+    config.headless = 1;
+    TEST_ASSERT_TRUE(c2_host_init(&config));
+    TEST_ASSERT_TRUE(c2_sdl_host_is_interactive());
+
+    memset(&event, 0, sizeof(event));
+    event.type = SDL_EVENT_WINDOW_MOUSE_LEAVE;
+    c2_sdl_host_handle_event(&event);
+    TEST_ASSERT_FALSE(c2_sdl_host_is_interactive());
+
+    c2_host_set_mouse_position(320, 240);
+    TEST_ASSERT_FALSE(c2_sdl_host_is_interactive());
+
+    event.type = SDL_EVENT_WINDOW_MOUSE_ENTER;
+    c2_sdl_host_handle_event(&event);
+    TEST_ASSERT_TRUE(c2_sdl_host_is_interactive());
+
+    event.type = SDL_EVENT_WINDOW_FOCUS_LOST;
+    c2_sdl_host_handle_event(&event);
+    TEST_ASSERT_FALSE(c2_sdl_host_is_interactive());
+
+    event.type = SDL_EVENT_WINDOW_FOCUS_GAINED;
+    c2_sdl_host_handle_event(&event);
+    TEST_ASSERT_TRUE(c2_sdl_host_is_interactive());
+
+    c2_host_shutdown();
+    remove_test_files();
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -316,5 +357,6 @@ int main(void)
     RUN_TEST(test_indexed_screenshot_is_saved_as_png);
     RUN_TEST(test_mouse_edges_survive_between_engine_polls);
     RUN_TEST(test_arrow_keys_publish_held_state_without_repeat_events);
+    RUN_TEST(test_host_interactivity_tracks_focus_and_physical_pointer);
     return UNITY_END();
 }

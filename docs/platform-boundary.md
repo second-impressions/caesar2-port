@@ -90,6 +90,14 @@ viewport into the active 320x200, 640x400, or 640x480 mouse coordinate space.
 `set_mouse` updates the virtual position and schedules an SDL warp when the
 backend is using absolute input.
 
+The SDL lifecycle services events and the completed-frame mailbox at 120 Hz
+only while its window is focused and the physical pointer is inside the game
+surface. It lowers the runtime callback-rate hint to 15 Hz after pointer leave
+or focus loss on both native and WebAssembly targets. Physical presence is
+tracked separately from the recovered virtual cursor: an engine `set_mouse`
+call cannot spuriously return the host to its interactive rate. The engine
+worker and its modeled DOS clocks remain independently paced.
+
 In unlocked windowed mode an eight-logical-pixel strip maps to each exact
 legacy limit, making edge and corner scrolling selectable without requiring
 pixel-perfect placement. Leaving the rendered viewport moves a boundary

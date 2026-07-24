@@ -204,12 +204,15 @@ The browser build consequently requires pthread support and deployment with
 the cross-origin isolation headers needed for `SharedArrayBuffer`. Threaded
 and non-threaded Wasm artifacts should be treated as separate build products.
 
-The main browser thread does not synchronously wait for the worker during
-normal execution. It returns from every application callback and drains
-published frames and requests on later iterations. The native host services
-events and the frame mailbox every 8 ms. SDL's browser callback therefore
-requests 120 Hz instead of its default one-callback-per-animation-frame mode,
-keeping input publication and mailbox pickup close to the native cadence.
+The main thread does not synchronously wait for the worker during normal
+execution. It returns from every application callback and drains published
+frames and requests on later iterations. Native and browser targets request a
+120 Hz SDL callback while the window is focused and the physical pointer is
+inside the game surface, keeping input publication and mailbox pickup close
+to an 8 ms cadence. SDL permits the callback-rate hint to change at runtime;
+the host reduces it to 15 Hz when either condition is false and restores
+120 Hz on the corresponding focus/pointer event. An engine-requested virtual
+cursor warp does not count as the physical pointer re-entering the surface.
 This host-service rate does not alter the engine worker's independent 60 Hz
 frame deadline or the browser compositor's display refresh rate.
 

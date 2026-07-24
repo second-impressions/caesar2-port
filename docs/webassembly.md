@@ -130,10 +130,12 @@ The document suppresses the browser context menu at capture time so right
 click remains an ordinary game input in Firefox as well as Chromium.
 
 The browser main thread services input and the published-frame mailbox at
-120 Hz, matching the native host's roughly 8 ms service interval. The
-recovered engine remains paced independently at 60 Hz; the faster host
-callback only reduces the time between a browser pointer event, engine input
-publication, and pickup of the next completed cursor-bearing frame.
+120 Hz while the canvas has focus and contains the physical pointer, matching
+the native host's interactive cadence. It reduces SDL's runtime-changeable
+callback-rate hint to 15 Hz after the pointer leaves or focus is lost, then
+restores 120 Hz on re-entry. The recovered engine remains paced independently
+at 60 Hz; this changes only event pumping and presentation latency, not game
+time.
 
 The canvas remains programmatically focusable for keyboard input, but browser
 selection, dragging, tap highlighting, and the default focus outline are

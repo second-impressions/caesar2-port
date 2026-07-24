@@ -83,8 +83,11 @@ def test_wasm_reuses_the_sdl_host_and_recovered_engine_worker():
     assert "-sINITIAL_MEMORY=67108864" in cmake
     assert "ALLOW_MEMORY_GROWTH" not in cmake
     assert "c2_wasm_implicit_void.h" in cmake
-    assert "#if !PLATFORM_WASM" in main
     assert "src/platform/wasm" not in cmake
+    assert 'C2_HOST_ACTIVE_CALLBACK_RATE "120"' in main
+    assert 'C2_HOST_IDLE_CALLBACK_RATE "15"' in main
+    assert "c2_sdl_host_is_interactive()" in main
+    assert "c2_host_sleep_ms(8)" not in main
 
 
 def test_language_builds_split_artifacts_without_branching_the_engine():

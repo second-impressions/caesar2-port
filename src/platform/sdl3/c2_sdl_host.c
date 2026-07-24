@@ -49,6 +49,7 @@ static int c2_mouse_lock_requested;
 static int c2_mouse_relative;
 static int c2_mouse_lock_pending;
 static int c2_mouse_warp_pending;
+static int c2_pointer_inside;
 #if C2_FEAT_DEBUG_OBSERVATION
 static int c2_observation_enabled;
 #endif
@@ -61,7 +62,7 @@ static void sync_mouse_input(void)
 {
     c2_input.mouse_x = c2_mouse.x;
     c2_input.mouse_y = c2_mouse.y;
-    c2_input.mouse_inside = c2_mouse.inside;
+    c2_input.mouse_inside = c2_pointer_inside;
 }
 
 static void queue_input_sample(void)
@@ -560,6 +561,7 @@ int c2_host_init(const struct c2_host_config *config)
     c2_mouse_relative = 0;
     c2_mouse_lock_pending = 0;
     c2_mouse_warp_pending = 0;
+    c2_pointer_inside = config->headless;
     c2_frame_dirty = 0;
     c2_event_read = 0;
     c2_event_count = 0;
@@ -1194,6 +1196,7 @@ void c2_sdl_host_set_headless_mouse(int x, int y, unsigned int buttons)
 
     SDL_LockMutex(c2_event_mutex);
     old_buttons = c2_input.mouse_buttons;
+    c2_pointer_inside = 1;
     c2_port_mouse_set_position(&c2_mouse, x, y);
     sync_mouse_input();
     c2_input.mouse_buttons = buttons;
@@ -1231,6 +1234,16 @@ void c2_sdl_host_push_headless_text(uint32_t codepoint)
 }
 #endif
 
+int c2_sdl_host_is_interactive(void)
+{
+    int interactive;
+
+    SDL_LockMutex(c2_event_mutex);
+    interactive = c2_input.focused && c2_pointer_inside;
+    SDL_UnlockMutex(c2_event_mutex);
+    return interactive;
+}
+
 void c2_sdl_host_handle_event(SDL_Event *event)
 {
     struct c2_host_event host_event;
@@ -1267,7 +1280,13 @@ void c2_sdl_host_handle_event(SDL_Event *event)
         c2_port_mouse_leave(&c2_mouse);
         sync_mouse_input();
         c2_input.generation++;
+    } else if (event->type == SDL_EVENT_WINDOW_MOUSE_ENTER) {
+        c2_pointer_inside = 1;
+        c2_port_mouse_set_position(&c2_mouse, c2_mouse.x, c2_mouse.y);
+        sync_mouse_input();
+        c2_input.generation++;
     } else if (event->type == SDL_EVENT_WINDOW_MOUSE_LEAVE) {
+        c2_pointer_inside = 0;
         if (c2_input.mouse_buttons != 0) {
             c2_input.mouse_buttons = 0;
             queue_input_sample();
@@ -1289,6 +1308,7 @@ void c2_sdl_host_handle_event(SDL_Event *event)
                                        event->motion.x,
                                        event->motion.y);
         }
+        c2_pointer_inside = c2_mouse.inside;
         sync_mouse_input();
         c2_input.generation++;
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
@@ -1299,6 +1319,7 @@ void c2_sdl_host_handle_event(SDL_Event *event)
             c2_port_mouse_set_absolute(&c2_mouse,
                                        event->button.x,
                                        event->button.y);
+            c2_pointer_inside = c2_mouse.inside;
             sync_mouse_input();
         }
         mask = translate_mouse_button(event->button.button);

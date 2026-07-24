@@ -17,6 +17,9 @@
 #include "c2_sdl_smoke.h"
 #endif
 
+#define C2_HOST_ACTIVE_CALLBACK_RATE "120"
+#define C2_HOST_IDLE_CALLBACK_RATE "15"
+
 struct c2_sdl_app {
     SDL_Thread *engine_thread;
     SDL_AtomicInt engine_result;
@@ -27,6 +30,7 @@ struct c2_sdl_app {
     int smoke_failed;
 #endif
     int host_initialized;
+    int host_interactive;
 };
 
 static struct c2_sdl_app c2_app;
@@ -143,6 +147,22 @@ static SDL_AppResult to_sdl_result(int result)
     return SDL_APP_CONTINUE;
 }
 
+static void update_host_callback_rate(struct c2_sdl_app *app)
+{
+    int interactive;
+    const char *rate;
+
+    interactive = c2_sdl_host_is_interactive();
+    if (interactive == app->host_interactive) return;
+    rate = interactive ? C2_HOST_ACTIVE_CALLBACK_RATE :
+                         C2_HOST_IDLE_CALLBACK_RATE;
+    if (!SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, rate)) {
+        fprintf(stderr, "warning: could not set SDL callback rate to %s Hz\n",
+                rate);
+    }
+    app->host_interactive = interactive;
+}
+
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 {
     const char *asset_root;
@@ -154,16 +174,13 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     int smoke_kind;
 
     *appstate = &c2_app;
-#if PLATFORM_WASM
     /*
-     * Native hosts service SDL events and the frame mailbox every 8 ms.
-     * SDL's browser default is one callback per requestAnimationFrame,
-     * which adds avoidable latency to the engine-rendered mouse pointer.
-     * A 120 Hz host callback keeps the native service cadence without
-     * changing the engine's independent 60 Hz frame deadline.
+     * Keep input and the frame mailbox responsive while the user is
+     * interacting. This rate is reduced after host initialization when the
+     * window is not active.
      */
-    SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, "120");
-#endif
+    SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, C2_HOST_ACTIVE_CALLBACK_RATE);
+    c2_app.host_interactive = -1;
 #if C2_FEAT_DEBUG_CRASH_HANDLER
     if (!c2_debug_install_crash_handlers()) {
         fprintf(stderr, "warning: could not install debug crash handlers\n");
@@ -194,6 +211,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
         return SDL_APP_FAILURE;
     }
     c2_app.host_initialized = 1;
+    update_host_callback_rate(&c2_app);
 
     c2_app.engine_config.screenshot_filename = screenshot_filename;
 #if C2_FEAT_DEBUG_OBSERVATION
@@ -212,8 +230,11 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 
 SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
 {
-    (void)appstate;
+    struct c2_sdl_app *app;
+
+    app = appstate;
     c2_sdl_host_handle_event(event);
+    update_host_callback_rate(app);
     return SDL_APP_CONTINUE;
 }
 
@@ -243,9 +264,6 @@ SDL_AppResult SDL_AppIterate(void *appstate)
         return to_sdl_result(result);
     }
     c2_host_present();
-#if !PLATFORM_WASM
-    c2_host_sleep_ms(8);
-#endif
     return SDL_APP_CONTINUE;
 }
 
