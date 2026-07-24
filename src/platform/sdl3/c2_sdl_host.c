@@ -1107,6 +1107,15 @@ void c2_host_publish_observation(const struct c2_observation *observation)
     c2_observation.sequences_running = observation->sequences_running;
     c2_observation.tune_branch = observation->tune_branch;
     c2_observation.tune_branch_count = observation->tune_branch_count;
+    c2_observation.menu_count = observation->menu_count;
+    c2_observation.active_menu = observation->active_menu;
+    c2_observation.menu_item_group = observation->menu_item_group;
+    c2_observation.menu_item_count = observation->menu_item_count;
+    c2_observation.active_menu_item = observation->active_menu_item;
+    memcpy(c2_observation.menu_x1, observation->menu_x1,
+           sizeof(c2_observation.menu_x1));
+    memcpy(c2_observation.menu_x2, observation->menu_x2,
+           sizeof(c2_observation.menu_x2));
     memcpy(c2_observation.player_name, observation->player_name,
            sizeof(c2_observation.player_name));
     memcpy(c2_observation.filename, observation->filename,

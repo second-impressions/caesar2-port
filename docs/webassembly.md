@@ -69,6 +69,7 @@ emcmake cmake --preset wasm-debug \
   -DC2_WASM_ASSET_ROOT=/path/to/CAESAR2
 cmake --build build/port/wasm-debug-en
 node tools/smoke-wasm.mjs build/port/wasm-debug-en
+node tools/smoke-wasm.mjs build/port/wasm-debug-en city
 ```
 
 ## Serving and deployment

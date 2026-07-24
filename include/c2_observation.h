@@ -22,8 +22,12 @@ enum c2_observation_point {
     C2_OBSERVATION_FILE_DIALOG,
     C2_OBSERVATION_SAVE_COMPLETE,
     C2_OBSERVATION_LOAD_COMPLETE,
+    C2_OBSERVATION_MENU_BAR,
+    C2_OBSERVATION_MENU_ITEMS,
     C2_OBSERVATION_ENGINE_STOPPED
 };
+
+#define C2_OBSERVATION_MENU_LIMIT 4
 
 struct c2_observation {
     uint64_t sequence;
@@ -42,10 +46,19 @@ struct c2_observation {
     int sequences_running;
     int tune_branch;
     int tune_branch_count;
+    int menu_count;
+    int active_menu;
+    int menu_item_group;
+    int menu_item_count;
+    int active_menu_item;
+    int menu_x1[C2_OBSERVATION_MENU_LIMIT];
+    int menu_x2[C2_OBSERVATION_MENU_LIMIT];
     char player_name[26];
     char filename[13];
 };
 
 void c2_observe(enum c2_observation_point point, int detail);
+void c2_observe_menu_bar(int menu_count, int active_menu);
+void c2_observe_menu_items(int text_group, int item_count, int active_item);
 
 #endif /* C2_OBSERVATION_H */

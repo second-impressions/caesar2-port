@@ -112,3 +112,13 @@ def test_bugfixes_default_to_the_portable_target_only():
         assert re.search(
             rf"#\s*define\s+{name}\s+PLATFORM_PORTABLE\b", text
         ), f"{name} does not default to PLATFORM_PORTABLE"
+
+
+def test_portable_target_keeps_the_recovered_software_menus():
+    """The port has no Windows-native replacement for the recovered menu bar."""
+    text = TARGET_HEADER.read_text()
+    assert re.search(
+        r"#\s*define\s+C2_FEAT_SOFTWARE_MENUS\s+"
+        r"\(PLATFORM_DOS\s*\|\|\s*PLATFORM_PORTABLE\)",
+        text,
+    )

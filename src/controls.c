@@ -80,6 +80,9 @@ void show_menus(struct menu_rec *menu_list, int menu_count, int active_menu_idx)
     for (ry = ref_y; ry < ref_y + tile_rows; ry++)
         for (col_no = ref_x; col_no < ref_x + refresh_width; col_no++)
             svga_refresh_table[col_no + ry * 40] = 2;
+#if C2_FEAT_DEBUG_OBSERVATION
+    c2_observe_menu_bar(menu_count, active_menu_idx);
+#endif
 }
 
 // Draw a menu's drop-down items and highlight the active row.
@@ -116,6 +119,9 @@ void show_menu_items(struct menu_item_rec *item_list, int x, int y, int text_gro
     tile_rows = (item_count * 20 + 4) / 16 + 2;
     for (ry = ref_y; ry < ref_y + tile_rows; ry++)
         for (col_no = ref_x; col_no < ref_x + refresh_width; col_no++) svga_refresh_table[col_no + ry * 40] = 2;
+#if C2_FEAT_DEBUG_OBSERVATION
+    c2_observe_menu_items(text_group, item_count, active_item_idx);
+#endif
 }
 
 // Draw a system window sized for the current selection list.

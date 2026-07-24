@@ -11,6 +11,10 @@
 enum city_smoke_phase {
     CITY_SMOKE_WAIT_FOR_CITY,
     CITY_SMOKE_SETTLE,
+    CITY_SMOKE_OPEN_FILE_MENU,
+    CITY_SMOKE_CLOSE_FILE_MENU,
+    CITY_SMOKE_OPEN_OPTIONS_MENU,
+    CITY_SMOKE_CLOSE_OPTIONS_MENU,
     CITY_SMOKE_PAUSE,
     CITY_SMOKE_UNPAUSE,
     CITY_SMOKE_PAN,
@@ -467,6 +471,60 @@ static void drive_province_selection(
     smoke->last_input = now;
 }
 
+static int city_menu_bar_is_valid(
+    const struct c2_observation *observation)
+{
+    int i;
+
+    if ((observation->reached &
+         (UINT64_C(1) << C2_OBSERVATION_MENU_BAR)) == 0) {
+        fprintf(stderr, "city menu bar was not rendered\n");
+        return 0;
+    }
+    if (observation->menu_count != C2_OBSERVATION_MENU_LIMIT) {
+        fprintf(stderr, "city menu bar has %d entries instead of %d\n",
+                observation->menu_count, C2_OBSERVATION_MENU_LIMIT);
+        return 0;
+    }
+    for (i = 0; i < observation->menu_count; i++) {
+        if (observation->menu_x2[i] <= observation->menu_x1[i] ||
+            (i != 0 &&
+             observation->menu_x1[i] <= observation->menu_x2[i - 1])) {
+            fprintf(stderr,
+                    "city menu %d has invalid bounds %d..%d\n",
+                    i, observation->menu_x1[i],
+                    observation->menu_x2[i]);
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static int click_city_menu(struct c2_sdl_smoke *smoke, Uint64 now,
+                           const struct c2_observation *observation,
+                           int menu_index)
+{
+    int x;
+
+    x = (observation->menu_x1[menu_index] +
+         observation->menu_x2[menu_index]) / 2;
+    return click_mouse(smoke, now, x, 10, C2_HOST_MOUSE_LEFT);
+}
+
+static int menu_items_match(const struct c2_observation *observation,
+                            int text_group, int item_count)
+{
+    if (observation->menu_item_group == text_group &&
+        observation->menu_item_count == item_count) {
+        return 1;
+    }
+    fprintf(stderr,
+            "menu group %d has %d items, expected group %d with %d\n",
+            observation->menu_item_group, observation->menu_item_count,
+            text_group, item_count);
+    return 0;
+}
+
 static enum c2_sdl_smoke_result drive_city(
     struct c2_sdl_smoke *smoke, Uint64 now,
     const struct c2_observation *observation)
@@ -496,9 +554,54 @@ static enum c2_sdl_smoke_result drive_city(
     case CITY_SMOKE_SETTLE:
         if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
             now - smoke->city_quiet_since >= 300) {
-            if (type_character(smoke, now, 'p')) {
-                smoke->phase = CITY_SMOKE_PAUSE;
+            if (!city_menu_bar_is_valid(observation)) {
+                return C2_SDL_SMOKE_FAILURE;
             }
+            if (click_city_menu(smoke, now, observation, 0)) {
+                smoke->phase = CITY_SMOKE_OPEN_FILE_MENU;
+            }
+        }
+        break;
+    case CITY_SMOKE_OPEN_FILE_MENU:
+        if (observation_is(observation, C2_OBSERVATION_MENU_ITEMS)) {
+            if (!menu_items_match(observation, 1, 4)) {
+                return C2_SDL_SMOKE_FAILURE;
+            }
+            if (click_mouse(smoke, now, 320, 240,
+                            C2_HOST_MOUSE_RIGHT)) {
+                smoke->phase = CITY_SMOKE_CLOSE_FILE_MENU;
+            }
+        } else if (observation_is(observation,
+                                  C2_OBSERVATION_CITY_LOOP) &&
+                   now - smoke->last_input >= 250) {
+            click_city_menu(smoke, now, observation, 0);
+        }
+        break;
+    case CITY_SMOKE_CLOSE_FILE_MENU:
+        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
+            click_city_menu(smoke, now, observation, 1)) {
+            smoke->phase = CITY_SMOKE_OPEN_OPTIONS_MENU;
+        }
+        break;
+    case CITY_SMOKE_OPEN_OPTIONS_MENU:
+        if (observation_is(observation, C2_OBSERVATION_MENU_ITEMS)) {
+            if (!menu_items_match(observation, 2, 5)) {
+                return C2_SDL_SMOKE_FAILURE;
+            }
+            if (click_mouse(smoke, now, 320, 240,
+                            C2_HOST_MOUSE_RIGHT)) {
+                smoke->phase = CITY_SMOKE_CLOSE_OPTIONS_MENU;
+            }
+        } else if (observation_is(observation,
+                                  C2_OBSERVATION_CITY_LOOP) &&
+                   now - smoke->last_input >= 250) {
+            click_city_menu(smoke, now, observation, 1);
+        }
+        break;
+    case CITY_SMOKE_CLOSE_OPTIONS_MENU:
+        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
+            type_character(smoke, now, 'p')) {
+            smoke->phase = CITY_SMOKE_PAUSE;
         }
         break;
     case CITY_SMOKE_PAUSE:

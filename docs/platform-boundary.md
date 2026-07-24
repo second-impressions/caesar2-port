@@ -129,6 +129,11 @@ contains a monotonically increasing sequence, a cumulative reached bitset, and
 a small immutable snapshot of relevant game state. The host may copy that
 record, but has no API for writing engine state. Test input remains entirely
 separate and travels through the normal mouse/key publication path.
+The city-flow smoke also observes completed top-menu and drop-down rendering,
+including the recovered hit boxes, and opens both File and Options through the
+ordinary mouse path. The portable target deliberately selects the DOS
+software-menu renderer because, unlike the shipped Windows target, it has no
+native platform menu bar.
 `C2_DEBUG_BUILD` is supplied by CMake only for the Debug configuration and
 selects `C2_FEAT_DEBUG_OBSERVATION`; non-Debug builds omit the adapter sources,
 host storage, checkpoint calls, smoke driver, and smoke command-line options.

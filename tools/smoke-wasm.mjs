@@ -9,6 +9,14 @@ import { createInterface } from "node:readline";
 
 const root = resolve(import.meta.dirname, "..");
 const build = resolve(process.argv[2] ?? `${root}/build/port/wasm-debug`);
+const smokeKind = process.argv[3] ?? "province";
+const smokeResults = {
+  province: "recovered province-selection smoke completed",
+  city: "recovered city-loop smoke completed",
+};
+if (!(smokeKind in smokeResults)) {
+  throw new Error(`unknown smoke kind '${smokeKind}'`);
+}
 const profile = await mkdtemp(`${tmpdir()}/caesar2-wasm-smoke-`);
 let server;
 let browser;
@@ -85,7 +93,7 @@ try {
 
   await new Promise((resolveSmoke, reject) => {
     const timer = setTimeout(() => {
-      reject(new Error("Wasm province-selection smoke timed out"));
+      reject(new Error(`Wasm ${smokeKind} smoke timed out`));
     }, 60_000);
     socket.addEventListener("message", (event) => {
       const message = JSON.parse(event.data);
@@ -98,7 +106,7 @@ try {
       const text = message.params.args
         .map((arg) => arg.value ?? arg.description ?? "")
         .join(" ");
-      if (text.includes("recovered province-selection smoke completed")) {
+      if (text.includes(smokeResults[smokeKind])) {
         clearTimeout(timer);
         resolveSmoke();
       } else if (/exception|signature_mismatch|Aborted\(/i.test(text)) {
@@ -106,10 +114,10 @@ try {
         reject(new Error(text));
       }
     });
-    send("Page.navigate", { url: `${gameUrl}?smoke-test=province` });
+    send("Page.navigate", { url: `${gameUrl}?smoke-test=${smokeKind}` });
   });
   socket.close();
-  console.log("WebAssembly province-selection smoke passed");
+  console.log(`WebAssembly ${smokeKind} smoke passed`);
 } finally {
   await Promise.all([stop(browser), stop(server)]);
   await rm(profile, {
