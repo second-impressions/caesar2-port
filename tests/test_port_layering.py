@@ -107,7 +107,8 @@ def test_language_builds_split_artifacts_without_branching_the_engine():
 def test_wasm_shell_is_unframed_and_reports_downloads_in_megabytes():
     cmake = (ROOT / "CMakeLists.txt").read_text()
     shell = (ROOT / "web" / "caesar2.html").read_text()
-    assert 'LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2.html"' in cmake
+    assert "${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2.html" in cmake
+    assert "--js-library=${CMAKE_CURRENT_SOURCE_DIR}/web/c2_browser.js" in cmake
     assert "radial-gradient" not in shell
     assert "box-shadow" not in shell
     assert "width: 100vw" in shell
@@ -119,6 +120,19 @@ def test_wasm_shell_is_unframed_and_reports_downloads_in_megabytes():
     assert "Math.ceil(logicalWidth * scale / density)" in shell
     assert "Number(match[1]) / 1_000_000" in shell
     assert "MB)…" in shell
+    assert 'id="restart"' in shell
+    assert "onGameExit: showRestartButton" in shell
+    assert "canvas.hidden = true" in shell
+    assert "canvas[hidden]" in shell
+    assert "restart.hidden = false" in shell
+    assert "if (smokeOutput) smokeOutput.push(message)" in shell
+    assert 'restart.addEventListener("click", () => location.reload())' in shell
+    assert "c2_browser_show_restart();" in (
+        SDL_BACKEND / "c2_sdl_main.c"
+    ).read_text()
+    browser_bridge = (ROOT / "web" / "c2_browser.js").read_text()
+    assert 'c2_browser_show_restart__proxy: "sync"' in browser_bridge
+    assert 'Module["onGameExit"]()' in browser_bridge
 
 
 def test_optional_media_is_an_explicit_host_capability():

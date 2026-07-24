@@ -246,7 +246,8 @@ target_link_libraries(caesar2 PRIVATE
 if(EMSCRIPTEN)
     set_target_properties(caesar2 PROPERTIES
         OUTPUT_NAME "caesar2-${C2_LANGUAGE}"
-        LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2.html"
+        LINK_DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2.html;${CMAKE_CURRENT_SOURCE_DIR}/web/c2_browser.js"
         SUFFIX ".html")
     target_compile_options(caesar2 PRIVATE
         -pthread
@@ -258,6 +259,7 @@ if(EMSCRIPTEN)
         -sINITIAL_MEMORY=67108864
         -sEXIT_RUNTIME=0
         "--shell-file=${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2.html"
+        "--js-library=${CMAKE_CURRENT_SOURCE_DIR}/web/c2_browser.js"
     )
     if(C2_WASM_ASSET_ROOT)
         if(NOT IS_DIRECTORY "${C2_WASM_ASSET_ROOT}")

@@ -38,21 +38,42 @@
       -webkit-user-select: none;
       -webkit-tap-highlight-color: transparent;
     }
+    canvas[hidden] {
+      display: none;
+    }
     #status {
       position: fixed;
       bottom: 1rem;
       margin: 0;
       color: #fff;
     }
+    #restart {
+      padding: 0.75rem 1.5rem;
+      border: 1px solid #aaa;
+      border-radius: 0.25rem;
+      color: #fff;
+      background: #222;
+      font: inherit;
+      cursor: pointer;
+    }
+    #restart:hover,
+    #restart:focus-visible {
+      background: #333;
+    }
+    #restart[hidden] {
+      display: none;
+    }
   </style>
 </head>
 <body>
   <main>
     <canvas id="canvas" tabindex="0" draggable="false"></canvas>
+    <button id="restart" type="button" hidden>Restart Caesar II</button>
     <p id="status" role="status">Loading Caesar II…</p>
   </main>
   <script>
     const canvas = document.getElementById("canvas");
+    const restart = document.getElementById("restart");
     const status = document.getElementById("status");
     const query = new URLSearchParams(location.search);
     const smokeOutput = query.has("smoke-test") ? [] : null;
@@ -72,7 +93,10 @@
       { capture: true }
     );
     if (query.get("mouse-lock") === "1") args.push("--mouse-lock");
-    if (query.get("smoke-test") === "province") args.push("--smoke-test");
+    if (query.get("smoke-test") === "province" ||
+        query.get("smoke-test") === "restart") {
+      args.push("--smoke-test");
+    }
     if (query.get("smoke-test") === "city") args.push("--city-smoke-test");
     if (query.get("smoke-test") === "campania") {
       args.push("--campania-transition-smoke-test");
@@ -128,6 +152,18 @@
       return `Downloading game data (${downloaded.toFixed(1)} / ${total.toFixed(1)} MB)…`;
     }
 
+    function showRestartButton() {
+      canvas.hidden = true;
+      status.textContent = "";
+      restart.hidden = false;
+      restart.focus();
+      const message = "restart control shown";
+      if (smokeOutput) smokeOutput.push(message);
+      console.log(message);
+    }
+
+    restart.addEventListener("click", () => location.reload());
+
     var Module = {
       arguments: args,
       canvas,
@@ -147,7 +183,8 @@
       onRuntimeInitialized: () => {
         status.textContent = "";
         canvas.focus();
-      }
+      },
+      onGameExit: showRestartButton
     };
   </script>
   {{{ SCRIPT }}}

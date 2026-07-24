@@ -18,6 +18,7 @@ const smokeResults = {
   campania: "Campania speech transition smoke completed",
   contextmenu: "browser context menu suppressed",
   music: "music buffer smoke completed",
+  restart: "restart control shown",
 };
 if (!(smokeKind in smokeResults)) {
   throw new Error(`unknown smoke kind '${smokeKind}'`);

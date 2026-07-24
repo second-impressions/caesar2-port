@@ -17,6 +17,10 @@
 #include "c2_sdl_smoke.h"
 #endif
 
+#if PLATFORM_WASM
+extern void c2_browser_show_restart(void);
+#endif
+
 #define C2_HOST_ACTIVE_CALLBACK_RATE "120"
 #define C2_HOST_IDLE_CALLBACK_RATE "15"
 
@@ -260,6 +264,11 @@ SDL_AppResult SDL_AppIterate(void *appstate)
     if (result != C2_PORT_APP_CONTINUE) {
 #if C2_FEAT_DEBUG_OBSERVATION
         if (app->smoke_failed) return SDL_APP_FAILURE;
+#endif
+#if PLATFORM_WASM
+        if (to_sdl_result(result) == SDL_APP_SUCCESS) {
+            c2_browser_show_restart();
+        }
 #endif
         return to_sdl_result(result);
     }

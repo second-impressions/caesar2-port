@@ -142,6 +142,13 @@ selection, dragging, tap highlighting, and the default focus outline are
 disabled. Focus therefore stays functional without drawing a browser-owned
 border over the game.
 
+The recovered quit paths still end the game exactly as they do on DOS. Once
+SDL reports a clean engine shutdown, the browser shell replaces the stopped
+canvas with a Restart button. Restarting reloads the page to create a fresh
+Emscripten runtime; the persistent `/user-data` mount retains saves and
+settings across that reload. Runtime failures remain visible as errors rather
+than being presented as an ordinary game exit.
+
 ## Deliberate constraints
 
 - This is currently a threaded Wasm product and therefore requires browser
