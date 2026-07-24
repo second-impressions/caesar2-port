@@ -75,6 +75,7 @@ node tools/smoke-wasm.mjs build/port/wasm-debug-en city
 node tools/smoke-wasm.mjs build/port/wasm-debug-en music
 node tools/smoke-wasm.mjs build/port/wasm-debug-en campania firefox
 node tools/smoke-wasm.mjs build/port/wasm-debug-en contextmenu firefox
+node tools/smoke-wasm.mjs build/port/wasm-debug-en canvas firefox
 ```
 
 ## Serving and deployment
@@ -133,6 +134,11 @@ The browser main thread services input and the published-frame mailbox at
 recovered engine remains paced independently at 60 Hz; the faster host
 callback only reduces the time between a browser pointer event, engine input
 publication, and pickup of the next completed cursor-bearing frame.
+
+The canvas remains programmatically focusable for keyboard input, but browser
+selection, dragging, tap highlighting, and the default focus outline are
+disabled. Focus therefore stays functional without drawing a browser-owned
+border over the game.
 
 ## Deliberate constraints
 

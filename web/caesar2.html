@@ -33,6 +33,10 @@
       height: var(--c2-canvas-height, 480px) !important;
       image-rendering: pixelated;
       background: #000;
+      outline: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
     #status {
       position: fixed;
@@ -44,7 +48,7 @@
 </head>
 <body>
   <main>
-    <canvas id="canvas" tabindex="0"></canvas>
+    <canvas id="canvas" tabindex="0" draggable="false"></canvas>
     <p id="status" role="status">Loading Caesar II…</p>
   </main>
   <script>
@@ -75,6 +79,26 @@
     }
     if (query.get("smoke-test") === "music") args.push("--music-buffer-smoke-test");
     if (smokeOutput) globalThis.__c2SmokeOutput = smokeOutput;
+    if (query.get("smoke-test") === "canvas") {
+      requestAnimationFrame(() => {
+        canvas.focus();
+        const style = getComputedStyle(canvas);
+        if (document.activeElement === canvas &&
+            style.userSelect === "none" &&
+            style.outlineStyle === "none" &&
+            !canvas.draggable) {
+          const message = "canvas focus styling suppressed";
+          smokeOutput.push(message);
+          console.log(message);
+        } else {
+          console.error(
+            `canvas style mismatch: focus=${document.activeElement === canvas} ` +
+            `select=${style.userSelect} outline=${style.outlineStyle} ` +
+            `draggable=${canvas.draggable}`
+          );
+        }
+      });
+    }
 
     function resizeCanvasToIntegerScale() {
       const density = devicePixelRatio || 1;

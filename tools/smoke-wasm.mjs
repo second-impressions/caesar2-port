@@ -13,6 +13,7 @@ const smokeKind = process.argv[3] ?? "province";
 const browserKind = process.argv[4] ?? "chromium";
 const smokeResults = {
   province: "recovered province-selection smoke completed",
+  canvas: "canvas focus styling suppressed",
   city: "recovered city-loop smoke completed",
   campania: "Campania speech transition smoke completed",
   contextmenu: "browser context menu suppressed",
