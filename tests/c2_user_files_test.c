@@ -251,6 +251,63 @@ static void test_mouse_edges_survive_between_engine_polls(void)
     remove_test_files();
 }
 
+static void test_arrow_keys_publish_held_state_without_repeat_events(void)
+{
+    struct c2_host_config config;
+    struct c2_host_input input;
+    struct c2_host_event host_event;
+    SDL_Event event;
+
+    remove_test_files();
+    memset(&config, 0, sizeof(config));
+    config.title = "Caesar II held-key test";
+    config.asset_root = ".";
+    config.user_data_root = TEST_USER_ROOT;
+    config.logical_width = 640;
+    config.logical_height = 480;
+    config.window_scale = 1;
+    config.headless = 1;
+    TEST_ASSERT_TRUE(c2_host_init(&config));
+
+    memset(&event, 0, sizeof(event));
+    event.type = SDL_EVENT_KEY_DOWN;
+    event.key.key = SDLK_LEFT;
+    c2_sdl_host_handle_event(&event);
+    c2_host_input_snapshot(&input);
+    TEST_ASSERT_EQUAL_UINT(C2_HOST_ARROW_LEFT, input.arrow_keys);
+    TEST_ASSERT_TRUE(c2_host_wait_event(&host_event, 0));
+    TEST_ASSERT_EQUAL(C2_HOST_EVENT_KEY_DOWN, host_event.type);
+    TEST_ASSERT_EQUAL(C2_HOST_KEY_LEFT, host_event.key);
+
+    event.key.repeat = 1;
+    c2_sdl_host_handle_event(&event);
+    c2_host_input_snapshot(&input);
+    TEST_ASSERT_EQUAL_UINT(C2_HOST_ARROW_LEFT, input.arrow_keys);
+    TEST_ASSERT_FALSE(c2_host_wait_event(&host_event, 0));
+
+    event.key.repeat = 0;
+    event.key.key = SDLK_UP;
+    c2_sdl_host_handle_event(&event);
+    c2_host_input_snapshot(&input);
+    TEST_ASSERT_EQUAL_UINT(C2_HOST_ARROW_LEFT | C2_HOST_ARROW_UP,
+                           input.arrow_keys);
+    TEST_ASSERT_TRUE(c2_host_wait_event(&host_event, 0));
+
+    event.type = SDL_EVENT_KEY_UP;
+    event.key.key = SDLK_LEFT;
+    c2_sdl_host_handle_event(&event);
+    c2_host_input_snapshot(&input);
+    TEST_ASSERT_EQUAL_UINT(C2_HOST_ARROW_UP, input.arrow_keys);
+
+    event.type = SDL_EVENT_WINDOW_FOCUS_LOST;
+    c2_sdl_host_handle_event(&event);
+    c2_host_input_snapshot(&input);
+    TEST_ASSERT_EQUAL_UINT(0, input.arrow_keys);
+
+    c2_host_shutdown();
+    remove_test_files();
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -258,5 +315,6 @@ int main(void)
     RUN_TEST(test_user_streams_and_dos_style_directory_listing);
     RUN_TEST(test_indexed_screenshot_is_saved_as_png);
     RUN_TEST(test_mouse_edges_survive_between_engine_polls);
+    RUN_TEST(test_arrow_keys_publish_held_state_without_repeat_events);
     return UNITY_END();
 }

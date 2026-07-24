@@ -142,6 +142,13 @@
 #  define C2_FEAT_TEXT_ASSET_COMPAT PLATFORM_PORTABLE
 #endif
 
+/* The shipped DOS hotkey path moves the mouse cursor by eight pixels for
+ * each arrow-key event. Portable builds instead expose held arrow state to
+ * the recovered map scroller, while retaining scan-code delivery to editors. */
+#ifndef C2_FEAT_ARROW_KEY_SCROLL
+#  define C2_FEAT_ARROW_KEY_SCROLL PLATFORM_PORTABLE
+#endif
+
 /* The shipped builds held file-operation messages for throughput-bound idle
  * frames after synchronous I/O had completed (1,000 after save, 200 after
  * load). A paced portable renderer would turn those CPU-era cosmetic spins

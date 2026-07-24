@@ -2,6 +2,7 @@
 #include "c2_data.h"
 #if PLATFORM_PORTABLE
 #include "c2_bugfixes.h"
+#include "c2_port.h"
 #endif
 #include "c2_types.h"
 #if C2_FEAT_DEBUG_OBSERVATION
@@ -611,6 +612,13 @@ void scroll(void)
 {
     int saved_pm_x = pm_x;
     int saved_pm_y = pm_y;
+#if C2_FEAT_ARROW_KEY_SCROLL
+    unsigned int scroll_keys;
+    int scroll_up;
+    int scroll_down;
+    int scroll_left;
+    int scroll_right;
+#endif
 
     /* Province (large) map at zoom 2 doesn't scroll on edges. */
     if (map_mode == 2 && zoom_level == 2) {
@@ -621,6 +629,35 @@ void scroll(void)
         return;
     }
 
+#if C2_FEAT_ARROW_KEY_SCROLL
+    scroll_keys = c2_port_scroll_keys();
+    scroll_up = (scroll_keys & C2_PORT_SCROLL_UP) != 0 &&
+                (scroll_keys & C2_PORT_SCROLL_DOWN) == 0;
+    scroll_down = (scroll_keys & C2_PORT_SCROLL_DOWN) != 0 &&
+                  (scroll_keys & C2_PORT_SCROLL_UP) == 0;
+    scroll_left = (scroll_keys & C2_PORT_SCROLL_LEFT) != 0 &&
+                  (scroll_keys & C2_PORT_SCROLL_RIGHT) == 0;
+    scroll_right = (scroll_keys & C2_PORT_SCROLL_RIGHT) != 0 &&
+                   (scroll_keys & C2_PORT_SCROLL_LEFT) == 0;
+    if ((scroll_keys & (C2_PORT_SCROLL_UP | C2_PORT_SCROLL_DOWN)) == 0) {
+        scroll_up = mouse_y <= 0;
+        scroll_down = mouse_y >= screen_height;
+    }
+    if ((scroll_keys & (C2_PORT_SCROLL_LEFT | C2_PORT_SCROLL_RIGHT)) == 0) {
+        scroll_left = mouse_x <= 0;
+        scroll_right = mouse_x >= screen_width;
+    }
+
+    /* Top edge or held Up key — scroll up. */
+    if (scroll_up && pm_y > 0) { pm_y = pm_y - scroll_amount * 2; scrolling = 1; update_map = 1; setup_map_screen_refresh(); }
+    /* Bottom edge or held Down key — scroll down. */
+    if (scroll_down && (0xa0 - pm_screen_height) > pm_y) { pm_y = pm_y + scroll_amount * 2; scrolling = 1; update_map = 1; setup_map_screen_refresh(); }
+    /* Left edge or held Left key — scroll left. */
+    if (scroll_left && pm_x > 0) { pm_x = pm_x - scroll_amount; scrolling = 1; update_map = 1; setup_map_screen_refresh(); }
+    /* Right edge or held Right key — scroll right. */
+    if (scroll_right && (0x50 - pm_screen_width) > pm_x)
+    { pm_x = pm_x + scroll_amount; scrolling = 1; update_map = 1; setup_map_screen_refresh(); }
+#else
     /* Top edge — scroll up. */
     if (mouse_y <= 0 && pm_y > 0) { pm_y = pm_y - scroll_amount * 2; scrolling = 1; update_map = 1; setup_map_screen_refresh(); }
     /* Bottom edge — scroll down. */
@@ -630,6 +667,7 @@ void scroll(void)
     /* Right edge — scroll right. */
     if (mouse_x >= screen_width && (0x50 - pm_screen_width) > pm_x)
     { pm_x = pm_x + scroll_amount; scrolling = 1; update_map = 1; setup_map_screen_refresh(); }
+#endif
 
     if (scrolling != 0) {
         if (scroll_speed() == 0) {

@@ -65,6 +65,13 @@ enum c2_host_mouse_button {
     C2_HOST_MOUSE_MIDDLE = 1u << 2
 };
 
+enum c2_host_arrow_key {
+    C2_HOST_ARROW_LEFT = 1u << 0,
+    C2_HOST_ARROW_RIGHT = 1u << 1,
+    C2_HOST_ARROW_UP = 1u << 2,
+    C2_HOST_ARROW_DOWN = 1u << 3
+};
+
 struct c2_host_config {
     const char *title;
     const char *asset_root;
@@ -94,6 +101,7 @@ struct c2_host_input {
     int mouse_x;
     int mouse_y;
     unsigned int mouse_buttons;
+    unsigned int arrow_keys;
     int wheel_x;
     int wheel_y;
     int mouse_inside;

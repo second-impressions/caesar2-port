@@ -1,8 +1,31 @@
 #include "c2_data.h"
 #include "c2_host.h"
+#include "c2_port.h"
 #include "c2_port_keymap.h"
 
 extern void exit_game(void);
+
+unsigned int c2_port_scroll_keys(void)
+{
+    struct c2_host_input input;
+    unsigned int keys;
+
+    c2_host_input_snapshot(&input);
+    keys = 0;
+    if ((input.arrow_keys & C2_HOST_ARROW_LEFT) != 0) {
+        keys |= C2_PORT_SCROLL_LEFT;
+    }
+    if ((input.arrow_keys & C2_HOST_ARROW_RIGHT) != 0) {
+        keys |= C2_PORT_SCROLL_RIGHT;
+    }
+    if ((input.arrow_keys & C2_HOST_ARROW_UP) != 0) {
+        keys |= C2_PORT_SCROLL_UP;
+    }
+    if ((input.arrow_keys & C2_HOST_ARROW_DOWN) != 0) {
+        keys |= C2_PORT_SCROLL_DOWN;
+    }
+    return keys;
+}
 
 int init_mouse(void)
 {

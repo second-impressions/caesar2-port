@@ -617,9 +617,13 @@ static enum c2_sdl_smoke_result drive_city(
         if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
             !observation->paused) {
             smoke->initial_map_x = observation->map_x;
+#if C2_FEAT_ARROW_KEY_SCROLL
+            c2_sdl_host_set_headless_arrow_keys(C2_HOST_ARROW_LEFT);
+#else
             c2_sdl_host_set_headless_mouse(0, 240, 0);
             smoke->mouse_x = 0;
             smoke->mouse_y = 240;
+#endif
             smoke->last_input = now;
             smoke->phase = CITY_SMOKE_PAN;
         } else if (observation_is(observation,
@@ -631,9 +635,13 @@ static enum c2_sdl_smoke_result drive_city(
     case CITY_SMOKE_PAN:
         if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
             observation->map_x != smoke->initial_map_x) {
+#if C2_FEAT_ARROW_KEY_SCROLL
+            c2_sdl_host_set_headless_arrow_keys(0);
+#else
             c2_sdl_host_set_headless_mouse(320, 240, 0);
             smoke->mouse_x = 320;
             smoke->mouse_y = 240;
+#endif
             smoke->initial_zoom = observation->zoom_level;
             if (type_character(smoke, now, '-')) {
                 smoke->phase = CITY_SMOKE_ZOOM;

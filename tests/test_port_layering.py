@@ -57,6 +57,7 @@ def test_smoke_driver_observes_without_reaching_into_legacy_state():
     assert not offenders, f"smoke driver reaches legacy state: {offenders}"
     assert "c2_host_observation_snapshot" in smoke
     assert "c2_sdl_host_set_headless_mouse" in smoke
+    assert "c2_sdl_host_set_headless_arrow_keys" in smoke
 
 
 def test_observation_sources_are_debug_only():

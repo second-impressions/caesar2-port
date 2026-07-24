@@ -70,6 +70,8 @@ option(C2_FIX_MOSAIC_RANDOM_SENTINEL
     "Define the mosaic walk's accidental byte-64 sentinel explicitly" ON)
 option(C2_ENABLE_TEXT_ASSET_COMPAT
     "Adapt versioned engine UI to the structure of the loaded text asset" ON)
+option(C2_ENABLE_ARROW_KEY_SCROLL
+    "Use held arrow keys to pan the active map instead of moving the cursor" ON)
 option(C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER
     "Install native fatal-signal diagnostics in POSIX Debug builds" ON)
 set(C2_WASM_ASSET_ROOT "" CACHE PATH
@@ -122,6 +124,11 @@ if(C2_ENABLE_TEXT_ASSET_COMPAT)
     add_compile_definitions(C2_FEAT_TEXT_ASSET_COMPAT=1)
 else()
     add_compile_definitions(C2_FEAT_TEXT_ASSET_COMPAT=0)
+endif()
+if(C2_ENABLE_ARROW_KEY_SCROLL)
+    add_compile_definitions(C2_FEAT_ARROW_KEY_SCROLL=1)
+else()
+    add_compile_definitions(C2_FEAT_ARROW_KEY_SCROLL=0)
 endif()
 if(C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR)
     target_compile_definitions(c2_asm_portable PUBLIC

@@ -433,6 +433,15 @@ static enum c2_host_key translate_key(SDL_Keycode key)
     return C2_HOST_KEY_UNKNOWN;
 }
 
+static unsigned int translate_arrow_key(enum c2_host_key key)
+{
+    if (key == C2_HOST_KEY_LEFT) return C2_HOST_ARROW_LEFT;
+    if (key == C2_HOST_KEY_RIGHT) return C2_HOST_ARROW_RIGHT;
+    if (key == C2_HOST_KEY_UP) return C2_HOST_ARROW_UP;
+    if (key == C2_HOST_KEY_DOWN) return C2_HOST_ARROW_DOWN;
+    return 0;
+}
+
 static const char *decode_utf8(const char *text, uint32_t *codepoint)
 {
     const unsigned char *bytes;
@@ -1193,6 +1202,14 @@ void c2_sdl_host_set_headless_mouse(int x, int y, unsigned int buttons)
     SDL_UnlockMutex(c2_event_mutex);
 }
 
+void c2_sdl_host_set_headless_arrow_keys(unsigned int arrow_keys)
+{
+    SDL_LockMutex(c2_event_mutex);
+    c2_input.arrow_keys = arrow_keys;
+    c2_input.generation++;
+    SDL_UnlockMutex(c2_event_mutex);
+}
+
 void c2_sdl_host_push_headless_key(enum c2_host_key key)
 {
     struct c2_host_event event;
@@ -1217,6 +1234,8 @@ void c2_sdl_host_push_headless_text(uint32_t codepoint)
 void c2_sdl_host_handle_event(SDL_Event *event)
 {
     struct c2_host_event host_event;
+    enum c2_host_key key;
+    unsigned int arrow_key;
     int publish;
     int refresh_mouse_rect;
     int retry_mouse_lock;
@@ -1240,6 +1259,7 @@ void c2_sdl_host_handle_event(SDL_Event *event)
         c2_input.generation++;
     } else if (event->type == SDL_EVENT_WINDOW_FOCUS_LOST) {
         c2_input.focused = 0;
+        c2_input.arrow_keys = 0;
         if (c2_input.mouse_buttons != 0) {
             c2_input.mouse_buttons = 0;
             queue_input_sample();
@@ -1324,14 +1344,24 @@ void c2_sdl_host_handle_event(SDL_Event *event)
             host_event.wheel_y = wheel_y;
             publish = 1;
         }
-    } else if (event->type == SDL_EVENT_KEY_DOWN && !event->key.repeat) {
-        host_event.type = C2_HOST_EVENT_KEY_DOWN;
-        host_event.key = translate_key(event->key.key);
-        if ((event->key.mod & SDL_KMOD_ALT) != 0) {
-            host_event.key_modifiers |= C2_HOST_KEY_MODIFIER_ALT;
+    } else if (event->type == SDL_EVENT_KEY_DOWN ||
+               event->type == SDL_EVENT_KEY_UP) {
+        key = translate_key(event->key.key);
+        arrow_key = translate_arrow_key(key);
+        if (event->type == SDL_EVENT_KEY_DOWN) {
+            c2_input.arrow_keys |= arrow_key;
+            if (!event->key.repeat) {
+                host_event.type = C2_HOST_EVENT_KEY_DOWN;
+                host_event.key = key;
+                if ((event->key.mod & SDL_KMOD_ALT) != 0) {
+                    host_event.key_modifiers |= C2_HOST_KEY_MODIFIER_ALT;
+                }
+                publish = host_event.key != C2_HOST_KEY_UNKNOWN;
+            }
+        } else {
+            c2_input.arrow_keys &= ~arrow_key;
         }
         c2_input.generation++;
-        publish = host_event.key != C2_HOST_KEY_UNKNOWN;
     } else if (event->type == SDL_EVENT_TEXT_INPUT) {
         c2_input.generation++;
     }

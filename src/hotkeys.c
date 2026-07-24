@@ -123,21 +123,37 @@ unsigned char sim_mouse(void)
     case 0:
         switch (key_code) {
         case 0x48:
+#if C2_FEAT_ARROW_KEY_SCROLL
+            break;
+#else
             mse_y -= 8;
             set_mouse();
             break;
+#endif
         case 0x50:
+#if C2_FEAT_ARROW_KEY_SCROLL
+            break;
+#else
             mse_y += 8;
             set_mouse();
             break;
+#endif
         case 0x4b:
+#if C2_FEAT_ARROW_KEY_SCROLL
+            break;
+#else
             mse_x -= 8;
             set_mouse();
             break;
+#endif
         case 0x4d:
+#if C2_FEAT_ARROW_KEY_SCROLL
+            break;
+#else
             mse_x += 8;
             set_mouse();
             break;
+#endif
         case 0x3b:
             if (map_mode != 2) {
                 map_mode = 0;

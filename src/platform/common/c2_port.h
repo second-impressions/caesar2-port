@@ -9,6 +9,13 @@
 #define C2_PALETTE_BYTES (256 * 3)
 #define C2_DIRECTORY_MAX_ENTRIES 100
 
+enum c2_port_scroll_key {
+    C2_PORT_SCROLL_LEFT = 1u << 0,
+    C2_PORT_SCROLL_RIGHT = 1u << 1,
+    C2_PORT_SCROLL_UP = 1u << 2,
+    C2_PORT_SCROLL_DOWN = 1u << 3
+};
+
 int c2_port_compat_init(void);
 void c2_port_compat_shutdown(void);
 void c2_port_timing_reset(void);
@@ -18,5 +25,6 @@ void c2_port_wait_vblank(void);
 int c2_port_save_screenshot(const char *filename);
 int check_user_file_exists(const char *filename);
 void *c2_port_load_asset(const char *filename, size_t *size_out);
+unsigned int c2_port_scroll_keys(void);
 
 #endif /* C2_PORT_H */

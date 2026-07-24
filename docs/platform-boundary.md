@@ -107,9 +107,22 @@ Home, End, the arrow keys, F1--F5, and the recovered Alt hotkeys. The common
 key mapper reconstructs the DOS scan codes consumed by `sim_mouse`; it covers
 Alt+F, Alt+F1, Alt+F3, Alt+D, Alt+X, and Alt+1 through Alt+8. Vertical wheel
 events become the existing `+` and `-` engine inputs, keeping zoom policy in
-the recovered hotkey handler. The recovered `act_choose_name`,
-`new_name_game_loop`, and `edit_format_buffer` path is shared unchanged by the
-portable target.
+the recovered hotkey handler.
+
+The DOS `sim_mouse` path moved the pointer eight logical pixels for every
+arrow scan code. Its non-blocking `kbhit`/`getch` input inherited the
+keyboard's typematic repeat. The portable target instead records arrow
+key-down/key-up state below `c2_host.h` and, under
+`C2_FEAT_ARROW_KEY_SCROLL`, passes that state to the recovered `scroll()`
+policy. Holding an arrow therefore pans continuously with the same
+`scroll_amount`, `scroll_speed`, bounds, pointer-mode exclusions, and redraw
+path as edge scrolling. Opposing keys neutralize their axis; a held key owns
+its axis so a cursor resting on the opposite edge cannot cancel it. The
+ordinary scan-code event is still queued once on initial key-down, preserving
+arrow navigation in `act_choose_name`, `new_name_game_loop`, and
+`edit_format_buffer`; SDL repeat events are unnecessary because map movement
+uses held state. Turning `C2_ENABLE_ARROW_KEY_SCROLL` off restores the
+recovered cursor-motion behavior.
 
 The shipped default name is a fixed-width field containing `Octavian` followed
 by sixteen spaces, and the recovered End handler counts that padding. Before
@@ -455,22 +468,24 @@ replay input, movement, button edges, and legacy global state rather than host
 event collection. The full recovered `lib32.c` now supplies both functions;
 `src/platform/common/c2_port_input.c` supplies only the same-symbol hardware
 edge (`init_mouse`, `read_mouse`, `set_mouse`, `mouserange`, and `get_key`).
-The host publishes a normalized input snapshot, an ordered mouse-button sample
-queue, and a keyboard event queue. A press and release that both occur between
-two engine polls are replayed as two samples; otherwise the original
-`get_mouse` edge detector would never see the click. SDL event handlers must
-not directly mutate `c2inf`, menu decisions, or control state. SDL
-key/modifier and wheel events are normalized at this boundary, then the common
-mapper emits the ASCII or DOS scan-code pairs already consumed by the
-recovered `sim_mouse`. Unit coverage enumerates every scan-code branch in that
-handler, including F1--F5, all supported Alt chords, both wheel directions,
-and the between-polls mouse transition case.
+The host publishes a normalized input snapshot (including held arrow state),
+an ordered mouse-button sample queue, and a keyboard event queue. A press and
+release that both occur between two engine polls are replayed as two samples;
+otherwise the original `get_mouse` edge detector would never see the click.
+SDL event handlers must not directly mutate `c2inf`, menu decisions, or
+control state. SDL key/modifier and wheel events are normalized at this
+boundary, then the common mapper emits the ASCII or DOS scan-code pairs
+already consumed by the recovered `sim_mouse`. Unit coverage enumerates every
+scan-code branch in that handler, including F1--F5, all supported Alt chords,
+both wheel directions, held-arrow press/repeat/release state, focus-loss
+cleanup, and the between-polls mouse transition case.
 
 Mouse confinement is policy, not engine control flow. The recovered
-`scroll()` continues to react only to the exact bounds supplied by
-`mouserange`; the common cursor adapter maps a host edge zone or relative
-motion onto those bounds. Native grab and browser Pointer Lock remain backend
-mechanisms selected below `c2_host.h`.
+`scroll()` continues to own map bounds, rate limiting, and refresh behavior.
+It reacts to the exact bounds supplied by `mouserange` and, for portable
+builds, the common adapter's held-arrow intent. The common cursor adapter maps
+a host edge zone or relative motion onto the mouse bounds. Native grab and
+browser Pointer Lock remain backend mechanisms selected below `c2_host.h`.
 
 ## Timing and waits
 
