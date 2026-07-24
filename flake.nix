@@ -22,6 +22,7 @@
               pkgs.chromium
               pkgs.cmake
               pkgs.emscripten
+              pkgs.firefox
               pkgs.ninja
               pkgs.nodejs
               pkgs.pkg-config

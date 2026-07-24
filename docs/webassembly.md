@@ -73,6 +73,7 @@ cmake --build build/port/wasm-debug-en
 node tools/smoke-wasm.mjs build/port/wasm-debug-en
 node tools/smoke-wasm.mjs build/port/wasm-debug-en city
 node tools/smoke-wasm.mjs build/port/wasm-debug-en music
+node tools/smoke-wasm.mjs build/port/wasm-debug-en campania firefox
 ```
 
 ## Serving and deployment

@@ -51,6 +51,7 @@
     const canvas = document.getElementById("canvas");
     const status = document.getElementById("status");
     const query = new URLSearchParams(location.search);
+    const smokeOutput = query.has("smoke-test") ? [] : null;
     const args = ["--asset-root", "/assets"];
     const logicalWidth = 640;
     const logicalHeight = 480;
@@ -61,6 +62,7 @@
       args.push("--campania-transition-smoke-test");
     }
     if (query.get("smoke-test") === "music") args.push("--music-buffer-smoke-test");
+    if (smokeOutput) globalThis.__c2SmokeOutput = smokeOutput;
 
     function resizeCanvasToIntegerScale() {
       const density = devicePixelRatio || 1;
@@ -93,8 +95,14 @@
     var Module = {
       arguments: args,
       canvas,
-      print: (text) => console.log(text),
-      printErr: (text) => console.error(text),
+      print: (text) => {
+        if (smokeOutput) smokeOutput.push(String(text));
+        console.log(text);
+      },
+      printErr: (text) => {
+        if (smokeOutput) smokeOutput.push(String(text));
+        console.error(text);
+      },
       setStatus: (text) => { status.textContent = formatStatus(text); },
       monitorRunDependencies: (remaining) => {
         if (remaining) status.textContent = `Loading game data (${remaining})…`;
