@@ -31,6 +31,7 @@ build receives shipped behavior unless it opts into a fix explicitly.
 | `c2.c` | Portable entry/exit adapter, CD-bootstrap exclusion, observations, guarded graphics cleanup | Retained. The unused portable `test_cd_drive` no-op was removed; the historical body is now shipped-target-only. |
 | `c2_vars.c` | Include order makes record types complete before portable extern declarations | Retained; declarations only, no engine behavior change. |
 | `controls.c` | Portable forward declarations and confirmation observation | Retained; fixes modern prototype visibility and Debug-only instrumentation. |
+| `data.c` | Guarded mosaic random-table sentinel | Retained; byte 64 names the value accidentally supplied by the following `mouse_ptr` object in both shipped binaries and removes linker-layout-dependent rendering. |
 | `display.c` | Portable fatal-exit trap and complete VGA-movie branch | Retained. The VGA movie function genuinely mixes mode switching with recovered skip/control flow, so a selected body is appropriate. |
 | `evolver.c`, `map.c` | Portable prototypes for calls that historically relied on implicit declarations | Retained; required to prevent modern ABI inference while preserving shipped call-site behavior. |
 | `gloops.c` | Observations, text-resource capability selection, direct `provincial_difficulty` indexing | Retained. The direct array expression replaces a linker-layout-dependent out-of-bounds alias while naming the same recovered data. |

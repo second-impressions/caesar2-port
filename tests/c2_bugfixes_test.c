@@ -2,6 +2,8 @@
 
 #include <unity/unity.h>
 
+extern unsigned char stone_random_data[];
+
 static void test_help_smart_punctuation(void)
 {
     char text[] = "city\x92s don\x91t x \x97 y x \x96 y o\x97 C\x92 ";
@@ -47,10 +49,20 @@ static void test_player_name_padding(void)
 #endif
 }
 
+static void test_mosaic_random_sentinel(void)
+{
+#if C2_FIX_MOSAIC_RANDOM_SENTINEL
+    TEST_ASSERT_EQUAL_UINT8(1, stone_random_data[64]);
+#else
+    TEST_PASS();
+#endif
+}
+
 int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_help_smart_punctuation);
     RUN_TEST(test_player_name_padding);
+    RUN_TEST(test_mosaic_random_sentinel);
     return UNITY_END();
 }

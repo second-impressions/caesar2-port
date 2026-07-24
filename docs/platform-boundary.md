@@ -118,6 +118,22 @@ under `C2_FIX_PLAYER_NAME_PADDING`. This handles both fresh defaults and old
 runtime files without replacing editor behavior. Disabling the same-named
 CMake option restores the padded input exactly.
 
+The stone-mosaic walker has a separate source-level compatibility trap.
+`show_a_mosaic_frame`, `mosaic_frame_divider`, and `show_a_mosaic_blank`
+post-increment `stone_random_count`, reset it only after comparing the old
+value with 64, and then index `stone_random_data`. Consequently every 65th
+cell reads element 64 from a 64-byte table. In both shipped executables the
+next object is `mouse_ptr`, whose first byte is `1`, so the out-of-bounds read
+acts like a stable sentinel. Modern linkers do not preserve that adjacency;
+the resulting arbitrary sprite number appears as unrelated icons in dialog
+backgrounds and as an incorrect frame tile.
+
+`C2_FIX_MOSAIC_RANDOM_SENTINEL` makes that accidental value an explicit 65th
+table element. It preserves the shipped visual sequence without relying on
+object adjacency and defaults on for the portable continuation. Set
+`-DC2_FIX_MOSAIC_RANDOM_SENTINEL=OFF` to retain the literal recovered
+64-byte object and its undefined byte-64 read.
+
 The native target compiles the complete recovered `c2.c` campaign driver and
 `lib32.c`. The former replacement bootstrap, port-side raster slice, and copied
 text subset were removed once the same-symbol boundary was complete enough to

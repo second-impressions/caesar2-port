@@ -66,6 +66,8 @@ option(C2_FIX_PLAYER_NAME_PADDING
     "Trim fixed-width trailing spaces before editing player names" ON)
 option(C2_FIX_LARGE_XMI_ASSETS
     "Accept official XMIDI assets larger than the legacy tune buffer" ON)
+option(C2_FIX_MOSAIC_RANDOM_SENTINEL
+    "Define the mosaic walk's accidental byte-64 sentinel explicitly" ON)
 option(C2_ENABLE_TEXT_ASSET_COMPAT
     "Adapt versioned engine UI to the structure of the loaded text asset" ON)
 option(C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER
@@ -110,6 +112,11 @@ if(C2_FIX_LARGE_XMI_ASSETS)
     add_compile_definitions(C2_FIX_LARGE_XMI_ASSETS=1)
 else()
     add_compile_definitions(C2_FIX_LARGE_XMI_ASSETS=0)
+endif()
+if(C2_FIX_MOSAIC_RANDOM_SENTINEL)
+    add_compile_definitions(C2_FIX_MOSAIC_RANDOM_SENTINEL=1)
+else()
+    add_compile_definitions(C2_FIX_MOSAIC_RANDOM_SENTINEL=0)
 endif()
 if(C2_ENABLE_TEXT_ASSET_COMPAT)
     add_compile_definitions(C2_FEAT_TEXT_ASSET_COMPAT=1)
@@ -374,9 +381,16 @@ if(BUILD_TESTING)
 
     add_executable(c2-bugfixes-test
         tests/c2_bugfixes_test.c
+        src/data.c
         src/platform/common/c2_port_bugfixes.c)
     target_compile_features(c2-bugfixes-test PRIVATE c_std_11)
     target_include_directories(c2-bugfixes-test PRIVATE include)
+    target_compile_definitions(c2-bugfixes-test PRIVATE
+        PLATFORM_PORTABLE=1
+        PLATFORM_LINUX=1)
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
+        target_compile_options(c2-bugfixes-test PRIVATE -fms-extensions)
+    endif()
     add_test(NAME bugfixes COMMAND c2-bugfixes-test)
 
     add_executable(c2-text-compat-test
