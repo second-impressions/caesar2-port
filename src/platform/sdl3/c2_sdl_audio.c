@@ -13,11 +13,40 @@ struct c2_audio_voice {
     Uint64 pause_started_ms;
     float gain;
     int paused;
+#if C2_FEAT_DEBUG_OBSERVATION
+    SDL_AtomicU32 produced_bytes;
+    SDL_AtomicU32 underflow_bytes;
+    SDL_AtomicU32 queue_calls;
+    SDL_AtomicU32 device_requests;
+    SDL_AtomicU32 underflows;
+#endif
 };
 
 static struct c2_audio_voice *c2_audio_voices;
 static int c2_audio_voice_count;
 static float c2_audio_master_gain = 1.0f;
+
+#if C2_FEAT_DEBUG_OBSERVATION && !PLATFORM_WASM
+static void SDLCALL observe_audio_request(void *userdata,
+                                          SDL_AudioStream *stream,
+                                          int additional_amount,
+                                          int total_amount)
+{
+    struct c2_audio_voice *voice;
+    int voice_index;
+
+    (void)stream;
+    (void)total_amount;
+    voice_index = (int)(uintptr_t)userdata - 1;
+    if (voice_index < 0 || voice_index >= c2_audio_voice_count) return;
+    voice = &c2_audio_voices[voice_index];
+    SDL_AddAtomicU32(&voice->device_requests, 1);
+    if (additional_amount > 0) {
+        SDL_AddAtomicU32(&voice->underflows, 1);
+        SDL_AddAtomicU32(&voice->underflow_bytes, additional_amount);
+    }
+}
+#endif
 
 static int valid_voice(int voice)
 {
@@ -52,6 +81,9 @@ static int queue_pcm(int voice, const SDL_AudioSpec *spec,
     Uint64 now;
     Uint64 start_ms;
     int loop;
+#if C2_FEAT_DEBUG_OBSERVATION
+    int new_stream;
+#endif
 
     if (!valid_voice(voice) || data == NULL || size == 0 ||
         size > INT_MAX) {
@@ -61,6 +93,9 @@ static int queue_pcm(int voice, const SDL_AudioSpec *spec,
 
     if (replace) destroy_voice(voice);
     stream = c2_audio_voices[voice].stream;
+#if C2_FEAT_DEBUG_OBSERVATION
+    new_stream = stream == NULL;
+#endif
     if (stream == NULL) {
         stream = SDL_CreateAudioStream(spec, NULL);
         if (stream == NULL ||
@@ -80,7 +115,24 @@ static int queue_pcm(int voice, const SDL_AudioSpec *spec,
             destroy_voice(voice);
             return 0;
         }
+#if C2_FEAT_DEBUG_OBSERVATION
+        SDL_AddAtomicU32(&c2_audio_voices[voice].produced_bytes, (int)size);
+#endif
     }
+#if C2_FEAT_DEBUG_OBSERVATION
+    SDL_AddAtomicU32(&c2_audio_voices[voice].queue_calls, 1);
+#if !PLATFORM_WASM
+    if (new_stream &&
+        !SDL_SetAudioStreamGetCallback(
+            stream, observe_audio_request,
+            (void *)(uintptr_t)(voice + 1))) {
+        destroy_voice(voice);
+        return 0;
+    }
+#else
+    (void)new_stream;
+#endif
+#endif
     if (flush && !SDL_FlushAudioStream(stream)) {
         destroy_voice(voice);
         return 0;
@@ -223,15 +275,23 @@ int c2_host_audio_voice_playing(int voice)
 
 unsigned int c2_host_audio_voice_queued_ms(int voice)
 {
-    Uint64 now;
-    Uint64 deadline;
+    struct c2_audio_voice *audio_voice;
+    Uint64 byte_rate;
+    Uint64 queued_ms;
+    int queued;
 
     if (!valid_voice(voice) || c2_audio_voices[voice].stream == NULL) return 0;
-    now = SDL_GetTicks();
-    deadline = c2_audio_voices[voice].deadline_ms;
-    if (deadline <= now) return 0;
-    if (deadline - now > UINT_MAX) return UINT_MAX;
-    return (unsigned int)(deadline - now);
+    audio_voice = &c2_audio_voices[voice];
+    queued = SDL_GetAudioStreamQueued(audio_voice->stream);
+    if (queued <= 0) return 0;
+    byte_rate =
+        (Uint64)SDL_AUDIO_BYTESIZE(audio_voice->source_spec.format) *
+        (Uint64)audio_voice->source_spec.channels *
+        (Uint64)audio_voice->source_spec.freq;
+    if (byte_rate == 0) return 0;
+    queued_ms = ((Uint64)queued * 1000) / byte_rate;
+    if (queued_ms > UINT_MAX) return UINT_MAX;
+    return (unsigned int)queued_ms;
 }
 
 void c2_host_audio_stop_voice(int voice)
@@ -290,3 +350,56 @@ void c2_host_audio_set_master_gain(float gain)
         }
     }
 }
+
+#if C2_FEAT_DEBUG_OBSERVATION
+int c2_host_audio_observation_snapshot(
+    int voice, struct c2_host_audio_observation *observation)
+{
+    struct c2_audio_voice *audio_voice;
+    Uint64 byte_rate;
+    Uint64 deadline;
+    Uint64 now;
+    int queued;
+
+    if (!valid_voice(voice) || observation == NULL) return 0;
+    SDL_memset(observation, 0, sizeof(*observation));
+    audio_voice = &c2_audio_voices[voice];
+    observation->produced_bytes =
+        (uint64_t)SDL_GetAtomicU32(
+            &audio_voice->produced_bytes);
+    observation->underflow_bytes =
+        (uint64_t)SDL_GetAtomicU32(
+            &audio_voice->underflow_bytes);
+    observation->queue_calls =
+        (unsigned int)SDL_GetAtomicU32(&audio_voice->queue_calls);
+    observation->device_requests =
+        (unsigned int)SDL_GetAtomicU32(&audio_voice->device_requests);
+    observation->underflows =
+        (unsigned int)SDL_GetAtomicU32(&audio_voice->underflows);
+    now = SDL_GetTicks();
+    deadline = audio_voice->deadline_ms;
+    if (deadline > now) {
+        if (deadline - now > UINT_MAX) {
+            observation->estimated_queued_ms = UINT_MAX;
+        } else {
+            observation->estimated_queued_ms =
+                (unsigned int)(deadline - now);
+        }
+    }
+    if (audio_voice->stream == NULL) return 1;
+
+    observation->active = 1;
+    queued = SDL_GetAudioStreamQueued(audio_voice->stream);
+    if (queued < 0) return 0;
+    observation->queued_bytes = (unsigned int)queued;
+    byte_rate =
+        (Uint64)SDL_AUDIO_BYTESIZE(audio_voice->source_spec.format) *
+        (Uint64)audio_voice->source_spec.channels *
+        (Uint64)audio_voice->source_spec.freq;
+    if (byte_rate != 0) {
+        observation->queued_ms =
+            (unsigned int)(((Uint64)queued * 1000) / byte_rate);
+    }
+    return 1;
+}
+#endif

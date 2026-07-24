@@ -2,8 +2,10 @@
 
 ## Architecture
 
-The browser target is the portable SDL3 target compiled by Emscripten, not a
-second game implementation. SDL application callbacks own the browser main
+The browser target is selected by `PLATFORM_WASM` and compiled by Emscripten;
+`PLATFORM_PORTABLE` remains the derived family shared with `PLATFORM_LINUX`,
+not a target of its own. This is not a second game implementation. SDL
+application callbacks own the browser main
 thread, event collection, and presentation. The recovered `c2.c` driver and
 all engine/UI control flow run on the same engine worker used by native builds.
 Frames, input, audio, movies, timing, assets, and user files cross the existing
@@ -70,6 +72,7 @@ emcmake cmake --preset wasm-debug \
 cmake --build build/port/wasm-debug-en
 node tools/smoke-wasm.mjs build/port/wasm-debug-en
 node tools/smoke-wasm.mjs build/port/wasm-debug-en city
+node tools/smoke-wasm.mjs build/port/wasm-debug-en music
 ```
 
 ## Serving and deployment

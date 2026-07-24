@@ -10,15 +10,17 @@
  *                      reconstruction target.
  *   PLATFORM_WINDOWS   the shipped Windows source witness. Which Windows
  *                      build is meant is C2_PATCHLEVEL's job.
- *   PLATFORM_PORTABLE  the modern SDL-based continuation. This platform
- *                      keeps recovered engine code shared while replacing
- *                      shipped platform services behind portable shims.
+ *   PLATFORM_LINUX     the native Linux SDL continuation.
+ *   PLATFORM_WASM      the browser SDL continuation compiled by Emscripten.
  *
- * Exactly one platform is 1 and every other platform is 0. Builds should
- * select their platform explicitly. An unspecified build defaults to the
- * original DOS platform without inferring a platform from compiler identity.
+ * Exactly one target platform is 1 and every other target platform is 0.
+ * PLATFORM_PORTABLE is the derived family selector shared by Linux and Wasm;
+ * build systems may export it for guards that precede the first project
+ * header, but its value must match the selected leaf target. An unspecified
+ * build defaults to DOS without inferring a platform from compiler identity.
  */
-#if !defined(PLATFORM_DOS) && !defined(PLATFORM_WINDOWS) && !defined(PLATFORM_PORTABLE)
+#if !defined(PLATFORM_DOS) && !defined(PLATFORM_WINDOWS) && \
+    !defined(PLATFORM_LINUX) && !defined(PLATFORM_WASM)
 #  define PLATFORM_DOS 1
 #endif
 #ifndef PLATFORM_DOS
@@ -27,11 +29,19 @@
 #ifndef PLATFORM_WINDOWS
 #  define PLATFORM_WINDOWS 0
 #endif
-#ifndef PLATFORM_PORTABLE
-#  define PLATFORM_PORTABLE 0
+#ifndef PLATFORM_LINUX
+#  define PLATFORM_LINUX 0
 #endif
-#if PLATFORM_DOS + PLATFORM_WINDOWS + PLATFORM_PORTABLE != 1
+#ifndef PLATFORM_WASM
+#  define PLATFORM_WASM 0
+#endif
+#if PLATFORM_DOS + PLATFORM_WINDOWS + PLATFORM_LINUX + PLATFORM_WASM != 1
 #  error "exactly one PLATFORM_* must be selected"
+#endif
+#ifndef PLATFORM_PORTABLE
+#  define PLATFORM_PORTABLE (PLATFORM_LINUX || PLATFORM_WASM)
+#elif PLATFORM_PORTABLE != (PLATFORM_LINUX || PLATFORM_WASM)
+#  error "PLATFORM_PORTABLE must match the selected target family"
 #endif
 
 /* Historical memory-model and calling-convention keywords have no ABI effect
@@ -141,13 +151,6 @@
 /* Portable hosts save screenshots in a widely supported lossless format.
  * Shipped targets retain the recovered indexed LBM writer and filenames. */
 #define C2_FEAT_PNG_SCREENSHOTS PLATFORM_PORTABLE
-
-/* Browser application callbacks already run at the display cadence and must
- * return without a native main-thread sleep. Build systems select this only
- * for a portable browser backend. */
-#ifndef C2_FEAT_BROWSER_RUNTIME
-#  define C2_FEAT_BROWSER_RUNTIME 0
-#endif
 
 /* Read-only engine observations and their smoke driver are development
  * instrumentation. CMake selects them only for portable Debug builds. */

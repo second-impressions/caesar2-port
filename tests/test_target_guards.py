@@ -22,7 +22,7 @@ COND_RE = re.compile(r"^\s*#\s*(if|ifdef|ifndef)\b\s*(.*?)\s*$")
 
 # Conditions allowed outside c2_target.h itself.
 ALLOWED_TOKENS = re.compile(
-    r"PLATFORM_(DOS|WINDOWS|PORTABLE)|C2_FEAT_[A-Z0-9_]+"
+    r"PLATFORM_(DOS|WINDOWS|LINUX|WASM|PORTABLE)|C2_FEAT_[A-Z0-9_]+"
     r"|C2_FIX_[A-Z0-9_]+|C2_PATCHLEVEL"
     r"|S_IRUSR"              # portable stat-mode fallback
     r"|\w+_H\b"              # include guards
@@ -122,3 +122,10 @@ def test_portable_target_keeps_the_recovered_software_menus():
         r"\(PLATFORM_DOS\s*\|\|\s*PLATFORM_PORTABLE\)",
         text,
     )
+
+
+def test_wasm_is_a_platform_target_not_a_feature():
+    """Browser scheduling follows the Wasm leaf target."""
+    text = TARGET_HEADER.read_text()
+    assert "PLATFORM_WASM" in text
+    assert "C2_FEAT_BROWSER_RUNTIME" not in text

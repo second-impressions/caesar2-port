@@ -30,6 +30,12 @@ SDL types and functions must not occur above `c2_host_*`. This keeps recovered
 files recognizable, makes reconstruction changes easy to cherry-pick, and
 allows headless and non-SDL backends to exercise the same engine.
 
+`PLATFORM_DOS`, `PLATFORM_WINDOWS`, `PLATFORM_LINUX`, and `PLATFORM_WASM`
+identify compile targets. Exactly one is selected. `PLATFORM_PORTABLE` is
+derived from the Linux and Wasm targets and is used only for code shared by
+the modern continuation; browser scheduling is target policy, not a feature
+toggle.
+
 ## Implemented boundary
 
 The native port now follows that dependency direction:
@@ -129,6 +135,10 @@ contains a monotonically increasing sequence, a cumulative reached bitset, and
 a small immutable snapshot of relevant game state. The host may copy that
 record, but has no API for writing engine state. Test input remains entirely
 separate and travels through the normal mouse/key publication path.
+The audio backend exposes a second Debug-only read-only snapshot for actual
+SDL queue depth, produced bytes, and native device underruns. The music smoke
+samples this boundary over time on both Linux and Wasm; it does not pull,
+replace, or otherwise influence the stream.
 The city-flow smoke also observes completed top-menu and drop-down rendering,
 including the recovered hit boxes, and opens both File and Options through the
 ordinary mouse path. The portable target deliberately selects the DOS

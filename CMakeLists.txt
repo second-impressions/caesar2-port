@@ -203,7 +203,8 @@ set_target_properties(caesar2 PROPERTIES
 
 target_compile_definitions(caesar2 PRIVATE
     PLATFORM_PORTABLE=1
-    $<$<BOOL:${EMSCRIPTEN}>:C2_FEAT_BROWSER_RUNTIME=1>
+    $<$<BOOL:${EMSCRIPTEN}>:PLATFORM_WASM=1>
+    $<$<NOT:$<BOOL:${EMSCRIPTEN}>>:PLATFORM_LINUX=1>
     $<$<CONFIG:Debug>:C2_DEBUG_BUILD=1>
 )
 
@@ -417,7 +418,7 @@ if(BUILD_TESTING)
         src/platform/common/c2_port_save_compat.c
         src/platform/common/c2_port_save_registry.c)
     target_compile_features(c2-save-compat-test PRIVATE c_std_11)
-    target_compile_definitions(c2-save-compat-test PRIVATE PLATFORM_PORTABLE=1)
+    target_compile_definitions(c2-save-compat-test PRIVATE PLATFORM_LINUX=1)
     target_include_directories(c2-save-compat-test PRIVATE
         include
         src/platform/common)
@@ -439,7 +440,7 @@ if(BUILD_TESTING)
         src/platform/sdl3/c2_sdl_audio.c
         src/platform/sdl3/c2_sdl_host.c)
     target_compile_features(c2-port-save-test PRIVATE c_std_11)
-    target_compile_definitions(c2-port-save-test PRIVATE PLATFORM_PORTABLE=1)
+    target_compile_definitions(c2-port-save-test PRIVATE PLATFORM_LINUX=1)
     target_include_directories(c2-port-save-test PRIVATE
         include
         src/platform/common
@@ -453,7 +454,7 @@ if(BUILD_TESTING)
         src/platform/sdl3/c2_sdl_audio.c
         src/platform/sdl3/c2_sdl_host.c)
     target_compile_features(c2-user-files-test PRIVATE c_std_11)
-    target_compile_definitions(c2-user-files-test PRIVATE PLATFORM_PORTABLE=1)
+    target_compile_definitions(c2-user-files-test PRIVATE PLATFORM_LINUX=1)
     target_include_directories(c2-user-files-test PRIVATE
         include
         src/platform/common
@@ -465,7 +466,7 @@ if(BUILD_TESTING)
         tests/c2_sdl_audio_test.c
         src/platform/sdl3/c2_sdl_audio.c)
     target_compile_features(c2-sdl-audio-test PRIVATE c_std_11)
-    target_compile_definitions(c2-sdl-audio-test PRIVATE PLATFORM_PORTABLE=1)
+    target_compile_definitions(c2-sdl-audio-test PRIVATE PLATFORM_LINUX=1)
     target_include_directories(c2-sdl-audio-test PRIVATE include)
     target_link_libraries(c2-sdl-audio-test PRIVATE SDL3::SDL3)
     add_test(NAME sdl-audio COMMAND c2-sdl-audio-test)
@@ -549,6 +550,7 @@ if(BUILD_TESTING AND C2_TEST_DATA_DIR AND
         "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/city-smoke"
         "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/tutorial-smoke"
         "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/save-load-smoke"
+        "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/music-buffer-smoke"
     )
     add_test(
         NAME startup-reaches-province-selection
@@ -595,5 +597,17 @@ if(BUILD_TESTING AND C2_TEST_DATA_DIR AND
         CONFIGURATIONS Debug
         PASS_REGULAR_EXPRESSION "recovered save/load smoke restored"
         TIMEOUT 100
+    )
+    add_test(
+        NAME recovered-music-buffer-smoke
+        COMMAND caesar2 --music-buffer-smoke-test
+                --asset-root "${C2_TEST_DATA_DIR}"
+                --user-data-dir
+                "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/music-buffer-smoke"
+    )
+    set_tests_properties(recovered-music-buffer-smoke PROPERTIES
+        CONFIGURATIONS Debug
+        PASS_REGULAR_EXPRESSION "music buffer smoke completed"
+        TIMEOUT 60
     )
 endif()

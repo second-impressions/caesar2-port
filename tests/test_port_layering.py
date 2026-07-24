@@ -82,7 +82,7 @@ def test_wasm_reuses_the_sdl_host_and_recovered_engine_worker():
     assert "-sINITIAL_MEMORY=67108864" in cmake
     assert "ALLOW_MEMORY_GROWTH" not in cmake
     assert "c2_wasm_implicit_void.h" in cmake
-    assert "#if !C2_FEAT_BROWSER_RUNTIME" in main
+    assert "#if !PLATFORM_WASM" in main
     assert "src/platform/wasm" not in cmake
 
 

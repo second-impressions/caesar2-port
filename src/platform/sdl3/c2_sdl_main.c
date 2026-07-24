@@ -73,6 +73,9 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
         } else if (strcmp(argv[i], "--save-load-smoke-test") == 0) {
             *headless = 1;
             *smoke_kind = C2_SDL_SMOKE_SAVE_LOAD;
+        } else if (strcmp(argv[i], "--music-buffer-smoke-test") == 0) {
+            *headless = 1;
+            *smoke_kind = C2_SDL_SMOKE_MUSIC_BUFFER;
 #endif
         } else if (strcmp(argv[i], "--asset-root") == 0 && i + 1 < argc) {
             *asset_root = argv[++i];
@@ -87,7 +90,8 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                     "[--user-data-dir PATH] [--screenshot FILE] "
                     "[--mouse-lock|--no-mouse-lock] "
                     "[--smoke-test|--city-smoke-test|"
-                    "--tutorial-smoke-test|--save-load-smoke-test]\n",
+                    "--tutorial-smoke-test|--save-load-smoke-test|"
+                    "--music-buffer-smoke-test]\n",
                     argv[0]);
 #else
             fprintf(stderr,
@@ -224,7 +228,7 @@ SDL_AppResult SDL_AppIterate(void *appstate)
         return to_sdl_result(result);
     }
     c2_host_present();
-#if !C2_FEAT_BROWSER_RUNTIME
+#if !PLATFORM_WASM
     c2_host_sleep_ms(8);
 #endif
     return SDL_APP_CONTINUE;

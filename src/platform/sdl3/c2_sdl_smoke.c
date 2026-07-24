@@ -1,5 +1,6 @@
 #include <SDL3/SDL.h>
 
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -63,6 +64,11 @@ enum {
     PROVINCE_SCAN_WIDTH = 40,
     PROVINCE_SCAN_HEIGHT = 40,
     PROVINCE_SCAN_STEP = 2,
+    MUSIC_VOICE_FIRST = 8,
+    MUSIC_VOICE_COUNT = 2,
+    MUSIC_SAMPLE_DURATION_MS = 8000,
+    MUSIC_SAMPLE_LOG_INTERVAL_MS = 250,
+    MUSIC_MIN_SAFE_QUEUE_MS = 40,
     SMOKE_TIMEOUT_MS = 45000,
     SAVE_LOAD_SMOKE_TIMEOUT_MS = 90000
 };
@@ -688,6 +694,144 @@ static enum c2_sdl_smoke_result drive_city(
     return C2_SDL_SMOKE_RUNNING;
 }
 
+static int capture_music_voices(
+    struct c2_host_audio_observation observations[MUSIC_VOICE_COUNT])
+{
+    int index;
+
+    for (index = 0; index < MUSIC_VOICE_COUNT; index++) {
+        if (!c2_host_audio_observation_snapshot(
+                MUSIC_VOICE_FIRST + index, &observations[index])) {
+            fprintf(stderr, "could not observe music voice %d\n",
+                    MUSIC_VOICE_FIRST + index);
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static enum c2_sdl_smoke_result drive_music_buffer(
+    struct c2_sdl_smoke *smoke, Uint64 now,
+    const struct c2_observation *observation)
+{
+    struct c2_host_audio_observation voices[MUSIC_VOICE_COUNT];
+    uint64_t produced_bytes;
+    uint64_t underflow_bytes;
+    unsigned int device_requests;
+    unsigned int underflows;
+    unsigned int queued_ms;
+    unsigned int estimated_ms;
+    int active_voices;
+    int index;
+
+    if (observation_is(observation, C2_OBSERVATION_MESSAGE)) {
+        click_mouse(smoke, now, 0, 479, C2_HOST_MOUSE_RIGHT);
+        return C2_SDL_SMOKE_RUNNING;
+    }
+    if (!observation_is(observation, C2_OBSERVATION_CITY_LOOP) ||
+        !observation->sequences_running) {
+        return C2_SDL_SMOKE_RUNNING;
+    }
+    if (!capture_music_voices(voices)) return C2_SDL_SMOKE_FAILURE;
+
+    produced_bytes = 0;
+    underflow_bytes = 0;
+    device_requests = 0;
+    underflows = 0;
+    queued_ms = UINT_MAX;
+    estimated_ms = UINT_MAX;
+    active_voices = 0;
+    for (index = 0; index < MUSIC_VOICE_COUNT; index++) {
+        produced_bytes += voices[index].produced_bytes;
+        underflow_bytes += voices[index].underflow_bytes;
+        device_requests += voices[index].device_requests;
+        underflows += voices[index].underflows;
+        if (voices[index].active) {
+            active_voices++;
+            if (voices[index].queued_ms < queued_ms) {
+                queued_ms = voices[index].queued_ms;
+            }
+            if (voices[index].estimated_queued_ms < estimated_ms) {
+                estimated_ms = voices[index].estimated_queued_ms;
+            }
+        }
+    }
+    if (active_voices == 0 || produced_bytes == 0) {
+        return C2_SDL_SMOKE_RUNNING;
+    }
+
+    if (smoke->music_started == 0) {
+        smoke->music_started = now;
+        smoke->music_last_sample = now - MUSIC_SAMPLE_LOG_INTERVAL_MS;
+        smoke->music_initial_produced_bytes = produced_bytes;
+        smoke->music_min_queued_ms = UINT_MAX;
+        printf("music-buffer-ms elapsed actual estimated requests "
+               "underflows missing-bytes produced-bytes\n");
+    }
+    smoke->music_samples++;
+    if (queued_ms == 0) smoke->music_zero_fill_samples++;
+    if (queued_ms < smoke->music_min_queued_ms) {
+        smoke->music_min_queued_ms = queued_ms;
+    }
+    if (queued_ms > smoke->music_max_queued_ms) {
+        smoke->music_max_queued_ms = queued_ms;
+    }
+    if (now - smoke->music_last_sample >= MUSIC_SAMPLE_LOG_INTERVAL_MS) {
+        printf("music-buffer-ms %llu %u %u %u %u %llu %llu\n",
+               (unsigned long long)(now - smoke->music_started),
+               queued_ms, estimated_ms, device_requests, underflows,
+               (unsigned long long)underflow_bytes,
+               (unsigned long long)produced_bytes);
+        smoke->music_last_sample = now;
+    }
+    if (now - smoke->music_started < MUSIC_SAMPLE_DURATION_MS) {
+        return C2_SDL_SMOKE_RUNNING;
+    }
+#if !PLATFORM_WASM
+    if (device_requests == 0) {
+        fprintf(stderr,
+                "music buffer was produced but the audio device never "
+                "consumed it\n");
+        return C2_SDL_SMOKE_FAILURE;
+    }
+#endif
+    if (produced_bytes <= smoke->music_initial_produced_bytes) {
+        fprintf(stderr,
+                "music synthesis did not replenish the buffer during "
+                "observation\n");
+        return C2_SDL_SMOKE_FAILURE;
+    }
+    if (underflows != 0) {
+        fprintf(stderr,
+                "music buffer underfilled %u times (%llu missing bytes) "
+                "over %llu ms\n",
+                underflows, (unsigned long long)underflow_bytes,
+                (unsigned long long)(now - smoke->music_started));
+        return C2_SDL_SMOKE_FAILURE;
+    }
+    if (smoke->music_min_queued_ms < MUSIC_MIN_SAFE_QUEUE_MS) {
+        fprintf(stderr,
+                "music buffer fell to %u ms; expected at least %u ms of "
+                "scheduling margin\n",
+                smoke->music_min_queued_ms, MUSIC_MIN_SAFE_QUEUE_MS);
+        return C2_SDL_SMOKE_FAILURE;
+    }
+#if PLATFORM_WASM
+    if (smoke->music_zero_fill_samples != 0) {
+        fprintf(stderr,
+                "music buffer was empty in %u of %u browser samples\n",
+                smoke->music_zero_fill_samples, smoke->music_samples);
+        return C2_SDL_SMOKE_FAILURE;
+    }
+#endif
+    printf("music buffer smoke completed over %llu ms with %u samples, "
+           "%u..%u ms queued and no underflows\n",
+           (unsigned long long)(now - smoke->music_started),
+           smoke->music_samples, smoke->music_min_queued_ms,
+           smoke->music_max_queued_ms);
+    return C2_SDL_SMOKE_SUCCESS;
+}
+
 void c2_sdl_smoke_init(struct c2_sdl_smoke *smoke,
                        enum c2_sdl_smoke_kind kind, Uint64 now)
 {
@@ -696,6 +840,7 @@ void c2_sdl_smoke_init(struct c2_sdl_smoke *smoke,
     smoke->started = now;
     smoke->phase = CITY_SMOKE_WAIT_FOR_CITY;
     smoke->last_tutorial_page = -1;
+    smoke->music_min_queued_ms = UINT_MAX;
 }
 
 enum c2_sdl_smoke_result c2_sdl_smoke_iterate(
@@ -744,6 +889,9 @@ enum c2_sdl_smoke_result c2_sdl_smoke_iterate(
 
     if (smoke->kind == C2_SDL_SMOKE_CITY_LOOP) {
         return drive_city(smoke, now, &observation);
+    }
+    if (smoke->kind == C2_SDL_SMOKE_MUSIC_BUFFER) {
+        return drive_music_buffer(smoke, now, &observation);
     }
     if (smoke->kind == C2_SDL_SMOKE_SAVE_LOAD) {
         return drive_save_load(smoke, now, &observation);

@@ -176,8 +176,22 @@ void c2_host_request_shutdown(void);
 int c2_host_shutdown_requested(void);
 
 #if C2_FEAT_DEBUG_OBSERVATION
+struct c2_host_audio_observation {
+    uint64_t produced_bytes;
+    uint64_t underflow_bytes;
+    unsigned int queued_bytes;
+    unsigned int queued_ms;
+    unsigned int estimated_queued_ms;
+    unsigned int queue_calls;
+    unsigned int device_requests;
+    unsigned int underflows;
+    int active;
+};
+
 void c2_host_publish_observation(const struct c2_observation *observation);
 void c2_host_observation_snapshot(struct c2_observation *observation);
+int c2_host_audio_observation_snapshot(
+    int voice, struct c2_host_audio_observation *observation);
 #endif
 
 #endif /* C2_HOST_H */

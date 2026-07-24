@@ -573,7 +573,7 @@ int c2_host_init(const struct c2_host_config *config)
     }
     window_flags = SDL_WINDOW_RESIZABLE;
     presentation = SDL_LOGICAL_PRESENTATION_LETTERBOX;
-#if C2_FEAT_BROWSER_RUNTIME
+#if PLATFORM_WASM
     window_flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
     presentation = SDL_LOGICAL_PRESENTATION_INTEGER_SCALE;
 #endif

@@ -176,13 +176,23 @@ reproduce the shipped DOS OPL timbres.
 
 Music generation runs from an engine-thread pump through the already frequent
 `continue_db` boundary. Each of the two recovered sequence handles owns a
-libADLMIDI player and a private SDL voice. The pump keeps approximately 100 ms
-of stereo 44.1-kHz PCM queued; SDL consumes it asynchronously while trigger
+libADLMIDI player and a private SDL voice. The pump keeps at least 100 ms of
+stereo 44.1-kHz PCM queued according to `SDL_GetAudioStreamQueued`; SDL
+consumes it asynchronously while trigger
 callbacks, `mood_modfication`, volume fades, and numbered branch jumps remain
 on the engine thread. No audio callback or decoder worker mutates recovered
 game state. If a worker is introduced later, it must stop at a trigger,
 publish a notification, and wait for the engine's branch decision rather than
 rendering past the decision point.
+
+Debug builds expose read-only per-voice queue telemetry. The native and Wasm
+music-buffer smokes enter a city, sample both music voices over time, require
+at least 40 ms of scheduling margin, and verify continued synthesis. Native
+SDL additionally records every device request that could not be satisfied and
+fails on any missing bytes. The older wall-clock deadline estimate is retained
+only for one-shot voice lifetime: rounding each generated chunk up to whole
+milliseconds made that estimate drift from real consumption and previously
+caused periodic music underruns.
 
 One official `CITYPROV.XMI` is 28,678 bytes, larger than the recovered DOS
 27,500-byte tune buffer. Portable builds enable the guarded

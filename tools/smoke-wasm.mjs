@@ -13,6 +13,7 @@ const smokeKind = process.argv[3] ?? "province";
 const smokeResults = {
   province: "recovered province-selection smoke completed",
   city: "recovered city-loop smoke completed",
+  music: "music buffer smoke completed",
 };
 if (!(smokeKind in smokeResults)) {
   throw new Error(`unknown smoke kind '${smokeKind}'`);
@@ -66,6 +67,9 @@ try {
     "--no-sandbox",
     "--disable-dev-shm-usage",
     "--enable-unsafe-swiftshader",
+    ...(smokeKind === "music"
+      ? ["--autoplay-policy=no-user-gesture-required"]
+      : []),
     `--user-data-dir=${profile}`,
     "--remote-debugging-address=127.0.0.1",
     "--remote-debugging-port=0",
@@ -106,6 +110,9 @@ try {
       const text = message.params.args
         .map((arg) => arg.value ?? arg.description ?? "")
         .join(" ");
+      if (smokeKind === "music" && text.includes("music-buffer")) {
+        console.log(text);
+      }
       if (text.includes(smokeResults[smokeKind])) {
         clearTimeout(timer);
         resolveSmoke();
