@@ -1689,16 +1689,16 @@ int use_region_overmap_to_move(void)
     return 1;
 }
 
-// Re-centre the city view on the cell whose pseudo_map[] entry matches `target_cm_ptr`. If we're
+// Re-centre the city view on the cell whose pseudo_map[] entry matches `target_ptr`. If we're
 // currently on the region map (map_mode==1), first restore the saved city rotation/zoom and switch
 // back to the city map (map_mode=0).
 // FUNCTION: C2 0x31a0a
 // FUNCTION: C2WIN 0x004b463e
-int jump_to_citymap_ptr(int target_cm_ptr)
+int jump_to_citymap_ptr(int target_ptr)
 {
     int row;
     int col;
-    int map_switched = 0;
+    int switched = 0;
 
     if (map_mode != 0) {
         prov_rotation = map_direction;
@@ -1707,13 +1707,13 @@ int jump_to_citymap_ptr(int target_cm_ptr)
         zoom_level = city_zoom_level;
         map_mode = 0;
         act_correct_map();
-        map_switched = 1;
+        switched = 1;
     }
 
     /* Linear search of pseudo_map for the target cell pointer. */
     for (row = 0; row < 0xa1; row++) {
         for (col = 0; col < 0x51; col++) {
-            if (pseudo_map[row][col] == target_cm_ptr) {
+            if (target_ptr == pseudo_map[row][col]) {
                 goto found;
             }
         }
@@ -1722,6 +1722,14 @@ int jump_to_citymap_ptr(int target_cm_ptr)
 found:
     pm_x = col;
     pm_y = row & 0xfffe;
+#if PLATFORM_WINDOWS
+    dx = pm_screen_width >> 1;
+    dy = pm_screen_height >> 1;
+    if ((dx & 1) > 0) dx--;
+    if ((dy & 1) > 0) dy--;
+    pm_x -= dx;
+    pm_y -= dy;
+#else
     if (zoom_level == 0) {
         pm_x += -4;
         pm_y += -0xc;
@@ -1732,13 +1740,15 @@ found:
         pm_x += -0x14;
         pm_y += -0x46;
     }
+#endif
     pm_limits();
     scrolling = 1;
     update_map = 1;
-    if (map_switched) {
+    if (switched) {
         return 1;
+    } else {
+        return 2;
     }
-    return 2;
 }
 
 // Switches to the region map if needed and recentres it on `target_rm_ptr`.
