@@ -4256,7 +4256,12 @@ int reg_port_quote(int base)
 // Collect building, service, business, and resident data for the queried city tile.
 // FUNCTION: C2 0x648e6
 // FUNCTION: C2WIN 0x0042dbbf
+#if PLATFORM_PORTABLE
+int get_reg_buildings_in_radius(int x, int y, int span, int radius,
+                                unsigned char building_kind);
+#else
 int get_reg_buildings_in_radius(int x, int, int, int, int);
+#endif
 
 void get_query_info(void)
 {

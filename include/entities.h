@@ -100,6 +100,10 @@ extern struct industry_rec     industry[];
 
 /* city_map / region_map / battle_map are declared as struct <cell>[] after
  * each cell struct's definition (below). */
+#if PLATFORM_PORTABLE
+extern int pseudo_map[PM_H][PM_W];
+#endif
+
 /* Map cells are accessed by inline byte offset, not via macros or a
  * cached struct pointer (a cached `struct *` materialises the cell base
  * in a register and diverges from PS's folded `[base + disp32]`).  The
