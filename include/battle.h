@@ -1,6 +1,8 @@
 #ifndef C2_BATTLE_DECLS_H
 #define C2_BATTLE_DECLS_H
 
+#include "c2_types.h"
+
 extern int bat_no;
 extern int bat_width;
 extern int yrear;
