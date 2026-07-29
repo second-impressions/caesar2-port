@@ -3986,15 +3986,19 @@ void show_region_query_panel(int y)
 // FUNCTION: C2WIN 0x0042dabd
 int reg_industry_quote(int x)
 {
-    if (q_road == 0)        return 0x19;
-    if (q_workhouse == 0)   return 0x1a;
+    int quote;
+
+    quote = 0x11;
+    if (!q_road) quote = 0x19;
+    else if (!q_workhouse) quote = 0x1a;
 #if C2_FEAT_TEXT_ASSET_COMPAT
-    if (q_outside && c2_text_has_late_region_quotes()) return 0x1d;
+    else if (q_outside && c2_text_has_late_region_quotes()) quote = 0x1d;
 #else
-    if (q_outside)          return 0x1d;
+    else if (q_outside) quote = 0x1d;
 #endif
-    if (q_workhouse <= 1)   return 0x1b;
-    return x + 0x11;
+    else if (q_workhouse <= 1) quote = 0x1b;
+    else quote = x + 0x11;
+    return quote;
 }
 
 // Select trading-post advice based on road access.
