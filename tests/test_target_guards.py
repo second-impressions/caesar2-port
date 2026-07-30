@@ -116,12 +116,12 @@ def test_bugfixes_default_to_the_portable_target_only():
 
 def test_portable_target_keeps_the_recovered_software_menus():
     """The port has no Windows-native replacement for the recovered menu bar."""
-    text = TARGET_HEADER.read_text()
+    text = (SRC / "controls.c").read_text()
     assert re.search(
-        r"#\s*define\s+C2_FEAT_SOFTWARE_MENUS\s+"
-        r"\(PLATFORM_DOS\s*\|\|\s*PLATFORM_PORTABLE\)",
+        r"#\s*if\s+PLATFORM_WINDOWS\s*\n\s*return\s*;",
         text,
     )
+    assert "C2_FEAT_SOFTWARE_MENUS" not in text
 
 
 def test_wasm_is_a_platform_target_not_a_feature():
