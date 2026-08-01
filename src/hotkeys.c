@@ -44,7 +44,6 @@ void capture_shot(char *filename);
 unsigned char sim_mouse(void)
 {
     int i;
-    int one;
 
     get_key();
     if (key_ready != 1) {
@@ -72,14 +71,15 @@ unsigned char sim_mouse(void)
     case 0x0d:
         if (cursor_y != 0) {
             cursor_y = 0;
-        } else {
-            mse_button |= 2;
-            if (confirming != 0) {
-                decision = 0;
-                out1 = 1;
-            }
+            break;
+        }
+        mse_button |= 2;
+        if (confirming != 0) {
+            decision = 0;
+            out1 = 1;
         }
         break;
+#if PLATFORM_DOS
     case '+':
     case '=':
         if (map_mode == 2) act_zoom_level1();
@@ -120,6 +120,7 @@ unsigned char sim_mouse(void)
     case '>':
         if (in_the_forum == 0) act_rotate_clockwise();
         break;
+#endif
     case 0:
         switch (key_code) {
         case 0x48:
@@ -154,6 +155,7 @@ unsigned char sim_mouse(void)
             set_mouse();
             break;
 #endif
+#if PLATFORM_DOS
         case 0x3b:
             if (map_mode != 2) {
                 map_mode = 0;
@@ -192,6 +194,7 @@ unsigned char sim_mouse(void)
         case 0x20:
             if (in_the_forum == 0 && map_mode != 2) act_set_marker3();
             break;
+#endif
         case 0x2d:
             hot_exit_flag = 1;
             out1 = 1;
@@ -243,6 +246,7 @@ unsigned char sim_mouse(void)
         out1 = 1;
         out2 = 1;
         break;
+#if PLATFORM_DOS
     case 'p':
     case 'P':
         if (in_the_forum == 0) {
@@ -278,6 +282,7 @@ unsigned char sim_mouse(void)
         mse_button |= 1;
         if (test_mode4 != 0) debug_screen();
         break;
+#endif
     }
     /*
      * Cheat chords are matched newest-first after adding three to each key.
