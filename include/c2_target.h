@@ -119,6 +119,11 @@
  * (verified at C2WIN 0x44c216 vs C2 0x25ccc). */
 #define C2_FEAT_PRESERVE_MOUSE_SAMPLE PLATFORM_WINDOWS
 
+/* DOS Smacker playback changes to the movie's CD path before closing and
+ * restores the main path afterwards. The Windows port opens movies through
+ * its native file path and omits both calls. */
+#define C2_FEAT_SMACK_CD_PATH     PLATFORM_DOS
+
 /* The portable target accepts the text resources shipped with both the
  * original 1995 engine and the expanded 1996/Windows UI.  The shipped DOS
  * and Windows targets retain their version-specific source paths. */
