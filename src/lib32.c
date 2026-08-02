@@ -4302,7 +4302,9 @@ void get_free_memory(void)
 // FUNCTION: C2WIN 0x00450206
 void stop_system(void)
 {
+#if !PLATFORM_WINDOWS
     if (internal_screen != 0) free(internal_screen);
+#endif
     free_scratch_buffer();
 #if PLATFORM_PORTABLE
     internal_screen = 0;
