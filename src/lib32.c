@@ -1875,7 +1875,7 @@ extern void mouserange();
 #endif
 
 #if PLATFORM_WINDOWS
-// WIN: 0x0044c055
+// FUNCTION: C2WIN 0x0044c055
 void set_mouse(void)
 {
     extern HWND hWnd;
