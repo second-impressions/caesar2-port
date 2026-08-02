@@ -127,7 +127,7 @@ extern int fb_line_length;
 extern int got_cursx;
 extern int cursor_x;
 extern int cursor_y;
-extern unsigned char * text_pointer;
+extern char * text_pointer;
 extern char insert_text[];
 extern int char_count;
 extern int this_letter;
