@@ -1185,7 +1185,7 @@ void go_64k_palette(char *p)
 
 // Convert every channel of a 256-entry palette between 6-bit and 8-bit values.
 // FUNCTION: C2 0x253ab
-// FUNCTION: C2WIN 0x0044b8f7
+// FUNCTION: C2WIN 0x0044b94f
 void go_16m_palette(unsigned char *p)
 {
     int i;
@@ -1193,15 +1193,9 @@ void go_16m_palette(unsigned char *p)
     for (i = 0; i < 256; i++) {
         int ptr;
         ptr = i * 3;
-#if PLATFORM_WINDOWS
-        p[ptr] >>= 2;
-        p[ptr + 1] >>= 2;
-        p[ptr + 2] >>= 2;
-#else
         p[ptr] <<= 2;
         p[ptr + 1] <<= 2;
         p[ptr + 2] <<= 2;
-#endif
     }
 }
 
