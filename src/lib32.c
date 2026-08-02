@@ -2191,6 +2191,8 @@ void clear_keys(void)
         get_key();
 }
 
+void pull_string_left(char *p, char *end);
+
 // Bounded byte-compare of two strings: returns 1-based index of first mismatch, or 0 if all `n`
 // bytes are equal.
 // FUNCTION: C2 0x260ea
@@ -2244,10 +2246,7 @@ void string_to_upper(unsigned char *s)
 // FUNCTION: C2WIN 0x0044c97b
 void pull_string_left(char *p, char *end)
 {
-    while (p < end) {
-        *p = *(p + 1);
-        p++;
-    }
+    while (p < end) { *p = *(p + 1); p++; }
     *p = 0;
 }
 
