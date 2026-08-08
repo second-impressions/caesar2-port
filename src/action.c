@@ -5460,11 +5460,7 @@ void act_tog_peace(void)
 void act_choose_name(void)
 {
     insert_cursor = 0;
-#if C2_FEAT_NAME_EDIT_FB_COUNT
-    fb_count = insert_cursor;
-#else
-    this_letter = 0;
-#endif
+    this_letter = insert_cursor;
 #if PLATFORM_PORTABLE && C2_FIX_PLAYER_NAME_PADDING
     c2_fix_player_name_padding(c2inf.player_name,
                                sizeof(c2inf.player_name));
