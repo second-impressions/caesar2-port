@@ -4072,6 +4072,9 @@ void start_game(void);
 void exit_game(void);
 void stop_system(void);
 void free_scratch_buffer(void);
+#if PLATFORM_WINDOWS
+void close_windows(void);
+#endif
 
 // Chebyshev (king-move) distance: max(|dx|, |dy|).
 // FUNCTION: C2 0x28333
@@ -4138,14 +4141,18 @@ void start_game(void)
 }
 
 #if !PLATFORM_PORTABLE
-// Tear-down counterpart of start_system: stop the runtime, print the goodbye banner, and exit(0).
+// Tear-down counterpart of start_system.
 // FUNCTION: C2 0x28470
 // FUNCTION: C2WIN 0x0044ff24
 void exit_game(void)
 {
     stop_system();
+#if PLATFORM_WINDOWS
+    close_windows();
+#else
     printf("\nExiting Caesar II.\n");
     exit(0);
+#endif
 }
 #endif
 
