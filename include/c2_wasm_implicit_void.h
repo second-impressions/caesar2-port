@@ -269,7 +269,6 @@ extern void main_game_loop();
 extern void media_text_place();
 extern void monthly_update();
 extern void mosaic_frame_divider();
-extern void mouserange();
 extern void my_strcpy();
 extern void neg_sound();
 extern void new_name_game_loop();

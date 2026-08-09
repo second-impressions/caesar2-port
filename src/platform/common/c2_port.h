@@ -26,5 +26,6 @@ int c2_port_save_screenshot(const char *filename);
 int check_user_file_exists(const char *filename);
 void *c2_port_load_asset(const char *filename, size_t *size_out);
 unsigned int c2_port_scroll_keys(void);
+void mouserange(int xmin, int ymin, int xmax, int ymax);
 
 #endif /* C2_PORT_H */

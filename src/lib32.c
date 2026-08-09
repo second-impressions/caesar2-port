@@ -1871,8 +1871,6 @@ void read_mouse(void)
 #else
 #if PLATFORM_WINDOWS
 extern int mouserange();
-#else
-extern void mouserange();
 #endif
 
 #if PLATFORM_WINDOWS
