@@ -22,7 +22,7 @@ static SDL_Texture *c2_texture;
 static SDL_Mutex *c2_frame_mutex;
 static SDL_Mutex *c2_event_mutex;
 static SDL_Condition *c2_event_condition;
-static uint32_t *c2_rgba_frame;
+static SDL_Color *c2_rgba_frame;
 static unsigned char *c2_indexed_frame;
 static unsigned char *c2_present_frame;
 static unsigned char c2_palette[C2_PALETTE_BYTES];
@@ -637,7 +637,7 @@ int c2_host_init(const struct c2_host_config *config)
         return 0;
     }
     c2_texture = SDL_CreateTexture(c2_renderer,
-                                   SDL_PIXELFORMAT_XRGB8888,
+                                   SDL_PIXELFORMAT_RGBA32,
                                    SDL_TEXTUREACCESS_STREAMING,
                                    c2_frame_width, c2_frame_height);
     if (c2_texture == NULL ||
@@ -1027,15 +1027,15 @@ void c2_host_present(void)
     if (have_frame) {
         for (i = 0; i < pixel_count; i++) {
             unsigned int palette_offset;
-            unsigned int red;
-            unsigned int green;
-            unsigned int blue;
 
             palette_offset = (unsigned int)c2_present_frame[i] * 3;
-            red = expand_vga_channel(c2_present_palette[palette_offset]);
-            green = expand_vga_channel(c2_present_palette[palette_offset + 1]);
-            blue = expand_vga_channel(c2_present_palette[palette_offset + 2]);
-            c2_rgba_frame[i] = (red << 16) | (green << 8) | blue;
+            c2_rgba_frame[i].r =
+                expand_vga_channel(c2_present_palette[palette_offset]);
+            c2_rgba_frame[i].g =
+                expand_vga_channel(c2_present_palette[palette_offset + 1]);
+            c2_rgba_frame[i].b =
+                expand_vga_channel(c2_present_palette[palette_offset + 2]);
+            c2_rgba_frame[i].a = 255;
         }
         SDL_UpdateTexture(c2_texture, NULL, c2_rgba_frame,
                           c2_frame_width * (int)sizeof(*c2_rgba_frame));
