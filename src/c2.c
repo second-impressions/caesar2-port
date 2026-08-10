@@ -241,13 +241,20 @@ extern void  exit(int status);
 #if !PLATFORM_PORTABLE
 extern int read_config();
 #endif
+#if PLATFORM_WINDOWS
+extern unsigned char to_upper(unsigned char c);
+#else
 extern int to_upper();
+#endif
 
 #if !PLATFORM_PORTABLE
 extern int   _getdrive(void);
 extern int   getch(void);
 #endif
 extern void  demo_lead_in_slideshow(void);
+#if PLATFORM_WINDOWS
+extern void  demo_lead_out_slideshow(void);
+#endif
 extern void  free_tune_buffer(void);
 #if PLATFORM_WINDOWS
 extern void  close_windows(void);
@@ -292,8 +299,11 @@ void flush_sb_buffer(void);
 void main(int argc, char *argv[])
 {
 #if !PLATFORM_PORTABLE
-    unsigned int cd_drive_config;
+    int drive;
+    unsigned char cd_drive_config;
+    char *cwd;
     int cd_error;
+    int status;
 #endif
     int graphics_error;
     int init_error;
@@ -310,7 +320,8 @@ void main(int argc, char *argv[])
     if (getcwd(path_name, 0x50) == NULL) goto end;
     c2inf.cd_letter  = 0;
     c2inf.drive_init = 1;
-    cd_drive_config = (unsigned char)read_config("resource.cfg", misc);
+
+    cd_drive_config = read_config("resource.cfg", misc);
     c2inf.cd_letter = to_upper(cd_drive_config);
     if (cd_drive_config == 1) {
         high_beep();
@@ -338,7 +349,8 @@ void main(int argc, char *argv[])
             printf("    1) Enter a valid drive letter.\n");
             printf("    2) Enter SPACE to play from hard-drive only.\n");
             printf("    3) Enter ESC to exit to DOS.\n");
-            c2inf.cd_letter = to_upper(getch() & 0xff);
+            cd_drive_config = getch();
+            c2inf.cd_letter = to_upper(cd_drive_config);
             if (c2inf.cd_letter == 0x1b) {
                 printf("\nCAESAR 2 aborted.\n");
                 exit(0);
@@ -352,7 +364,11 @@ void main(int argc, char *argv[])
 
     map_mode   = 0;
     zoom_level = 0;
+#if PLATFORM_WINDOWS
+    init_map_gfx_buffers(map_mode);
+#else
     init_map_gfx_buffers();
+#endif
     init_battle_gfx_buffers();
     graphics_error = load_start_graphics();
     if (graphics_error != 0) {
@@ -360,12 +376,17 @@ void main(int argc, char *argv[])
         exit(0);
     }
     load_map_graphics(0, 0);
+#if PLATFORM_WINDOWS
+    load_map_graphics(1, 0);
+#endif
     screen_mode = 2;
 
+#if !PLATFORM_WINDOWS
     if (init_mouse() == 0) {
         printf("No mouse driver found.\n");
         exit(0);
     }
+#endif
 
     scratch_buffer_size = 0x27100;
     init_error = 0;
@@ -385,7 +406,9 @@ void main(int argc, char *argv[])
     flush_sb_buffer();
     init_queery_panel();
     refresh_zoom_mode(0);
+#if !PLATFORM_WINDOWS
     setup_svga_refresh_data();
+#endif
     load_inf();
 #if C2_FEAT_DEBUG_OBSERVATION
     c2_observe(C2_OBSERVATION_STARTUP, 0);
@@ -393,7 +416,11 @@ void main(int argc, char *argv[])
     lead_in_logos();
     do_svga_smacked_anim("intro.smk");
     play_tune("forum1.xmi", 1);
+#if PLATFORM_WINDOWS
+    demo_lead_out_slideshow();
+#else
     demo_lead_in_slideshow();
+#endif
 
     hold_hot_keys = 1;
     background_screen();
@@ -416,16 +443,29 @@ void main(int argc, char *argv[])
 
         if (pre_loaded_status == 0) clear_landfill();
         act_correct_map();
-        last_icon_used   = 0;
-        placing_type     = 0;
-        placing_cost     = 0;
-        total_build_cost = 0;
+        total_build_cost = placing_cost = placing_type = last_icon_used = 0;
         update_map       = 1;
         restart_flag     = 0;
 
         if (pre_loaded_status == 0) clear_landfill();
 
         turbo_mode = 0;
+#if PLATFORM_WINDOWS
+        while (restart_flag == 0 && exit_flag == 0) {
+            if (pre_loaded_status != 0) goto handle_battles;
+            main_game_loop();
+            if (restart_flag != 0) break;
+
+handle_battles:
+            deal_with_battles();
+            if (restart_flag != 0) break;
+
+            pre_loaded_status = 0;
+            if (game_state != 0) {
+                restart_flag = 1;
+            }
+        }
+#else
         while (1) {
             if (restart_flag != 0 || exit_flag != 0) break;
             if (pre_loaded_status == 0) {
@@ -439,6 +479,7 @@ void main(int argc, char *argv[])
                 restart_flag = 1;
             }
         }
+#endif
 
         if (game_state == 1) do_lose_game();
         if (exit_flag == 0) play_tune("forum1.xmi", 1);
@@ -448,10 +489,12 @@ void main(int argc, char *argv[])
     save_inf();
     free_tune_buffer();
     free_sample_buffer(10);
-    clear_map_gfx_buffers();
 #if PLATFORM_WINDOWS
+    clear_map_gfx_buffers(0);
+    clear_map_gfx_buffers(1);
     clear_battle_gfx_buffers(map_mode);
 #else
+    clear_map_gfx_buffers();
     clear_battle_gfx_buffers();
 #endif
     exit_game();
