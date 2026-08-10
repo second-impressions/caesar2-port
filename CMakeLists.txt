@@ -237,6 +237,29 @@ target_include_directories(caesar2 PRIVATE
     src/platform/sdl3
 )
 
+# The original build exposed an independently ordered extern stream to each
+# engine translation unit, always under the logical name c2_data.h.  Preserve
+# that spelling while selecting the corresponding recovered stream.
+set(C2_EXTERN_STREAM_TUS
+    action battle bbarian c2 c2_vars census common controls contrdat data
+    datainit debug display empire evolver formulae gloops hotkeys int_c2
+    landfill lib32 loadsave map message mmedia pcsound pm_map0 pm_map1 pm_map2
+    pm_map3 pump refresh rot_data screens smacker speech titles web winplatform
+)
+foreach(tu IN LISTS C2_EXTERN_STREAM_TUS)
+    set(C2_EXTERN_STREAM_HEADER "c2_data_${tu}.h")
+    set(stream_dir "${CMAKE_CURRENT_BINARY_DIR}/extern-streams/${tu}")
+    file(MAKE_DIRECTORY "${stream_dir}")
+    configure_file(
+        cmake/c2_data_tu.h.in
+        "${stream_dir}/c2_data.h"
+        @ONLY
+    )
+    set_property(SOURCE "src/${tu}.c" APPEND PROPERTY
+        INCLUDE_DIRECTORIES "${stream_dir}"
+    )
+endforeach()
+
 target_link_libraries(caesar2 PRIVATE
     c2_asm_portable
     c2_libsmacker

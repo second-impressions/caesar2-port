@@ -1,0 +1,5 @@
+#if PLATFORM_PORTABLE
+#include "c2_asm_routines.h"
+#endif
+
+#include "@C2_EXTERN_STREAM_HEADER@"
