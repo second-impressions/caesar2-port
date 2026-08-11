@@ -1886,8 +1886,8 @@ int devolve_a_house(int tier_idx)
 // FUNCTION: C2WIN 0x004672d2
 int evolve_a_house(int tier_idx)
 {
-    unsigned int next;
     unsigned int curr;
+    unsigned int next;
     int delta;
 
     curr = house_gfxdat[tier_idx*4 + 1];
