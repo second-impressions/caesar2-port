@@ -694,7 +694,7 @@ void save_a_game(void)
                 }
 #else
                 savegame(filename);
-#if C2_FEAT_POST_FILE_BUSY_WAIT
+#if !PLATFORM_WINDOWS
                 for (i = 0; i < 1000; i++) just_idle_game_loop();
 #endif
                 decision = 1;
