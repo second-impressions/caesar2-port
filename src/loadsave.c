@@ -29,6 +29,7 @@ extern int savegame_version;
 extern unsigned char window_status[];
 extern int saved_window_status[];
 extern int saved_game_window_status;
+extern unsigned char battle_window_mode;
 extern RECT game_window_rect;
 extern HWND game_window;
 extern HWND status_window;
@@ -934,7 +935,7 @@ int loadgame(char *save_filename)
 {
 #if !PLATFORM_PORTABLE
     int save_fd;
-    int history_fd;
+    int history_file;
     int i;
 #endif
 
@@ -948,8 +949,8 @@ int loadgame(char *save_filename)
     save_fd = open(save_filename, O_BINARY);
     if (save_fd == -1) return 0;
 
-    history_fd = open("history.dat", 0x261, 0x180);
-    if (history_fd == -1) {
+    history_file = open("history.dat", O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0x180);
+    if (history_file == -1) {
         close(save_fd);
         return 0;
     }
@@ -960,9 +961,20 @@ int loadgame(char *save_filename)
     }
 
     read(save_fd, ((void *)scratch_buffer), 0xfa0);
-    write(history_fd, ((void *)scratch_buffer), 0xfa0);
+    write(history_file, ((void *)scratch_buffer), 0xfa0);
     close(save_fd);
-    close(history_fd);
+    close(history_file);
+
+#if PLATFORM_WINDOWS
+    c2inf.restore_window_positions = savegame_version == 999;
+    if (map_mode == 2 && saved_game_window_status != 0) {
+        game_window_rect.left = game_window_x;
+        game_window_rect.top = game_window_y;
+        game_window_rect.right = game_window_rect.left + game_window_width;
+        game_window_rect.bottom = game_window_rect.top + game_window_height;
+        battle_window_mode = 1;
+    }
+#endif
 #endif
 
     file_loaded_status = 1;
