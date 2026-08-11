@@ -33,7 +33,7 @@ struct c2_ail_sample {
 
 struct c2_ail_sequence {
     struct ADL_MIDIPlayer *player;
-    void (*callback)(int);
+    AILTRIGGERCB callback;
     uint64_t fade_started_ms;
     uint64_t fade_ends_ms;
     float fade_started_gain;
@@ -118,11 +118,9 @@ static void sequence_trigger(void *user_data, unsigned trigger, size_t track)
 {
     struct c2_ail_sequence *sequence;
 
-    (void)trigger;
-    (void)track;
     sequence = user_data;
     if (sequence != NULL && sequence->callback != NULL) {
-        sequence->callback(sequence->handle);
+        sequence->callback(sequence->handle, (int)trigger, (int)track);
     }
 }
 
@@ -503,16 +501,19 @@ char *AIL_resume_sequence(int handle)
     return AIL_start_sequence(handle);
 }
 
-void AIL_register_trigger_callback(int handle, void (*callback)())
+AILTRIGGERCB AIL_register_trigger_callback(int handle, AILTRIGGERCB callback)
 {
     struct c2_ail_sequence *sequence;
+    AILTRIGGERCB previous;
 
     sequence = sequence_from_handle(handle);
-    if (sequence == NULL) return;
-    sequence->callback = (void (*)(int))callback;
+    if (sequence == NULL) return NULL;
+    previous = sequence->callback;
+    sequence->callback = callback;
     if (sequence->player != NULL) {
         adl_setTriggerHandler(sequence->player, sequence_trigger, sequence);
     }
+    return previous;
 }
 void AIL_branch_index(int handle, int marker)
 {
