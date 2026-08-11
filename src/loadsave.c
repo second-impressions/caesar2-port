@@ -1,8 +1,10 @@
 
 #if !PLATFORM_PORTABLE
 #include <fcntl.h>       /* O_BINARY: 0x200 under Watcom, 0x8000 under MSVC */
+#if PLATFORM_WINDOWS
+#include <sys/stat.h>
 #endif
-#if PLATFORM_PORTABLE
+#else
 #include <string.h>
 #include "lib32.h"
 #include "c2_port_save.h"
@@ -574,6 +576,9 @@ int dummy_sav;
 extern void font_list(int idx, int word_count, int x, int y, unsigned char *font, int color);
 
 extern int read(int fd, void *buf, unsigned int size);
+#if PLATFORM_WINDOWS
+extern void set_raw_tune_volume(void);
+#endif
 /* Forward declarations (functions defined later in this file). */
 void set_language(int language);
 void test_inf_settings(void);
@@ -951,14 +956,17 @@ void save_inf(void)
 // FUNCTION: C2WIN 0x004835b1
 void load_inf(void)
 {
-    int old_cd_letter;
-    int old_drive_init;
+    int old_cd;
+    int old_drive;
 #if !PLATFORM_PORTABLE
-    int inf_fd;
+    int file;
+#endif
+#if PLATFORM_WINDOWS
+    struct stat file_stat;
 #endif
 
-    old_cd_letter = c2inf.cd_letter;
-    old_drive_init = c2inf.drive_init;
+    old_cd = c2inf.cd_letter;
+    old_drive = c2inf.drive_init;
 
     get_directory("*.sav");
     if (no_of_entries != 0) {
@@ -973,21 +981,29 @@ void load_inf(void)
     set_language(c2inf.config37);
 
 #if PLATFORM_PORTABLE
-    if (read_userfile("caesar2.inf", &c2inf, 0x40, 0) == 0x40) {
+    if (read_userfile("caesar2.inf", &c2inf, sizeof(c2inf), 0) != sizeof(c2inf)) return;
 #else
-    inf_fd = open("caesar2.inf", 0x8404);
-    if (inf_fd != -1) {
-        read(inf_fd, &c2inf, 0x40);
-        close(inf_fd);
+    file = open("caesar2.inf", 0x8404);
+    if (file == -1) return;
+#if PLATFORM_WINDOWS
+    if (fstat(file, &file_stat) != 0) return;
 #endif
-        test_inf_settings();
-        set_language(c2inf.config37);
-        c2inf._unused_writeonly38 = 0;
-        c2inf.cd_letter = old_cd_letter;
-        c2inf.drive_init = old_drive_init;
-        set_samples_volume();
-        set_sequences_volume();
-    }
+    read(file, &c2inf, sizeof(c2inf));
+    close(file);
+#endif
+    test_inf_settings();
+#if PLATFORM_WINDOWS
+    c2inf.restore_window_positions = file_stat.st_size > 0x40U;
+#endif
+    set_language(c2inf.config37);
+    c2inf._unused_writeonly38 = 0;
+    c2inf.cd_letter = old_cd;
+    c2inf.drive_init = old_drive;
+    set_samples_volume();
+    set_sequences_volume();
+#if PLATFORM_WINDOWS
+    set_raw_tune_volume();
+#endif
 }
 
 // Select language and help/media table filenames. English is the default; language ids 2/3/4
