@@ -1309,19 +1309,18 @@ void setup_history_data(void)
 #if PLATFORM_PORTABLE
     memset(history_buffer, 0, sizeof(history_buffer));
     if (writefile("history.dat", (char *)history_buffer,
-                  sizeof(history_buffer)) == sizeof(history_buffer)) {
+                  sizeof(history_buffer)) != sizeof(history_buffer)) return;
 #else
-    history_fd = open("history.dat", 0x261, 0x180);
-    if (history_fd != -1) {
-        for (i = 0; i < 200; ++i) {
-            write(history_fd, history_entry, 0x14);
-        }
-        close(history_fd);
-#endif
-        history_start_ptr = 0;
-        history_end_ptr = 0;
-        history_entries = 0;
+    history_fd = open("history.dat", O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0x180);
+    if (history_fd == -1) return;
+    for (i = 0; i < 200; ++i) {
+        write(history_fd, history_entry, 0x14);
     }
+    close(history_fd);
+#endif
+    history_start_ptr = 0;
+    history_end_ptr = 0;
+    history_entries = 0;
 }
 
 // Write the current five-value history entry at the next slot in the 200-entry ring file.
