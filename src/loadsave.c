@@ -587,12 +587,18 @@ void put_a_hut(int hut_x, int hut_y, int hut_kind);
 void load_a_game(void)
 {
     int done;
-#if C2_FEAT_POST_FILE_BUSY_WAIT
+#if PLATFORM_WINDOWS
+    int oldmode;
+#endif
+#if !PLATFORM_WINDOWS && !PLATFORM_PORTABLE
     int i;
 #endif
 
     file_loaded_status = 0;
     done = 0;
+#if PLATFORM_WINDOWS
+    oldmode = map_mode;
+#endif
     get_directory("*.sav");
     show_loadsave_box(0x28);
     in_format_buffer(filename, 0xc, 0xa0, 1);
@@ -628,7 +634,7 @@ void load_a_game(void)
                 }
 #else
                 loadgame(filename);
-#if C2_FEAT_POST_FILE_BUSY_WAIT
+#if !PLATFORM_WINDOWS
                 for (i = 0; i < 200; i++) just_idle_game_loop();
 #endif
                 pre_loaded_status = 2;
