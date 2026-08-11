@@ -1330,27 +1330,28 @@ void save_history(void)
 {
 #if !PLATFORM_PORTABLE
     int history_fd;
+    int seek_result;
+    int write_result;
 #endif
     int file_offset;
 
     file_offset = history_end_ptr * 20;
 #if PLATFORM_PORTABLE
     if (write_to_file("history.dat", (char *)history_entry, 0x14,
-                      file_offset) == 0x14) {
+                      file_offset) != 0x14) return;
 #else
-    history_fd = open("history.dat", 0x221, 0x180);
-    if (history_fd != -1) {
-        _lseek(history_fd, file_offset, 0);
-        write(history_fd, history_entry, 0x14);
-        close(history_fd);
+    history_fd = open("history.dat", O_WRONLY | O_CREAT | O_BINARY, 0x180);
+    if (history_fd == -1) return;
+    seek_result = _lseek(history_fd, file_offset, 0);
+    write(history_fd, history_entry, 0x14);
+    close(history_fd);
 #endif
-        history_entries++;
-        if (history_entries > 0xc8)
-            history_entries = 0xc8;
-        history_end_ptr++;
-        if (history_end_ptr >= 0xc8)
-            history_end_ptr = 0;
-    }
+    history_entries++;
+    if (history_entries > 0xc8)
+        history_entries = 0xc8;
+    history_end_ptr++;
+    if (history_end_ptr >= 0xc8)
+        history_end_ptr = 0;
 }
 
 
