@@ -202,9 +202,7 @@ void launch_help(int page)
 // FUNCTION: C2WIN 0x00452332
 void load_media_entry(void)
 {
-    media_voc = 0;
-    media_right_image = 0;
-    media_left_image = 0;
+    media_left_image = media_right_image = media_voc = 0;
 
     readfile(media_file, &this_media_entry, 0x3a,
              this_help_page * 0x3a + 8);
@@ -214,15 +212,9 @@ void load_media_entry(void)
     c2_fix_help_text(format_buffer, 0x7d0);
 #endif
 
-    if (my_strcmp(this_media_entry.left_file, "null.pl8", 8) != 0) {
-        media_left_image = 1;
-    }
-    if (my_strcmp(this_media_entry.right_file, "null.pl8", 8) != 0) {
-        media_right_image = 1;
-    }
-    if (my_strcmp(this_media_entry.voc_file, "null.voc", 8) != 0) {
-        media_voc = 1;
-    }
+    if (my_strcmp(this_media_entry.left_file, "null.pl8", 8) != 0) media_left_image = 1;
+    if (my_strcmp(this_media_entry.right_file, "null.pl8", 8) != 0) media_right_image = 1;
+    if (my_strcmp(this_media_entry.voc_file, "null.voc", 8) != 0) media_voc = 1;
 }
 
 // Render the in-game F1 help dialog.
