@@ -505,7 +505,12 @@ void evolve_security_cover(int row_count)
 int put_out_a(char, char, char, char, char, char, char);
 int devolve_a_house();
 int find_enemy();
+#if PLATFORM_PORTABLE
+int get_reg_buildings_in_radius(int x, int y, int span, int radius,
+                                unsigned char building_kind);
+#else
 int get_reg_buildings_in_radius();
+#endif
 
 // Stamp health, education, and entertainment coverage around active amenity buildings.
 // FUNCTION: C2 0x4077b
