@@ -244,8 +244,8 @@ extern void show_diamond_ptr(void);
 // FUNCTION: C2WIN 0x0040fb4a
 void main_game_loop(void)
 {
-    int i;
     int loops;
+    int i;
 
 #if C2_FEAT_DEBUG_OBSERVATION
     c2_observe(C2_OBSERVATION_CITY_LOOP, 0);
