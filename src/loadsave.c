@@ -8,7 +8,6 @@ extern int _strcmpi(const char *left, const char *right);
 #endif
 #else
 #include <string.h>
-#include "c2_tu_prefix_lib32.h"
 #include "c2_port_save.h"
 #endif
 #include "c2_data.h"
@@ -18,6 +17,10 @@ extern int _strcmpi(const char *left, const char *right);
 #endif
 
 #if PLATFORM_PORTABLE
+extern void get_directory(char *pattern);
+extern void get_filename_extension(const char *filename);
+extern int check_file_exists(char *filename);
+extern int readfile(const char *filename, void *buffer, int size, int offset);
 extern int read_userfile(const char *filename, void *buffer, int size,
                          int offset);
 extern int writefile(const char *filename, char *buffer, int size);
