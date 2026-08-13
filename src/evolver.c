@@ -2228,8 +2228,11 @@ void push_shell(int row_count)
 #if PLATFORM_WINDOWS
 static int region_pass_count;
 #define EVOLVE_COUNT region_pass_count
-#else
+#elif PLATFORM_DOS
 #define EVOLVE_COUNT cmu_count[4]
+#else
+static int portable_region_pass_count;
+#define EVOLVE_COUNT portable_region_pass_count
 #endif
 
 // FUNCTION: C2 0x436ab
