@@ -8,7 +8,7 @@ extern int _strcmpi(const char *left, const char *right);
 #endif
 #else
 #include <string.h>
-#include "lib32.h"
+#include "c2_tu_prefix_lib32.h"
 #include "c2_port_save.h"
 #endif
 #include "c2_data.h"

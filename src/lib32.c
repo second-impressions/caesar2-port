@@ -1,4 +1,4 @@
-#include "lib32.h"
+#include "c2_tu_prefix_lib32.h"
 #include "c2_data.h"
 #if PLATFORM_DOS
 #include <conio.h>             /* inp(), outpw() */
