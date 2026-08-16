@@ -584,14 +584,18 @@ void start_a_promotion(void)
 #endif
 }
 
+// The Windows build returns a status no other target has a caller for; only
+// the return type differs, so they share one declaration and one body.
+#if PLATFORM_WINDOWS
+#define NEW_PROVINCE_RESULT int
+#else
+#define NEW_PROVINCE_RESULT void
+#endif
+
 // Initializes a province's map, population, armies, economy, ratings, and regional systems.
 // FUNCTION: C2 0x10565
 // FUNCTION: C2WIN 0x00443eca
-#if PLATFORM_WINDOWS
-int new_province(void)
-#else
-void new_province(void)
-#endif
+NEW_PROVINCE_RESULT new_province(void)
 {
     int denarii_reduction;
 
@@ -709,10 +713,8 @@ void setup_game(void)
     pm_build_shape    = 0;
 }
 
-// Reloads the eight map graphics buffers for the selected map mode and zoom level.
-// FUNCTION: C2 0x107db
-// FUNCTION: C2WIN 0x0044421c
 #if PLATFORM_WINDOWS
+// FUNCTION: C2WIN 0x0044421c
 int load_map_graphics(int gfx_mode, int gfx_level)
 {
     int   gfx_idx;
@@ -809,6 +811,8 @@ alloc_fail:
     exit(100);
 }
 #else
+// Reloads the eight map graphics buffers for the selected map mode and zoom level.
+// FUNCTION: C2 0x107db
 int load_map_graphics(int gfx_mode, int gfx_level)
 {
     int   gfx_base_idx;
@@ -893,10 +897,8 @@ done:
 }
 #endif
 
-// Reloads circus sprites for a populous city, alternating the graphics by year.
-// FUNCTION: C2 0x10944
-// FUNCTION: C2WIN 0x0044474a
 #if PLATFORM_WINDOWS
+// FUNCTION: C2WIN 0x0044474a
 void swap_circus_gfx(void)
 {
     int map_kind;
@@ -928,6 +930,8 @@ void swap_circus_gfx(void)
     }
 }
 #else
+// Reloads circus sprites for a populous city, alternating the graphics by year.
+// FUNCTION: C2 0x10944
 void swap_circus_gfx(void)
 {
     if (population < 2000) return;
@@ -949,10 +953,8 @@ void swap_circus_gfx(void)
 }
 #endif
 
-// Loads the people or overlay graphics for the current zoom level into people_data.
-// FUNCTION: C2 0x10a40
-// FUNCTION: C2WIN 0x004448fb
 #if PLATFORM_WINDOWS
+// FUNCTION: C2WIN 0x004448fb
 int load_overlay_graphics(int use_overlay)
 {
     int   gfx_idx;
@@ -983,6 +985,8 @@ file_error:
     exit(100);
 }
 #else
+// Loads the people or overlay graphics for the current zoom level into people_data.
+// FUNCTION: C2 0x10a40
 int load_overlay_graphics(int use_overlay)
 {
     int   file_size;
@@ -1009,10 +1013,8 @@ int load_overlay_graphics(int use_overlay)
 }
 #endif
 
-// Reloads terrain, troop, and optional mercenary graphics for the active battle.
-// FUNCTION: C2 0x10ac9
-// FUNCTION: C2WIN 0x004449df
 #if PLATFORM_WINDOWS
+// FUNCTION: C2WIN 0x004449df
 int load_battle_graphics(int battle_zoom)
 {
     unsigned int troop_gfx_idx;
@@ -1087,6 +1089,8 @@ int load_battle_graphics(int battle_zoom)
     return 1;
 }
 #else
+// Reloads terrain, troop, and optional mercenary graphics for the active battle.
+// FUNCTION: C2 0x10ac9
 int load_battle_graphics(int battle_zoom)
 {
     int troop_gfx_idx;
@@ -1184,10 +1188,8 @@ void *load_a_battle_gfx_file(int battle_zoom, int troop_gfx_idx, int use_aux)
     return data;
 }
 
-// Marks all map graphics buffers as empty.
-// FUNCTION: C2 0x10cb9
-// FUNCTION: C2WIN 0x00444e27
 #if PLATFORM_WINDOWS
+// FUNCTION: C2WIN 0x00444e27
 void init_map_gfx_buffers(int mode)
 {
     if (mode > 1) mode = 0;
@@ -1210,6 +1212,8 @@ void init_map_gfx_buffers(int mode)
     (&tops_data)[mode] = 0;
 }
 #else
+// Marks all map graphics buffers as empty.
+// FUNCTION: C2 0x10cb9
 void init_map_gfx_buffers(void)
 {
     people_data    = 0;
@@ -1223,10 +1227,8 @@ void init_map_gfx_buffers(void)
 }
 #endif
 
-// Releases all allocated map graphics buffers.
-// FUNCTION: C2 0x10cee
-// FUNCTION: C2WIN 0x00444fd3
 #if PLATFORM_WINDOWS
+// FUNCTION: C2WIN 0x00444fd3
 void clear_map_gfx_buffers(unsigned char mode)
 {
     int map_kind;
@@ -1276,6 +1278,8 @@ void clear_map_gfx_buffers(unsigned char mode)
     }
 }
 #else
+// Releases all allocated map graphics buffers.
+// FUNCTION: C2 0x10cee
 void clear_map_gfx_buffers(void)
 {
     if (people_data)    free(people_data);
@@ -1292,10 +1296,8 @@ void clear_map_gfx_buffers(void)
 }
 #endif
 
-// Marks all battle graphics buffers as empty.
-// FUNCTION: C2 0x10d80
-// FUNCTION: C2WIN 0x004451bf
 #if PLATFORM_WINDOWS
+// FUNCTION: C2WIN 0x004451bf
 void init_battle_gfx_buffers(void)
 {
     if (fixt_data) free(fixt_data);
@@ -1324,6 +1326,8 @@ void init_battle_gfx_buffers(void)
     battle_gfx_zoom = 0xff;
 }
 #else
+// Marks all battle graphics buffers as empty.
+// FUNCTION: C2 0x10d80
 void init_battle_gfx_buffers(void)
 {
     fixt_data     = 0;
@@ -1340,10 +1344,8 @@ void init_battle_gfx_buffers(void)
 }
 #endif
 
-// Releases all allocated battle graphics buffers.
-// FUNCTION: C2 0x10dc7
-// FUNCTION: C2WIN 0x0044536f
 #if PLATFORM_WINDOWS
+// FUNCTION: C2WIN 0x0044536f
 void clear_battle_gfx_buffers(unsigned char mode)
 {
     if (fixt_data) {
@@ -1394,6 +1396,8 @@ void clear_battle_gfx_buffers(unsigned char mode)
     battle_gfx_zoom = 0xff;
 }
 #else
+// Releases all allocated battle graphics buffers.
+// FUNCTION: C2 0x10dc7
 void clear_battle_gfx_buffers(void)
 {
     if (fixt_data)     free(fixt_data);
@@ -1462,11 +1466,8 @@ void do_neg(void)
 }
 
 #if !PLATFORM_PORTABLE
-// Checks the configured CD drive for cd.dat and restores the startup drive and path.
-// Returns zero on success or an error code identifying the failed step.
-// FUNCTION: C2 0x11095
-// FUNCTION: C2WIN 0x004457c4
 #if PLATFORM_WINDOWS
+// FUNCTION: C2WIN 0x004457c4
 int test_cd_drive(void)
 {
     char  cdrive;
@@ -1509,6 +1510,9 @@ int test_cd_drive(void)
     return error;
 }
 #else
+// Checks the configured CD drive for cd.dat and restores the startup drive and path.
+// Returns zero on success or an error code identifying the failed step.
+// FUNCTION: C2 0x11095
 int test_cd_drive(void)
 {
     int            error_code;

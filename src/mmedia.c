@@ -605,12 +605,13 @@ void init_help_history(void)
         help_history[i] = 0;
 }
 
-// Run the tutorial campaign with beginner settings, then restore skill and peace mode.
-// FUNCTION: C2 0x5892d
-// FUNCTION: C2WIN 0x0045313c
 #if PLATFORM_WINDOWS
 extern void update_tutorial_window_title(void);
 #endif
+
+// Run the tutorial campaign with beginner settings, then restore skill and peace mode.
+// FUNCTION: C2 0x5892d
+// FUNCTION: C2WIN 0x0045313c
 void do_tutorial(void)
 {
     int skill = c2inf.skill_level;
@@ -895,14 +896,18 @@ void show_please_wait(void)
     refresh_svga_screen();
 }
 
+// The Windows build takes a refresh flag no other target passes; only the
+// parameter list differs, so they share one declaration and one body.
+#if PLATFORM_WINDOWS
+#define SHOW_TUTORIAL_TIMER_PARAMS unsigned char refresh
+#else
+#define SHOW_TUTORIAL_TIMER_PARAMS void
+#endif
+
 // Update the visible tutorial countdown while tutorial mode is active.
 // FUNCTION: C2 0x58f16
 // FUNCTION: C2WIN 0x00453a1a
-#if PLATFORM_WINDOWS
-void show_tutorial_timer(unsigned char refresh)
-#else
-void show_tutorial_timer(void)
-#endif
+void show_tutorial_timer(SHOW_TUTORIAL_TIMER_PARAMS)
 {
 #if PLATFORM_WINDOWS
     unsigned char *old_screen;

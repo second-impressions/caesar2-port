@@ -505,10 +505,6 @@ void main_game_loop(void)
 #endif
 }
 
-// Advances battle units when due, renders the battle map and panels, handles battle input, and
-// services screen and audio updates for one frame.
-// FUNCTION: C2 0x3d816
-// FUNCTION: C2WIN 0x004101e4
 #if PLATFORM_WINDOWS
 #define BATTLE_SCREEN_REFRESH()
 #define WHOLE_SCREEN_REFRESH()
@@ -516,10 +512,16 @@ void main_game_loop(void)
 #define BATTLE_SCREEN_REFRESH() setup_battle_screen_refresh()
 #define WHOLE_SCREEN_REFRESH() setup_whole_screen_refresh()
 #endif
+
 #if PLATFORM_WINDOWS
 extern void update_window_battle_totals(void);
 extern void update_window_battle_stats(void);
 #endif
+
+// Advances battle units when due, renders the battle map and panels, handles battle input, and
+// services screen and audio updates for one frame.
+// FUNCTION: C2 0x3d816
+// FUNCTION: C2WIN 0x004101e4
 void battle_game_loop(void)
 {
     cycle_count++;
@@ -1142,15 +1144,16 @@ void skill2_game_loop(void)
 #endif
 }
 
-// Handles initial province selection on the empire map and records the chosen province and
-// difficulty.
-// FUNCTION: C2 0x3e502
-// FUNCTION: C2WIN 0x0041113a
 #if PLATFORM_WINDOWS
 #define INITREG_REGION_READY (region_over != 0 && empire[region_over - 1] == 2)
 #else
 #define INITREG_REGION_READY (region_over != 0 && (empire[region_over - 1] & 0xff) == 2)
 #endif
+
+// Handles initial province selection on the empire map and records the chosen province and
+// difficulty.
+// FUNCTION: C2 0x3e502
+// FUNCTION: C2WIN 0x0041113a
 void initreg_game_loop(void)
 {
     gloop_start();
@@ -1197,9 +1200,6 @@ end:;
 
 #undef INITREG_REGION_READY
 
-// Edits and redraws the province name, closing the entry field on Escape, Enter, or a right-click.
-// FUNCTION: C2 0x3e673
-// FUNCTION: C2WIN 0x004112b7
 #if PLATFORM_WINDOWS
 #define NAME_FIELD_Y 0xe0
 #define SET_NAME_FIELD_Y()
@@ -1207,6 +1207,10 @@ end:;
 #define NAME_FIELD_Y field_y
 #define SET_NAME_FIELD_Y() field_y = 0xe0
 #endif
+
+// Edits and redraws the province name, closing the entry field on Escape, Enter, or a right-click.
+// FUNCTION: C2 0x3e673
+// FUNCTION: C2WIN 0x004112b7
 void new_name_game_loop(void)
 {
 #if !PLATFORM_WINDOWS
