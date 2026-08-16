@@ -294,10 +294,6 @@ extern void write_i_font(unsigned char *font);
 extern void write_i_left_font(unsigned char *font);
 extern void write_i_right_font(unsigned char *font);
 
-extern int _dx;
-#if PLATFORM_DOS
-#pragma aux _dx "*"
-#endif
 char get_insert_letter(void);
 unsigned char sim_mouse(void);
 #if PLATFORM_PORTABLE
