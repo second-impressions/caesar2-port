@@ -298,47 +298,6 @@ extern int _dx;
 #if PLATFORM_DOS
 #pragma aux _dx "*"
 #endif
-extern void __cdecl code_0188AD(void);
-extern void __cdecl code_0188B7(void);
-extern void __cdecl code_0188ED(void);
-extern void __cdecl code_018944(void);
-extern void __cdecl code_018964(void);
-extern void __cdecl code_018986(void);
-extern void __cdecl code_0189AE(void);
-extern void __cdecl code_0189D6(void);
-extern void __cdecl code_0189ED(void);
-extern void __cdecl code_018A04(void);
-extern void __cdecl code_018A1D(void);
-extern void __cdecl code_018A2F(void);
-extern void __cdecl code_018A39(void);
-extern void __cdecl code_018A43(void);
-extern void __cdecl code_018A4D(void);
-extern void __cdecl code_018A79(void);
-extern void __cdecl code_018AA0(void);
-extern void __cdecl code_018AB9(void);
-extern void __cdecl code_018AEE(void);
-extern void __cdecl code_018B12(void);
-extern void __cdecl code_018B39(void);
-extern void __cdecl code_018B60(void);
-extern void __cdecl code_018B87(void);
-extern void __cdecl code_018BAC(void);
-extern void __cdecl code_018BED(void);
-extern void __cdecl code_018BFC(void);
-extern void __cdecl code_018C03(void);
-extern void __cdecl code_018C0A(void);
-extern void __cdecl code_018C11(void);
-extern void __cdecl code_018C18(void);
-extern void __cdecl code_018C1F(void);
-extern void __cdecl code_018C26(void);
-extern void __cdecl code_018C2D(void);
-extern void __cdecl code_018C4A(void);
-extern void __cdecl code_018C74(void);
-extern void __cdecl code_018C92(void);
-extern void __cdecl code_018CCA(void);
-extern void __cdecl code_018CEA(void);
-extern void __cdecl code_018D13(void);
-extern void __cdecl code_018D36(void);
-extern void __cdecl code_018D50(void);
 char get_insert_letter(void);
 unsigned char sim_mouse(void);
 #if PLATFORM_PORTABLE
