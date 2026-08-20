@@ -271,8 +271,6 @@ int get_pm_over_diamond(int force_zero_offset)
     int xp;
     int odd_y;
     int row;
-    int next_x;
-    int next_y;
     int odd;
 #endif
 
@@ -336,37 +334,17 @@ int get_pm_over_diamond(int force_zero_offset)
 
     pm_y_coord = row;
     pm_x_coord = grid_x / 2;
-#if PLATFORM_DOS
-    next_y = row + 1;
-    next_x = pm_x_coord + 1;
-#endif
     if (part == 0) {
         if (y_mod > xpos) {
-#if PLATFORM_WINDOWS
             pm_y_coord++;
-#else
-            pm_y_coord = next_y;
-#endif
         } else if (xp != 0 && odd_y != 0) {
-#if PLATFORM_WINDOWS
             pm_x_coord++;
-#else
-            pm_x_coord = next_x;
-#endif
         }
     } else if (part == 1) {
         if (y_mod + xpos >= pm_diamond_half_height - 1) {
-#if PLATFORM_WINDOWS
             pm_y_coord++;
-#else
-            pm_y_coord = next_y;
-#endif
             if (xp != 0 && odd_y == 0) {
-#if PLATFORM_WINDOWS
                 pm_x_coord++;
-#else
-                pm_x_coord = next_x;
-#endif
             }
         }
     }
