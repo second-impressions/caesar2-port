@@ -232,11 +232,7 @@ static unsigned char battle_gfx_zoom;
 static unsigned char windows_game_active;
 #endif
 
-#if !PLATFORM_PORTABLE
-extern void *malloc(unsigned int size);
-extern void  printf(const char *fmt, ...);
-extern void  exit(int status);
-#endif
+#include <stdio.h>
 
 #if !PLATFORM_PORTABLE
 extern int read_config();
