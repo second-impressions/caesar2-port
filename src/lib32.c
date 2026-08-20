@@ -722,8 +722,10 @@ int convert_lbm_file(unsigned char *src, unsigned char *dst, char *pal, int leng
     if (search_left <= 0) return 2;
 
     chunk_ptr += 8;
-    file_width = (*chunk_ptr++ << 8) + *chunk_ptr++;
-    bitmap_height = (*chunk_ptr++ << 8) + *chunk_ptr++;
+    file_width = (chunk_ptr[0] << 8) + chunk_ptr[1];
+    chunk_ptr += 2;
+    bitmap_height = (chunk_ptr[0] << 8) + chunk_ptr[1];
+    chunk_ptr += 2;
     if (file_width == 0x140) screen_mode = 1;
     else if (file_width == 0x280) screen_mode = 2;
     else return 4;
