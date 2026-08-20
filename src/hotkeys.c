@@ -73,7 +73,7 @@ unsigned char sim_mouse(void)
             out1 = 1;
         }
         break;
-#if PLATFORM_DOS
+#if !PLATFORM_WINDOWS
     case '+':
     case '=':
         if (map_mode == 2) act_zoom_level1();
@@ -149,7 +149,7 @@ unsigned char sim_mouse(void)
             set_mouse();
             break;
 #endif
-#if PLATFORM_DOS
+#if !PLATFORM_WINDOWS
         case 0x3b:
             if (map_mode != 2) {
                 map_mode = 0;
@@ -240,7 +240,7 @@ unsigned char sim_mouse(void)
         out1 = 1;
         out2 = 1;
         break;
-#if PLATFORM_DOS
+#if !PLATFORM_WINDOWS
     case 'p':
     case 'P':
         if (in_the_forum == 0) {
