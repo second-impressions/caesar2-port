@@ -265,14 +265,8 @@ extern int   choose_init_region(void);
 void *load_a_battle_gfx_file(int battle_zoom, int troop_gfx_idx, int use_aux);
 extern void get_pseudo_map(int n);
 #if !PLATFORM_PORTABLE
-extern unsigned _dos_setdrive(unsigned drive, unsigned *total);
-extern unsigned _dos_getdrive(unsigned *drive);
-extern int      chdir(const char *path);
-extern int      open(const char *path, int flags, ...);
-extern int      close(int fd);
-#if PLATFORM_WINDOWS
+#include <io.h>
 #include <direct.h>
-#endif
 #endif
 /* Forward declarations (functions defined later in this file). */
 void deal_with_battles(void);
@@ -1461,6 +1455,8 @@ void do_neg(void)
 }
 
 #if !PLATFORM_PORTABLE
+#include <dos.h>
+
 #if PLATFORM_WINDOWS
 // FUNCTION: C2WIN 0x004457c4
 int test_cd_drive(void)
