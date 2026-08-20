@@ -4066,10 +4066,6 @@ void start_game(void)
 }
 
 #if !PLATFORM_PORTABLE
-#if PLATFORM_WINDOWS
-void close_windows(void);
-#endif
-
 // Tear-down counterpart of start_system.
 // FUNCTION: C2 0x28470
 // FUNCTION: C2WIN 0x0044ff24
