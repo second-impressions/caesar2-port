@@ -140,7 +140,7 @@ int running_delay1(void)
     return (int)elapsed;
 }
 
-char colour_cycle_delay1(int delay_ms)
+int colour_cycle_delay1(int delay_ms)
 {
     int now;
     int delta;
@@ -159,7 +159,7 @@ char colour_cycle_delay1(int delay_ms)
     return 1;
 }
 
-char colour_cycle_delay2(int delay_ms)
+int colour_cycle_delay2(int delay_ms)
 {
     int now;
     int delta;

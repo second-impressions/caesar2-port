@@ -2186,7 +2186,7 @@ void clear_keys(void)
 void pull_string_left(char *p, char *end);
 void push_string_right(char *start, char *end);
 void strip_fb_spaces(void);
-unsigned char to_upper(unsigned char c);
+int to_upper(unsigned char c);
 
 // Bounded byte-compare of two strings: returns 1-based index of first mismatch, or 0 if all `n`
 // bytes are equal.
@@ -2211,7 +2211,7 @@ void my_strcpy(char *src, char *dst, int n)
 // Uppercase a single ASCII letter; non-letters pass through unchanged.
 // FUNCTION: C2 0x2613e
 // FUNCTION: C2WIN 0x0044c8e5
-unsigned char to_upper(unsigned char c)
+int to_upper(unsigned char c)
 {
     if (c >= 'a' && c <= 'z')
         c -= 0x20;

@@ -2230,7 +2230,7 @@ void clear_an_area(int x1, int y1, int x2, int y2)
     stone_random_count = random_backup;
 }
 
-char affected_by_cover1(unsigned char *, int, unsigned char);
+int affected_by_cover1(unsigned char *, int, unsigned char);
 
 // Demolish a region-map rectangle while preserving protected forts and occupied army ranges.
 // FUNCTION: C2 0x695b9
@@ -3232,7 +3232,7 @@ void flag_rm_area(int x, int y, int size, char mask_byte)
 
 int get_range1(unsigned char *, int, unsigned char);
 int get_range3(unsigned char *, int, unsigned char);
-char affected_by_cover2(unsigned char *, int, unsigned char);
+int affected_by_cover2(unsigned char *, int, unsigned char);
 int get_best_lv(unsigned char *base, int bp);
 int put_city_flag(int);
 
@@ -4635,8 +4635,8 @@ void set_ew_polar(int x, int y, int sptr, unsigned char field_off, unsigned char
 
 int get_best_lv(unsigned char *base, int bp);
 unsigned char *get_ptr_to_corner(unsigned char *base_ptr, int size);
-char affected_by_cover1(unsigned char *p, int range, unsigned char mask);
-char affected_by_cover2(unsigned char *p, int range, unsigned char mask);
+int affected_by_cover1(unsigned char *p, int range, unsigned char mask);
+int affected_by_cover2(unsigned char *p, int range, unsigned char mask);
 int get_range1(unsigned char *start, int range, unsigned char mask);
 void clear_all_rm(char layer);
 
@@ -4711,7 +4711,7 @@ unsigned char *get_ptr_to_corner(unsigned char *base_ptr, int size)
 // Test whether a city building footprint has any requested education coverage.
 // FUNCTION: C2 0x6e3b5
 // FUNCTION: C2WIN 0x004accc6
-char affected_by_cover1(unsigned char *p, int range, unsigned char mask)
+int affected_by_cover1(unsigned char *p, int range, unsigned char mask)
 {
     int i;
     int j;
@@ -4730,7 +4730,7 @@ char affected_by_cover1(unsigned char *p, int range, unsigned char mask)
 // Test whether a city building footprint has any requested health coverage.
 // FUNCTION: C2 0x6e41c
 // FUNCTION: C2WIN 0x004acd6f
-char affected_by_cover2(unsigned char *p, int range, unsigned char mask)
+int affected_by_cover2(unsigned char *p, int range, unsigned char mask)
 {
     int i;
     int j;
