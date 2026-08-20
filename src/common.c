@@ -37,7 +37,7 @@ unsigned char tb_prev_flag;
 unsigned char tb_occ_a_flag;
 
 /* Forward declarations */
-char get_heading(int start_x, int start_y, int end_x, int end_y, unsigned char still_offset);
+int get_heading(int start_x, int start_y, int end_x, int end_y, unsigned char still_offset);
 void init_bd(int start_x, int start_y, int end_x, int end_y);
 unsigned char get_tb_value(int direction);
 unsigned char get_ferret2(int direction);
@@ -670,7 +670,7 @@ int get_a_shootable_unit(void)
 // Returns the eight-way heading from one point to another.
 // FUNCTION: C2 0x2b5f5
 // FUNCTION: C2WIN 0x0046ad14
-char get_heading(int start_x, int start_y, int end_x, int end_y, unsigned char still_offset)
+int get_heading(int start_x, int start_y, int end_x, int end_y, unsigned char still_offset)
 {
     char heading;
     if (start_x > end_x) {
