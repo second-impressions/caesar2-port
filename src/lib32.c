@@ -2292,7 +2292,7 @@ void strip_spaces(char *s)
 {
     int i;
     int previous_was_space = 0;
-    int len;
+    int len = 0xfa00;
 
     for (i = 0; i < 0xfa00; i++) {
         if (s[i] == 0) {
