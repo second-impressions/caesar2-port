@@ -574,6 +574,7 @@ int get_army_name_from_fort_ref(int fort_ref)
             return army_list[army_no].cohort_id;
         }
     }
+    return 0;
 }
 
 // Selects the nearest friendly field army and returns its distance.
