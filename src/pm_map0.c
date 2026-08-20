@@ -70,6 +70,9 @@ void get_pseudo_map(int direction)
     int column_idx;
 #endif
 
+    if (direction != 0 && direction != 2 &&
+        direction != 4 && direction != 6) direction = 0;
+
 #if PLATFORM_WINDOWS
     num = 0xa1;
     row_end = 0xa0;
