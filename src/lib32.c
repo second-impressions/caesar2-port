@@ -970,50 +970,11 @@ void get_video_technique(void)
 }
 #endif
 
-#if PLATFORM_WINDOWS
+// VESA BIOS diagnostics are unavailable on modern hosted platforms.
 // FUNCTION: C2WIN 0x0044b516
 void print_vesa_info(void)
 {
 }
-#else
-// Print the detected VESA mode, chipset, memory, and banking information.
-// FUNCTION: C2 0x24c7f
-void print_vesa_info(void)
-{
-    int oem_string_addr;
-
-    printf("\n--------------------------------------------------------\n");
-    if (vid_error == 1) printf("Vesa SVGA not supported by this graphics card.\n");
-    else if (vid_error == 2) printf("SVGA mode not supported by this graphics card.\n");
-    else if (vid_error == 3) printf("VESA ext bios error :- failed to set bank.\n");
-    else printf("VESA Compliant  - Video Card Information.\n");
-    printf("--------------------------------------------------------\n");
-    if (vid_error != 0) return;
-
-    oem_string_addr = (vesa_info.oem_string_seg << 4) + vesa_info.oem_string_off;
-    printf("OEM string      : %s \n", (char *)oem_string_addr);
-    printf("VESA Version    : %d.%d,",
-           ((short)vesa_info.version & 0xff00) >> 8,
-           (short)vesa_info.version & 0xff);
-    printf(" %s", chipset_names[card_is]);
-    if (card_sub_type != 0) printf(" %d chipset.\n", card_sub_type);
-    else printf(" chipset.\n");
-    printf("Video memory    : %dk \n", vid_memory);
-    printf("Attributes      : %x,%x,",
-           vesa_mode_info.win_a_attributes,
-           vesa_mode_info.win_b_attributes);
-    if (vid_tech == 0) printf("S,"); else printf("C,");
-    if (vid_bank_tech == 0) printf("S\n"); else printf("C\n");
-    printf("Granularity     : %dk with %dk size ",
-           vesa_mode_info.win_granularity,
-           vesa_mode_info.win_size);
-    printf("at  %x and %x \n",
-           vesa_mode_info.win_a_segment,
-           vesa_mode_info.win_b_segment);
-    printf("Bank function   : %x \n", bank_ptr);
-    printf("--------------------------------------------------------\n");
-}
-#endif
 
 #if PLATFORM_DOS
 
