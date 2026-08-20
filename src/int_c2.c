@@ -2726,6 +2726,8 @@ int dock_the_ship_in_good_port(int heading)
     int cell_no;
     int size;
 
+    if (heading < 0 || heading > 7) return 0;
+
     if (heading == 0)      port_ref = army_list[army_no].map_ref - 0x1e0;
     else if (heading == 1) port_ref = army_list[army_no].map_ref - 0x1d8;
     else if (heading == 2) port_ref = army_list[army_no].map_ref + 8;
