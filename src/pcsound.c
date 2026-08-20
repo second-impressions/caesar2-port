@@ -175,8 +175,6 @@ char __far *start_sequences(void)
     if (sequences_running != 0) goto done;
     if (c2inf.tunes_on == 0) goto done;
 #else
-    char __far *result;
-
     if (!sequences_running)
     if (c2inf.tunes_on) {
 #endif
@@ -205,8 +203,8 @@ done:
     ;
 #else
     }
-    return result;
 #endif
+    return 0;
 }
 
 #if PLATFORM_WINDOWS
