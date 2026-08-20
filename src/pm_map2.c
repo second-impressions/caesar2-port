@@ -693,8 +693,6 @@ void place2_a_building_base(int draw_style)
     int width;
 #else
     char bank_kind;
-    char header_high_byte;
-    int header_byte;
     int rotation_idx;
 #endif
     unsigned char *sprite_bank_ptr;
@@ -733,9 +731,9 @@ void place2_a_building_base(int draw_style)
                  + (sprite_bank_ptr[data_ptr + 5] << 8)
                  + sprite_bank_ptr[data_ptr + 4];
 #else
-    sprite_start = ((header_byte = sprite_bank_ptr[data_ptr + 5]) << 8)
-                 + (header_byte = sprite_bank_ptr[data_ptr + 4])
-                 + ((header_high_byte = sprite_bank_ptr[data_ptr + 6]) << 16);
+    sprite_start = (sprite_bank_ptr[data_ptr + 5] << 8)
+                 + sprite_bank_ptr[data_ptr + 4]
+                 + (sprite_bank_ptr[data_ptr + 6] << 16);
 #endif
     if (sprite_start > 0x4baf0) { sprite_error++; return; }
     if (sprite_start < 0) { sprite_error++; return; }
@@ -813,11 +811,6 @@ void place2_a_building_top(int draw_style)
     unsigned char qty;
     int goods_x;
     int sprite_y_off;
-#if !PLATFORM_WINDOWS
-    int header_byte;
-    int header_high_byte;
-#endif
-
 #if PLATFORM_WINDOWS
     if (map_mode > 1) mode = 0;
     else mode = map_mode;
@@ -955,10 +948,10 @@ void place2_a_building_top(int draw_style)
         sprite_height = ((&tops_data)[mode][data_ptr + 3] << 8)
                       + (&tops_data)[mode][data_ptr + 2];
 #else
-        bank = tops_data + data_ptr; sprite_start = ((header_byte = bank[5]) << 8)
-                     + (header_byte = bank[4])
-                     + ((header_high_byte = bank[6]) << 16);
-        sprite_width = (header_byte = bank[0]) + ((header_byte = bank[1]) << 8);
+        bank = tops_data + data_ptr; sprite_start = (bank[5] << 8)
+                     + bank[4]
+                     + (bank[6] << 16);
+        sprite_width = bank[0] + (bank[1] << 8);
         sprite_height = (bank[2]) + (bank[3] << 8);
 #endif
 
