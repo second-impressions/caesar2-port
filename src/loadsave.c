@@ -27,6 +27,7 @@ extern int read_userfile(const char *filename, void *buffer, int size,
 extern int writefile(const char *filename, char *buffer, int size);
 extern int write_to_file(char *filename, char *buffer, int size, int offset);
 extern int check_user_file_exists(const char *filename);
+extern void string_to_upper(char *text);
 #endif
 
 #if PLATFORM_WINDOWS
@@ -644,6 +645,9 @@ void load_a_game(void)
 #endif
             if (done != 0) {
                 get_filename_extension(filename);
+#if PLATFORM_PORTABLE
+                string_to_upper(extension);
+#endif
 #if PLATFORM_WINDOWS
                 if (_strcmpi("SAV", extension) != 0) done = 0;
 #else
