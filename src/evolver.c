@@ -2075,6 +2075,8 @@ void push_shell(int row_count)
     char running_security;
     char wall;
 
+    if (shell_push_direction < 0 || shell_push_direction >= 4)
+        shell_push_direction = 0;
     if (evolve_row == 0) {
         shell_push_direction++;
         if (shell_push_direction >= 4) shell_push_direction = 0;
