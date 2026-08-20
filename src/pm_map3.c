@@ -778,15 +778,14 @@ arrow_loop:
             direction = (unsigned char)arrow_list[arrow_a].heading - map_direction;
             if (direction < 0) direction += 8;
             subcell_x = arrow_list[arrow_a].start_x % 7; subcell_y = arrow_list[arrow_a].start_y % 7;
-            if (zoom_level == 1) {
-                x_off = arrow_xr_x_ofset[subcell_x + (map_direction / 2) * 7];
-                x_off += arrow_yr_x_ofset[subcell_y + (map_direction / 2) * 7];
-                y_off = arrow_xr_y_ofset[subcell_x + (map_direction / 2) * 7];
-                y_off += arrow_yr_y_ofset[subcell_y + (map_direction / 2) * 7];
+            x_off = arrow_xr_x_ofset[subcell_x + (map_direction / 2) * 7];
+            x_off += arrow_yr_x_ofset[subcell_y + (map_direction / 2) * 7];
+            y_off = arrow_xr_y_ofset[subcell_x + (map_direction / 2) * 7];
+            y_off += arrow_yr_y_ofset[subcell_y + (map_direction / 2) * 7];
+            if (zoom_level == 2) {
+                x_off = (x_off + 1) / 2;
+                y_off = (y_off + 1) / 2;
             }
-#if PLATFORM_WINDOWS
-            else { }
-#endif
             if      (style == 1) x_off -= 2;
             else if (style == 2) x_off += pm_diamond_half_width;
             else                 x_off += pm_diamond_half_width - pm_diamond_width;
