@@ -1,7 +1,8 @@
 #include "pump.h"
 #include "c2_data.h"
-#if PLATFORM_PORTABLE
+
 #include <stdlib.h>
+#if PLATFORM_PORTABLE
 #include <string.h>
 #endif
 
@@ -48,8 +49,6 @@ unsigned char getlen;
 
 #if !PLATFORM_PORTABLE
 extern void  memmove(void *dst, const void *src, unsigned int n);
-extern void *calloc(unsigned int nmemb, unsigned int size);
-extern void free(void *);
 #endif
 /* Forward declarations (functions defined later in this file). */
 void InsertNode(short r);
