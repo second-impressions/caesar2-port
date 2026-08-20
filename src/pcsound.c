@@ -3,12 +3,14 @@
 #if !PLATFORM_PORTABLE
 #include "smacker.h"
 #include <fcntl.h>             /* O_BINARY */
+#include <io.h>
 #endif
+#include <stdio.h>
+#include <stdlib.h>
 #if PLATFORM_DOS
 #pragma aux _ds "*"
 #endif
 #if PLATFORM_PORTABLE
-#include <stdlib.h>
 #include <string.h>
 #endif
 #if PLATFORM_DOS
@@ -20,8 +22,6 @@ static char __far *MK_FP(unsigned off, unsigned seg);
 static char __far *MK_FP(unsigned off, unsigned seg) { return 0; }
 #endif
 #if !PLATFORM_PORTABLE
-extern int open(const char *path, int flags, ...);
-extern int sprintf(char *buffer, const char *format, ...);
 extern char file_buffer[80];
 extern char cd_drive[4];
 #if PLATFORM_WINDOWS
@@ -80,11 +80,6 @@ char __far *start_sound(char *sample_data, int loop_count);
 char __far *start_tune(unsigned char *sequence_data, int sequence_num, int sequence_idx);
 void init_ss_entires(void);
 
-void free(void *p);
-
-#if !PLATFORM_PORTABLE
-extern void *malloc(unsigned int size);
-#endif
 /* Forward declarations (functions defined later in this file). */
 void stop_samples(void);
 void stop_sequences(void);

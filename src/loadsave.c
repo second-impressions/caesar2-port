@@ -1,6 +1,7 @@
 
 #if !PLATFORM_PORTABLE
 #include <fcntl.h>       /* O_BINARY: 0x200 under Watcom, 0x8000 under MSVC */
+#include <io.h>
 #if PLATFORM_WINDOWS
 #include <sys/stat.h>
 #include <string.h>
@@ -602,7 +603,6 @@ int dummy_sav;
 
 extern void font_list(int idx, int word_count, int x, int y, unsigned char *font, int color);
 
-extern int read(int fd, void *buf, unsigned int size);
 #if PLATFORM_WINDOWS
 extern void set_raw_tune_volume(void);
 #endif
