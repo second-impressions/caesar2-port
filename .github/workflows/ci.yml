@@ -1,0 +1,138 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md']
+  pull_request:
+    types: [opened, synchronize]
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Linux ────────────────────────────────────────────────────────────
+  # The Nix development shell is the single pinned toolchain definition
+  # for every non-MSVC target, so CI and a local checkout cannot drift.
+  linux:
+    name: Linux ${{ matrix.cc }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cc: gcc
+            cxx: g++
+          - cc: clang
+            cxx: clang++
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      - name: Configure
+        run: |
+          nix develop --command cmake -S . -B build/ci -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER=${{ matrix.cc }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+      - name: Build
+        run: nix develop --command cmake --build build/ci
+      - name: Test
+        # Only the Unity suite and the static layering checks run here.
+        # The recovered-flow smoke tests need original game data, which is
+        # never committed, so CTest skips them without C2_TEST_DATA_DIR.
+        run: nix develop --command ctest --test-dir build/ci --output-on-failure
+
+  # ── WebAssembly ──────────────────────────────────────────────────────
+  wasm:
+    name: WebAssembly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      - name: Build
+        # No C2_WASM_ASSET_ROOT: this proves the target compiles and links.
+        # Playable bundles are packaged per language against a local asset
+        # tree, which is never committed.
+        run: |
+          nix develop --command bash -c '
+            emcmake cmake --preset wasm-release -B build/ci-wasm &&
+            cmake --build build/ci-wasm'
+      - name: Check for Wasm signature mismatches
+        # Wasm encodes the return type and parameter list in a function
+        # signature and traps on a mismatch, unlike the original x86 ABI.
+        # A mismatch is a runtime crash, so fail the build on any.
+        run: |
+          nix develop --command bash -c '
+            emcmake cmake --preset wasm-release -B build/ci-wasm >/dev/null &&
+            cmake --build build/ci-wasm --clean-first 2>&1 | tee /tmp/wasm.log'
+          if grep -q 'function signature mismatch' /tmp/wasm.log; then
+            echo '::error::wasm-ld reported function signature mismatches'
+            grep -A2 'function signature mismatch' /tmp/wasm.log
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: caesar2-wasm
+          path: |
+            build/ci-wasm/caesar2-*.html
+            build/ci-wasm/caesar2-*.js
+            build/ci-wasm/caesar2-*.wasm
+
+  # ── Windows, cross-compiled ──────────────────────────────────────────
+  # The cheap canary: LLP64 and the Win32 headers on a Linux runner.  It
+  # does NOT replace the MSVC job — MinGW ships POSIX-ish headers that
+  # would mask exactly the CRT breakage MSVC catches.
+  windows-mingw:
+    name: Windows MinGW-w64 x64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      - name: Build
+        run: |
+          nix develop .#mingw --command bash -c '
+            cmake --preset windows-mingw-release &&
+            cmake --build --preset windows-mingw-release'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: caesar2-windows-mingw-x64
+          path: build/port/windows-mingw-release/caesar2.exe
+
+  # ── Windows, native ──────────────────────────────────────────────────
+  # The authoritative Windows build: the shipping compiler, its own CRT,
+  # and its own diagnostic set.  SDL3 comes from the pinned submodule, so
+  # this needs neither vcpkg nor a prebuilt SDL archive.
+  windows-msvc:
+    name: Windows MSVC x64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - uses: lukka/get-cmake@latest
+      - name: Configure
+        run: cmake --preset windows-msvc-release
+      - name: Build
+        run: cmake --build --preset windows-msvc-release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: caesar2-windows-msvc-x64
+          path: build/port/windows-msvc-release/caesar2.exe
