@@ -14,14 +14,14 @@
 #endif
 #include <stdlib.h>            /* free, malloc */
 #include <string.h>            /* memset */
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 #include <sys/timeb.h>         /* ftime, struct timeb */
 #else
 #include <stdio.h>             /* printf */
 #include "c2_port.h"
 #endif
 
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 extern void c2_port_exit(int status);
 #define exit c2_port_exit
 #endif
@@ -296,7 +296,7 @@ extern void write_i_right_font(unsigned char *font);
 
 char get_insert_letter(void);
 unsigned char sim_mouse(void);
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 int one_letter(unsigned char *font, unsigned char letter);
 #endif
 
@@ -377,7 +377,7 @@ void get_directory(char *pattern)
 }
 #endif /* PLATFORM_DOS */
 
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 // Switch to the CD drive and media subdirectory selected by the file extension.
 // FUNCTION: C2 0x2426e
 // FUNCTION: C2WIN 0x0044a8ae
@@ -430,7 +430,7 @@ void main_path(void)
 #endif /* PLATFORM_DOS */
     chdir(path_name);
 }
-#endif /* !PLATFORM_PORTABLE */
+#endif /* !PORT_PLATFORM */
 
 // Walk past the filename to the '.' separator and copy the 3-char extension into the global
 // `extension[]` buffer (NUL-terminated).
@@ -484,7 +484,7 @@ char get_filename_length(char *filename)
     return length;
 }
 
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 #if PLATFORM_WINDOWS
 // FUNCTION: C2WIN 0x0044abdd
 int check_file_exists(char *filename)
@@ -1271,7 +1271,7 @@ void fade_to_palette(char *p)
         get_mouse();
         if ((mouse_left_preclick || mouse_right_preclick) && !debar_fade_click) wait_limit = 0;
         delay = 0;
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
         do {
             delay += running_delay1();
             if (delay < wait_limit && !c2_port_wait_dos_clock_tick()) break;
@@ -1589,7 +1589,7 @@ void grey_a_screen(void)
     }
 }
 
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 // Wipe all four 64K mode-X memory regions.
 // FUNCTION: C2 0x25845
 void clear_all_screens(void)
@@ -2098,7 +2098,7 @@ int get_windows_key(char *key)
 }
 #endif
 
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 // Non-blocking keyboard poll.
 // FUNCTION: C2 0x26056
 // FUNCTION: C2WIN 0x0044c7aa
@@ -2987,7 +2987,7 @@ void font_list(int entry_idx, int word_count, int x, int y, unsigned char *font,
 void font_no(int value, char pad_char, char *suffix, int x,
              int y, unsigned char *font, int color)
 {
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
     char buffer[17] = "                ";
 #else
     char *buffer;
@@ -2996,7 +2996,7 @@ void font_no(int value, char pad_char, char *suffix, int x,
     char zero;
 
     zero = 0;
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
     buffer = "                ";  /* 16 spaces plus NUL */
 #endif
     if (pad_char != 0) for (i = 9; i >= 0; i--) buffer[i] = pad_char;
@@ -3181,7 +3181,7 @@ void do_delay(int n)
         for (j = 0; j < 25; j++) wvbl2();
 }
 
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 // Returns the number of milliseconds since the previous call, or 999 if the wallclock went
 // backwards (clock skew / wrap). Latches `tb.time` into the global `time_is` so the rest of the
 // engine can read it without re-calling ftime().
@@ -3284,7 +3284,7 @@ int timer(int mode)
     }
     return 0;
 }
-#endif /* !PLATFORM_PORTABLE */
+#endif /* !PORT_PLATFORM */
 
 #if PLATFORM_DOS
 
@@ -4034,7 +4034,7 @@ void start_game(void)
     start_system();
 }
 
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 // Tear-down counterpart of start_system.
 // FUNCTION: C2 0x28470
 // FUNCTION: C2WIN 0x0044ff24
@@ -4183,7 +4183,7 @@ void stop_system(void)
     if (internal_screen != 0) free(internal_screen);
 #endif
     free_scratch_buffer();
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
     internal_screen = 0;
     scratch_buffer = 0;
     stop_sounds();

@@ -2,7 +2,7 @@
 // Queued modal messages, imperial requests, and their message panels.
 #include "c2_data.h"
 #include "c2_types.h"
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
 #include "c2_observation.h"
 #endif
 
@@ -351,8 +351,8 @@ void message(int message_idx, int is_emperor, int message_param) {
     decision = 0;
     if (tutorial_mode == 0 &&
         ((message_idx != 0x56 && message_idx != 0x59) || stolen_denarii > 0)) {
-#if C2_FEAT_DEBUG_OBSERVATION
-        c2_observe(C2_OBSERVATION_MESSAGE, message_idx);
+#if PORT_FEAT_DEBUG_OBSERVATION
+        c2_observe(PORT_OBSERVATION_MESSAGE, message_idx);
 #endif
         clear_map_gfx_buffers();
         clear_battle_gfx_buffers();

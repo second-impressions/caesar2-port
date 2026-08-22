@@ -1,5 +1,5 @@
-#ifndef C2_PORT_MOUSE_H
-#define C2_PORT_MOUSE_H
+#ifndef PORT_MOUSE_H
+#define PORT_MOUSE_H
 
 struct c2_port_mouse {
     int frame_width;
@@ -30,4 +30,4 @@ void c2_port_mouse_leave(struct c2_port_mouse *mouse);
 void c2_port_mouse_get_frame_position(const struct c2_port_mouse *mouse,
                                       float *frame_x, float *frame_y);
 
-#endif /* C2_PORT_MOUSE_H */
+#endif /* PORT_MOUSE_H */

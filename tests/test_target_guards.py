@@ -4,8 +4,20 @@ Version-specific differences between the DOS release and the Windows
 build-A witness must be guarded by the target/feature macros from
 ``include/c2_target.h`` — never by raw compiler macros, which conflate
 "which compiler" with "which build of the game". Platform-specific
-compiler capabilities are selected by ``PLATFORM_*`` too. Optional fixes
-for confirmed shipped bugs are catalogued in ``include/c2_bugfixes.h``.
+compiler capabilities are selected by the platform macros too. Optional
+fixes for confirmed shipped bugs are catalogued in
+``include/c2_bugfixes.h``.
+
+Two prefixes are approved, and the split is deliberate:
+
+``PLATFORM_DOS`` / ``PLATFORM_WINDOWS`` / ``C2_FEAT_*`` / ``C2_FIX_*`` /
+``C2_PATCHLEVEL`` are shared verbatim with caesar2-reconstruction, so
+recovered code carrying them cherry-picks in both directions unchanged.
+
+``PORT_*`` names everything this repository adds for itself — host
+platforms, port features, port fixes, the observation stream. Seeing the
+prefix at a use site inside a recovered translation unit is what tells a
+reader the guard is port-added rather than recovered.
 """
 
 from __future__ import annotations
@@ -22,8 +34,12 @@ COND_RE = re.compile(r"^\s*#\s*(if|ifdef|ifndef)\b\s*(.*?)\s*$")
 
 # Conditions allowed outside c2_target.h itself.
 ALLOWED_TOKENS = re.compile(
-    r"PLATFORM_(DOS|WINDOWS|LINUX|WASM|PORTABLE)|C2_FEAT_[A-Z0-9_]+"
+    # shared with caesar2-reconstruction — never rename these
+    r"PLATFORM_(DOS|WINDOWS)|C2_FEAT_[A-Z0-9_]+"
     r"|C2_FIX_[A-Z0-9_]+|C2_PATCHLEVEL"
+    # added by the port
+    r"|PORT_PLATFORM(_(LINUX|WIN32|WASM))?"
+    r"|PORT_(FEAT|FIX|ENABLE|DEBUG)_[A-Z0-9_]+"
     r"|S_IRUSR"              # portable stat-mode fallback
     r"|\w+_H\b"              # include guards
 )
@@ -110,8 +126,8 @@ def test_bugfixes_default_to_the_portable_target_only():
     defined = set(re.findall(r"#\s*define\s+(C2_FIX_\w+)", text))
     for name in defined:
         assert re.search(
-            rf"#\s*define\s+{name}\s+PLATFORM_PORTABLE\b", text
-        ), f"{name} does not default to PLATFORM_PORTABLE"
+            rf"#\s*define\s+{name}\s+PORT_PLATFORM\b", text
+        ), f"{name} does not default to PORT_PLATFORM"
 
 
 def test_portable_target_keeps_the_recovered_software_menus():
@@ -127,5 +143,5 @@ def test_portable_target_keeps_the_recovered_software_menus():
 def test_wasm_is_a_platform_target_not_a_feature():
     """Browser scheduling follows the Wasm leaf target."""
     text = TARGET_HEADER.read_text()
-    assert "PLATFORM_WASM" in text
+    assert "PORT_PLATFORM_WASM" in text
     assert "C2_FEAT_BROWSER_RUNTIME" not in text

@@ -136,7 +136,7 @@ On the original hardware this was a CPU/video-throughput cosmetic hold, not
 part of the file operation and not a duration expressed in time. Applying the
 portable 60 Hz frame policy to it would manufacture a roughly 16.7-second
 delay. Loading has the same construct with 200 frames after the complete read,
-which would become about 3.3 seconds. `C2_FEAT_POST_FILE_BUSY_WAIT` retains both
+which would become about 3.3 seconds. `PORT_FEAT_POST_FILE_BUSY_WAIT` retains both
 loops for the shipped targets and removes them from the portable target. Each
 message is presented once before synchronous I/O and the dialog continues as
 soon as that operation finishes.

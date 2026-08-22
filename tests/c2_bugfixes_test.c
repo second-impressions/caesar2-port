@@ -10,7 +10,7 @@ static void test_help_smart_punctuation(void)
 
     c2_fix_help_text(text, sizeof(text));
 
-#if C2_FIX_HELP_SMART_PUNCTUATION
+#if PORT_FIX_HELP_SMART_PUNCTUATION
     TEST_ASSERT_TRUE(text[4] == '\'');
     TEST_ASSERT_TRUE(text[10] == '\'');
     TEST_ASSERT_TRUE(text[15] == '-');
@@ -38,7 +38,7 @@ static void test_player_name_padding(void)
     c2_fix_player_name_padding(embedded_space, sizeof(embedded_space));
     c2_fix_player_name_padding(empty, sizeof(empty));
 
-#if C2_FIX_PLAYER_NAME_PADDING
+#if PORT_FIX_PLAYER_NAME_PADDING
     TEST_ASSERT_EQUAL_STRING("Octavian", padded);
     TEST_ASSERT_EQUAL_STRING("Marcus Aurelius", embedded_space);
     TEST_ASSERT_EQUAL_STRING("", empty);

@@ -1,5 +1,5 @@
-#ifndef C2_PORT_MILES_BANK_H
-#define C2_PORT_MILES_BANK_H
+#ifndef PORT_MILES_BANK_H
+#define PORT_MILES_BANK_H
 
 #include <stddef.h>
 

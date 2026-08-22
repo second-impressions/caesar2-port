@@ -1,9 +1,9 @@
 #include "c2_data.h"
 #include "c2_types.h"
-#if C2_FEAT_TEXT_ASSET_COMPAT
+#if PORT_FEAT_TEXT_ASSET_COMPAT
 #include "c2_text_compat.h"
 #endif
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
 #include "c2_observation.h"
 #endif
 
@@ -256,8 +256,8 @@ void main_game_loop(void)
     int loops;
     int i;
 
-#if C2_FEAT_DEBUG_OBSERVATION
-    c2_observe(C2_OBSERVATION_CITY_LOOP, 0);
+#if PORT_FEAT_DEBUG_OBSERVATION
+    c2_observe(PORT_OBSERVATION_CITY_LOOP, 0);
 #endif
 
     cycle_count++;
@@ -1055,8 +1055,8 @@ void exit_game_loop(void)
 // FUNCTION: C2WIN 0x0041108e
 void skill1_game_loop(void)
 {
-#if C2_FEAT_DEBUG_OBSERVATION
-    c2_observe(C2_OBSERVATION_SKILL_SELECTION, 0);
+#if PORT_FEAT_DEBUG_OBSERVATION
+    c2_observe(PORT_OBSERVATION_SKILL_SELECTION, 0);
 #endif
     gloop_start();
     show_buttons(0x50, 0x50, skill1_buttons, 4);
@@ -1070,14 +1070,14 @@ void skill1_game_loop(void)
 // FUNCTION: C2WIN 0x004110c9
 void skill2_game_loop(void)
 {
-#if C2_FEAT_TEXT_ASSET_COMPAT
+#if PORT_FEAT_TEXT_ASSET_COMPAT
     int button_count;
 #endif
 
-#if C2_FEAT_DEBUG_OBSERVATION
-    c2_observe(C2_OBSERVATION_SKILL_DETAILS, c2inf.peace_mode);
+#if PORT_FEAT_DEBUG_OBSERVATION
+    c2_observe(PORT_OBSERVATION_SKILL_DETAILS, c2inf.peace_mode);
 #endif
-#if C2_FEAT_TEXT_ASSET_COMPAT
+#if PORT_FEAT_TEXT_ASSET_COMPAT
     button_count = c2_text_has_new_game_cancel() ? 6 : 5;
 #endif
     gloop_start();
@@ -1089,13 +1089,13 @@ void skill2_game_loop(void)
         gen_refresh2 = 0;
         show_peace_level();
     }
-#if C2_FEAT_TEXT_ASSET_COMPAT
+#if PORT_FEAT_TEXT_ASSET_COMPAT
     show_buttons(0x50, 0x50, skill2_buttons, button_count);
 #else
     show_buttons(0x50, 0x50, skill2_buttons, 6);
 #endif
     gloop_end();
-#if C2_FEAT_TEXT_ASSET_COMPAT
+#if PORT_FEAT_TEXT_ASSET_COMPAT
     control_buttons(0x50, 0x50, skill2_buttons, button_count);
 #else
     control_buttons(0x50, 0x50, skill2_buttons, 6);
@@ -1117,8 +1117,8 @@ void initreg_game_loop(void)
     gloop_start();
     if (out2 == 0) {
         get_region_over();
-#if C2_FEAT_DEBUG_OBSERVATION
-        c2_observe(C2_OBSERVATION_PROVINCE_SELECTION, region_over);
+#if PORT_FEAT_DEBUG_OBSERVATION
+        c2_observe(PORT_OBSERVATION_PROVINCE_SELECTION, region_over);
 #endif
         show_empire_top_slab();
         if (region_over != 0) {
@@ -1143,7 +1143,7 @@ void initreg_game_loop(void)
             if (decision == 1) {
                 out2 = 0x64;
                 province_is = region_over - 1;
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
                 province_difficulty = provincial_difficulty[region_over - 1];
 #else
                 province_difficulty = empire_region_order[region_over + 10];
@@ -1175,8 +1175,8 @@ void new_name_game_loop(void)
     int field_y;
 #endif
 
-#if C2_FEAT_DEBUG_OBSERVATION
-    c2_observe(C2_OBSERVATION_NAME_ENTRY, this_letter);
+#if PORT_FEAT_DEBUG_OBSERVATION
+    c2_observe(PORT_OBSERVATION_NAME_ENTRY, this_letter);
 #endif
     hold_hot_keys = 1;
     gloop_start();

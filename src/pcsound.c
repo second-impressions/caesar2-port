@@ -1,6 +1,6 @@
 #include "pcsound.h"
 #include "c2_data.h"
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 #include "smacker.h"
 #include <fcntl.h>             /* O_BINARY */
 #include <io.h>
@@ -10,7 +10,7 @@
 #if PLATFORM_DOS
 #pragma aux _ds "*"
 #endif
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 #include <string.h>
 #endif
 #if PLATFORM_DOS
@@ -18,10 +18,10 @@ char __far *MK_FP(int off, int seg);
 #pragma aux MK_FP = parm [eax] [edx] value [dx eax];
 #elif PLATFORM_WINDOWS
 static char __far *MK_FP(unsigned off, unsigned seg);
-#elif PLATFORM_PORTABLE
+#elif PORT_PLATFORM
 static char __far *MK_FP(unsigned off, unsigned seg) { return 0; }
 #endif
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 extern char file_buffer[80];
 extern char cd_drive[4];
 #if PLATFORM_WINDOWS
@@ -50,7 +50,7 @@ int tune2;
 int dig_status;
 char positive_buffer[532];
 int samples_running;
-unsigned char tune_buffer[C2_TUNE_BUFFER_SIZE];
+unsigned char tune_buffer[PORT_TUNE_BUFFER_SIZE];
 int db_handle;
 int db_playing;
 char *db_file;
@@ -427,7 +427,7 @@ void neg_sound(void)
     AIL_start_sample(S_dig[ds]);
 }
 
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 // Refill the next available half of an AIL double-buffered sample stream.
 // FUNCTION: C2 0x11fb9
 void serve_sample(int sample_handle, unsigned char **buffers, int buffer_size)
@@ -480,7 +480,7 @@ void set_db_sound(unsigned char *filename)
 }
 #endif
 
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 // Refill the active speech stream and close it after playback finishes.
 // FUNCTION: C2 0x1211e
 // FUNCTION: C2WIN 0x00401da8
@@ -504,7 +504,7 @@ void continue_db(void)
 }
 #endif
 
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 // Stop the active speech stream and close its file.
 // FUNCTION: C2 0x121a9
 // FUNCTION: C2WIN 0x00401e49
@@ -526,7 +526,7 @@ void stop_db(void)
 }
 #endif
 
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 // Toggle pause state for the active speech stream.
 // FUNCTION: C2 0x121fa
 // FUNCTION: C2WIN 0x00401ec1
@@ -553,7 +553,7 @@ void play_tune(unsigned char *filename, int loop_count)
     if (c2inf.tunes_on == 0) return;
     if (sequences_running == 0) return;
     if (*filename == 0) return;
-    if (readfile(filename, tune_buffer, C2_TUNE_BUFFER_SIZE, 0) == 0) return;
+    if (readfile(filename, tune_buffer, PORT_TUNE_BUFFER_SIZE, 0) == 0) return;
     start_tune(tune_buffer, 0, loop_count);
 }
 
@@ -764,7 +764,7 @@ int check_old_sslots(char *filename)
     return 0;
 }
 
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 // Connect Smacker audio playback to the active AIL digital driver.
 // FUNCTION: C2 0x12a25
 // FUNCTION: C2WIN 0x00402abd

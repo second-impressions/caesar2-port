@@ -5,7 +5,7 @@
 
 /* Shared structs/macros (figure_list, city_map, ...). */
 #include "c2_types.h"
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 #include "c2_asm_routines.h"
 #endif
 

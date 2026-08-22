@@ -3,7 +3,7 @@
 #include <stdlib.h>     /* exit   */
 
 #include "c2_data.h"
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 extern void c2_port_exit(int status);
 #define exit c2_port_exit
 #endif
@@ -574,7 +574,7 @@ void do_vga_smacked_anim(char *filename)
     int smk_height;
 #endif
 
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
     black_out();
     clear_a_screen();
 #else
@@ -630,7 +630,7 @@ void do_vga_smacked_anim(char *filename)
     stop_smacking();
 finish_smacking:
     black_out();
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
     clear_a_screen();
 #else
     clear_all_screens();

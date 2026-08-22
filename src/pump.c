@@ -2,7 +2,7 @@
 #include "c2_data.h"
 
 #include <stdlib.h>
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 #include <string.h>
 #endif
 
@@ -47,7 +47,7 @@ unsigned char getlen;
 #define R           (T - 1)
 #define MAX_FREQ    0x8000
 
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 extern void  memmove(void *dst, const void *src, unsigned int n);
 #endif
 /* Forward declarations (functions defined later in this file). */

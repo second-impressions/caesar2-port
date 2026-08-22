@@ -111,10 +111,10 @@ void change_house(int tier_idx, int footprint_size, int orientation);
 void pad_house_with_domus(int previous_size);
 void reduce_villa_to_domus(unsigned char *cell_ptr);
 void remove_house(void);
-#if PLATFORM_WINDOWS || PLATFORM_PORTABLE
+#if PLATFORM_WINDOWS || PORT_PLATFORM
 void evolve_a_plaza(signed char land_value, signed char old_kind, int cell_x);
 #endif
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 int put_out_a(char citizen_kind, char cell_x, char cell_y, char unused,
               char start_idx, char end_idx, char mode);
 #endif
@@ -505,7 +505,7 @@ void evolve_security_cover(int row_count)
 int put_out_a(char, char, char, char, char, char, char);
 int devolve_a_house();
 int find_enemy();
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 int get_reg_buildings_in_radius(int x, int y, int span, int radius,
                                 unsigned char building_kind);
 #else

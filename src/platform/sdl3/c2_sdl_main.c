@@ -9,15 +9,15 @@
 #include "c2_host.h"
 #include "c2_port.h"
 #include "c2_port_app.h"
-#if C2_FEAT_DEBUG_CRASH_HANDLER
+#if PORT_FEAT_DEBUG_CRASH_HANDLER
 #include "c2_debug_crash.h"
 #endif
 #include "c2_sdl_host.h"
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
 #include "c2_sdl_smoke.h"
 #endif
 
-#if PLATFORM_WASM
+#if PORT_PLATFORM_WASM
 extern void c2_browser_show_restart(void);
 #endif
 
@@ -29,7 +29,7 @@ struct c2_sdl_app {
     SDL_AtomicInt engine_result;
     struct c2_port_app_config engine_config;
     char *default_user_data_root;
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
     struct c2_sdl_smoke smoke;
     int smoke_failed;
 #endif
@@ -68,7 +68,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
             *mouse_lock = 1;
         } else if (strcmp(argv[i], "--no-mouse-lock") == 0) {
             *mouse_lock = 0;
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
         } else if (strcmp(argv[i], "--smoke-test") == 0) {
             *headless = 1;
             *smoke_kind = C2_SDL_SMOKE_PROVINCE_SELECTION;
@@ -96,7 +96,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
         } else if (strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
             *screenshot_filename = argv[++i];
         } else {
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
             fprintf(stderr,
                     "usage: %s [--headless] [--asset-root PATH] "
                     "[--user-data-dir PATH] [--screenshot FILE] "
@@ -142,10 +142,10 @@ static int engine_main(void *data)
 
 static SDL_AppResult to_sdl_result(int result)
 {
-    if (result == C2_PORT_APP_SUCCESS) {
+    if (result == PORT_APP_SUCCESS) {
         return SDL_APP_SUCCESS;
     }
-    if (result == C2_PORT_APP_FAILURE) {
+    if (result == PORT_APP_FAILURE) {
         return SDL_APP_FAILURE;
     }
     return SDL_APP_CONTINUE;
@@ -185,7 +185,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
      */
     SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, C2_HOST_ACTIVE_CALLBACK_RATE);
     c2_app.host_interactive = -1;
-#if C2_FEAT_DEBUG_CRASH_HANDLER
+#if PORT_FEAT_DEBUG_CRASH_HANDLER
     if (!c2_debug_install_crash_handlers()) {
         fprintf(stderr, "warning: could not install debug crash handlers\n");
     }
@@ -206,7 +206,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     host_config.window_scale = 2;
     host_config.headless = headless;
     host_config.mouse_lock = mouse_lock;
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
     host_config.enable_observation = smoke_kind != C2_SDL_SMOKE_NONE;
 #endif
     if (!c2_host_init(&host_config)) {
@@ -218,12 +218,12 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     update_host_callback_rate(&c2_app);
 
     c2_app.engine_config.screenshot_filename = screenshot_filename;
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
     c2_sdl_smoke_init(&c2_app.smoke, smoke_kind, SDL_GetTicks());
 #else
     (void)smoke_kind;
 #endif
-    SDL_SetAtomicInt(&c2_app.engine_result, C2_PORT_APP_CONTINUE);
+    SDL_SetAtomicInt(&c2_app.engine_result, PORT_APP_CONTINUE);
     c2_app.engine_thread = SDL_CreateThread(engine_main, "caesar2-engine", &c2_app);
     if (c2_app.engine_thread == NULL) {
         fprintf(stderr, "could not start the Caesar II engine: %s\n", SDL_GetError());
@@ -248,7 +248,7 @@ SDL_AppResult SDL_AppIterate(void *appstate)
     int result;
 
     app = appstate;
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
     if (app->smoke.kind != C2_SDL_SMOKE_NONE) {
         enum c2_sdl_smoke_result smoke_result;
 
@@ -261,11 +261,11 @@ SDL_AppResult SDL_AppIterate(void *appstate)
     }
 #endif
     result = SDL_GetAtomicInt(&app->engine_result);
-    if (result != C2_PORT_APP_CONTINUE) {
-#if C2_FEAT_DEBUG_OBSERVATION
+    if (result != PORT_APP_CONTINUE) {
+#if PORT_FEAT_DEBUG_OBSERVATION
         if (app->smoke_failed) return SDL_APP_FAILURE;
 #endif
-#if PLATFORM_WASM
+#if PORT_PLATFORM_WASM
         if (to_sdl_result(result) == SDL_APP_SUCCESS) {
             c2_browser_show_restart();
         }

@@ -135,7 +135,7 @@ static void drive_name_entry(struct c2_sdl_smoke *smoke, Uint64 now,
 {
     size_t length;
 
-    if (!observation_is(observation, C2_OBSERVATION_NAME_ENTRY)) return;
+    if (!observation_is(observation, PORT_OBSERVATION_NAME_ENTRY)) return;
     if (smoke->name_phase == NAME_SMOKE_WAIT_FOR_ENTRY) {
         length = strlen(observation->player_name);
         if (length != 0 && observation->player_name[length - 1] == ' ') {
@@ -180,7 +180,7 @@ static void drive_file_entry(struct c2_sdl_smoke *smoke, Uint64 now,
     size_t length;
     size_t prefix_length;
 
-    if (!observation_is(observation, C2_OBSERVATION_FILE_DIALOG)) return;
+    if (!observation_is(observation, PORT_OBSERVATION_FILE_DIALOG)) return;
     if (smoke->file_phase == FILE_SMOKE_CLEAR) {
         if (strcmp(observation->filename, smoke_save_name) == 0) {
             smoke->file_phase = FILE_SMOKE_SUBMIT;
@@ -244,11 +244,11 @@ static enum c2_sdl_smoke_result drive_tutorial(
     struct c2_sdl_smoke *smoke, Uint64 now,
     const struct c2_observation *observation)
 {
-    if (observation_is(observation, C2_OBSERVATION_STARTUP)) {
+    if (observation_is(observation, PORT_OBSERVATION_STARTUP)) {
         click_mouse(smoke, now, 10, 10, C2_HOST_MOUSE_LEFT);
         return C2_SDL_SMOKE_RUNNING;
     }
-    if (observation_is(observation, C2_OBSERVATION_SKILL_SELECTION)) {
+    if (observation_is(observation, PORT_OBSERVATION_SKILL_SELECTION)) {
         if (smoke->tutorial_confirmation_seen) {
             if (smoke->tutorial_pages_seen == 0) {
                 fprintf(stderr, "tutorial returned without displaying a page\n");
@@ -263,7 +263,7 @@ static enum c2_sdl_smoke_result drive_tutorial(
         }
         return C2_SDL_SMOKE_RUNNING;
     }
-    if (observation_is(observation, C2_OBSERVATION_TUTORIAL_PAGE)) {
+    if (observation_is(observation, PORT_OBSERVATION_TUTORIAL_PAGE)) {
         if (observation->detail != smoke->last_tutorial_page) {
             if (observation->detail < smoke->last_tutorial_page) {
                 fprintf(stderr, "tutorial page order moved backward from %d to %d\n",
@@ -277,12 +277,12 @@ static enum c2_sdl_smoke_result drive_tutorial(
                     C2_HOST_MOUSE_LEFT);
         return C2_SDL_SMOKE_RUNNING;
     }
-    if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
+    if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP) &&
         observation->tutorial_mode) {
         press_key(smoke, now, C2_HOST_KEY_ESCAPE);
         return C2_SDL_SMOKE_RUNNING;
     }
-    if (observation_is(observation, C2_OBSERVATION_CONFIRMATION) &&
+    if (observation_is(observation, PORT_OBSERVATION_CONFIRMATION) &&
         observation->detail == 0x0e) {
         smoke->tutorial_confirmation_seen = 1;
         type_character(smoke, now, 'n');
@@ -303,12 +303,12 @@ static enum c2_sdl_smoke_result drive_save_load(
     struct c2_sdl_smoke *smoke, Uint64 now,
     const struct c2_observation *observation)
 {
-    if (observation_is(observation, C2_OBSERVATION_MESSAGE)) {
+    if (observation_is(observation, PORT_OBSERVATION_MESSAGE)) {
         smoke->city_quiet_since = now;
         click_mouse(smoke, now, 0, 479, C2_HOST_MOUSE_RIGHT);
         return C2_SDL_SMOKE_RUNNING;
     }
-    if (observation_is(observation, C2_OBSERVATION_CONFIRMATION) &&
+    if (observation_is(observation, PORT_OBSERVATION_CONFIRMATION) &&
         observation->detail == 2) {
         type_character(smoke, now, 'y');
         return C2_SDL_SMOKE_RUNNING;
@@ -316,31 +316,31 @@ static enum c2_sdl_smoke_result drive_save_load(
 
     switch (smoke->phase) {
     case SAVE_LOAD_WAIT_FOR_CITY:
-        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP)) {
+        if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP)) {
             smoke->city_quiet_since = now;
             smoke->phase = SAVE_LOAD_SETTLE;
         }
         break;
     case SAVE_LOAD_SETTLE:
-        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
+        if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP) &&
             now - smoke->city_quiet_since >= 300 &&
             press_key(smoke, now, C2_HOST_KEY_F5)) {
             smoke->phase = SAVE_LOAD_OPEN_SAVE;
         }
         break;
     case SAVE_LOAD_OPEN_SAVE:
-        if (observation_is(observation, C2_OBSERVATION_FILE_DIALOG) &&
+        if (observation_is(observation, PORT_OBSERVATION_FILE_DIALOG) &&
             observation->detail == 0x29) {
             drive_file_entry(smoke, now, observation);
             smoke->phase = SAVE_LOAD_WAIT_FOR_SAVE;
         }
         break;
     case SAVE_LOAD_WAIT_FOR_SAVE:
-        if (observation_is(observation, C2_OBSERVATION_FILE_DIALOG) &&
+        if (observation_is(observation, PORT_OBSERVATION_FILE_DIALOG) &&
             observation->detail == 0x29) {
             drive_file_entry(smoke, now, observation);
         } else if (observation_is(observation,
-                                  C2_OBSERVATION_SAVE_COMPLETE)) {
+                                  PORT_OBSERVATION_SAVE_COMPLETE)) {
             if (SDL_strcasecmp(observation->filename, smoke_save_name) != 0 ||
                 !c2_host_user_file_exists(smoke_save_name)) {
                 fprintf(stderr,
@@ -358,35 +358,35 @@ static enum c2_sdl_smoke_result drive_save_load(
         }
         break;
     case SAVE_LOAD_MUTATE:
-        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
+        if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP) &&
             type_character(smoke, now, '-')) {
             smoke->phase = SAVE_LOAD_WAIT_FOR_MUTATION;
         }
         break;
     case SAVE_LOAD_WAIT_FOR_MUTATION:
-        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
+        if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP) &&
             observation->zoom_level != smoke->saved_zoom) {
             if (press_key(smoke, now, C2_HOST_KEY_F4)) {
                 smoke->phase = SAVE_LOAD_OPEN_LOAD;
             }
-        } else if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
+        } else if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP) &&
                    now - smoke->last_input >= 250) {
             type_character(smoke, now, '-');
         }
         break;
     case SAVE_LOAD_OPEN_LOAD:
-        if (observation_is(observation, C2_OBSERVATION_FILE_DIALOG) &&
+        if (observation_is(observation, PORT_OBSERVATION_FILE_DIALOG) &&
             observation->detail == 0x28) {
             drive_file_entry(smoke, now, observation);
             smoke->phase = SAVE_LOAD_WAIT_FOR_LOAD;
         }
         break;
     case SAVE_LOAD_WAIT_FOR_LOAD:
-        if (observation_is(observation, C2_OBSERVATION_FILE_DIALOG) &&
+        if (observation_is(observation, PORT_OBSERVATION_FILE_DIALOG) &&
             observation->detail == 0x28) {
             drive_file_entry(smoke, now, observation);
         } else if (observation_is(observation,
-                                  C2_OBSERVATION_LOAD_COMPLETE)) {
+                                  PORT_OBSERVATION_LOAD_COMPLETE)) {
             if (!saved_view_matches(smoke, observation)) {
                 fprintf(stderr,
                         "loaded view differs: province %d/%d zoom %d/%d "
@@ -401,7 +401,7 @@ static enum c2_sdl_smoke_result drive_save_load(
         }
         break;
     case SAVE_LOAD_WAIT_FOR_LOADED_CITY:
-        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP)) {
+        if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP)) {
             if (observation->province != smoke->saved_province ||
                 observation->zoom_level != smoke->saved_zoom) {
                 fprintf(stderr, "loaded game entered with the wrong view state\n");
@@ -419,12 +419,12 @@ static enum c2_sdl_smoke_result drive_save_load(
 static void drive_startup(struct c2_sdl_smoke *smoke, Uint64 now,
                           const struct c2_observation *observation)
 {
-    if (observation_is(observation, C2_OBSERVATION_STARTUP)) {
+    if (observation_is(observation, PORT_OBSERVATION_STARTUP)) {
         click_mouse(smoke, now, 10, 10, C2_HOST_MOUSE_LEFT);
     } else if (observation_is(observation,
-                              C2_OBSERVATION_SKILL_SELECTION)) {
+                              PORT_OBSERVATION_SKILL_SELECTION)) {
         click_mouse(smoke, now, 410, 195, C2_HOST_MOUSE_LEFT);
-    } else if (observation_is(observation, C2_OBSERVATION_SKILL_DETAILS)) {
+    } else if (observation_is(observation, PORT_OBSERVATION_SKILL_DETAILS)) {
         if (smoke->name_phase == NAME_SMOKE_NOT_STARTED) {
             if (click_mouse(smoke, now, NAME_BUTTON_X, NAME_BUTTON_Y,
                             C2_HOST_MOUSE_LEFT)) {
@@ -445,7 +445,7 @@ static void drive_startup(struct c2_sdl_smoke *smoke, Uint64 now,
             click_mouse(smoke, now, 280, 345, C2_HOST_MOUSE_LEFT);
         }
     } else if (observation_is(observation,
-                              C2_OBSERVATION_PROVINCE_INTRO)) {
+                              PORT_OBSERVATION_PROVINCE_INTRO)) {
         click_mouse(smoke, now, 10, 10, C2_HOST_MOUSE_RIGHT);
     }
 }
@@ -455,7 +455,7 @@ static void drive_province_selection(
     const struct c2_observation *observation)
 {
     if (!observation_is(observation,
-                        C2_OBSERVATION_PROVINCE_SELECTION)) return;
+                        PORT_OBSERVATION_PROVINCE_SELECTION)) return;
     if (observation->detail == CAMPANIA_REGION) {
         click_mouse(smoke, now, CAMPANIA_X, CAMPANIA_Y,
                     C2_HOST_MOUSE_LEFT);
@@ -474,13 +474,13 @@ static int city_menu_bar_is_valid(
     int i;
 
     if ((observation->reached &
-         (UINT64_C(1) << C2_OBSERVATION_MENU_BAR)) == 0) {
+         (UINT64_C(1) << PORT_OBSERVATION_MENU_BAR)) == 0) {
         fprintf(stderr, "city menu bar was not rendered\n");
         return 0;
     }
-    if (observation->menu_count != C2_OBSERVATION_MENU_LIMIT) {
+    if (observation->menu_count != PORT_OBSERVATION_MENU_LIMIT) {
         fprintf(stderr, "city menu bar has %d entries instead of %d\n",
-                observation->menu_count, C2_OBSERVATION_MENU_LIMIT);
+                observation->menu_count, PORT_OBSERVATION_MENU_LIMIT);
         return 0;
     }
     for (i = 0; i < observation->menu_count; i++) {
@@ -526,7 +526,7 @@ static enum c2_sdl_smoke_result drive_city(
     struct c2_sdl_smoke *smoke, Uint64 now,
     const struct c2_observation *observation)
 {
-    if (observation_is(observation, C2_OBSERVATION_MESSAGE)) {
+    if (observation_is(observation, PORT_OBSERVATION_MESSAGE)) {
         smoke->city_quiet_since = now;
         click_mouse(smoke, now, 0, 479, C2_HOST_MOUSE_RIGHT);
         return C2_SDL_SMOKE_RUNNING;
@@ -534,9 +534,9 @@ static enum c2_sdl_smoke_result drive_city(
 
     switch (smoke->phase) {
     case CITY_SMOKE_WAIT_FOR_CITY:
-        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP)) {
+        if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP)) {
             if ((observation->reached &
-                 (UINT64_C(1) << C2_OBSERVATION_PROVINCE_INITIALIZED)) == 0) {
+                 (UINT64_C(1) << PORT_OBSERVATION_PROVINCE_INITIALIZED)) == 0) {
                 fprintf(stderr,
                         "city loop reached without province initialization "
                         "observation\n");
@@ -557,7 +557,7 @@ static enum c2_sdl_smoke_result drive_city(
         }
         break;
     case CITY_SMOKE_SETTLE:
-        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
+        if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP) &&
             now - smoke->city_quiet_since >= 300) {
             if (!city_menu_bar_is_valid(observation)) {
                 return C2_SDL_SMOKE_FAILURE;
@@ -568,7 +568,7 @@ static enum c2_sdl_smoke_result drive_city(
         }
         break;
     case CITY_SMOKE_OPEN_FILE_MENU:
-        if (observation_is(observation, C2_OBSERVATION_MENU_ITEMS)) {
+        if (observation_is(observation, PORT_OBSERVATION_MENU_ITEMS)) {
             if (!menu_items_match(observation, 1, 4)) {
                 return C2_SDL_SMOKE_FAILURE;
             }
@@ -577,19 +577,19 @@ static enum c2_sdl_smoke_result drive_city(
                 smoke->phase = CITY_SMOKE_CLOSE_FILE_MENU;
             }
         } else if (observation_is(observation,
-                                  C2_OBSERVATION_CITY_LOOP) &&
+                                  PORT_OBSERVATION_CITY_LOOP) &&
                    now - smoke->last_input >= 250) {
             click_city_menu(smoke, now, observation, 0);
         }
         break;
     case CITY_SMOKE_CLOSE_FILE_MENU:
-        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
+        if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP) &&
             click_city_menu(smoke, now, observation, 1)) {
             smoke->phase = CITY_SMOKE_OPEN_OPTIONS_MENU;
         }
         break;
     case CITY_SMOKE_OPEN_OPTIONS_MENU:
-        if (observation_is(observation, C2_OBSERVATION_MENU_ITEMS)) {
+        if (observation_is(observation, PORT_OBSERVATION_MENU_ITEMS)) {
             if (!menu_items_match(observation, 2, 5)) {
                 return C2_SDL_SMOKE_FAILURE;
             }
@@ -598,34 +598,34 @@ static enum c2_sdl_smoke_result drive_city(
                 smoke->phase = CITY_SMOKE_CLOSE_OPTIONS_MENU;
             }
         } else if (observation_is(observation,
-                                  C2_OBSERVATION_CITY_LOOP) &&
+                                  PORT_OBSERVATION_CITY_LOOP) &&
                    now - smoke->last_input >= 250) {
             click_city_menu(smoke, now, observation, 1);
         }
         break;
     case CITY_SMOKE_CLOSE_OPTIONS_MENU:
-        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
+        if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP) &&
             type_character(smoke, now, 'p')) {
             smoke->phase = CITY_SMOKE_PAUSE;
         }
         break;
     case CITY_SMOKE_PAUSE:
-        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
+        if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP) &&
             observation->paused) {
             if (type_character(smoke, now, 'p')) {
                 smoke->phase = CITY_SMOKE_UNPAUSE;
             }
         } else if (observation_is(observation,
-                                  C2_OBSERVATION_CITY_LOOP) &&
+                                  PORT_OBSERVATION_CITY_LOOP) &&
                    now - smoke->last_input >= 250) {
             type_character(smoke, now, 'p');
         }
         break;
     case CITY_SMOKE_UNPAUSE:
-        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
+        if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP) &&
             !observation->paused) {
             smoke->initial_map_x = observation->map_x;
-#if C2_FEAT_ARROW_KEY_SCROLL
+#if PORT_FEAT_ARROW_KEY_SCROLL
             c2_sdl_host_set_headless_arrow_keys(C2_HOST_ARROW_LEFT);
 #else
             c2_sdl_host_set_headless_mouse(0, 240, 0);
@@ -635,15 +635,15 @@ static enum c2_sdl_smoke_result drive_city(
             smoke->last_input = now;
             smoke->phase = CITY_SMOKE_PAN;
         } else if (observation_is(observation,
-                                  C2_OBSERVATION_CITY_LOOP) &&
+                                  PORT_OBSERVATION_CITY_LOOP) &&
                    now - smoke->last_input >= 250) {
             type_character(smoke, now, 'p');
         }
         break;
     case CITY_SMOKE_PAN:
-        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
+        if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP) &&
             observation->map_x != smoke->initial_map_x) {
-#if C2_FEAT_ARROW_KEY_SCROLL
+#if PORT_FEAT_ARROW_KEY_SCROLL
             c2_sdl_host_set_headless_arrow_keys(0);
 #else
             c2_sdl_host_set_headless_mouse(320, 240, 0);
@@ -657,35 +657,35 @@ static enum c2_sdl_smoke_result drive_city(
         }
         break;
     case CITY_SMOKE_ZOOM:
-        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
+        if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP) &&
             observation->zoom_level != smoke->initial_zoom) {
             if (click_mouse(smoke, now, CITY_FORUM_ICON_X,
                             CITY_FORUM_ICON_Y, C2_HOST_MOUSE_LEFT)) {
                 smoke->phase = CITY_SMOKE_OPEN_FORUM;
             }
         } else if (observation_is(observation,
-                                  C2_OBSERVATION_CITY_LOOP) &&
+                                  PORT_OBSERVATION_CITY_LOOP) &&
                    now - smoke->last_input >= 250) {
             type_character(smoke, now, '-');
         }
         break;
     case CITY_SMOKE_OPEN_FORUM:
-        if (observation_is(observation, C2_OBSERVATION_FORUM)) {
+        if (observation_is(observation, PORT_OBSERVATION_FORUM)) {
             if (click_mouse(smoke, now, 10, 10,
                             C2_HOST_MOUSE_RIGHT)) {
                 smoke->phase = CITY_SMOKE_CLOSE_FORUM;
             }
         } else if (observation_is(observation,
-                                  C2_OBSERVATION_CITY_LOOP) &&
+                                  PORT_OBSERVATION_CITY_LOOP) &&
                    now - smoke->last_input >= 250) {
             click_mouse(smoke, now, CITY_FORUM_ICON_X,
                         CITY_FORUM_ICON_Y, C2_HOST_MOUSE_LEFT);
         }
         break;
     case CITY_SMOKE_CLOSE_FORUM:
-        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP)) {
+        if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP)) {
             smoke->phase = CITY_SMOKE_DONE;
-        } else if (observation_is(observation, C2_OBSERVATION_FORUM)) {
+        } else if (observation_is(observation, PORT_OBSERVATION_FORUM)) {
             click_mouse(smoke, now, 10, 10, C2_HOST_MOUSE_RIGHT);
         }
         break;
@@ -705,7 +705,7 @@ static enum c2_sdl_smoke_result drive_campania_transition(
     struct c2_sdl_smoke *smoke, Uint64 now,
     const struct c2_observation *observation)
 {
-    if (observation_is(observation, C2_OBSERVATION_MESSAGE)) {
+    if (observation_is(observation, PORT_OBSERVATION_MESSAGE)) {
         smoke->city_quiet_since = now;
         click_mouse(smoke, now, 0, 479, C2_HOST_MOUSE_RIGHT);
         return C2_SDL_SMOKE_RUNNING;
@@ -713,7 +713,7 @@ static enum c2_sdl_smoke_result drive_campania_transition(
 
     switch (smoke->phase) {
     case CAMPANIA_SMOKE_WAIT_FOR_CITY:
-        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP)) {
+        if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP)) {
             if (observation->province != CAMPANIA_REGION - 1) {
                 fprintf(stderr, "entered province %d instead of Campania\n",
                         observation->province);
@@ -729,30 +729,30 @@ static enum c2_sdl_smoke_result drive_campania_transition(
         }
         break;
     case CAMPANIA_SMOKE_SETTLE:
-        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP) &&
+        if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP) &&
             now - smoke->city_quiet_since >= 300 &&
             click_mouse(smoke, now, 320, 240, C2_HOST_MOUSE_RIGHT)) {
             smoke->phase = CAMPANIA_SMOKE_WAIT_FOR_QUERY;
         }
         break;
     case CAMPANIA_SMOKE_WAIT_FOR_QUERY:
-        if (observation_is(observation, C2_OBSERVATION_QUERY_PANEL)) {
+        if (observation_is(observation, PORT_OBSERVATION_QUERY_PANEL)) {
             if (click_mouse(smoke, now, 10, 10,
                             C2_HOST_MOUSE_RIGHT)) {
                 smoke->phase = CAMPANIA_SMOKE_WAIT_FOR_QUERY_CLOSE;
             }
         } else if (observation_is(observation,
-                                  C2_OBSERVATION_CITY_LOOP) &&
+                                  PORT_OBSERVATION_CITY_LOOP) &&
                    now - smoke->last_input >= 250) {
             click_mouse(smoke, now, 320, 240, C2_HOST_MOUSE_RIGHT);
         }
         break;
     case CAMPANIA_SMOKE_WAIT_FOR_QUERY_CLOSE:
-        if (observation_is(observation, C2_OBSERVATION_CITY_LOOP)) {
+        if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP)) {
             printf("Campania speech transition smoke completed\n");
             return C2_SDL_SMOKE_SUCCESS;
         }
-        if (observation_is(observation, C2_OBSERVATION_QUERY_PANEL) &&
+        if (observation_is(observation, PORT_OBSERVATION_QUERY_PANEL) &&
             now - smoke->last_input >= 250) {
             click_mouse(smoke, now, 10, 10, C2_HOST_MOUSE_RIGHT);
         }
@@ -791,11 +791,11 @@ static enum c2_sdl_smoke_result drive_music_buffer(
     int active_voices;
     int index;
 
-    if (observation_is(observation, C2_OBSERVATION_MESSAGE)) {
+    if (observation_is(observation, PORT_OBSERVATION_MESSAGE)) {
         click_mouse(smoke, now, 0, 479, C2_HOST_MOUSE_RIGHT);
         return C2_SDL_SMOKE_RUNNING;
     }
-    if (!observation_is(observation, C2_OBSERVATION_CITY_LOOP) ||
+    if (!observation_is(observation, PORT_OBSERVATION_CITY_LOOP) ||
         !observation->sequences_running) {
         return C2_SDL_SMOKE_RUNNING;
     }
@@ -854,7 +854,7 @@ static enum c2_sdl_smoke_result drive_music_buffer(
     if (now - smoke->music_started < MUSIC_SAMPLE_DURATION_MS) {
         return C2_SDL_SMOKE_RUNNING;
     }
-#if !PLATFORM_WASM
+#if !PORT_PLATFORM_WASM
     if (device_requests == 0) {
         fprintf(stderr,
                 "music buffer was produced but the audio device never "
@@ -883,7 +883,7 @@ static enum c2_sdl_smoke_result drive_music_buffer(
                 smoke->music_min_queued_ms, MUSIC_MIN_SAFE_QUEUE_MS);
         return C2_SDL_SMOKE_FAILURE;
     }
-#if PLATFORM_WASM
+#if PORT_PLATFORM_WASM
     if (smoke->music_zero_fill_samples != 0) {
         fprintf(stderr,
                 "music buffer was empty in %u of %u browser samples\n",
@@ -952,14 +952,14 @@ enum c2_sdl_smoke_result c2_sdl_smoke_iterate(
     drive_name_entry(smoke, now, &observation);
     if (smoke->name_failed) return C2_SDL_SMOKE_FAILURE;
     if (observation_is(&observation,
-                       C2_OBSERVATION_PROVINCE_SELECTION)) {
+                       PORT_OBSERVATION_PROVINCE_SELECTION)) {
         if (smoke->kind == C2_SDL_SMOKE_PROVINCE_SELECTION) {
             printf("recovered province-selection smoke completed\n");
             return C2_SDL_SMOKE_SUCCESS;
         }
         drive_province_selection(smoke, now, &observation);
     } else if (observation_is(&observation,
-                              C2_OBSERVATION_PROVINCE_CONFIRMATION)) {
+                              PORT_OBSERVATION_PROVINCE_CONFIRMATION)) {
         if (smoke->kind == C2_SDL_SMOKE_CAMPANIA_TRANSITION &&
             smoke->confirmation_seen_at == 0) {
             smoke->confirmation_seen_at = now;

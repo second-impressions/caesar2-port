@@ -1,6 +1,6 @@
 #include "c2_bugfixes.h"
 
-#if C2_FIX_HELP_SMART_PUNCTUATION
+#if PORT_FIX_HELP_SMART_PUNCTUATION
 static int is_ascii_letter(unsigned char character)
 {
     return (character >= 'A' && character <= 'Z') ||
@@ -25,7 +25,7 @@ static unsigned char fix_help_character(unsigned char previous,
 
 void c2_fix_help_text(char *text, int length)
 {
-#if C2_FIX_HELP_SMART_PUNCTUATION
+#if PORT_FIX_HELP_SMART_PUNCTUATION
     int i;
 
     for (i = 1; i + 1 < length; i++) {
@@ -41,7 +41,7 @@ void c2_fix_help_text(char *text, int length)
 
 void c2_fix_player_name_padding(char *name, int capacity)
 {
-#if C2_FIX_PLAYER_NAME_PADDING
+#if PORT_FIX_PLAYER_NAME_PADDING
     int length;
 
     length = 0;

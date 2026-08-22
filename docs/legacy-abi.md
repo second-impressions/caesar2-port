@@ -106,7 +106,7 @@ test scene still renders.
 
 `__far`, `__pascal`, Watcom `#pragma aux`, and imported Windows decoration are
 historical ABI mechanics. Platform selection must use `PLATFORM_DOS`,
-`PLATFORM_WINDOWS`, or `PLATFORM_PORTABLE`, never compiler identity.
+`PLATFORM_WINDOWS`, or `PORT_PLATFORM`, never compiler identity.
 
 Compiler-specific pragmas may remain in a DOS-only declaration or header when
 they describe the authentic ABI. The portable API should use ordinary C

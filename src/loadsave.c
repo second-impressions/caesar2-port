@@ -1,5 +1,5 @@
 
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 #include <fcntl.h>       /* O_BINARY: 0x200 under Watcom, 0x8000 under MSVC */
 #include <io.h>
 #if PLATFORM_WINDOWS
@@ -13,11 +13,11 @@
 #endif
 #include "c2_data.h"
 #include "c2_types.h"
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
 #include "c2_observation.h"
 #endif
 
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 extern void get_directory(char *pattern);
 extern void get_filename_extension(const char *filename);
 extern int check_file_exists(char *filename);
@@ -623,7 +623,7 @@ void load_a_game(void)
 #if PLATFORM_WINDOWS
     int oldmode;
 #endif
-#if !PLATFORM_WINDOWS && !PLATFORM_PORTABLE
+#if !PLATFORM_WINDOWS && !PORT_PLATFORM
     int i;
 #endif
 
@@ -638,14 +638,14 @@ void load_a_game(void)
 
     while (done == 0) {
         if (select_filename(0x28) != 0) {
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
             done = check_user_file_exists(filename);
 #else
             done = check_file_exists(filename);
 #endif
             if (done != 0) {
                 get_filename_extension(filename);
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
                 string_to_upper(extension);
 #endif
 #if PLATFORM_WINDOWS
@@ -663,7 +663,7 @@ void load_a_game(void)
                 font_list(0x2a, 1, 0x40, 0x16c, font1, 0x10);
                 setup_whole_screen_refresh();
                 refresh_svga_screen();
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
                 if (loadgame(filename) != 0) {
                     pre_loaded_status = 2;
                     restart_flag = 1;
@@ -698,7 +698,7 @@ void load_a_game(void)
 void save_a_game(void)
 {
     int done;
-#if C2_FEAT_POST_FILE_BUSY_WAIT
+#if PORT_FEAT_POST_FILE_BUSY_WAIT
     int i;
 #endif
 
@@ -711,7 +711,7 @@ void save_a_game(void)
 
     while (done == 0) {
         if (select_filename(0x29) != 0) {
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
             done = check_user_file_exists(filename);
 #else
             done = check_file_exists(filename);
@@ -730,7 +730,7 @@ void save_a_game(void)
                 font_list(0x2a, 3, 0x40, 0x16c, font1, 0x10);
                 setup_whole_screen_refresh();
                 refresh_svga_screen();
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
                 if (savegame(filename) != 0) {
                     decision = 1;
                 } else {
@@ -772,8 +772,8 @@ int select_filename(int dialog_mode)
     adjust_min = 0;
 
     while (out1 != 1) {
-#if C2_FEAT_DEBUG_OBSERVATION
-        c2_observe(C2_OBSERVATION_FILE_DIALOG, dialog_mode);
+#if PORT_FEAT_DEBUG_OBSERVATION
+        c2_observe(PORT_OBSERVATION_FILE_DIALOG, dialog_mode);
 #endif
         cover_mouse_droppings();
         hold_hot_keys = 1;
@@ -868,7 +868,7 @@ void act_cancel_file_op(void) { out1 = 1; }
 // FUNCTION: C2WIN 0x0048309c
 int savegame(char *save_filename)
 {
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
     int save_fd;
     int history_file;
     int i;
@@ -906,7 +906,7 @@ int savegame(char *save_filename)
 #endif
 #endif
 
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
     if (!c2_port_save_game_state(save_filename, savegame_entries, 500,
                                  figure_list, arrow_list)) return 0;
 #else
@@ -934,8 +934,8 @@ int savegame(char *save_filename)
     setup_map_screen_refresh();
     unflag_all_cm(3, 0xfd);
     update_landfill = 1;
-#if C2_FEAT_DEBUG_OBSERVATION
-    c2_observe(C2_OBSERVATION_SAVE_COMPLETE, 0);
+#if PORT_FEAT_DEBUG_OBSERVATION
+    c2_observe(PORT_OBSERVATION_SAVE_COMPLETE, 0);
 #endif
     return 1;
 }
@@ -945,7 +945,7 @@ int savegame(char *save_filename)
 // FUNCTION: C2WIN 0x004832e3
 int loadgame(char *save_filename)
 {
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
     int save_fd;
     int history_file;
     int i;
@@ -954,7 +954,7 @@ int loadgame(char *save_filename)
     file_loaded_status = 0;
     clear_messages();
 
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
     if (!c2_port_load_game_state(save_filename, savegame_entries, 500,
                                  figure_list, arrow_list)) return 0;
 #else
@@ -1003,8 +1003,8 @@ int loadgame(char *save_filename)
     if (prov_rotation >= 8 || prov_rotation < 0) prov_rotation = 0;
     get_old_mood();
     if (no_of_warehouses != 0) c2inf.peace_mode = 0;
-#if C2_FEAT_DEBUG_OBSERVATION
-    c2_observe(C2_OBSERVATION_LOAD_COMPLETE, 0);
+#if PORT_FEAT_DEBUG_OBSERVATION
+    c2_observe(PORT_OBSERVATION_LOAD_COMPLETE, 0);
 #endif
     return 1;
 }
@@ -1014,7 +1014,7 @@ int loadgame(char *save_filename)
 // FUNCTION: C2WIN 0x00483554
 void save_inf(void)
 {
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
     writefile("caesar2.inf", (char *)&c2inf, sizeof(c2inf));
 #else
     int inf_fd;
@@ -1036,7 +1036,7 @@ void load_inf(void)
 {
     int old_cd;
     int old_drive;
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
     int file;
 #endif
 #if PLATFORM_WINDOWS
@@ -1058,7 +1058,7 @@ void load_inf(void)
     basic_inf_settings();
     set_language(c2inf.config37);
 
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
     if (read_userfile("caesar2.inf", &c2inf, sizeof(c2inf), 0) != sizeof(c2inf)) return;
 #else
     file = open("caesar2.inf", 0x8404);
@@ -1162,14 +1162,14 @@ void basic_inf_settings(void)
 // FUNCTION: C2WIN 0x00483834
 int loadmodel(char *model_filename)
 {
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
     int model_offset;
 #else
     int model_file;
 #endif
     int i;
 
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
     model_offset = 0;
 #else
     model_file = open(model_filename, O_BINARY);
@@ -1178,7 +1178,7 @@ int loadmodel(char *model_filename)
 
     for (i = 0; i < 100; i++) {
         if (model_entries[i].size == 0) break;
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
         if (readfile(model_filename, model_entries[i].buf,
                      model_entries[i].size, model_offset)
                 != model_entries[i].size) return 0;
@@ -1187,7 +1187,7 @@ int loadmodel(char *model_filename)
         read(model_file, model_entries[i].buf, model_entries[i].size);
 #endif
     }
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
     close(model_file);
 #endif
     return 1;
@@ -1371,7 +1371,7 @@ int out_of_sync(void)
 // FUNCTION: C2WIN 0x00483fd3 REORDERED
 void setup_history_data(void)
 {
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
     int history_buffer[1000];
 #else
     int history_fd;
@@ -1380,7 +1380,7 @@ void setup_history_data(void)
 
     for (i = 0; i < 5; i++)
         history_entry[i] = 0;
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
     memset(history_buffer, 0, sizeof(history_buffer));
     if (writefile("history.dat", (char *)history_buffer,
                   sizeof(history_buffer)) != sizeof(history_buffer)) return;
@@ -1402,7 +1402,7 @@ void setup_history_data(void)
 // FUNCTION: C2WIN 0x00484094
 void save_history(void)
 {
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
     int history_fd;
     int seek_result;
     int write_result;
@@ -1410,7 +1410,7 @@ void save_history(void)
     int file_offset;
 
     file_offset = history_end_ptr * 20;
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
     if (write_to_file("history.dat", (char *)history_entry, 0x14,
                       file_offset) != 0x14) return;
 #else
@@ -1434,7 +1434,7 @@ void save_history(void)
 // FUNCTION: C2WIN 0x0048414d
 void get_history_in_buffer(int *history_buf)
 {
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
     read_userfile("history.dat", history_buf, 0xfa0, 0);
 #else
     int history_fd;

@@ -2,32 +2,56 @@
 #define C2_TARGET_H
 
 /*
- * Target and feature selection for the Caesar II reconstruction.
+ * Target and feature selection for the Caesar II reconstruction and its port.
  *
- * PLATFORM macros name a build platform:
+ * NAMESPACES
+ * ==========
+ * Two prefixes are in use, and the difference is load-bearing:
  *
- *   PLATFORM_DOS       the DOS release (PS.EXE), retained as the byte-exact
- *                      reconstruction target.
- *   PLATFORM_WINDOWS   the shipped 1996 Windows source witness. Which
- *                      Windows build is meant is C2_PATCHLEVEL's job.
- *                      This is NOT the modern Windows host target.
- *   PLATFORM_LINUX     the native Linux SDL continuation.
- *   PLATFORM_WIN32     the native modern Windows SDL continuation, built by
- *                      MinGW-w64 or MSVC. Distinct from PLATFORM_WINDOWS:
- *                      that macro selects recovered 1996 engine behavior,
- *                      this one selects a present-day host backend.
- *   PLATFORM_WASM      the browser SDL continuation compiled by Emscripten.
+ *   PLATFORM_* / C2_*   shared with caesar2-reconstruction.  These names
+ *                       appear verbatim in the byte-exact upstream sources,
+ *                       so recovered code carrying them cherry-picks in both
+ *                       directions without edits.  Never rename one.
+ *
+ *   PORT_*              added by this repository.  Anything the port defines
+ *                       for itself -- a host platform, a behavioral feature,
+ *                       a bug fix, a build selector -- carries this prefix,
+ *                       so a guard's provenance is readable at the use site
+ *                       and a merge conflict involving port-added code is
+ *                       obvious on sight.
+ *
+ * PLATFORMS
+ * =========
+ * Shipped targets, shared with the reconstruction:
+ *
+ *   PLATFORM_DOS          the DOS release (PS.EXE), retained as the
+ *                         byte-exact reconstruction target.
+ *   PLATFORM_WINDOWS      the shipped 1996 Windows source witness.  Which
+ *                         Windows build is meant is C2_PATCHLEVEL's job.
+ *                         This is NOT the modern Windows host target.
+ *
+ * Port targets, added here:
+ *
+ *   PORT_PLATFORM_LINUX   the native Linux SDL continuation.
+ *   PORT_PLATFORM_WIN32   the native modern Windows SDL continuation, built
+ *                         by MinGW-w64 or MSVC.  Deliberately distinct from
+ *                         PLATFORM_WINDOWS: that macro selects recovered
+ *                         1996 engine behavior, this one selects a
+ *                         present-day host backend.  A build can be a Windows
+ *                         binary (PORT_PLATFORM_WIN32) while still using the
+ *                         DOS-era engine semantics (PLATFORM_WINDOWS = 0).
+ *   PORT_PLATFORM_WASM    the browser SDL continuation compiled by Emscripten.
  *
  * Exactly one target platform is 1 and every other target platform is 0.
- * PLATFORM_PORTABLE is the derived family selector shared by the Linux,
- * Win32, and Wasm continuations; build systems may export it for guards that
- * precede the first project header, but its value must match the selected
- * leaf target. An unspecified build defaults to DOS without inferring a
- * platform from compiler identity.
+ * PORT_PLATFORM is the derived family selector shared by the Linux, Win32,
+ * and Wasm continuations; build systems may export it for guards that precede
+ * the first project header, but its value must match the selected leaf
+ * target.  An unspecified build defaults to DOS without inferring a platform
+ * from compiler identity.
  */
 #if !defined(PLATFORM_DOS) && !defined(PLATFORM_WINDOWS) && \
-    !defined(PLATFORM_LINUX) && !defined(PLATFORM_WIN32) && \
-    !defined(PLATFORM_WASM)
+    !defined(PORT_PLATFORM_LINUX) && !defined(PORT_PLATFORM_WIN32) && \
+    !defined(PORT_PLATFORM_WASM)
 #  define PLATFORM_DOS 1
 #endif
 #ifndef PLATFORM_DOS
@@ -36,28 +60,28 @@
 #ifndef PLATFORM_WINDOWS
 #  define PLATFORM_WINDOWS 0
 #endif
-#ifndef PLATFORM_LINUX
-#  define PLATFORM_LINUX 0
+#ifndef PORT_PLATFORM_LINUX
+#  define PORT_PLATFORM_LINUX 0
 #endif
-#ifndef PLATFORM_WIN32
-#  define PLATFORM_WIN32 0
+#ifndef PORT_PLATFORM_WIN32
+#  define PORT_PLATFORM_WIN32 0
 #endif
-#ifndef PLATFORM_WASM
-#  define PLATFORM_WASM 0
+#ifndef PORT_PLATFORM_WASM
+#  define PORT_PLATFORM_WASM 0
 #endif
-#if PLATFORM_DOS + PLATFORM_WINDOWS + PLATFORM_LINUX + PLATFORM_WIN32 + \
-    PLATFORM_WASM != 1
-#  error "exactly one PLATFORM_* must be selected"
+#if PLATFORM_DOS + PLATFORM_WINDOWS + PORT_PLATFORM_LINUX + PORT_PLATFORM_WIN32 + \
+    PORT_PLATFORM_WASM != 1
+#  error "exactly one PLATFORM_*/PORT_PLATFORM_* target must be selected"
 #endif
-#ifndef PLATFORM_PORTABLE
-#  define PLATFORM_PORTABLE (PLATFORM_LINUX || PLATFORM_WIN32 || PLATFORM_WASM)
-#elif PLATFORM_PORTABLE != (PLATFORM_LINUX || PLATFORM_WIN32 || PLATFORM_WASM)
-#  error "PLATFORM_PORTABLE must match the selected target family"
+#ifndef PORT_PLATFORM
+#  define PORT_PLATFORM (PORT_PLATFORM_LINUX || PORT_PLATFORM_WIN32 || PORT_PLATFORM_WASM)
+#elif PORT_PLATFORM != (PORT_PLATFORM_LINUX || PORT_PLATFORM_WIN32 || PORT_PLATFORM_WASM)
+#  error "PORT_PLATFORM must match the selected target family"
 #endif
 
 /* Historical memory-model and calling-convention keywords have no ABI effect
  * in the flat portable build, but remain in recovered declarations. */
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 #  ifndef __far
 #    define __far
 #  endif
@@ -88,8 +112,20 @@
  * FEATURES name a verified behavioral difference class between the
  * builds.  Guard version-specific function code with these — never with
  * raw compiler macros (`_MSC_VER`), which conflate "which compiler" with
- * "which build of the game".  `grep C2_FEAT_ include src` is the
- * catalogue of known cross-build differences.
+ * "which build of the game".
+ *
+ * The prefix says who owns the difference:
+ *
+ *   C2_FEAT_*    a difference between the two shipped 1990s builds, each
+ *                witnessed in original machine code.  Shared verbatim with
+ *                caesar2-reconstruction.
+ *   PORT_FEAT_*  a deliberate difference introduced by this port, selected
+ *                by PORT_PLATFORM rather than by a shipped target.
+ *   PORT_FIX_*   a correction to an original defect, defaulting on for port
+ *                targets so a retained DOS or Windows build keeps the
+ *                original behavior.
+ *
+ * `grep -E 'C2_FEAT_|PORT_FEAT_|PORT_FIX_' include src` is the catalogue.
  */
 
 /* Dirty-tile renderer: the DOS build marks clean screen tiles for
@@ -127,41 +163,41 @@
 /* The portable target accepts the text resources shipped with both the
  * original 1995 engine and the expanded 1996/Windows UI.  The shipped DOS
  * and Windows targets retain their version-specific source paths. */
-#ifndef C2_FEAT_TEXT_ASSET_COMPAT
-#  define C2_FEAT_TEXT_ASSET_COMPAT PLATFORM_PORTABLE
+#ifndef PORT_FEAT_TEXT_ASSET_COMPAT
+#  define PORT_FEAT_TEXT_ASSET_COMPAT PORT_PLATFORM
 #endif
 
 /* The shipped DOS hotkey path moves the mouse cursor by eight pixels for
  * each arrow-key event. Portable builds instead expose held arrow state to
  * the recovered map scroller, while retaining scan-code delivery to editors. */
-#ifndef C2_FEAT_ARROW_KEY_SCROLL
-#  define C2_FEAT_ARROW_KEY_SCROLL PLATFORM_PORTABLE
+#ifndef PORT_FEAT_ARROW_KEY_SCROLL
+#  define PORT_FEAT_ARROW_KEY_SCROLL PORT_PLATFORM
 #endif
 
 /* The shipped builds held file-operation messages for throughput-bound idle
  * frames after synchronous I/O had completed (1,000 after save, 200 after
  * load). A paced portable renderer would turn those CPU-era cosmetic spins
  * into fixed multi-second delays, so portable builds return when I/O ends. */
-#define C2_FEAT_POST_FILE_BUSY_WAIT (!PLATFORM_PORTABLE)
+#define PORT_FEAT_POST_FILE_BUSY_WAIT (!PORT_PLATFORM)
 
 /* Portable hosts save screenshots in a widely supported lossless format.
  * Shipped targets retain the recovered indexed LBM writer and filenames. */
-#define C2_FEAT_PNG_SCREENSHOTS PLATFORM_PORTABLE
+#define PORT_FEAT_PNG_SCREENSHOTS PORT_PLATFORM
 
 /* Read-only engine observations and their smoke driver are development
  * instrumentation. CMake selects them only for portable Debug builds. */
-#if defined(C2_DEBUG_BUILD)
-#  define C2_FEAT_DEBUG_OBSERVATION PLATFORM_PORTABLE
+#if defined(PORT_DEBUG_BUILD)
+#  define PORT_FEAT_DEBUG_OBSERVATION PORT_PLATFORM
 #else
-#  define C2_FEAT_DEBUG_OBSERVATION 0
+#  define PORT_FEAT_DEBUG_OBSERVATION 0
 #endif
 
 /* Native fatal-signal diagnostics are compiled only where the selected Debug
  * backend provides an implementation. */
-#if defined(C2_ENABLE_POSIX_CRASH_HANDLER)
-#  define C2_FEAT_DEBUG_CRASH_HANDLER PLATFORM_PORTABLE
+#if defined(PORT_ENABLE_POSIX_CRASH_HANDLER)
+#  define PORT_FEAT_DEBUG_CRASH_HANDLER PORT_PLATFORM
 #else
-#  define C2_FEAT_DEBUG_CRASH_HANDLER 0
+#  define PORT_FEAT_DEBUG_CRASH_HANDLER 0
 #endif
 
 /* The later Windows map renderer rejects pseudo-map rows past the city-map

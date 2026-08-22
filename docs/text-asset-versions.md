@@ -95,8 +95,8 @@ evolution points.
 
 The recovered 1996 engine source remains the default path. The few places
 where constants and game/UI selection genuinely changed are guarded by
-`C2_FEAT_TEXT_ASSET_COMPAT`; their `#else` branches retain the shipped 1996
-statements. CMake exposes this as `C2_ENABLE_TEXT_ASSET_COMPAT`, enabled for
+`PORT_FEAT_TEXT_ASSET_COMPAT`; their `#else` branches retain the shipped 1996
+statements. CMake exposes this as `PORT_ENABLE_TEXT_ASSET_COMPAT`, enabled for
 the portable build and switchable off for comparison.
 
 The guarded adaptation does the following:

@@ -1,10 +1,10 @@
-#ifndef C2_PORT_APP_H
-#define C2_PORT_APP_H
+#ifndef PORT_APP_H
+#define PORT_APP_H
 
 enum c2_port_app_result {
-    C2_PORT_APP_CONTINUE,
-    C2_PORT_APP_SUCCESS,
-    C2_PORT_APP_FAILURE
+    PORT_APP_CONTINUE,
+    PORT_APP_SUCCESS,
+    PORT_APP_FAILURE
 };
 
 struct c2_port_app_config {
@@ -14,4 +14,4 @@ struct c2_port_app_config {
 enum c2_port_app_result c2_port_app_run(
     const struct c2_port_app_config *config);
 
-#endif /* C2_PORT_APP_H */
+#endif /* PORT_APP_H */

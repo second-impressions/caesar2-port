@@ -187,7 +187,7 @@ one with `addr2line -e build/port/linux-debug/caesar2 -f -C 0xOFFSET`.
 The recovered fixed-width default player name contains sixteen trailing
 spaces. The portable build trims trailing spaces before entering the recovered
 editor so End targets the visible end of the name, including for old
-`caesar2.inf` files. Set `C2_FIX_PLAYER_NAME_PADDING=0`, or configure with
+`caesar2.inf` files. Set `PORT_FIX_PLAYER_NAME_PADDING=0`, or configure with
 `-DC2_FIX_PLAYER_NAME_PADDING=OFF`, to restore shipped behavior.
 
 ## Reconstruction baseline
@@ -332,7 +332,7 @@ benefits.  Port changes are not forwarded back to the byte-exact
 reconstruction.
 
 Target differences are expressed through `include/c2_target.h`
-(`PLATFORM_DOS`, `PLATFORM_WINDOWS`, and `PLATFORM_PORTABLE`) or through a
+(`PLATFORM_DOS`, `PLATFORM_WINDOWS`, and `PORT_PLATFORM`) or through a
 named capability—not through raw compiler macros.
 
 ## Running the game

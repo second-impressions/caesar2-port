@@ -1,10 +1,10 @@
 
 #include "mmedia.h"
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 #include "c2_bugfixes.h"
 #endif
 #include "c2_data.h"
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
 #include "c2_observation.h"
 #endif
 
@@ -253,7 +253,7 @@ void load_media_entry(void)
              this_help_page * 0x3a + 8);
     readfile(media_file, format_buffer, 0x7d0,
              this_media_entry.text_offset);
-#if PLATFORM_PORTABLE && C2_FIX_HELP_SMART_PUNCTUATION
+#if PORT_PLATFORM && PORT_FIX_HELP_SMART_PUNCTUATION
     c2_fix_help_text(format_buffer, 0x7d0);
 #endif
 
@@ -725,8 +725,8 @@ void do_a_tutorial_page(void)
     hold_mouse_replace = 1;
     refresh_svga_screen();
     set_palette(temp_palette);
-#if C2_FEAT_DEBUG_OBSERVATION
-    c2_observe(C2_OBSERVATION_TUTORIAL_PAGE, tutorial_page);
+#if PORT_FEAT_DEBUG_OBSERVATION
+    c2_observe(PORT_OBSERVATION_TUTORIAL_PAGE, tutorial_page);
 #endif
 
     if (media_voc) set_db_sound(this_media_entry.voc_file);

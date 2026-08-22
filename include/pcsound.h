@@ -72,12 +72,12 @@ extern int tune2;
 extern int dig_status;
 extern char positive_buffer[532];
 extern int samples_running;
-#if defined(PLATFORM_PORTABLE) && C2_FIX_LARGE_XMI_ASSETS
-#define C2_TUNE_BUFFER_SIZE 65536
+#if defined(PORT_PLATFORM) && PORT_FIX_LARGE_XMI_ASSETS
+#define PORT_TUNE_BUFFER_SIZE 65536
 #else
-#define C2_TUNE_BUFFER_SIZE 27500
+#define PORT_TUNE_BUFFER_SIZE 27500
 #endif
-extern unsigned char tune_buffer[C2_TUNE_BUFFER_SIZE];
+extern unsigned char tune_buffer[PORT_TUNE_BUFFER_SIZE];
 extern int db_handle;
 extern int db_playing;
 extern char *db_file;

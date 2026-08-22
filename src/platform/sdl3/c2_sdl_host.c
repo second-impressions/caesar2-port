@@ -31,7 +31,7 @@ static struct c2_host_event c2_event_queue[C2_EVENT_QUEUE_CAPACITY];
 static struct c2_host_input c2_input_queue[C2_INPUT_QUEUE_CAPACITY];
 static struct c2_host_input c2_input;
 static struct c2_port_mouse c2_mouse;
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
 static struct c2_observation c2_observation;
 #endif
 static char c2_asset_root[C2_PATH_CAPACITY];
@@ -50,7 +50,7 @@ static int c2_mouse_relative;
 static int c2_mouse_lock_pending;
 static int c2_mouse_warp_pending;
 static int c2_pointer_inside;
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
 static int c2_observation_enabled;
 #endif
 
@@ -568,7 +568,7 @@ int c2_host_init(const struct c2_host_config *config)
     c2_input_read = 0;
     c2_input_count = 0;
     c2_shutdown = 0;
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
     c2_observation_enabled = config->enable_observation;
 #endif
     memset(&c2_input, 0, sizeof(c2_input));
@@ -578,7 +578,7 @@ int c2_host_init(const struct c2_host_config *config)
         c2_host_shutdown();
         return 0;
     }
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
     memset(&c2_observation, 0, sizeof(c2_observation));
 #endif
     c2_input.focused = 1;
@@ -605,7 +605,7 @@ int c2_host_init(const struct c2_host_config *config)
     }
     window_flags = SDL_WINDOW_RESIZABLE;
     presentation = SDL_LOGICAL_PRESENTATION_LETTERBOX;
-#if PLATFORM_WASM
+#if PORT_PLATFORM_WASM
     window_flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
     presentation = SDL_LOGICAL_PRESENTATION_INTEGER_SCALE;
 #endif
@@ -1129,13 +1129,13 @@ int c2_host_shutdown_requested(void)
     return shutdown;
 }
 
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
 void c2_host_publish_observation(const struct c2_observation *observation)
 {
     if (!c2_observation_enabled) return;
     SDL_LockMutex(c2_event_mutex);
     c2_observation.sequence++;
-    if (observation->point > C2_OBSERVATION_NONE &&
+    if (observation->point > PORT_OBSERVATION_NONE &&
         observation->point < 64) {
         c2_observation.reached |= UINT64_C(1) << observation->point;
     }
@@ -1189,7 +1189,7 @@ void c2_host_observation_snapshot(struct c2_observation *observation)
 }
 #endif
 
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
 void c2_sdl_host_set_headless_mouse(int x, int y, unsigned int buttons)
 {
     unsigned int old_buttons;

@@ -1,5 +1,5 @@
-#ifndef C2_PORT_H
-#define C2_PORT_H
+#ifndef PORT_H
+#define PORT_H
 
 #include <stddef.h>
 
@@ -10,10 +10,10 @@
 #define C2_DIRECTORY_MAX_ENTRIES 100
 
 enum c2_port_scroll_key {
-    C2_PORT_SCROLL_LEFT = 1u << 0,
-    C2_PORT_SCROLL_RIGHT = 1u << 1,
-    C2_PORT_SCROLL_UP = 1u << 2,
-    C2_PORT_SCROLL_DOWN = 1u << 3
+    PORT_SCROLL_LEFT = 1u << 0,
+    PORT_SCROLL_RIGHT = 1u << 1,
+    PORT_SCROLL_UP = 1u << 2,
+    PORT_SCROLL_DOWN = 1u << 3
 };
 
 int c2_port_compat_init(void);
@@ -28,4 +28,4 @@ void *c2_port_load_asset(const char *filename, size_t *size_out);
 unsigned int c2_port_scroll_keys(void);
 void mouserange(int xmin, int ymin, int xmax, int ymax);
 
-#endif /* C2_PORT_H */
+#endif /* PORT_H */

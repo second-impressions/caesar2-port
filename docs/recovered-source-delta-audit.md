@@ -20,7 +20,7 @@ the following:
 
 Recovered files may call same-signature compatibility functions or the narrow
 `c2_port_*` adapter surface. They must not call `c2_host_*` or SDL directly.
-Every `C2_FIX_*` defaults to `PLATFORM_PORTABLE`, so a retained DOS or Windows
+Every `C2_FIX_*` defaults to `PORT_PLATFORM`, so a retained DOS or Windows
 build receives shipped behavior unless it opts into a fix explicitly.
 
 ## Recovered translation units
@@ -51,8 +51,8 @@ no port-only changes.
 
 | Header | Port-only delta | Audit result |
 | --- | --- | --- |
-| `c2_target.h` | Adds `PLATFORM_PORTABLE` and named portable features | Retained as the sole target/feature vocabulary. |
-| `c2_data.h` | Exposes portable assembly declarations | Corrected: the manifest include is now `PLATFORM_PORTABLE`-only and cannot reach Watcom. |
+| `c2_target.h` | Adds `PORT_PLATFORM` and named portable features | Retained as the sole target/feature vocabulary. |
+| `c2_data.h` | Exposes portable assembly declarations | Corrected: the manifest include is now `PORT_PLATFORM`-only and cannot reach Watcom. |
 | `entities.h` | Scoped one-byte packing and complete-type extern placement | Retained; required by the recovered ABI on standard C compilers. |
 | `ail.h`, `smacker.h` | Target vocabulary and flattened portable ABI keywords | Retained. Miles `#pragma aux` declarations are now DOS-only. |
 | `lib32.h` | Prototypes needed by portable adapters | Retained. |

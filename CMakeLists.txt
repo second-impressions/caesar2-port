@@ -70,25 +70,25 @@ add_library(c2_libsmacker STATIC third_party/libsmacker/smacker.c)
 target_compile_features(c2_libsmacker PRIVATE c_std_11)
 target_include_directories(c2_libsmacker PUBLIC third_party)
 
-option(C2_FIX_MEDIUM_RIGHT_HAT_OFFSET
+option(PORT_FIX_MEDIUM_RIGHT_HAT_OFFSET
     "Correct the misplaced pixel pair in the medium right diamond hat" ON)
-option(C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR
+option(PORT_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR
     "Suppress the stray seam pair in the large right half-roof" ON)
-option(C2_FIX_GFX_BUFFER_DOUBLE_FREE
+option(PORT_FIX_GFX_BUFFER_DOUBLE_FREE
     "Clear released graphics pointers to prevent repeated frees" ON)
-option(C2_FIX_HELP_SMART_PUNCTUATION
+option(PORT_FIX_HELP_SMART_PUNCTUATION
     "Repair Windows smart punctuation embedded in help text" ON)
-option(C2_FIX_PLAYER_NAME_PADDING
+option(PORT_FIX_PLAYER_NAME_PADDING
     "Trim fixed-width trailing spaces before editing player names" ON)
-option(C2_FIX_LARGE_XMI_ASSETS
+option(PORT_FIX_LARGE_XMI_ASSETS
     "Accept official XMIDI assets larger than the legacy tune buffer" ON)
 option(C2_FIX_MOSAIC_RANDOM_SENTINEL
     "Define the mosaic walk's accidental byte-64 sentinel explicitly" ON)
-option(C2_ENABLE_TEXT_ASSET_COMPAT
+option(PORT_ENABLE_TEXT_ASSET_COMPAT
     "Adapt versioned engine UI to the structure of the loaded text asset" ON)
-option(C2_ENABLE_ARROW_KEY_SCROLL
+option(PORT_ENABLE_ARROW_KEY_SCROLL
     "Use held arrow keys to pan the active map instead of moving the cursor" ON)
-option(C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER
+option(PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER
     "Install native fatal-signal diagnostics in POSIX Debug builds" ON)
 set(C2_WASM_ASSET_ROOT "" CACHE PATH
     "Original Caesar II asset directory to package into the WASM build")
@@ -104,54 +104,54 @@ add_library(c2_asm_portable STATIC
 )
 target_compile_features(c2_asm_portable PRIVATE c_std_11)
 target_include_directories(c2_asm_portable PUBLIC include)
-if(C2_FIX_MEDIUM_RIGHT_HAT_OFFSET)
+if(PORT_FIX_MEDIUM_RIGHT_HAT_OFFSET)
     target_compile_definitions(c2_asm_portable PUBLIC
-        C2_FIX_MEDIUM_RIGHT_HAT_OFFSET=1)
+        PORT_FIX_MEDIUM_RIGHT_HAT_OFFSET=1)
 else()
     target_compile_definitions(c2_asm_portable PUBLIC
-        C2_FIX_MEDIUM_RIGHT_HAT_OFFSET=0)
+        PORT_FIX_MEDIUM_RIGHT_HAT_OFFSET=0)
 endif()
-if(C2_FIX_GFX_BUFFER_DOUBLE_FREE)
-    add_compile_definitions(C2_FIX_GFX_BUFFER_DOUBLE_FREE=1)
+if(PORT_FIX_GFX_BUFFER_DOUBLE_FREE)
+    add_compile_definitions(PORT_FIX_GFX_BUFFER_DOUBLE_FREE=1)
 else()
-    add_compile_definitions(C2_FIX_GFX_BUFFER_DOUBLE_FREE=0)
+    add_compile_definitions(PORT_FIX_GFX_BUFFER_DOUBLE_FREE=0)
 endif()
-if(C2_FIX_HELP_SMART_PUNCTUATION)
-    add_compile_definitions(C2_FIX_HELP_SMART_PUNCTUATION=1)
+if(PORT_FIX_HELP_SMART_PUNCTUATION)
+    add_compile_definitions(PORT_FIX_HELP_SMART_PUNCTUATION=1)
 else()
-    add_compile_definitions(C2_FIX_HELP_SMART_PUNCTUATION=0)
+    add_compile_definitions(PORT_FIX_HELP_SMART_PUNCTUATION=0)
 endif()
-if(C2_FIX_PLAYER_NAME_PADDING)
-    add_compile_definitions(C2_FIX_PLAYER_NAME_PADDING=1)
+if(PORT_FIX_PLAYER_NAME_PADDING)
+    add_compile_definitions(PORT_FIX_PLAYER_NAME_PADDING=1)
 else()
-    add_compile_definitions(C2_FIX_PLAYER_NAME_PADDING=0)
+    add_compile_definitions(PORT_FIX_PLAYER_NAME_PADDING=0)
 endif()
-if(C2_FIX_LARGE_XMI_ASSETS)
-    add_compile_definitions(C2_FIX_LARGE_XMI_ASSETS=1)
+if(PORT_FIX_LARGE_XMI_ASSETS)
+    add_compile_definitions(PORT_FIX_LARGE_XMI_ASSETS=1)
 else()
-    add_compile_definitions(C2_FIX_LARGE_XMI_ASSETS=0)
+    add_compile_definitions(PORT_FIX_LARGE_XMI_ASSETS=0)
 endif()
 if(C2_FIX_MOSAIC_RANDOM_SENTINEL)
     add_compile_definitions(C2_FIX_MOSAIC_RANDOM_SENTINEL=1)
 else()
     add_compile_definitions(C2_FIX_MOSAIC_RANDOM_SENTINEL=0)
 endif()
-if(C2_ENABLE_TEXT_ASSET_COMPAT)
-    add_compile_definitions(C2_FEAT_TEXT_ASSET_COMPAT=1)
+if(PORT_ENABLE_TEXT_ASSET_COMPAT)
+    add_compile_definitions(PORT_FEAT_TEXT_ASSET_COMPAT=1)
 else()
-    add_compile_definitions(C2_FEAT_TEXT_ASSET_COMPAT=0)
+    add_compile_definitions(PORT_FEAT_TEXT_ASSET_COMPAT=0)
 endif()
-if(C2_ENABLE_ARROW_KEY_SCROLL)
-    add_compile_definitions(C2_FEAT_ARROW_KEY_SCROLL=1)
+if(PORT_ENABLE_ARROW_KEY_SCROLL)
+    add_compile_definitions(PORT_FEAT_ARROW_KEY_SCROLL=1)
 else()
-    add_compile_definitions(C2_FEAT_ARROW_KEY_SCROLL=0)
+    add_compile_definitions(PORT_FEAT_ARROW_KEY_SCROLL=0)
 endif()
-if(C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR)
+if(PORT_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR)
     target_compile_definitions(c2_asm_portable PUBLIC
-        C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR=1)
+        PORT_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR=1)
 else()
     target_compile_definitions(c2_asm_portable PUBLIC
-        C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR=0)
+        PORT_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR=0)
 endif()
 if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
     target_compile_options(c2_asm_portable PRIVATE
@@ -231,29 +231,29 @@ set_target_properties(caesar2 PROPERTIES
     C_EXTENSIONS OFF
 )
 
-# PLATFORM_WIN32 is the modern Windows host continuation.  It is deliberately
+# PORT_PLATFORM_WIN32 is the modern Windows host continuation.  It is deliberately
 # not PLATFORM_WINDOWS, which selects recovered 1996 Windows engine behavior.
 if(EMSCRIPTEN)
-    set(C2_PLATFORM_LEAF PLATFORM_WASM)
+    set(C2_PLATFORM_LEAF PORT_PLATFORM_WASM)
 elseif(WIN32)
-    set(C2_PLATFORM_LEAF PLATFORM_WIN32)
+    set(C2_PLATFORM_LEAF PORT_PLATFORM_WIN32)
 else()
-    set(C2_PLATFORM_LEAF PLATFORM_LINUX)
+    set(C2_PLATFORM_LEAF PORT_PLATFORM_LINUX)
 endif()
 message(STATUS "Caesar II target platform: ${C2_PLATFORM_LEAF}")
 
 target_compile_definitions(caesar2 PRIVATE
-    PLATFORM_PORTABLE=1
+    PORT_PLATFORM=1
     ${C2_PLATFORM_LEAF}=1
-    $<$<CONFIG:Debug>:C2_DEBUG_BUILD=1>
+    $<$<CONFIG:Debug>:PORT_DEBUG_BUILD=1>
 )
 
-if(UNIX AND NOT EMSCRIPTEN AND C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER)
+if(UNIX AND NOT EMSCRIPTEN AND PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER)
     target_sources(caesar2 PRIVATE
         $<$<CONFIG:Debug>:src/platform/posix/c2_posix_debug.c>
     )
     target_compile_definitions(caesar2 PRIVATE
-        $<$<CONFIG:Debug>:C2_ENABLE_POSIX_CRASH_HANDLER=1>
+        $<$<CONFIG:Debug>:PORT_ENABLE_POSIX_CRASH_HANDLER=1>
     )
 endif()
 
@@ -463,8 +463,8 @@ if(BUILD_TESTING)
     target_compile_features(c2-bugfixes-test PRIVATE c_std_11)
     target_include_directories(c2-bugfixes-test PRIVATE include)
     target_compile_definitions(c2-bugfixes-test PRIVATE
-        PLATFORM_PORTABLE=1
-        PLATFORM_LINUX=1)
+        PORT_PLATFORM=1
+        PORT_PLATFORM_LINUX=1)
     if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         target_compile_options(c2-bugfixes-test PRIVATE -fms-extensions)
     endif()
@@ -509,7 +509,7 @@ if(BUILD_TESTING)
         src/platform/common/c2_port_save_compat.c
         src/platform/common/c2_port_save_registry.c)
     target_compile_features(c2-save-compat-test PRIVATE c_std_11)
-    target_compile_definitions(c2-save-compat-test PRIVATE PLATFORM_LINUX=1)
+    target_compile_definitions(c2-save-compat-test PRIVATE PORT_PLATFORM_LINUX=1)
     target_include_directories(c2-save-compat-test PRIVATE
         include
         src/platform/common)
@@ -531,7 +531,7 @@ if(BUILD_TESTING)
         src/platform/sdl3/c2_sdl_audio.c
         src/platform/sdl3/c2_sdl_host.c)
     target_compile_features(c2-port-save-test PRIVATE c_std_11)
-    target_compile_definitions(c2-port-save-test PRIVATE PLATFORM_LINUX=1)
+    target_compile_definitions(c2-port-save-test PRIVATE PORT_PLATFORM_LINUX=1)
     target_include_directories(c2-port-save-test PRIVATE
         include
         src/platform/common
@@ -545,7 +545,7 @@ if(BUILD_TESTING)
         src/platform/sdl3/c2_sdl_audio.c
         src/platform/sdl3/c2_sdl_host.c)
     target_compile_features(c2-user-files-test PRIVATE c_std_11)
-    target_compile_definitions(c2-user-files-test PRIVATE PLATFORM_LINUX=1)
+    target_compile_definitions(c2-user-files-test PRIVATE PORT_PLATFORM_LINUX=1)
     target_include_directories(c2-user-files-test PRIVATE
         include
         src/platform/common
@@ -557,7 +557,7 @@ if(BUILD_TESTING)
         tests/c2_sdl_audio_test.c
         src/platform/sdl3/c2_sdl_audio.c)
     target_compile_features(c2-sdl-audio-test PRIVATE c_std_11)
-    target_compile_definitions(c2-sdl-audio-test PRIVATE PLATFORM_LINUX=1)
+    target_compile_definitions(c2-sdl-audio-test PRIVATE PORT_PLATFORM_LINUX=1)
     target_include_directories(c2-sdl-audio-test PRIVATE include)
     target_link_libraries(c2-sdl-audio-test PRIVATE SDL3::SDL3)
     add_test(NAME sdl-audio COMMAND c2-sdl-audio-test)

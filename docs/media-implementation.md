@@ -196,7 +196,7 @@ caused periodic music underruns.
 
 One official `CITYPROV.XMI` is 28,678 bytes, larger than the recovered DOS
 27,500-byte tune buffer. Portable builds enable the guarded
-`C2_FIX_LARGE_XMI_ASSETS` compatibility fix and use a 64-KiB buffer; disabling
+`PORT_FIX_LARGE_XMI_ASSETS` compatibility fix and use a 64-KiB buffer; disabling
 the feature retains the legacy limit. This avoids truncating a valid official
 asset without changing the reconstruction or mutating the asset.
 

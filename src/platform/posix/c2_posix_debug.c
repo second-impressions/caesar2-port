@@ -8,7 +8,7 @@
 
 #include "c2_debug_crash.h"
 
-#define C2_DEBUG_BACKTRACE_DEPTH 64
+#define PORT_DEBUG_BACKTRACE_DEPTH 64
 
 static volatile sig_atomic_t c2_handling_fatal_signal;
 
@@ -82,7 +82,7 @@ static void fatal_signal_handler(int signal_number, siginfo_t *info,
 {
     struct sigaction default_action;
     sigset_t unblock_set;
-    void *frames[C2_DEBUG_BACKTRACE_DEPTH];
+    void *frames[PORT_DEBUG_BACKTRACE_DEPTH];
     const char *name;
     size_t name_length;
     int frame_count;
@@ -104,7 +104,7 @@ static void fatal_signal_handler(int signal_number, siginfo_t *info,
     }
     write_literal("\n", 1);
 
-    frame_count = backtrace(frames, C2_DEBUG_BACKTRACE_DEPTH);
+    frame_count = backtrace(frames, PORT_DEBUG_BACKTRACE_DEPTH);
     backtrace_symbols_fd(frames, frame_count, STDERR_FILENO);
 
     default_action.sa_handler = SIG_DFL;

@@ -13,16 +13,16 @@ unsigned int c2_port_scroll_keys(void)
     c2_host_input_snapshot(&input);
     keys = 0;
     if ((input.arrow_keys & C2_HOST_ARROW_LEFT) != 0) {
-        keys |= C2_PORT_SCROLL_LEFT;
+        keys |= PORT_SCROLL_LEFT;
     }
     if ((input.arrow_keys & C2_HOST_ARROW_RIGHT) != 0) {
-        keys |= C2_PORT_SCROLL_RIGHT;
+        keys |= PORT_SCROLL_RIGHT;
     }
     if ((input.arrow_keys & C2_HOST_ARROW_UP) != 0) {
-        keys |= C2_PORT_SCROLL_UP;
+        keys |= PORT_SCROLL_UP;
     }
     if ((input.arrow_keys & C2_HOST_ARROW_DOWN) != 0) {
-        keys |= C2_PORT_SCROLL_DOWN;
+        keys |= PORT_SCROLL_DOWN;
     }
     return keys;
 }

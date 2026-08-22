@@ -579,7 +579,7 @@ void refresh_battle_zoom_mode(int zoom)
 #endif
 }
 
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 // Redraw dirty tiles, splitting copies that cross an SVGA bank boundary.
 // FUNCTION: C2 0x2992d
 // FUNCTION: C2WIN 0x0043b6cd

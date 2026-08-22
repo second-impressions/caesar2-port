@@ -207,7 +207,7 @@ static void write_diamond_hat(unsigned char *sprites, int depth,
                 if (part == HAT_KEEP_RIGHT) {
                     destination_pair -= centre + 1;
                 }
-                if (!C2_FIX_MEDIUM_RIGHT_HAT_OFFSET &&
+                if (!PORT_FIX_MEDIUM_RIGHT_HAT_OFFSET &&
                     medium_right_quirk && row - depth == 2 && pair == 3) {
                     destination_pair = 31;
                 }
@@ -464,7 +464,7 @@ static void write_right_diamond_half_roof(unsigned char *sprites, int centre,
         } else {
             first_pair = edge_seam == 2 ? 1 : 0;
             last_pair = row < centre ? row : centre;
-            if (!C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR &&
+            if (!PORT_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR &&
                 centre == 14 && edge_seam == 2 && row == 10) {
                 write_hat_pair(base + destination_pair_offset * 2, source);
             }

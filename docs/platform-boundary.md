@@ -30,11 +30,22 @@ SDL types and functions must not occur above `c2_host_*`. This keeps recovered
 files recognizable, makes reconstruction changes easy to cherry-pick, and
 allows headless and non-SDL backends to exercise the same engine.
 
-`PLATFORM_DOS`, `PLATFORM_WINDOWS`, `PLATFORM_LINUX`, and `PLATFORM_WASM`
-identify compile targets. Exactly one is selected. `PLATFORM_PORTABLE` is
-derived from the Linux and Wasm targets and is used only for code shared by
-the modern continuation; browser scheduling is target policy, not a feature
-toggle.
+`PLATFORM_DOS`, `PLATFORM_WINDOWS`, `PORT_PLATFORM_LINUX`, `PORT_PLATFORM_WIN32`,
+and `PORT_PLATFORM_WASM` identify compile targets. Exactly one is selected.
+`PORT_PLATFORM` is derived from the Linux, Win32, and Wasm targets and is used
+only for code shared by the modern continuation; browser scheduling is target
+policy, not a feature toggle.
+
+The prefix carries meaning. `PLATFORM_*`, `C2_FEAT_*`, `C2_FIX_*`, and
+`C2_PATCHLEVEL` are shared verbatim with `caesar2-reconstruction`, so recovered
+code carrying them cherry-picks in either direction without edits; they are
+never renamed here. Everything this repository defines for itself — host
+platforms, port features, port fixes, the observation stream — is prefixed
+`PORT_`. Inside a recovered translation unit, that prefix is what tells a
+reader the guard was added by the port rather than recovered from an original
+build. `PORT_PLATFORM_WIN32` is deliberately distinct from `PLATFORM_WINDOWS`:
+the first selects a present-day host backend, the second selects recovered 1996
+engine behavior, and a Windows binary of the port sets only the former.
 
 ## Implemented boundary
 
@@ -121,7 +132,7 @@ The DOS `sim_mouse` path moved the pointer eight logical pixels for every
 arrow scan code. Its non-blocking `kbhit`/`getch` input inherited the
 keyboard's typematic repeat. The portable target instead records arrow
 key-down/key-up state below `c2_host.h` and, under
-`C2_FEAT_ARROW_KEY_SCROLL`, passes that state to the recovered `scroll()`
+`PORT_FEAT_ARROW_KEY_SCROLL`, passes that state to the recovered `scroll()`
 policy. Holding an arrow therefore pans continuously with the same
 `scroll_amount`, `scroll_speed`, bounds, pointer-mode exclusions, and redraw
 path as edge scrolling. Opposing keys neutralize their axis; a held key owns
@@ -129,13 +140,13 @@ its axis so a cursor resting on the opposite edge cannot cancel it. The
 ordinary scan-code event is still queued once on initial key-down, preserving
 arrow navigation in `act_choose_name`, `new_name_game_loop`, and
 `edit_format_buffer`; SDL repeat events are unnecessary because map movement
-uses held state. Turning `C2_ENABLE_ARROW_KEY_SCROLL` off restores the
+uses held state. Turning `PORT_ENABLE_ARROW_KEY_SCROLL` off restores the
 recovered cursor-motion behavior.
 
 The shipped default name is a fixed-width field containing `Octavian` followed
 by sixteen spaces, and the recovered End handler counts that padding. Before
 the shared editor is initialized, the portable build trims trailing spaces
-under `C2_FIX_PLAYER_NAME_PADDING`. This handles both fresh defaults and old
+under `PORT_FIX_PLAYER_NAME_PADDING`. This handles both fresh defaults and old
 runtime files without replacing editor behavior. Disabling the same-named
 CMake option restores the padded input exactly.
 
@@ -185,8 +196,8 @@ The Campania transition smoke confirms that province while its localized
 speech sample is active, reaches the city, then opens and closes an empty-land
 query panel. This covers both modal mouse drains in the reported browser
 missed-click path without inspecting framebuffer pixels.
-`C2_DEBUG_BUILD` is supplied by CMake only for the Debug configuration and
-selects `C2_FEAT_DEBUG_OBSERVATION`; non-Debug builds omit the adapter sources,
+`PORT_DEBUG_BUILD` is supplied by CMake only for the Debug configuration and
+selects `PORT_FEAT_DEBUG_OBSERVATION`; non-Debug builds omit the adapter sources,
 host storage, checkpoint calls, smoke driver, and smoke command-line options.
 
 ## Portable assembly interface
@@ -198,7 +209,7 @@ assembly files. `include/c2_asm_routines.h` turns the manifest into engine
 declarations. Each entry is explicitly marked `C2_ASM_STUB` or
 `C2_ASM_IMPLEMENTED`; `src/asm/c2_asm_stubs.c` supplies only the
 remaining hardware-facing bodies. The header is exposed to recovered callers
-only for `PLATFORM_PORTABLE`; Watcom retains the recovered call surface and
+only for `PORT_PLATFORM`; Watcom retains the recovered call surface and
 never parses the portable manifest macros.
 
 All 74 CPU-only exports are implemented in ordinary C. They cover memory and
@@ -213,7 +224,7 @@ Compatibility note: `write_medium_diamond_righthat` contains one asymmetric
 literal store inherited from `dia_medi.asm`. In the third post-depth clipped
 row, source pair 3 is written at x=62 rather than the geometrically symmetric
 x=6. The portable implementation corrects it by default. The centralized
-`C2_FIX_MEDIUM_RIGHT_HAT_OFFSET` switch in `include/c2_bugfixes.h` selects the
+`PORT_FIX_MEDIUM_RIGHT_HAT_OFFSET` switch in `include/c2_bugfixes.h` selects the
 behavior: `1` uses x=6 and `0` restores the shipped x=62 store. CMake exposes
 the same switch as an option, so a compatibility build uses
 `-DC2_FIX_MEDIUM_RIGHT_HAT_OFFSET=OFF`.
@@ -221,7 +232,7 @@ the same switch as an option, so a compatibility build uses
 The large right half-roof has a separate unrolled-row defect in seam mode `2`.
 Every other row suppresses source pair 0 at the seam, but row 10 in
 `dialargb.asm` omits that check and draws the pair. Suppressing the stray pair
-is the portable default. Set `C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR` to `0`,
+is the portable default. Set `PORT_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR` to `0`,
 or use the same-named CMake option with `OFF`, to reproduce the shipped row-10
 store.
 
@@ -229,7 +240,7 @@ The recovered graphics-buffer cleanup functions retain dangling pointers, and
 some original paths call both map and battle cleanup while `fixt_data` names the
 same allocation. Modern allocators reject the resulting repeated free. The
 portable build clears every released graphics pointer by default under
-`C2_FIX_GFX_BUFFER_DOUBLE_FREE`; set the same-named CMake option to `OFF` to
+`PORT_FIX_GFX_BUFFER_DOUBLE_FREE`; set the same-named CMake option to `OFF` to
 reproduce shipped cleanup behavior.
 
 `tests/test_diamond_asm_oracle.py` provides the executable semantic oracle for
@@ -296,7 +307,8 @@ to build it:
 
 - `PLATFORM_DOS`: the shipped DOS/4GW program;
 - `PLATFORM_WINDOWS`: the shipped Windows source witness; and
-- `PLATFORM_PORTABLE`: the modern continuation in this repository.
+- `PORT_PLATFORM`: the modern continuation in this repository, whose leaves
+  are `PORT_PLATFORM_LINUX`, `PORT_PLATFORM_WIN32`, and `PORT_PLATFORM_WASM`.
 
 Source must not infer a platform from `__WATCOMC__`, `_MSC_VER`, or another
 compiler macro. A different compiler may legitimately target the same
@@ -399,7 +411,7 @@ fallback into it is forbidden.
 Resource-version compatibility is not a filesystem responsibility. The host
 returns the selected asset unchanged. Engine/UI revisions that require
 different string indices or control counts are selected from the read-only
-`Textfile` structure behind `C2_FEAT_TEXT_ASSET_COMPAT`; see
+`Textfile` structure behind `PORT_FEAT_TEXT_ASSET_COMPAT`; see
 [text-asset-versions.md](text-asset-versions.md). The original recovered path
 must remain present when that feature is disabled.
 

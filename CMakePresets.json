@@ -36,7 +36,7 @@
         "CMAKE_C_FLAGS": "-fsanitize=thread",
         "CMAKE_CXX_FLAGS": "-fsanitize=thread",
         "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=thread",
-        "C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER": "OFF"
+        "PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER": "OFF"
       }
     },
     {
@@ -50,7 +50,7 @@
         "CMAKE_C_FLAGS": "-fsanitize=address,undefined -mllvm -asan-globals=0",
         "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -mllvm -asan-globals=0",
         "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined",
-        "C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER": "OFF"
+        "PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER": "OFF"
       }
     },
     {

@@ -35,8 +35,8 @@ static void fill_observation(struct c2_observation *observation)
     observation->mouse_right_click = mouse_right_click;
     observation->tune_branch = tune_branch;
     observation->tune_branch_count = tune_branch_count;
-    observation->menu_count = C2_OBSERVATION_MENU_LIMIT;
-    for (i = 0; i < C2_OBSERVATION_MENU_LIMIT; i++) {
+    observation->menu_count = PORT_OBSERVATION_MENU_LIMIT;
+    for (i = 0; i < PORT_OBSERVATION_MENU_LIMIT; i++) {
         observation->menu_x1[i] = main_menu[i].u.pos.x1;
         observation->menu_x2[i] = main_menu[i].u.pos.x2;
     }
@@ -62,7 +62,7 @@ void c2_observe_menu_bar(int menu_count, int active_menu)
     struct c2_observation observation;
 
     fill_observation(&observation);
-    observation.point = C2_OBSERVATION_MENU_BAR;
+    observation.point = PORT_OBSERVATION_MENU_BAR;
     observation.menu_count = menu_count;
     observation.active_menu = active_menu;
     c2_host_publish_observation(&observation);
@@ -73,7 +73,7 @@ void c2_observe_menu_items(int text_group, int item_count, int active_item)
     struct c2_observation observation;
 
     fill_observation(&observation);
-    observation.point = C2_OBSERVATION_MENU_ITEMS;
+    observation.point = PORT_OBSERVATION_MENU_ITEMS;
     observation.menu_item_group = text_group;
     observation.menu_item_count = item_count;
     observation.active_menu_item = active_item;

@@ -2,8 +2,8 @@
 
 ## Architecture
 
-The browser target is selected by `PLATFORM_WASM` and compiled by Emscripten;
-`PLATFORM_PORTABLE` remains the derived family shared with `PLATFORM_LINUX`,
+The browser target is selected by `PORT_PLATFORM_WASM` and compiled by Emscripten;
+`PORT_PLATFORM` remains the derived family shared with `PORT_PLATFORM_LINUX`,
 not a target of its own. This is not a second game implementation. SDL
 application callbacks own the browser main
 thread, event collection, and presentation. The recovered `c2.c` driver and

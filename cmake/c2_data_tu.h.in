@@ -1,4 +1,4 @@
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 #include "c2_asm_routines.h"
 #endif
 

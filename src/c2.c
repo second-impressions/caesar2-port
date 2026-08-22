@@ -1,20 +1,20 @@
 
 #include <stdlib.h>
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 #include <fcntl.h>             /* O_BINARY */
 #endif
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 #include <stdio.h>
 #endif
 #include "c2_data.h"
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 #include "c2_bugfixes.h"
 #endif
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
 #include "c2_observation.h"
 #endif
 
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 extern void c2_port_exit(int status);
 #define exit c2_port_exit
 #define main c2_engine_main
@@ -234,7 +234,7 @@ static unsigned char windows_game_active;
 
 #include <stdio.h>
 
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 extern int read_config();
 #endif
 #if PLATFORM_WINDOWS
@@ -259,7 +259,7 @@ extern int   choose_init_region(void);
 #endif
 void *load_a_battle_gfx_file(int battle_zoom, int troop_gfx_idx, int use_aux);
 extern void get_pseudo_map(int n);
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 #include <io.h>
 #include <direct.h>
 #endif
@@ -289,7 +289,7 @@ void flush_sb_buffer(void);
 // FUNCTION: C2WIN 0x00443733
 void main(int argc, char *argv[])
 {
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
     int drive;
     unsigned char cd_drive_config;
     char *cwd;
@@ -302,7 +302,7 @@ void main(int argc, char *argv[])
     demo_mode = 1;
     demo_mode = 0;
 
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
     drive_name = 0;
     c2inf.cd_letter = 0;
     c2inf.drive_init = 0;
@@ -401,8 +401,8 @@ void main(int argc, char *argv[])
     setup_svga_refresh_data();
 #endif
     load_inf();
-#if C2_FEAT_DEBUG_OBSERVATION
-    c2_observe(C2_OBSERVATION_STARTUP, 0);
+#if PORT_FEAT_DEBUG_OBSERVATION
+    c2_observe(PORT_OBSERVATION_STARTUP, 0);
 #endif
     lead_in_logos();
     do_svga_smacked_anim("intro.smk");
@@ -641,8 +641,8 @@ NEW_PROVINCE_RESULT new_province(void)
     empire_rating = peace_rating = prosperity_rating = culture_rating = 0;
     pax_romanum = 0;
 
-#if C2_FEAT_DEBUG_OBSERVATION
-    c2_observe(C2_OBSERVATION_PROVINCE_INITIALIZED, 0);
+#if PORT_FEAT_DEBUG_OBSERVATION
+    c2_observe(PORT_OBSERVATION_PROVINCE_INITIALIZED, 0);
 #endif
 #if PLATFORM_WINDOWS
     return 0;
@@ -1274,7 +1274,7 @@ void clear_map_gfx_buffers(void)
     if (building_data3) free(building_data3);
     if (building_data4) free(building_data4);
     if (tops_data)      free(tops_data);
-#if PLATFORM_PORTABLE && C2_FIX_GFX_BUFFER_DOUBLE_FREE
+#if PORT_PLATFORM && PORT_FIX_GFX_BUFFER_DOUBLE_FREE
     init_map_gfx_buffers();
 #endif
 }
@@ -1395,7 +1395,7 @@ void clear_battle_gfx_buffers(void)
     if (figure8_data)  free(figure8_data);
     if (figure9_data)  free(figure9_data);
     if (figure10_data) free(figure10_data);
-#if PLATFORM_PORTABLE && C2_FIX_GFX_BUFFER_DOUBLE_FREE
+#if PORT_PLATFORM && PORT_FIX_GFX_BUFFER_DOUBLE_FREE
     init_battle_gfx_buffers();
 #endif
 }
@@ -1449,7 +1449,7 @@ void do_neg(void)
     neg_sound();
 }
 
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 #include <dos.h>
 
 #if PLATFORM_WINDOWS

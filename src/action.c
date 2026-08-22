@@ -1,11 +1,11 @@
 
 #include "c2_data.h"
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 #include "c2_bugfixes.h"
 #include "c2_port.h"
 #endif
 #include "c2_types.h"
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
 #include "c2_observation.h"
 #endif
 
@@ -920,7 +920,7 @@ void scroll(void)
 {
     int saved_pm_x = pm_x;
     int saved_pm_y = pm_y;
-#if C2_FEAT_ARROW_KEY_SCROLL
+#if PORT_FEAT_ARROW_KEY_SCROLL
     unsigned int scroll_keys;
     int scroll_up;
     int scroll_down;
@@ -937,21 +937,21 @@ void scroll(void)
         return;
     }
 
-#if C2_FEAT_ARROW_KEY_SCROLL
+#if PORT_FEAT_ARROW_KEY_SCROLL
     scroll_keys = c2_port_scroll_keys();
-    scroll_up = (scroll_keys & C2_PORT_SCROLL_UP) != 0 &&
-                (scroll_keys & C2_PORT_SCROLL_DOWN) == 0;
-    scroll_down = (scroll_keys & C2_PORT_SCROLL_DOWN) != 0 &&
-                  (scroll_keys & C2_PORT_SCROLL_UP) == 0;
-    scroll_left = (scroll_keys & C2_PORT_SCROLL_LEFT) != 0 &&
-                  (scroll_keys & C2_PORT_SCROLL_RIGHT) == 0;
-    scroll_right = (scroll_keys & C2_PORT_SCROLL_RIGHT) != 0 &&
-                   (scroll_keys & C2_PORT_SCROLL_LEFT) == 0;
-    if ((scroll_keys & (C2_PORT_SCROLL_UP | C2_PORT_SCROLL_DOWN)) == 0) {
+    scroll_up = (scroll_keys & PORT_SCROLL_UP) != 0 &&
+                (scroll_keys & PORT_SCROLL_DOWN) == 0;
+    scroll_down = (scroll_keys & PORT_SCROLL_DOWN) != 0 &&
+                  (scroll_keys & PORT_SCROLL_UP) == 0;
+    scroll_left = (scroll_keys & PORT_SCROLL_LEFT) != 0 &&
+                  (scroll_keys & PORT_SCROLL_RIGHT) == 0;
+    scroll_right = (scroll_keys & PORT_SCROLL_RIGHT) != 0 &&
+                   (scroll_keys & PORT_SCROLL_LEFT) == 0;
+    if ((scroll_keys & (PORT_SCROLL_UP | PORT_SCROLL_DOWN)) == 0) {
         scroll_up = mouse_y <= 0;
         scroll_down = mouse_y >= screen_height;
     }
-    if ((scroll_keys & (C2_PORT_SCROLL_LEFT | C2_PORT_SCROLL_RIGHT)) == 0) {
+    if ((scroll_keys & (PORT_SCROLL_LEFT | PORT_SCROLL_RIGHT)) == 0) {
         scroll_left = mouse_x <= 0;
         scroll_right = mouse_x >= screen_width;
     }
@@ -4455,8 +4455,8 @@ void act_forum(void)
     out1 = 0;
     while (out1 == 0) {
         in_the_forum = 1;
-#if C2_FEAT_DEBUG_OBSERVATION
-        c2_observe(C2_OBSERVATION_FORUM, forum_dept);
+#if PORT_FEAT_DEBUG_OBSERVATION
+        c2_observe(PORT_OBSERVATION_FORUM, forum_dept);
 #endif
         forum_game_loop();
         in_the_forum = 0;
@@ -5304,8 +5304,8 @@ void act_set_skill_levels(void)
     continue_tutorial_status = 0;
 
 choose_skill1:
-#if C2_FEAT_DEBUG_OBSERVATION
-    c2_observe(C2_OBSERVATION_SKILL_SELECTION, 0);
+#if PORT_FEAT_DEBUG_OBSERVATION
+    c2_observe(PORT_OBSERVATION_SKILL_SELECTION, 0);
 #endif
     show_skill1_box();
     out1 = 0;
@@ -5315,8 +5315,8 @@ choose_skill1:
     if (continue_tutorial_status == 0
             && exit_flag == 0
             && pre_loaded_status == 0) {
-#if C2_FEAT_DEBUG_OBSERVATION
-        c2_observe(C2_OBSERVATION_SKILL_DETAILS, 0);
+#if PORT_FEAT_DEBUG_OBSERVATION
+        c2_observe(PORT_OBSERVATION_SKILL_DETAILS, 0);
 #endif
         show_skill2_box();
         out1 = 0;
@@ -5350,8 +5350,8 @@ void act_choose_init_region(void)
     if (player_rank == 0) {
         show_initreg_box();
         show_first_region_box();
-#if C2_FEAT_DEBUG_OBSERVATION
-        c2_observe(C2_OBSERVATION_PROVINCE_INTRO, 0);
+#if PORT_FEAT_DEBUG_OBSERVATION
+        c2_observe(PORT_OBSERVATION_PROVINCE_INTRO, 0);
 #endif
         out2 = 0;
         while (out2 != 1) {
@@ -5377,8 +5377,8 @@ void act_choose_init_region(void)
         }
         restart_flag = 1;
     } else {
-#if C2_FEAT_DEBUG_OBSERVATION
-        c2_observe(C2_OBSERVATION_PROVINCE_SELECTION, 0);
+#if PORT_FEAT_DEBUG_OBSERVATION
+        c2_observe(PORT_OBSERVATION_PROVINCE_SELECTION, 0);
 #endif
         while (out2 != 1) {
             initreg_game_loop();
@@ -5394,8 +5394,8 @@ void act_choose_init_region(void)
 void this_region(void)
 {
     this_region_box(0);
-#if C2_FEAT_DEBUG_OBSERVATION
-    c2_observe(C2_OBSERVATION_PROVINCE_CONFIRMATION, region_over - 1);
+#if PORT_FEAT_DEBUG_OBSERVATION
+    c2_observe(PORT_OBSERVATION_PROVINCE_CONFIRMATION, region_over - 1);
 #endif
     out1 = 0; decision = 0;
     while (out1 != 1) {
@@ -5495,7 +5495,7 @@ void act_choose_name(void)
 {
     insert_cursor = 0;
     this_letter = insert_cursor;
-#if PLATFORM_PORTABLE && C2_FIX_PLAYER_NAME_PADDING
+#if PORT_PLATFORM && PORT_FIX_PLAYER_NAME_PADDING
     c2_fix_player_name_padding(c2inf.player_name,
                                sizeof(c2inf.player_name));
 #endif
@@ -5624,8 +5624,8 @@ void act_query(void)
         nof_query_buttons = 3;
     }
     show_query_panel();
-#if C2_FEAT_DEBUG_OBSERVATION
-    c2_observe(C2_OBSERVATION_QUERY_PANEL, q_type);
+#if PORT_FEAT_DEBUG_OBSERVATION
+    c2_observe(PORT_OBSERVATION_QUERY_PANEL, q_type);
 #endif
     clear_mouse();
     out3 = 0;

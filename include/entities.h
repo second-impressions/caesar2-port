@@ -33,13 +33,13 @@
 /* Watcom laid the recovered engine records out with one-byte packing.  Keep
  * that contract for the portable engine records as well; host/backend records
  * live outside this header and retain their native ABI. */
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 #pragma pack(push, 1)
 #endif
 
 /* Entity list extern declarations.
  * These override the generic types in c2_data.h. */
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 extern struct figure_rec figure_list[];
 extern struct citizen_rec citizen_list[];
 extern struct unit_rec unit_list[];
@@ -100,7 +100,7 @@ extern struct industry_rec     industry[];
 
 /* city_map / region_map / battle_map are declared as struct <cell>[] after
  * each cell struct's definition (below). */
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 extern int pseudo_map[PM_H][PM_W];
 #endif
 
@@ -1022,7 +1022,7 @@ struct mercs_class {
     short _unk0E;              /* +0x0E  reserved slack: ditto */
 };  /* 16 bytes */
 
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 /* Standard C requires an array element type to be complete at an extern
  * declaration. Watcom accepts the historical declarations at the top of this
  * header; portable compilers receive the same declarations after the types. */
@@ -1821,7 +1821,7 @@ struct mouse_cbd {
 
 extern struct mouse_cbd cbd;
 
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 #pragma pack(pop)
 #endif
 

@@ -31,7 +31,7 @@ audited:
   four `0x92` apostrophes; its Win95 file has five `0x92` apostrophes and one
   space-delimited `0x97` dash.
 
-`C2_FIX_HELP_SMART_PUNCTUATION` is enabled by default for the portable target
+`PORT_FIX_HELP_SMART_PUNCTUATION` is enabled by default for the portable target
 and disabled by default for retained shipped-target builds. It repairs `0x91`
 and `0x92` only between ASCII letters, and `0x96` and `0x97` only between
 spaces, while rendering help text. This recognizes the evidenced Windows

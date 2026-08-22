@@ -62,7 +62,7 @@ def test_smoke_driver_observes_without_reaching_into_legacy_state():
 
 def test_observation_sources_are_debug_only():
     cmake = (ROOT / "CMakeLists.txt").read_text()
-    assert "$<$<CONFIG:Debug>:C2_DEBUG_BUILD=1>" in cmake
+    assert "$<$<CONFIG:Debug>:PORT_DEBUG_BUILD=1>" in cmake
     assert "$<$<CONFIG:Debug>:src/platform/common/c2_port_observation.c>" in cmake
     assert "$<$<CONFIG:Debug>:src/platform/sdl3/c2_sdl_smoke.c>" in cmake
 
@@ -70,9 +70,9 @@ def test_observation_sources_are_debug_only():
 def test_posix_crash_handler_is_debug_only_and_sanitizer_safe():
     cmake = (ROOT / "CMakeLists.txt").read_text()
     presets = (ROOT / "CMakePresets.json").read_text()
-    assert "if(UNIX AND NOT EMSCRIPTEN AND C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER)" in cmake
+    assert "if(UNIX AND NOT EMSCRIPTEN AND PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER)" in cmake
     assert "$<$<CONFIG:Debug>:src/platform/posix/c2_posix_debug.c>" in cmake
-    assert presets.count('"C2_ENABLE_POSIX_DEBUG_CRASH_HANDLER": "OFF"') == 2
+    assert presets.count('"PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER": "OFF"') == 2
 
 
 def test_wasm_reuses_the_sdl_host_and_recovered_engine_worker():
@@ -202,7 +202,7 @@ def test_portable_helpers_do_not_pose_as_recovered_translation_units():
 def test_portable_asm_manifest_does_not_reach_the_watcom_source_path():
     data_header = (ROOT / "include" / "c2_data.h").read_text()
     guarded_include = (
-        '#if PLATFORM_PORTABLE\n#include "c2_asm_routines.h"\n#endif'
+        '#if PORT_PLATFORM\n#include "c2_asm_routines.h"\n#endif'
     )
     assert guarded_include in data_header
 

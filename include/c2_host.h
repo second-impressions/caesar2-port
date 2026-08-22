@@ -6,7 +6,7 @@
 
 #include "c2_target.h"
 
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
 #include "c2_observation.h"
 #endif
 
@@ -81,7 +81,7 @@ struct c2_host_config {
     int window_scale;
     int headless;
     int mouse_lock;
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
     int enable_observation;
 #endif
 };
@@ -184,7 +184,7 @@ void c2_host_set_mouse_bounds(int min_x, int min_y, int max_x, int max_y);
 void c2_host_request_shutdown(void);
 int c2_host_shutdown_requested(void);
 
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
 struct c2_host_audio_observation {
     uint64_t produced_bytes;
     uint64_t underflow_bytes;

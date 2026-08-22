@@ -183,7 +183,7 @@ static void test_hat(diamond_placer write, int pair_count,
                     if (part == TEST_HAT_KEEP_RIGHT) {
                         destination_pair -= centre + 1;
                     }
-                    if (!C2_FIX_MEDIUM_RIGHT_HAT_OFFSET &&
+                    if (!PORT_FIX_MEDIUM_RIGHT_HAT_OFFSET &&
                         medium_right_quirk && row - depth == 2 && pair == 3) {
                         destination_pair = 31;
                     }
@@ -222,7 +222,7 @@ static void test_medium_right_hat_offset(void)
     write_medium_diamond_righthat(sprites, 0);
 
     base_offset = sprite_y * screen_width + sprite_x;
-#if C2_FIX_MEDIUM_RIGHT_HAT_OFFSET
+#if PORT_FIX_MEDIUM_RIGHT_HAT_OFFSET
     TEST_ASSERT_TRUE(pixels[base_offset + 6] == 0x71);
     TEST_ASSERT_TRUE(pixels[base_offset + 7] == 0x72);
     TEST_ASSERT_TRUE(pixels[base_offset + 62] == 0xa5);
@@ -365,7 +365,7 @@ static void test_half_roof(half_roof_writer write, int centre, int keep_left)
             } else {
                 first_pair = edge_seam == 2 ? 1 : 0;
                 last_pair = row < centre ? row : centre;
-                if (!C2_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR &&
+                if (!PORT_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR &&
                     centre == 14 && edge_seam == 2 && row == 10) {
                     set_expected_pair(base_offset +
                                           destination_pair_offset * 2,

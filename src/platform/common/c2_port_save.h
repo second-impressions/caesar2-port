@@ -1,5 +1,5 @@
-#ifndef C2_PORT_SAVE_H
-#define C2_PORT_SAVE_H
+#ifndef PORT_SAVE_H
+#define PORT_SAVE_H
 
 #include <stddef.h>
 
@@ -20,4 +20,4 @@ int c2_port_load_game_state(const char *filename,
                             struct figure_rec *figures,
                             struct arrow_rec *arrows);
 
-#endif /* C2_PORT_SAVE_H */
+#endif /* PORT_SAVE_H */

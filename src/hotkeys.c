@@ -1,18 +1,18 @@
 
 #include "c2_data.h"
 
-#if !PLATFORM_PORTABLE
+#if !PORT_PLATFORM
 #include <io.h>          /* open, close, write            */
 #include <fcntl.h>       /* O_BINARY / O_TRUNC / O_CREAT  */
 #include <sys/stat.h>    /* S_IRUSR, S_IWUSR              */
 #endif
 
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 #include "c2_port.h"
 #endif
 
 // Backing buffer for the eight-key debug-cheat ring.
-#if PLATFORM_PORTABLE
+#if PORT_PLATFORM
 static char portable_old_key_buffer[9] = "        ";
 char *old_key_buffer = portable_old_key_buffer;
 #else
@@ -118,7 +118,7 @@ unsigned char sim_mouse(void)
     case 0:
         switch (key_code) {
         case 0x48:
-#if C2_FEAT_ARROW_KEY_SCROLL
+#if PORT_FEAT_ARROW_KEY_SCROLL
             break;
 #else
             mse_y -= 8;
@@ -126,7 +126,7 @@ unsigned char sim_mouse(void)
             break;
 #endif
         case 0x50:
-#if C2_FEAT_ARROW_KEY_SCROLL
+#if PORT_FEAT_ARROW_KEY_SCROLL
             break;
 #else
             mse_y += 8;
@@ -134,7 +134,7 @@ unsigned char sim_mouse(void)
             break;
 #endif
         case 0x4b:
-#if C2_FEAT_ARROW_KEY_SCROLL
+#if PORT_FEAT_ARROW_KEY_SCROLL
             break;
 #else
             mse_x -= 8;
@@ -142,7 +142,7 @@ unsigned char sim_mouse(void)
             break;
 #endif
         case 0x4d:
-#if C2_FEAT_ARROW_KEY_SCROLL
+#if PORT_FEAT_ARROW_KEY_SCROLL
             break;
 #else
             mse_x += 8;
@@ -200,7 +200,7 @@ unsigned char sim_mouse(void)
             out7 = 1;
             out8 = 1;
             break;
-#if C2_FEAT_PNG_SCREENSHOTS
+#if PORT_FEAT_PNG_SCREENSHOTS
         case 0x78: capture_shot("shot1.png"); break;
         case 0x79: capture_shot("shot2.png"); break;
         case 0x7a: capture_shot("shot3.png"); break;
@@ -301,11 +301,11 @@ unsigned char sim_mouse(void)
 // FUNCTION: C2 0x28e13
 void capture_shot(char *filename)
 {
-#if !C2_FEAT_PNG_SCREENSHOTS
+#if !PORT_FEAT_PNG_SCREENSHOTS
     int screenshot_fd;
 #endif
 
-#if C2_FEAT_PNG_SCREENSHOTS
+#if PORT_FEAT_PNG_SCREENSHOTS
     c2_port_save_screenshot(filename);
 #else
     go_16m_palette(&current_palette);

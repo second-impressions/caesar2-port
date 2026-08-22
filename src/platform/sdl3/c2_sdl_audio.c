@@ -13,7 +13,7 @@ struct c2_audio_voice {
     Uint64 pause_started_ms;
     float gain;
     int paused;
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
     SDL_AtomicU32 produced_bytes;
     SDL_AtomicU32 underflow_bytes;
     SDL_AtomicU32 queue_calls;
@@ -26,7 +26,7 @@ static struct c2_audio_voice *c2_audio_voices;
 static int c2_audio_voice_count;
 static float c2_audio_master_gain = 1.0f;
 
-#if C2_FEAT_DEBUG_OBSERVATION && !PLATFORM_WASM
+#if PORT_FEAT_DEBUG_OBSERVATION && !PORT_PLATFORM_WASM
 static void SDLCALL observe_audio_request(void *userdata,
                                           SDL_AudioStream *stream,
                                           int additional_amount,
@@ -81,7 +81,7 @@ static int queue_pcm(int voice, const SDL_AudioSpec *spec,
     Uint64 now;
     Uint64 start_ms;
     int loop;
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
     int new_stream;
 #endif
 
@@ -93,7 +93,7 @@ static int queue_pcm(int voice, const SDL_AudioSpec *spec,
 
     if (replace) destroy_voice(voice);
     stream = c2_audio_voices[voice].stream;
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
     new_stream = stream == NULL;
 #endif
     if (stream == NULL) {
@@ -115,13 +115,13 @@ static int queue_pcm(int voice, const SDL_AudioSpec *spec,
             destroy_voice(voice);
             return 0;
         }
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
         SDL_AddAtomicU32(&c2_audio_voices[voice].produced_bytes, (int)size);
 #endif
     }
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
     SDL_AddAtomicU32(&c2_audio_voices[voice].queue_calls, 1);
-#if !PLATFORM_WASM
+#if !PORT_PLATFORM_WASM
     if (new_stream &&
         !SDL_SetAudioStreamGetCallback(
             stream, observe_audio_request,
@@ -351,7 +351,7 @@ void c2_host_audio_set_master_gain(float gain)
     }
 }
 
-#if C2_FEAT_DEBUG_OBSERVATION
+#if PORT_FEAT_DEBUG_OBSERVATION
 int c2_host_audio_observation_snapshot(
     int voice, struct c2_host_audio_observation *observation)
 {
