@@ -8,19 +8,26 @@
  *
  *   PLATFORM_DOS       the DOS release (PS.EXE), retained as the byte-exact
  *                      reconstruction target.
- *   PLATFORM_WINDOWS   the shipped Windows source witness. Which Windows
- *                      build is meant is C2_PATCHLEVEL's job.
+ *   PLATFORM_WINDOWS   the shipped 1996 Windows source witness. Which
+ *                      Windows build is meant is C2_PATCHLEVEL's job.
+ *                      This is NOT the modern Windows host target.
  *   PLATFORM_LINUX     the native Linux SDL continuation.
+ *   PLATFORM_WIN32     the native modern Windows SDL continuation, built by
+ *                      MinGW-w64 or MSVC. Distinct from PLATFORM_WINDOWS:
+ *                      that macro selects recovered 1996 engine behavior,
+ *                      this one selects a present-day host backend.
  *   PLATFORM_WASM      the browser SDL continuation compiled by Emscripten.
  *
  * Exactly one target platform is 1 and every other target platform is 0.
- * PLATFORM_PORTABLE is the derived family selector shared by Linux and Wasm;
- * build systems may export it for guards that precede the first project
- * header, but its value must match the selected leaf target. An unspecified
- * build defaults to DOS without inferring a platform from compiler identity.
+ * PLATFORM_PORTABLE is the derived family selector shared by the Linux,
+ * Win32, and Wasm continuations; build systems may export it for guards that
+ * precede the first project header, but its value must match the selected
+ * leaf target. An unspecified build defaults to DOS without inferring a
+ * platform from compiler identity.
  */
 #if !defined(PLATFORM_DOS) && !defined(PLATFORM_WINDOWS) && \
-    !defined(PLATFORM_LINUX) && !defined(PLATFORM_WASM)
+    !defined(PLATFORM_LINUX) && !defined(PLATFORM_WIN32) && \
+    !defined(PLATFORM_WASM)
 #  define PLATFORM_DOS 1
 #endif
 #ifndef PLATFORM_DOS
@@ -32,15 +39,19 @@
 #ifndef PLATFORM_LINUX
 #  define PLATFORM_LINUX 0
 #endif
+#ifndef PLATFORM_WIN32
+#  define PLATFORM_WIN32 0
+#endif
 #ifndef PLATFORM_WASM
 #  define PLATFORM_WASM 0
 #endif
-#if PLATFORM_DOS + PLATFORM_WINDOWS + PLATFORM_LINUX + PLATFORM_WASM != 1
+#if PLATFORM_DOS + PLATFORM_WINDOWS + PLATFORM_LINUX + PLATFORM_WIN32 + \
+    PLATFORM_WASM != 1
 #  error "exactly one PLATFORM_* must be selected"
 #endif
 #ifndef PLATFORM_PORTABLE
-#  define PLATFORM_PORTABLE (PLATFORM_LINUX || PLATFORM_WASM)
-#elif PLATFORM_PORTABLE != (PLATFORM_LINUX || PLATFORM_WASM)
+#  define PLATFORM_PORTABLE (PLATFORM_LINUX || PLATFORM_WIN32 || PLATFORM_WASM)
+#elif PLATFORM_PORTABLE != (PLATFORM_LINUX || PLATFORM_WIN32 || PLATFORM_WASM)
 #  error "PLATFORM_PORTABLE must match the selected target family"
 #endif
 

@@ -15,10 +15,24 @@ set(C2_LANGUAGE "${C2_LANGUAGE}" CACHE STRING
     "Two-letter language tag for this distribution artifact" FORCE)
 message(STATUS "Caesar II language build: ${C2_LANGUAGE}")
 
-if(EMSCRIPTEN)
+# SDL3 is taken from the pinned submodule on targets where no dependable
+# system package exists: Emscripten, and Windows for both the MinGW cross
+# build and the MSVC CI build.  Linux keeps using the distribution or
+# development-shell package.  One vendoring mechanism serves every such
+# target, so CI needs neither vcpkg nor prebuilt SDL archives.
+if(EMSCRIPTEN OR WIN32)
+    set(c2_vendored_sdl_default ON)
+else()
+    set(c2_vendored_sdl_default OFF)
+endif()
+option(C2_VENDORED_SDL
+    "Build SDL3 from the pinned third_party/SDL submodule"
+    ${c2_vendored_sdl_default})
+
+if(C2_VENDORED_SDL)
     if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL/CMakeLists.txt")
         message(FATAL_ERROR
-            "The WASM build requires the SDL submodule; run "
+            "C2_VENDORED_SDL requires the SDL submodule; run "
             "'git submodule update --init --recursive'")
     endif()
     set(SDL_SHARED OFF CACHE BOOL "" FORCE)
@@ -27,8 +41,10 @@ if(EMSCRIPTEN)
     set(SDL_TESTS OFF CACHE BOOL "" FORCE)
     set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
     set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
-    set(SDL_PTHREADS ON CACHE BOOL "" FORCE)
-    set(SDL_EMSCRIPTEN_PERSISTENT_PATH "/user-data" CACHE STRING "" FORCE)
+    if(EMSCRIPTEN)
+        set(SDL_PTHREADS ON CACHE BOOL "" FORCE)
+        set(SDL_EMSCRIPTEN_PERSISTENT_PATH "/user-data" CACHE STRING "" FORCE)
+    endif()
     add_subdirectory(third_party/SDL EXCLUDE_FROM_ALL)
 else()
     find_package(SDL3 3.4 CONFIG REQUIRED)
@@ -215,10 +231,20 @@ set_target_properties(caesar2 PROPERTIES
     C_EXTENSIONS OFF
 )
 
+# PLATFORM_WIN32 is the modern Windows host continuation.  It is deliberately
+# not PLATFORM_WINDOWS, which selects recovered 1996 Windows engine behavior.
+if(EMSCRIPTEN)
+    set(C2_PLATFORM_LEAF PLATFORM_WASM)
+elseif(WIN32)
+    set(C2_PLATFORM_LEAF PLATFORM_WIN32)
+else()
+    set(C2_PLATFORM_LEAF PLATFORM_LINUX)
+endif()
+message(STATUS "Caesar II target platform: ${C2_PLATFORM_LEAF}")
+
 target_compile_definitions(caesar2 PRIVATE
     PLATFORM_PORTABLE=1
-    $<$<BOOL:${EMSCRIPTEN}>:PLATFORM_WASM=1>
-    $<$<NOT:$<BOOL:${EMSCRIPTEN}>>:PLATFORM_LINUX=1>
+    ${C2_PLATFORM_LEAF}=1
     $<$<CONFIG:Debug>:C2_DEBUG_BUILD=1>
 )
 
@@ -398,6 +424,25 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         $<$<C_COMPILER_ID:Clang>:-Wno-microsoft-anon-tag>
     )
     target_link_options(caesar2 PRIVATE -Wl,--gc-sections)
+elseif(MSVC)
+    # The recovered engine relies on the same legacy semantics the GNU/Clang
+    # branch selects above: plain char is unsigned, signed overflow wraps,
+    # type-based aliasing is not assumed, and anonymous nested structs are
+    # accepted.  /J and the default /fp and /volatile settings cover those;
+    # MSVC performs no strict-aliasing optimization to disable.
+    target_compile_options(caesar2 PRIVATE
+        /W3
+        /J
+        /Gy
+        /wd4996   # POSIX/CRT deprecation of the recovered descriptor calls
+    )
+    target_compile_definitions(caesar2 PRIVATE
+        _CRT_SECURE_NO_WARNINGS
+        _CRT_NONSTDC_NO_WARNINGS
+        WIN32_LEAN_AND_MEAN
+        NOMINMAX
+    )
+    target_link_options(caesar2 PRIVATE /OPT:REF)
 endif()
 
 include(CTest)
