@@ -99,7 +99,9 @@ jobs:
         run: |
           nix develop --command bash -c "
             set -euo pipefail
-            mkdir -p \"$EM_CACHE\"
+            # A custom empty EM_CACHE needs its pkg-config parent before the
+            # Emscripten zlib port writes zlib.pc.
+            mkdir -p \"$EM_CACHE/sysroot/lib/pkgconfig\"
             embuilder build zlib
             ccache --zero-stats
             emcmake cmake --preset wasm-release -B build/ci-wasm \
