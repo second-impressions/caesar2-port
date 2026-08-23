@@ -28,10 +28,11 @@ jobs:
           extra_nix_config: experimental-features = nix-command flakes
       - name: Test Pages and versioning contracts
         run: |
-          nix develop --command uv run pytest -q \
-            tests/test_versioning.py \
-            tests/test_port_layering.py \
-            tests/test_target_guards.py
+          nix develop --command uv run --no-project --with pytest \
+            pytest -q \
+              tests/test_versioning.py \
+              tests/test_port_layering.py \
+              tests/test_target_guards.py
       - name: Configure and build WebAssembly
         env:
           BUILD_NUMBER: ${{ github.run_number }}

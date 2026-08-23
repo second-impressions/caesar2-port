@@ -55,7 +55,9 @@ jobs:
         # The annotation parser file has two tracked reconstruction-era
         # failures unrelated to the port. Every portable/static/tool test,
         # including versioning and Pages contracts, runs on every CI build.
-        run: nix develop --command uv run pytest -q --ignore=tests/test_function_annotations.py
+        run: |
+          nix develop --command uv run --no-project --with pytest \
+            pytest -q --ignore=tests/test_function_annotations.py
 
   # ── WebAssembly ──────────────────────────────────────────────────────
   wasm:
