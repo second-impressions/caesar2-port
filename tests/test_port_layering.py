@@ -78,10 +78,12 @@ def test_posix_crash_handler_is_debug_only_and_sanitizer_safe():
 def test_wasm_reuses_the_sdl_host_and_recovered_engine_worker():
     cmake = (ROOT / "CMakeLists.txt").read_text()
     main = (SDL_BACKEND / "c2_sdl_main.c").read_text()
-    assert "SDL_EMSCRIPTEN_PERSISTENT_PATH" in cmake
+    assert 'SDL_EMSCRIPTEN_PERSISTENT_PATH ""' in cmake
     assert "-sPTHREAD_POOL_SIZE=2" in cmake
-    assert "-sINITIAL_MEMORY=67108864" in cmake
-    assert "ALLOW_MEMORY_GROWTH" not in cmake
+    assert "-sINITIAL_MEMORY=100663296" in cmake
+    assert "-sALLOW_MEMORY_GROWTH=0" in cmake
+    assert "-sWASMFS" in cmake
+    assert "wasmfs_create_opfs_backend" in main
     assert "c2_wasm_implicit_void.h" in cmake
     assert "src/platform/wasm" not in cmake
     assert 'C2_HOST_ACTIVE_CALLBACK_RATE "120"' in main
@@ -104,29 +106,30 @@ def test_language_builds_split_artifacts_without_branching_the_engine():
     assert not offenders, "language build tag escaped into the engine:\n" + "\n".join(offenders)
 
 
-def test_wasm_shell_is_unframed_and_reports_downloads_in_megabytes():
+def test_wasm_shell_owns_import_switching_and_save_export():
     cmake = (ROOT / "CMakeLists.txt").read_text()
     shell = (ROOT / "web" / "caesar2.html").read_text()
     assert "${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2.html" in cmake
     assert "--js-library=${CMAKE_CURRENT_SOURCE_DIR}/web/c2_browser.js" in cmake
-    assert "radial-gradient" not in shell
-    assert "box-shadow" not in shell
-    assert "width: 100vw" in shell
-    assert "height: 100vh" in shell
     assert "resizeCanvasToIntegerScale" in shell
     assert "devicePixelRatio || 1" in shell
-    assert "Math.floor(fit)" in shell
+    assert "Math.floor" in shell
     assert "--c2-canvas-width" in shell
-    assert "Math.ceil(logicalWidth * scale / density)" in shell
-    assert "Number(match[1]) / 1_000_000" in shell
-    assert "MB)…" in shell
-    assert 'id="restart"' in shell
-    assert "onGameExit: showRestartButton" in shell
-    assert "canvas.hidden = true" in shell
-    assert "canvas[hidden]" in shell
-    assert "restart.hidden = false" in shell
-    assert "if (smokeOutput) smokeOutput.push(message)" in shell
-    assert 'restart.addEventListener("click", () => location.reload())' in shell
+    assert "navigator.storage.getDirectory" in shell
+    assert "navigator.storage.persist" in shell
+    assert 'id="folder-input"' in shell
+    assert 'id="file-input"' in shell
+    assert "webkitdirectory" in shell
+    assert "Choose ZIP / ISO / BIN+CUE / asset pack" in shell
+    assert "Change game data" in shell
+    assert "Delete cached game data" in shell
+    assert "Export saves" in shell
+    assert "history.dat" in shell
+    assert "caesar2.inf" in shell
+    assert "caesar2-saves.zip" in shell
+    assert "zipStore" in shell
+    assert "Module.callMain" in shell
+    assert "noInitialRun: true" in shell
     assert "c2_browser_show_restart();" in (
         SDL_BACKEND / "c2_sdl_main.c"
     ).read_text()

@@ -3,188 +3,355 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" href="data:,">
   <title>Caesar II</title>
   <style>
-    :root {
-      color-scheme: dark;
-      font-family: system-ui, sans-serif;
-      background: #000;
-      color: #fff;
-    }
-    body {
-      min-height: 100vh;
-      margin: 0;
-      display: grid;
-      place-items: center;
-      overflow: hidden;
-      background: #000;
-    }
-    main {
-      width: 100vw;
-      height: 100vh;
-      display: grid;
-      place-items: center;
-      text-align: center;
-    }
-    canvas {
-      display: block;
-      width: var(--c2-canvas-width, 640px) !important;
-      height: var(--c2-canvas-height, 480px) !important;
-      image-rendering: pixelated;
-      background: #000;
-      outline: none;
-      user-select: none;
-      -webkit-user-select: none;
-      -webkit-tap-highlight-color: transparent;
-    }
-    canvas[hidden] {
-      display: none;
-    }
-    #status {
-      position: fixed;
-      bottom: 1rem;
-      margin: 0;
-      color: #fff;
-    }
-    #restart {
-      padding: 0.75rem 1.5rem;
-      border: 1px solid #aaa;
-      border-radius: 0.25rem;
-      color: #fff;
-      background: #222;
-      font: inherit;
-      cursor: pointer;
-    }
-    #restart:hover,
-    #restart:focus-visible {
-      background: #333;
-    }
-    #restart[hidden] {
-      display: none;
-    }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; color: #eee; font: 16px system-ui, sans-serif; }
+    main { width: 100%; height: 100%; display: grid; place-items: center; }
+    canvas { width: var(--c2-canvas-width, 640px) !important; height: var(--c2-canvas-height, 480px) !important; image-rendering: pixelated; image-rendering: crisp-edges; outline: none; user-select: none; }
+    #panel { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.86); }
+    #panel[hidden] { display: none; }
+    #card { width: min(680px, calc(100% - 3rem)); max-height: calc(100% - 3rem); overflow: auto; padding: 1.5rem; border: 1px solid #777; border-radius: 10px; background: #171717; box-shadow: 0 10px 40px #000; }
+    h1 { margin-top: 0; }
+    .buttons { display: flex; flex-wrap: wrap; gap: .65rem; margin: 1rem 0; }
+    button, .download { color: #eee; background: #292929; border: 1px solid #888; border-radius: 5px; padding: .65rem .9rem; cursor: pointer; text-decoration: none; }
+    button:hover, button:focus-visible, .download:hover { background: #3a3a3a; }
+    button.danger { border-color: #b66; color: #fbb; }
+    #toolbar { position: fixed; z-index: 4; top: .5rem; right: .5rem; display: flex; gap: .4rem; opacity: .35; }
+    #toolbar:hover, #toolbar:focus-within { opacity: 1; }
+    #toolbar button { padding: .35rem .55rem; font-size: .8rem; }
+    #status { min-height: 1.5rem; white-space: pre-wrap; }
+    #downloads { display: flex; flex-wrap: wrap; gap: .5rem; }
+    input[type=file] { display: none; }
   </style>
 </head>
 <body>
-  <main>
-    <canvas id="canvas" tabindex="0" draggable="false"></canvas>
-    <button id="restart" type="button" hidden>Restart Caesar II</button>
-    <p id="status" role="status">Loading Caesar II…</p>
-  </main>
+  <main><canvas id="canvas" tabindex="0" draggable="false"></canvas></main>
+  <div id="toolbar" hidden>
+    <button id="export-toolbar" type="button">Export saves</button>
+    <button id="change-toolbar" type="button">Change game data</button>
+  </div>
+  <section id="panel">
+    <div id="card">
+      <h1>Caesar II</h1>
+      <p id="status" role="status">Loading runtime…</p>
+      <div class="buttons" id="source-buttons">
+        <button id="folder-button" type="button">Choose installation folder</button>
+        <button id="file-button" type="button">Choose ZIP / ISO / BIN+CUE / asset pack</button>
+        <button id="bundled-button" type="button">Use bundled game data</button>
+      </div>
+      <div class="buttons" id="ready-buttons" hidden>
+        <button id="play-button" type="button">Play</button>
+        <button id="change-button" type="button">Change game data</button>
+        <button id="export-button" type="button">Export saves</button>
+        <button id="forget-button" class="danger" type="button">Delete cached game data</button>
+      </div>
+      <p><label>Asset profile <input id="profile-input" list="profile-options" type="text" size="10" placeholder="en, de, fr…"></label><datalist id="profile-options"></datalist></p>
+      <label><input id="include-settings" type="checkbox"> Include caesar2.inf when exporting</label>
+      <div id="downloads"></div>
+      <input id="folder-input" type="file" webkitdirectory multiple>
+      <input id="file-input" type="file" accept=".zip,.c2assets,.iso,.bin,.cue" multiple>
+    </div>
+  </section>
   <script>
     const canvas = document.getElementById("canvas");
-    const restart = document.getElementById("restart");
+    const panel = document.getElementById("panel");
     const status = document.getElementById("status");
+    const toolbar = document.getElementById("toolbar");
+    const sourceButtons = document.getElementById("source-buttons");
+    const readyButtons = document.getElementById("ready-buttons");
+    const folderInput = document.getElementById("folder-input");
+    const fileInput = document.getElementById("file-input");
+    const downloads = document.getElementById("downloads");
     const query = new URLSearchParams(location.search);
     const smokeOutput = query.has("smoke-test") ? [] : null;
-    const args = ["--asset-root", "/assets"];
-    const logicalWidth = 640;
-    const logicalHeight = 480;
-    document.addEventListener(
-      "contextmenu",
-      (event) => {
-        event.preventDefault();
-        if (query.get("smoke-test") === "contextmenu") {
-          const message = "browser context menu suppressed";
-          smokeOutput.push(message);
-          console.log(message);
-        }
-      },
-      { capture: true }
-    );
-    if (query.get("mouse-lock") === "1") args.push("--mouse-lock");
-    if (query.get("smoke-test") === "province" ||
-        query.get("smoke-test") === "restart") {
-      args.push("--smoke-test");
+    const ACTIVE_SOURCE = "c2.active-source.v1";
+    const PENDING_SOURCE = "c2.pending-source.v1";
+    const ACTIVE_PROFILE = "c2.active-profile.v1";
+    let runtimeReady = false;
+    let gameRunning = false;
+    let downloadUrls = [];
+
+    function resizeCanvasToIntegerScale() {
+      const density = devicePixelRatio || 1;
+      const scale = Math.max(1, Math.floor(Math.min(innerWidth * density / 640, innerHeight * density / 480)));
+      canvas.style.setProperty("--c2-canvas-width", `${Math.ceil(640 * scale / density)}px`);
+      canvas.style.setProperty("--c2-canvas-height", `${Math.ceil(480 * scale / density)}px`);
     }
-    if (query.get("smoke-test") === "city") args.push("--city-smoke-test");
-    if (query.get("smoke-test") === "campania") {
-      args.push("--campania-transition-smoke-test");
-    }
-    if (query.get("smoke-test") === "music") args.push("--music-buffer-smoke-test");
-    if (smokeOutput) globalThis.__c2SmokeOutput = smokeOutput;
+    resizeCanvasToIntegerScale(); addEventListener("resize", resizeCanvasToIntegerScale);
+    document.addEventListener("contextmenu", e => {
+      e.preventDefault();
+      if (query.get("smoke-test") === "contextmenu") {
+        const message = "browser context menu suppressed";
+        smokeOutput.push(message); console.log(message);
+      }
+    }, {capture:true});
     if (query.get("smoke-test") === "canvas") {
       requestAnimationFrame(() => {
-        canvas.focus();
-        const style = getComputedStyle(canvas);
-        if (document.activeElement === canvas &&
-            style.userSelect === "none" &&
-            style.outlineStyle === "none" &&
-            !canvas.draggable) {
+        canvas.focus(); const style = getComputedStyle(canvas);
+        if (document.activeElement === canvas && style.userSelect === "none" &&
+            style.outlineStyle === "none" && !canvas.draggable) {
           const message = "canvas focus styling suppressed";
-          smokeOutput.push(message);
-          console.log(message);
-        } else {
-          console.error(
-            `canvas style mismatch: focus=${document.activeElement === canvas} ` +
-            `select=${style.userSelect} outline=${style.outlineStyle} ` +
-            `draggable=${canvas.draggable}`
-          );
+          smokeOutput.push(message); console.log(message);
         }
       });
     }
 
-    function resizeCanvasToIntegerScale() {
-      const density = devicePixelRatio || 1;
-      const fit = Math.min(
-        innerWidth * density / logicalWidth,
-        innerHeight * density / logicalHeight
-      );
-      const scale = Math.max(1, Math.floor(fit));
-      canvas.style.setProperty(
-        "--c2-canvas-width",
-        `${Math.ceil(logicalWidth * scale / density)}px`
-      );
-      canvas.style.setProperty(
-        "--c2-canvas-height",
-        `${Math.ceil(logicalHeight * scale / density)}px`
-      );
+    async function opfsRoot() { return navigator.storage.getDirectory(); }
+    async function directoryAt(path, create = true) {
+      let dir = await opfsRoot();
+      for (const part of path.split("/").filter(Boolean)) dir = await dir.getDirectoryHandle(part, {create});
+      return dir;
+    }
+    async function clearDirectory(dir) {
+      for await (const [name] of dir.entries()) await dir.removeEntry(name, {recursive:true});
+    }
+    async function writeBrowserFile(root, relative, file) {
+      const parts = relative.replaceAll("\\", "/").split("/").filter(Boolean);
+      if (!parts.length || parts.some(p => p === "." || p === "..")) throw new Error("Unsafe input path");
+      let dir = root;
+      for (const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part, {create:true});
+      const handle = await dir.getFileHandle(parts.at(-1), {create:true});
+      const writable = await handle.createWritable();
+      await file.stream().pipeTo(writable);
+    }
+    async function requestPersistence() {
+      if (!navigator.storage?.persist) return false;
+      if (await navigator.storage.persisted()) return true;
+      return navigator.storage.persist();
+    }
+    async function importFolder(files) {
+      status.textContent = "Importing installation folder…";
+      const generation = `folder-${Date.now()}`;
+      const incoming = await directoryAt(`incoming/${generation}`);
+      let done = 0;
+      for (const file of files) {
+        const path = file.webkitRelativePath || file.name;
+        const slash = path.indexOf("/");
+        await writeBrowserFile(incoming, slash >= 0 ? path.slice(slash + 1) : path, file);
+        status.textContent = `Importing installation folder… ${++done}/${files.length}`;
+      }
+      localStorage.setItem(PENDING_SOURCE, `/persistent/incoming/${generation}`);
+      await requestPersistence();
+      location.href = location.pathname;
+    }
+    async function importFiles(files) {
+      const allowed = [...files].filter(f => /\.(zip|c2assets|iso|bin|cue)$/i.test(f.name));
+      if (!allowed.length) throw new Error("No supported file selected");
+      const generation = `files-${Date.now()}`;
+      const incoming = await directoryAt(`incoming/${generation}`);
+      for (let i = 0; i < allowed.length; i++) {
+        status.textContent = `Importing source… ${i + 1}/${allowed.length}`;
+        await writeBrowserFile(incoming, allowed[i].name, allowed[i]);
+      }
+      const cue = allowed.find(f => /\.cue$/i.test(f.name));
+      const primary = cue || (allowed.length === 1 ? allowed[0] : null);
+      if (!primary) throw new Error("Select one archive/image, or one CUE together with its BIN");
+      localStorage.setItem(PENDING_SOURCE, `/persistent/incoming/${generation}/${primary.name}`);
+      await requestPersistence();
+      location.href = location.pathname;
+    }
+    function zipStore(files) {
+      const encoder = new TextEncoder();
+      const table = new Uint32Array(256);
+      for (let n = 0; n < 256; n++) {
+        let c = n;
+        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+        table[n] = c >>> 0;
+      }
+      const u16 = (view, offset, value) => view.setUint16(offset, value, true);
+      const u32 = (view, offset, value) => view.setUint32(offset, value >>> 0, true);
+      const parts = [], central = [];
+      let offset = 0;
+      for (const item of files) {
+        const name = encoder.encode(item.name);
+        const data = item.data;
+        let crc = 0xffffffff;
+        for (const byte of data) crc = table[(crc ^ byte) & 255] ^ (crc >>> 8);
+        crc = (crc ^ 0xffffffff) >>> 0;
+        const local = new Uint8Array(30 + name.length);
+        const lv = new DataView(local.buffer);
+        u32(lv, 0, 0x04034b50); u16(lv, 4, 20); u16(lv, 6, 0x0800);
+        u32(lv, 14, crc); u32(lv, 18, data.length); u32(lv, 22, data.length);
+        u16(lv, 26, name.length); local.set(name, 30);
+        parts.push(local, data);
+        const cd = new Uint8Array(46 + name.length); const cv = new DataView(cd.buffer);
+        u32(cv, 0, 0x02014b50); u16(cv, 4, 20); u16(cv, 6, 20); u16(cv, 8, 0x0800);
+        u32(cv, 16, crc); u32(cv, 20, data.length); u32(cv, 24, data.length);
+        u16(cv, 28, name.length); u32(cv, 42, offset); cd.set(name, 46);
+        central.push(cd); offset += local.length + data.length;
+      }
+      const centralSize = central.reduce((sum, part) => sum + part.length, 0);
+      const end = new Uint8Array(22); const ev = new DataView(end.buffer);
+      u32(ev, 0, 0x06054b50); u16(ev, 8, files.length); u16(ev, 10, files.length);
+      u32(ev, 12, centralSize); u32(ev, 16, offset);
+      return new Blob([...parts, ...central, end], {type:"application/zip"});
+    }
+    async function storedSaveSummary() {
+      const dir = await directoryAt("user-data", false);
+      const result = [];
+      for (const name of ["c2smoke.sav", "caesar2.sav", "lastyear.sav", "history.dat"]) {
+        try { result.push(`${name}:${(await (await dir.getFileHandle(name)).getFile()).size}`); } catch {}
+      }
+      return result;
+    }
+    async function exportSaves() {
+      downloads.replaceChildren();
+      for (const url of downloadUrls) URL.revokeObjectURL(url);
+      downloadUrls = [];
+      let dir;
+      try { dir = await directoryAt("user-data", false); }
+      catch { status.textContent = "No local saves found."; return; }
+      const includeSettings = document.getElementById("include-settings").checked;
+      const archiveFiles = [];
+      for await (const [name, handle] of dir.entries()) {
+        if (handle.kind !== "file" ||
+            (!/\.sav$/i.test(name) && name.toLowerCase() !== "history.dat" &&
+             !(includeSettings && name.toLowerCase() === "caesar2.inf"))) continue;
+        const file = await handle.getFile();
+        archiveFiles.push({name, data:new Uint8Array(await file.arrayBuffer())});
+        const url = URL.createObjectURL(file); downloadUrls.push(url);
+        const link = document.createElement("a");
+        link.className = "download"; link.href = url; link.download = name; link.textContent = `Download ${name}`;
+        downloads.append(link);
+      }
+      if (archiveFiles.length) {
+        const url = URL.createObjectURL(zipStore(archiveFiles)); downloadUrls.push(url);
+        const link = document.createElement("a");
+        link.className = "download"; link.href = url; link.download = "caesar2-saves.zip";
+        link.textContent = "Download all saves (.zip)"; downloads.prepend(link);
+      }
+      status.textContent = downloads.children.length ? "Save files are ready to download." : "No local saves found.";
+      panel.hidden = false;
+    }
+    async function forgetAssets() {
+      if (!confirm("Delete cached/imported game data? Saves and settings will be kept.")) return;
+      for (const name of ["game-data", "incoming"]) {
+        try { await (await opfsRoot()).removeEntry(name, {recursive:true}); } catch {}
+      }
+      localStorage.removeItem(ACTIVE_SOURCE);
+      location.href = `${location.pathname}?choose-data=1`;
+    }
+    function gameArgs(source) {
+      const args = ["--game-data", source];
+      const profile = localStorage.getItem(ACTIVE_PROFILE);
+      if (profile) args.push("--asset-profile", profile);
+      if (query.get("mouse-lock") === "1") args.push("--mouse-lock");
+      const smoke = query.get("smoke-test");
+      if (smoke === "province" || smoke === "restart") args.push("--smoke-test");
+      if (smoke === "city") args.push("--city-smoke-test");
+      if (smoke === "campania") args.push("--campania-transition-smoke-test");
+      if (smoke === "music") args.push("--music-buffer-smoke-test");
+      if (smoke === "save") args.push("--save-load-smoke-test");
+      return args;
+    }
+    function startGame(source) {
+      if (!runtimeReady || gameRunning) return;
+      gameRunning = true; panel.hidden = true; toolbar.hidden = false;
+      status.textContent = "Starting Caesar II…";
+      Module.callMain(gameArgs(source));
+    }
+    async function loadProfileOptions(source) {
+      document.getElementById("profile-options").replaceChildren();
+      if (!source?.startsWith("/persistent/")) return;
+      try {
+        const parts = source.slice("/persistent/".length).split("/").filter(Boolean);
+        let dir = await opfsRoot();
+        for (const part of parts) dir = await dir.getDirectoryHandle(part);
+        const text = await (await (await dir.getFileHandle("C2PACK.IDX")).getFile()).text();
+        for (const match of text.matchAll(/^PROFILE\t([^\t\r\n]+)/gm)) {
+          const option = document.createElement("option"); option.value = match[1];
+          document.getElementById("profile-options").append(option);
+        }
+      } catch {}
+    }
+    function showReady() {
+      sourceButtons.hidden = true; readyButtons.hidden = false; panel.hidden = false;
+      status.textContent = "Game data is stored locally and ready.";
+      loadProfileOptions(localStorage.getItem(ACTIVE_SOURCE));
+    }
+    async function bootstrap() {
+      if (query.get("storage-check") === "1") {
+        try { console.log(`browser durable files ${await storedSaveSummary()}`); }
+        catch (e) { console.error(`browser durable files missing: ${e}`); }
+        panel.hidden = false; status.textContent = "Storage check complete."; return;
+      }
+      const smoke = query.get("smoke-test");
+      if (smoke) { startGame("/assets"); return; }
+      const pending = localStorage.getItem(PENDING_SOURCE);
+      const active = localStorage.getItem(ACTIVE_SOURCE);
+      if (pending) {
+        startGame(pending);
+      } else if (query.has("choose-data")) {
+        sourceButtons.hidden = false; readyButtons.hidden = true; panel.hidden = false;
+        status.textContent = "Choose a Caesar II installation, ZIP, ISO, or BIN/CUE image.";
+      } else if (active) {
+        showReady();
+      } else {
+        sourceButtons.hidden = false; readyButtons.hidden = true; panel.hidden = false;
+        status.textContent = "Choose game data once; it will be cached in browser storage.";
+      }
     }
 
-    resizeCanvasToIntegerScale();
-    addEventListener("resize", resizeCanvasToIntegerScale);
-
-    function formatStatus(text) {
-      const match = /^Downloading data\.\.\. \((\d+)\/(\d+)\)$/.exec(text);
-      if (!match) return text;
-      const downloaded = Number(match[1]) / 1_000_000;
-      const total = Number(match[2]) / 1_000_000;
-      return `Downloading game data (${downloaded.toFixed(1)} / ${total.toFixed(1)} MB)…`;
-    }
-
-    function showRestartButton() {
-      canvas.hidden = true;
-      status.textContent = "";
-      restart.hidden = false;
-      restart.focus();
-      const message = "restart control shown";
-      if (smokeOutput) smokeOutput.push(message);
-      console.log(message);
-    }
-
-    restart.addEventListener("click", () => location.reload());
+    const profileInput = document.getElementById("profile-input");
+    profileInput.value = localStorage.getItem(ACTIVE_PROFILE) || "";
+    profileInput.onchange = () => {
+      const value = profileInput.value.trim();
+      if (value) localStorage.setItem(ACTIVE_PROFILE, value);
+      else localStorage.removeItem(ACTIVE_PROFILE);
+    };
+    document.getElementById("folder-button").onclick = () => folderInput.click();
+    document.getElementById("file-button").onclick = () => fileInput.click();
+    document.getElementById("bundled-button").onclick = () => { localStorage.setItem(ACTIVE_SOURCE, "/assets"); startGame("/assets"); };
+    document.getElementById("play-button").onclick = () => startGame(localStorage.getItem(ACTIVE_SOURCE) || "/assets");
+    document.getElementById("change-button").onclick = document.getElementById("change-toolbar").onclick = () => location.href = `${location.pathname}?choose-data=1`;
+    document.getElementById("export-button").onclick = document.getElementById("export-toolbar").onclick = exportSaves;
+    document.getElementById("forget-button").onclick = forgetAssets;
+    folderInput.onchange = () => importFolder(folderInput.files).catch(e => status.textContent = `Import failed: ${e.message}`);
+    fileInput.onchange = () => importFiles(fileInput.files).catch(e => status.textContent = `Import failed: ${e.message}`);
+    if (smokeOutput) globalThis.__c2SmokeOutput = smokeOutput;
 
     var Module = {
-      arguments: args,
+      noInitialRun: true,
       canvas,
-      print: (text) => {
-        if (smokeOutput) smokeOutput.push(String(text));
-        console.log(text);
+      print(text) { if (smokeOutput) smokeOutput.push(String(text)); console.log(text); },
+      printErr(text) { if (smokeOutput) smokeOutput.push(String(text)); console.error(text); },
+      setStatus(text) { status.textContent = text || ""; },
+      monitorRunDependencies(left) { status.textContent = left ? `Loading runtime (${left})…` : "Runtime ready."; },
+      onRuntimeInitialized() { runtimeReady = true; bootstrap(); },
+      async onSourceReady(resolved, original) {
+        const active = resolved.replace(/\/ACTIVE-[^/]+$/, "");
+        localStorage.setItem(ACTIVE_SOURCE, active);
+        localStorage.removeItem(PENDING_SOURCE);
+        if (original.startsWith("/persistent/incoming/files-")) {
+          try {
+            const generation = original.slice("/persistent/incoming/".length).split("/")[0];
+            const incoming = await (await opfsRoot()).getDirectoryHandle("incoming");
+            await incoming.removeEntry(generation, {recursive:true});
+          } catch {}
+        }
+        await requestPersistence();
       },
-      printErr: (text) => {
-        if (smokeOutput) smokeOutput.push(String(text));
-        console.error(text);
+      onAbort(reason) {
+        gameRunning = false; panel.hidden = false; toolbar.hidden = true;
+        localStorage.removeItem(PENDING_SOURCE);
+        const previous = localStorage.getItem(ACTIVE_SOURCE);
+        status.textContent = `Import/start failed: ${reason || 'invalid game data'}.` +
+          (previous ? " Your previous validated data is still available." : "");
       },
-      setStatus: (text) => { status.textContent = formatStatus(text); },
-      monitorRunDependencies: (remaining) => {
-        if (remaining) status.textContent = `Loading game data (${remaining})…`;
-        else status.textContent = "Starting Caesar II…";
+      onExit(code) {
+        if (code) Module.onAbort(`exit status ${code}`);
       },
-      onRuntimeInitialized: () => {
-        status.textContent = "";
-        canvas.focus();
-      },
-      onGameExit: showRestartButton
+      async onGameExit() {
+        gameRunning = false; toolbar.hidden = true; showReady();
+        if (query.get("smoke-test") === "restart") {
+          const message = "restart control shown";
+          smokeOutput.push(message); console.log(message);
+        }
+        if (query.get("smoke-test") === "save") {
+          try { console.log(`browser save persistence ${await storedSaveSummary()}`); }
+          catch (e) { console.error(`browser save persistence failed: ${e}`); }
+        }
+      }
     };
   </script>
   {{{ SCRIPT }}}

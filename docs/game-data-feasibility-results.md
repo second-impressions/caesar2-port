@@ -98,13 +98,16 @@ Every one of the 13 local PC CD archives contains one BIN and one CUE. They were
 
 Clean parses included MODE1 and both MODE2 German rereleases. Failures included ordinary MODE1 releases. Disabling Joliet did not resolve them. PyCdlib and the existing project tooling can enumerate all 13, so the discs are usable but expose libarchive compatibility/strictness gaps.
 
-Decision:
+Decision and implemented result:
 
-- use reduced libarchive for ZIP;
-- implement an in-tree ISO-9660 reader over a 2048-byte sector callback;
-- implement ISO files as a direct sector callback;
-- implement BIN/CUE as a MODE1/2352 or MODE2/2352 adapter feeding that callback; and
-- fuzz and corpus-test the project reader against all 13 releases.
+- reduced libarchive is used for ZIP;
+- the in-tree ISO-9660 reader uses a 2048-byte sector callback;
+- plain ISO files feed that callback directly;
+- BIN/CUE uses a MODE1/2352 or MODE2/2352 adapter; and
+- the project reader catalogued all 13 releases. Ten matched PyCdlib's complete
+  file count; three older discs each contained one dangling out-of-track
+  installer/catalogue extent, which is reported and omitted while all required
+  game assets remain available.
 
 The required ISO subset is small: primary volume/root discovery, directory records, extent-bounded file reads, multi-sector files, `;1` normalization, and ASCII case folding. Joliet can be added only if a supported real image needs it.
 
@@ -226,9 +229,11 @@ Win95 and Mac use 500x240 versions of the five marquee cinematics. Mac has the h
 
 ## Conclusion
 
-The architecture is feasible with the fixed game heap:
+The architecture is implemented with a fixed heap:
 
-- OPFS for durable browser objects and user data;
+- isolated OPFS tests pass at 64 MiB; the integrated SDL/game/WasmFS build
+  measured slightly above 71 MiB and now reserves a fixed 96 MiB;
+- OPFS stores durable browser objects and user data;
 - reduced libarchive for ZIP ingestion;
 - a project-owned ISO reader plus BIN/CUE sector adapter;
 - transactional, content-addressed generations; and

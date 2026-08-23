@@ -31,7 +31,7 @@ Measured feasibility and corpus results are in `game-data-feasibility-results.md
 - Stage and validate imports transactionally before changing the active generation.
 - Store imported objects by content hash so language/media profiles share identical data.
 - Expose the importer through a C ABI; its project-owned implementation may be C, Rust, or C++.
-- Keep Mac-sized media and future replacements out of the 64 MiB game heap. Asset sizes and offsets are 64-bit throughout.
+- Keep Mac-sized media and future replacements out of the fixed game heap. Integrated WasmFS startup requires a 96 MiB reservation; asset sizes and offsets remain 64-bit throughout.
 
 ## Augustus reference model
 
@@ -52,7 +52,7 @@ The Caesar II implementation should not copy Augustus literally:
 - it relies heavily on non-standard `webkitdirectory` APIs; and
 - its large growable heap makes copying the installation into MEMFS tolerable.
 
-Caesar II will retain separate asset/user namespaces, standard picker fallbacks, transactional generations, and a fixed 64 MiB game heap.
+Caesar II retains separate asset/user namespaces, standard picker fallbacks, transactional generations, and a fixed 96 MiB game heap. The original 64 MiB build peaked above its reservation after WasmFS integration; fixed 96 MiB passed while imported data remained outside the heap.
 
 ## Runtime architecture
 
@@ -150,7 +150,7 @@ OPFS root
         └── shot*.png
 ```
 
-The measured OPFS probe stored an 80 MiB object plus save/history files across reload and browser restart in Chromium and Firefox without changing the fixed 67,108,864-byte Wasm heap.
+The isolated OPFS probe stored an 80 MiB object plus save/history files across reload and browser restart in Chromium and Firefox without changing its 67,108,864-byte heap. The integrated SDL/game build reserves a fixed 96 MiB because WasmFS startup pushed total game memory slightly above 71 MiB.
 
 Emscripten cannot link the current `idbfs.js` persistence mode together with WasmFS. Remove `SDL_EMSCRIPTEN_PERSISTENT_PATH`, enable `-sWASMFS`, create/mount OPFS from a worker, and pass OPFS-backed roots to the SDL host.
 
@@ -369,14 +369,14 @@ Demo trees are incomplete and must not pass a full-install validator merely beca
 Use an ISO-9660-friendly abstract layout so ZIP and ISO contain the same files:
 
 ```text
-C2PACK.JSON
+C2PACK.JSN
 OBJECTS/
     00000001.BIN
     00000002.BIN
     ...
 ```
 
-Short numeric object names avoid requiring Joliet. `C2PACK.JSON` records each object's SHA-256 and 64-bit size, so IDs are container-local and content identity remains stable.
+Short numeric object names avoid requiring Joliet. `C2PACK.JSN` records each object's SHA-256 and 64-bit size, so IDs are container-local and content identity remains stable.
 
 Manifest sections:
 
@@ -477,7 +477,7 @@ Validation layers:
 - save/history persistence proof; and
 - Win95 high-quality media smoke tests.
 
-### Phase 1 — OPFS user data and export
+### Phase 1 — implemented: OPFS user data and export
 
 - migrate browser persistence from IDBFS to WasmFS OPFS;
 - mount `/game-data` and `/user-data` before SDL host init;
@@ -488,7 +488,7 @@ Validation layers:
 
 **Gate:** saves survive page reload and browser restart in Chromium and Firefox, exports match source bytes, and the game heap remains fixed.
 
-### Phase 2 — source manager and native/browser directories
+### Phase 2 — implemented: source manager and native/browser directories
 
 - add importer ABI and canonical catalog;
 - add startup state machine and page/native pickers;
@@ -499,14 +499,14 @@ Validation layers:
 
 **Gate:** all currently supported native smokes pass from normalized, DOS-CD, and hybrid Win95 layouts; invalid imports retain the previous generation.
 
-### Phase 3 — ZIP
+### Phase 3 — implemented: ZIP
 
 - integrate reduced libarchive ZIP reader;
 - add source quotas, path/collision validation, and outer-directory normalization;
 - import normal installation ZIPs and ZIP-wrapped BIN/CUE; and
 - test fixed-heap browser imports at real corpus sizes.
 
-### Phase 4 — ISO and BIN/CUE
+### Phase 4 — implemented: ISO and BIN/CUE
 
 - implement and fuzz the in-tree ISO reader;
 - implement CUE and MODE1/MODE2 sector adapters;
@@ -515,9 +515,9 @@ Validation layers:
 
 **Gate:** all 13 releases produce the same canonical catalogs as the established Python tooling.
 
-### Phase 5 — optimized multi-profile packs
+### Phase 5 — implemented baseline: optimized multi-profile packs
 
-- implement `C2PACK.JSON` and content-addressed objects;
+- implement `C2PACK.JSN` and content-addressed objects;
 - generate the conservative runtime manifest from corpus/static analysis;
 - add all-language text/speech profiles;
 - add DOS, Win95, Mac, and custom video components;

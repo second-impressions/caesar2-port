@@ -103,6 +103,65 @@ static void test_assets_use_install_then_cd_media_lookup(void)
     remove_test_files();
 }
 
+static void remove_layout_test(void)
+{
+    const char *paths[] = {
+        "c2-layout-test/C2WIN95/SMK/Intro.SMK",
+        "c2-layout-test/C2WIN95/HD/C2.ENG",
+        "c2-layout-test/C2WIN95/HD/Windows.Dat",
+        "c2-layout-test/HD/CAESAR.OPL",
+        "c2-layout-test/HD/C2.ENG",
+        "c2-layout-test/HD/Root.Dat",
+        "c2-layout-test/PL8/Media.PL8",
+        "c2-layout-test/C2WIN95/SMK",
+        "c2-layout-test/C2WIN95/HD",
+        "c2-layout-test/C2WIN95",
+        "c2-layout-test/PL8",
+        "c2-layout-test/HD",
+        "c2-layout-test"
+    };
+    size_t i;
+    for (i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) SDL_RemovePath(paths[i]);
+}
+
+static void test_cd_and_win95_layouts_are_detected(void)
+{
+    struct c2_host_config config;
+    unsigned char byte;
+    remove_layout_test();
+    TEST_ASSERT_TRUE(SDL_CreateDirectory("c2-layout-test/HD"));
+    TEST_ASSERT_TRUE(SDL_CreateDirectory("c2-layout-test/PL8"));
+    write_test_asset("c2-layout-test/HD/C2.ENG", 'E');
+    write_test_asset("c2-layout-test/HD/Root.Dat", 'D');
+    write_test_asset("c2-layout-test/PL8/Media.PL8", 'P');
+    memset(&config, 0, sizeof(config));
+    config.title = "layout"; config.asset_root = "c2-layout-test";
+    config.user_data_root = TEST_USER_ROOT; config.logical_width = 1;
+    config.logical_height = 1; config.window_scale = 1; config.headless = 1;
+    TEST_ASSERT_TRUE(c2_host_init(&config));
+    TEST_ASSERT_EQUAL_size_t(1, c2_host_asset_read("root.dat", &byte, 1, 0));
+    TEST_ASSERT_EQUAL_UINT8('D', byte);
+    TEST_ASSERT_EQUAL_size_t(1, c2_host_asset_read("media.pl8", &byte, 1, 0));
+    TEST_ASSERT_EQUAL_UINT8('P', byte);
+    c2_host_shutdown();
+
+    TEST_ASSERT_TRUE(SDL_CreateDirectory("c2-layout-test/C2WIN95/HD"));
+    TEST_ASSERT_TRUE(SDL_CreateDirectory("c2-layout-test/C2WIN95/SMK"));
+    write_test_asset("c2-layout-test/C2WIN95/HD/C2.ENG", 'W');
+    write_test_asset("c2-layout-test/C2WIN95/HD/Windows.Dat", 'N');
+    write_test_asset("c2-layout-test/C2WIN95/SMK/Intro.SMK", 'S');
+    write_test_asset("c2-layout-test/HD/CAESAR.OPL", 'O');
+    TEST_ASSERT_TRUE(c2_host_init(&config));
+    TEST_ASSERT_EQUAL_size_t(1, c2_host_asset_read("windows.dat", &byte, 1, 0));
+    TEST_ASSERT_EQUAL_UINT8('N', byte);
+    TEST_ASSERT_EQUAL_size_t(1, c2_host_asset_read("intro.smk", &byte, 1, 0));
+    TEST_ASSERT_EQUAL_UINT8('S', byte);
+    TEST_ASSERT_EQUAL_size_t(1, c2_host_asset_read("caesar.opl", &byte, 1, 0));
+    TEST_ASSERT_EQUAL_UINT8('O', byte);
+    c2_host_shutdown();
+    remove_layout_test(); remove_test_files();
+}
+
 static void test_indexed_screenshot_is_saved_as_png(void)
 {
     struct c2_host_config config;
@@ -353,6 +412,7 @@ int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_assets_use_install_then_cd_media_lookup);
+    RUN_TEST(test_cd_and_win95_layouts_are_detected);
     RUN_TEST(test_user_streams_and_dos_style_directory_listing);
     RUN_TEST(test_indexed_screenshot_is_saved_as_png);
     RUN_TEST(test_mouse_edges_survive_between_engine_polls);

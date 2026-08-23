@@ -9,43 +9,22 @@
 static char c2_language_filename[13];
 static char c2_media_filename[13];
 
-#define C2_ASSET_CHUNK_SIZE 65536
-#define C2_ASSET_SIZE_LIMIT (64u * 1024u * 1024u)
+#define C2_ASSET_SIZE_LIMIT (512u * 1024u * 1024u)
 
 void *c2_port_load_asset(const char *filename, size_t *size_out)
 {
     unsigned char *data;
-    unsigned char *grown;
-    size_t capacity;
+    uint64_t size64;
     size_t size;
-    size_t bytes_read;
 
     if (filename == NULL || size_out == NULL) return NULL;
-    capacity = C2_ASSET_CHUNK_SIZE;
-    data = malloc(capacity);
+    size64 = c2_host_asset_size(filename);
+    if (size64 == 0 || size64 > C2_ASSET_SIZE_LIMIT ||
+        size64 > (uint64_t)SIZE_MAX) return NULL;
+    size = (size_t)size64;
+    data = malloc(size);
     if (data == NULL) return NULL;
-
-    size = 0;
-    for (;;) {
-        if (size == capacity) {
-            if (capacity >= C2_ASSET_SIZE_LIMIT) {
-                free(data);
-                return NULL;
-            }
-            capacity *= 2;
-            grown = realloc(data, capacity);
-            if (grown == NULL) {
-                free(data);
-                return NULL;
-            }
-            data = grown;
-        }
-        bytes_read = c2_host_asset_read(filename, data + size,
-                                        capacity - size, size);
-        size += bytes_read;
-        if (bytes_read == 0 || size < capacity) break;
-    }
-    if (size == 0) {
+    if (c2_host_asset_read(filename, data, size, 0) != size) {
         free(data);
         return NULL;
     }

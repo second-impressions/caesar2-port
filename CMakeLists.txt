@@ -43,12 +43,47 @@ if(C2_VENDORED_SDL)
     set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
     if(EMSCRIPTEN)
         set(SDL_PTHREADS ON CACHE BOOL "" FORCE)
-        set(SDL_EMSCRIPTEN_PERSISTENT_PATH "/user-data" CACHE STRING "" FORCE)
+        # User data and imported assets share one storage-backed WasmFS OPFS
+        # mount. IDBFS cannot coexist with WasmFS and would mirror the full
+        # asset tree into the fixed game heap.
+        set(SDL_EMSCRIPTEN_PERSISTENT_PATH "" CACHE STRING "" FORCE)
     endif()
     add_subdirectory(third_party/SDL EXCLUDE_FROM_ALL)
 else()
     find_package(SDL3 3.4 CONFIG REQUIRED)
 endif()
+
+# Reduced libarchive is used only by the user-supplied ZIP importer. ISO and
+# BIN/CUE are handled by the smaller project-owned sector reader.
+if(EMSCRIPTEN)
+    execute_process(COMMAND em-config CACHE
+        OUTPUT_VARIABLE C2_EMSCRIPTEN_CACHE
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+    set(ZLIB_INCLUDE_DIR "${C2_EMSCRIPTEN_CACHE}/sysroot/include" CACHE PATH "" FORCE)
+    set(ZLIB_LIBRARY "${C2_EMSCRIPTEN_CACHE}/sysroot/lib/wasm32-emscripten/libz.a" CACHE FILEPATH "" FORCE)
+endif()
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(ENABLE_TEST OFF CACHE BOOL "" FORCE)
+set(ENABLE_TAR OFF CACHE BOOL "" FORCE)
+set(ENABLE_CPIO OFF CACHE BOOL "" FORCE)
+set(ENABLE_CAT OFF CACHE BOOL "" FORCE)
+set(ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+set(ENABLE_OPENSSL OFF CACHE BOOL "" FORCE)
+set(ENABLE_MBEDTLS OFF CACHE BOOL "" FORCE)
+set(ENABLE_NETTLE OFF CACHE BOOL "" FORCE)
+set(ENABLE_LIBB2 OFF CACHE BOOL "" FORCE)
+set(ENABLE_LZ4 OFF CACHE BOOL "" FORCE)
+set(ENABLE_LZMA OFF CACHE BOOL "" FORCE)
+set(ENABLE_ZSTD OFF CACHE BOOL "" FORCE)
+set(ENABLE_BZip2 OFF CACHE BOOL "" FORCE)
+set(ENABLE_LIBXML2 OFF CACHE BOOL "" FORCE)
+set(ENABLE_EXPAT OFF CACHE BOOL "" FORCE)
+set(ENABLE_PCREPOSIX OFF CACHE BOOL "" FORCE)
+set(ENABLE_PCRE2POSIX OFF CACHE BOOL "" FORCE)
+set(ENABLE_ICONV OFF CACHE BOOL "" FORCE)
+set(ENABLE_ACL OFF CACHE BOOL "" FORCE)
+set(ENABLE_XATTR OFF CACHE BOOL "" FORCE)
+add_subdirectory(third_party/libarchive EXCLUDE_FROM_ALL)
 
 set(libADLMIDI_STATIC ON CACHE BOOL "" FORCE)
 set(libADLMIDI_SHARED OFF CACHE BOOL "" FORCE)
@@ -69,6 +104,16 @@ add_subdirectory(third_party/libADLMIDI EXCLUDE_FROM_ALL)
 add_library(c2_libsmacker STATIC third_party/libsmacker/smacker.c)
 target_compile_features(c2_libsmacker PRIVATE c_std_11)
 target_include_directories(c2_libsmacker PUBLIC third_party)
+
+add_library(c2_import_core STATIC
+    src/platform/common/c2_iso.c
+    src/platform/common/c2_cue.c
+    src/platform/sdl3/c2_zip.c
+    src/platform/sdl3/c2_import_fs.c
+    src/platform/sdl3/c2_pack.c)
+target_compile_features(c2_import_core PRIVATE c_std_11)
+target_include_directories(c2_import_core PUBLIC include)
+target_link_libraries(c2_import_core PUBLIC archive_static SDL3::SDL3)
 
 option(PORT_FIX_MEDIUM_RIGHT_HAT_OFFSET
     "Correct the misplaced pixel pair in the medium right diamond hat" ON)
@@ -288,6 +333,7 @@ endforeach()
 
 target_link_libraries(caesar2 PRIVATE
     c2_asm_portable
+    c2_import_core
     c2_libsmacker
     ADLMIDI
     SDL3::SDL3)
@@ -305,7 +351,16 @@ if(EMSCRIPTEN)
     target_link_options(caesar2 PRIVATE
         -pthread
         -sPTHREAD_POOL_SIZE=2
-        -sINITIAL_MEMORY=67108864
+        # The recovered game fit in 64 MiB. WasmFS plus the complete SDL/game
+        # startup peaks just above 71 MiB, so reserve a fixed 96 MiB while
+        # keeping imported assets in OPFS rather than enabling heap growth.
+        -sINITIAL_MEMORY=100663296
+        -sALLOW_MEMORY_GROWTH=0
+        -sWASMFS
+        -sFORCE_FILESYSTEM
+        -sUSE_ZLIB=1
+        -sINVOKE_RUN=0
+        -sEXPORTED_RUNTIME_METHODS=callMain
         -sEXIT_RUNTIME=0
         "--shell-file=${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2.html"
         "--js-library=${CMAKE_CURRENT_SOURCE_DIR}/web/c2_browser.js"
@@ -339,9 +394,9 @@ if(EMSCRIPTEN)
         target_link_options(caesar2 PRIVATE
             "--preload-file=${C2_WASM_ASSET_ROOT}@/assets")
     else()
-        message(WARNING
-            "C2_WASM_ASSET_ROOT is empty; the web bundle will build but "
-            "cannot start the game without Caesar II assets")
+        message(STATUS
+            "C2_WASM_ASSET_ROOT is empty; the web page will request a "
+            "directory, ZIP, optimized pack, ISO, or BIN/CUE on first use")
     endif()
 endif()
 
@@ -553,6 +608,12 @@ if(BUILD_TESTING)
     target_link_libraries(c2-user-files-test PRIVATE SDL3::SDL3)
     add_test(NAME user-files COMMAND c2-user-files-test)
 
+    add_executable(c2-import-test tests/c2_import_test.c)
+    target_compile_features(c2-import-test PRIVATE c_std_11)
+    target_include_directories(c2-import-test PRIVATE include)
+    target_link_libraries(c2-import-test PRIVATE c2_import_core)
+    add_test(NAME import-readers COMMAND c2-import-test)
+
     add_executable(c2-sdl-audio-test
         tests/c2_sdl_audio_test.c
         src/platform/sdl3/c2_sdl_audio.c)
@@ -618,6 +679,7 @@ if(BUILD_TESTING)
         c2-save-compat-test
         c2-port-save-test
         c2-user-files-test
+        c2-import-test
         c2-sdl-audio-test
         c2-smacker-test
         c2-adlmidi-test

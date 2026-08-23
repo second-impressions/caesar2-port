@@ -5,4 +5,11 @@ mergeInto(LibraryManager.library, {
       Module["onGameExit"]();
     }
   },
+  c2_browser_source_ready__deps: ["$UTF8ToString"],
+  c2_browser_source_ready__proxy: "sync",
+  c2_browser_source_ready: function(resolved, original) {
+    if (Module["onSourceReady"]) {
+      Module["onSourceReady"](UTF8ToString(resolved), UTF8ToString(original));
+    }
+  },
 });

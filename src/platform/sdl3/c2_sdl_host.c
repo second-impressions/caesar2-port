@@ -5,6 +5,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#if PORT_PLATFORM_WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+/* POSIX.1 declarations are hidden by some strict-C library profiles. */
+extern int fileno(FILE *stream);
+#endif
 
 #include "c2_host.h"
 #include "c2_port_mouse.h"
@@ -15,6 +22,8 @@
 #define C2_EVENT_QUEUE_CAPACITY 64
 #define C2_INPUT_QUEUE_CAPACITY 64
 #define C2_MOUSE_EDGE_MARGIN 8
+#define C2_ASSET_BASE_ROOT_CAPACITY 4
+#define C2_ASSET_MEDIA_KIND_COUNT 4
 
 static SDL_Window *c2_window;
 static SDL_Renderer *c2_renderer;
@@ -34,7 +43,13 @@ static struct c2_port_mouse c2_mouse;
 #if PORT_FEAT_DEBUG_OBSERVATION
 static struct c2_observation c2_observation;
 #endif
-static char c2_asset_root[C2_PATH_CAPACITY];
+static char c2_asset_base_roots[C2_ASSET_BASE_ROOT_CAPACITY][C2_PATH_CAPACITY];
+static int c2_asset_base_root_count;
+static char c2_asset_media_roots[C2_ASSET_MEDIA_KIND_COUNT][C2_PATH_CAPACITY];
+struct c2_pack_mapping { char *logical; char *object; };
+static struct c2_pack_mapping *c2_pack_mappings;
+static size_t c2_pack_mapping_count;
+static char c2_pack_active_root[C2_PATH_CAPACITY];
 static char c2_user_data_root[C2_PATH_CAPACITY];
 static int c2_frame_width;
 static int c2_frame_height;
@@ -56,7 +71,18 @@ static int c2_observation_enabled;
 
 struct c2_host_user_stream {
     FILE *file;
+    enum c2_host_user_stream_mode mode;
 };
+
+static int flush_user_file(FILE *file)
+{
+    if (fflush(file) != 0) return 0;
+#if PORT_PLATFORM_WIN32
+    return _commit(_fileno(file)) == 0;
+#else
+    return fsync(fileno(file)) == 0;
+#endif
+}
 
 static void sync_mouse_input(void)
 {
@@ -279,51 +305,47 @@ static FILE *open_file_in_directory(const char *directory,
     return file;
 }
 
-static const char *asset_media_directory(const char *filename)
+enum c2_asset_media_kind {
+    C2_ASSET_MEDIA_PL8,
+    C2_ASSET_MEDIA_RAW,
+    C2_ASSET_MEDIA_XMI,
+    C2_ASSET_MEDIA_SMK
+};
+
+static int asset_media_kind(const char *filename)
 {
     const char *extension;
 
     extension = strrchr(filename, '.');
-    if (extension == NULL) return NULL;
-    if (SDL_strcasecmp(extension, ".pl8") == 0) return "pl8";
-    if (SDL_strcasecmp(extension, ".raw") == 0) return "raw";
-    if (SDL_strcasecmp(extension, ".xmi") == 0) return "xmi";
-    if (SDL_strcasecmp(extension, ".smk") == 0) return "smk";
-    return NULL;
+    if (extension == NULL) return -1;
+    if (SDL_strcasecmp(extension, ".pl8") == 0) return C2_ASSET_MEDIA_PL8;
+    if (SDL_strcasecmp(extension, ".raw") == 0) return C2_ASSET_MEDIA_RAW;
+    if (SDL_strcasecmp(extension, ".xmi") == 0) return C2_ASSET_MEDIA_XMI;
+    if (SDL_strcasecmp(extension, ".smk") == 0) return C2_ASSET_MEDIA_SMK;
+    return -1;
 }
 
-static int resolve_asset_directory(char *path, size_t capacity,
-                                   const char *directory)
+static int resolve_directory_at(char *path, size_t capacity,
+                                const char *root, const char *directory)
 {
     char **entries;
     SDL_PathInfo info;
     int entry_count;
     int i;
 
-    if (!build_path(path, capacity, c2_asset_root, directory, 0)) {
-        return 0;
-    }
+    if (!build_path(path, capacity, root, directory, 0)) return 0;
     if (SDL_GetPathInfo(path, &info) && info.type == SDL_PATHTYPE_DIRECTORY) {
         return 1;
     }
-    if (!build_path(path, capacity, c2_asset_root, directory, 1)) {
-        return 0;
-    }
-    if (SDL_GetPathInfo(path, &info) && info.type == SDL_PATHTYPE_DIRECTORY) {
-        return 1;
-    }
-
-    entries = SDL_GlobDirectory(c2_asset_root, directory,
+    entries = SDL_GlobDirectory(root, directory,
                                 SDL_GLOB_CASEINSENSITIVE, &entry_count);
-    if (entries == NULL) {
-        return 0;
-    }
+    if (entries == NULL) return 0;
     qsort(entries, (size_t)entry_count, sizeof(*entries), compare_filenames);
     for (i = 0; i < entry_count; i++) {
         if (strchr(entries[i], '/') == NULL &&
             strchr(entries[i], '\\') == NULL &&
             SDL_strcasecmp(entries[i], directory) == 0 &&
-            build_path(path, capacity, c2_asset_root, entries[i], 0) &&
+            build_path(path, capacity, root, entries[i], 0) &&
             SDL_GetPathInfo(path, &info) &&
             info.type == SDL_PATHTYPE_DIRECTORY) {
             SDL_free(entries);
@@ -334,27 +356,179 @@ static int resolve_asset_directory(char *path, size_t capacity,
     return 0;
 }
 
+static int directory_has_asset(const char *directory, const char *filename)
+{
+    FILE *file = open_file_in_directory(directory, filename);
+    if (file == NULL) return 0;
+    fclose(file);
+    return 1;
+}
+
+static int add_asset_base_root(const char *root)
+{
+    if (c2_asset_base_root_count >= C2_ASSET_BASE_ROOT_CAPACITY) return 0;
+    if (!copy_root(c2_asset_base_roots[c2_asset_base_root_count],
+                   sizeof(c2_asset_base_roots[0]), root)) return 0;
+    c2_asset_base_root_count++;
+    return 1;
+}
+
+static void clear_pack_mappings(void)
+{
+    size_t i;
+    for (i = 0; i < c2_pack_mapping_count; i++) {
+        free(c2_pack_mappings[i].logical);
+        free(c2_pack_mappings[i].object);
+    }
+    free(c2_pack_mappings);
+    c2_pack_mappings = NULL;
+    c2_pack_mapping_count = 0;
+    c2_pack_active_root[0] = '\0';
+}
+
+static int load_pack_mappings(const char *source)
+{
+    char map_path[C2_PATH_CAPACITY];
+    char line[1024];
+    FILE *file;
+    if (snprintf(map_path, sizeof(map_path), "%s/.c2-object-map", source) >= (int)sizeof(map_path)) return 0;
+    file = fopen(map_path, "rb");
+    if (!file) return 0;
+    while (fgets(line, sizeof(line), file)) {
+        char *tab = strchr(line, '\t');
+        char *end;
+        struct c2_pack_mapping *grown;
+        size_t logical_length;
+        size_t object_length;
+        if (!tab) { fclose(file); clear_pack_mappings(); return 0; }
+        *tab++ = '\0';
+        end = strpbrk(tab, "\r\n"); if (end) *end = '\0';
+        if (!is_safe_relative_path(line) || strncmp(tab, "../OBJECTS/", 11) != 0 ||
+            strchr(tab + 11, '/') || strchr(tab + 11, '\\')) {
+            fclose(file); clear_pack_mappings(); return 0;
+        }
+        grown = realloc(c2_pack_mappings,
+                        (c2_pack_mapping_count + 1) * sizeof(*grown));
+        if (!grown) { fclose(file); clear_pack_mappings(); return 0; }
+        c2_pack_mappings = grown;
+        logical_length = strlen(line) + 1;
+        object_length = strlen(tab) + 1;
+        c2_pack_mappings[c2_pack_mapping_count].logical = malloc(logical_length);
+        c2_pack_mappings[c2_pack_mapping_count].object = malloc(object_length);
+        if (!c2_pack_mappings[c2_pack_mapping_count].logical ||
+            !c2_pack_mappings[c2_pack_mapping_count].object) {
+            fclose(file); clear_pack_mappings(); return 0;
+        }
+        memcpy(c2_pack_mappings[c2_pack_mapping_count].logical, line, logical_length);
+        memcpy(c2_pack_mappings[c2_pack_mapping_count].object, tab, object_length);
+        c2_pack_mapping_count++;
+    }
+    fclose(file);
+    if (!c2_pack_mapping_count || !copy_root(c2_pack_active_root,
+                                              sizeof(c2_pack_active_root), source)) {
+        clear_pack_mappings(); return 0;
+    }
+    return 1;
+}
+
+static int configure_asset_layout(const char *source)
+{
+    static const char *media_names[C2_ASSET_MEDIA_KIND_COUNT] = {
+        "PL8", "RAW", "XMI", "SMK"
+    };
+    char win_root[C2_PATH_CAPACITY];
+    char win_hd[C2_PATH_CAPACITY];
+    char dos_hd[C2_PATH_CAPACITY];
+    int i;
+
+    clear_pack_mappings();
+    c2_asset_base_root_count = 0;
+    memset(c2_asset_base_roots, 0, sizeof(c2_asset_base_roots));
+    memset(c2_asset_media_roots, 0, sizeof(c2_asset_media_roots));
+    if (load_pack_mappings(source)) return 1;
+
+    if (resolve_directory_at(win_root, sizeof(win_root), source, "C2WIN95") &&
+        resolve_directory_at(win_hd, sizeof(win_hd), win_root, "HD") &&
+        directory_has_asset(win_hd, "C2.ENG")) {
+        if (!add_asset_base_root(win_hd)) return 0;
+        if (resolve_directory_at(dos_hd, sizeof(dos_hd), source, "HD")) {
+            if (!add_asset_base_root(dos_hd)) return 0;
+        }
+        for (i = 0; i < C2_ASSET_MEDIA_KIND_COUNT; i++) {
+            const char *media_parent = i == C2_ASSET_MEDIA_XMI ? source : win_root;
+            resolve_directory_at(c2_asset_media_roots[i],
+                                 sizeof(c2_asset_media_roots[i]),
+                                 media_parent, media_names[i]);
+        }
+        return 1;
+    }
+
+    if (resolve_directory_at(dos_hd, sizeof(dos_hd), source, "HD") &&
+        directory_has_asset(dos_hd, "C2.ENG")) {
+        if (!add_asset_base_root(dos_hd)) return 0;
+        for (i = 0; i < C2_ASSET_MEDIA_KIND_COUNT; i++) {
+            resolve_directory_at(c2_asset_media_roots[i],
+                                 sizeof(c2_asset_media_roots[i]),
+                                 source, media_names[i]);
+        }
+        return 1;
+    }
+
+    if (!add_asset_base_root(source)) return 0;
+    for (i = 0; i < C2_ASSET_MEDIA_KIND_COUNT; i++) {
+        resolve_directory_at(c2_asset_media_roots[i],
+                             sizeof(c2_asset_media_roots[i]),
+                             source, media_names[i]);
+    }
+    return 1;
+}
+
+static FILE *open_pack_asset(const char *filename)
+{
+    static const char *media_names[C2_ASSET_MEDIA_KIND_COUNT] = {
+        "PL8", "RAW", "XMI", "SMK"
+    };
+    char media_path[512];
+    char object_path[C2_PATH_CAPACITY];
+    const char *keys[2];
+    size_t key_count = 1;
+    size_t i;
+    int kind;
+    keys[0] = filename;
+    kind = asset_media_kind(filename);
+    if (kind >= 0 && snprintf(media_path, sizeof(media_path), "%s/%s",
+                              media_names[kind], filename) < (int)sizeof(media_path)) {
+        keys[key_count++] = media_path;
+    }
+    for (i = c2_pack_mapping_count; i > 0; i--) {
+        size_t k;
+        for (k = 0; k < key_count; k++) {
+            if (SDL_strcasecmp(c2_pack_mappings[i - 1].logical, keys[k]) == 0) {
+                if (snprintf(object_path, sizeof(object_path), "%s/%s",
+                             c2_pack_active_root,
+                             c2_pack_mappings[i - 1].object) >= (int)sizeof(object_path)) return NULL;
+                return fopen(object_path, "rb");
+            }
+        }
+    }
+    return NULL;
+}
+
 static FILE *open_asset(const char *filename)
 {
-    char media_path[C2_PATH_CAPACITY];
-    const char *media_directory;
     FILE *file;
+    int kind;
+    int i;
 
-    if (!is_safe_relative_path(filename)) {
-        return NULL;
+    if (!is_safe_relative_path(filename)) return NULL;
+    if (c2_pack_mapping_count) return open_pack_asset(filename);
+    for (i = 0; i < c2_asset_base_root_count; i++) {
+        file = open_file_in_directory(c2_asset_base_roots[i], filename);
+        if (file != NULL) return file;
     }
-    file = open_file_in_directory(c2_asset_root, filename);
-    if (file != NULL) {
-        return file;
-    }
-
-    media_directory = asset_media_directory(filename);
-    if (media_directory == NULL ||
-        !resolve_asset_directory(media_path, sizeof(media_path),
-                                 media_directory)) {
-        return NULL;
-    }
-    return open_file_in_directory(media_path, filename);
+    kind = asset_media_kind(filename);
+    if (kind < 0 || c2_asset_media_roots[kind][0] == '\0') return NULL;
+    return open_file_in_directory(c2_asset_media_roots[kind], filename);
 }
 
 static int resolve_user_path(char *path, size_t capacity,
@@ -532,7 +706,7 @@ int c2_host_init(const struct c2_host_config *config)
 
     if (config == NULL || config->logical_width <= 0 ||
         config->logical_height <= 0 || config->window_scale <= 0 ||
-        !copy_root(c2_asset_root, sizeof(c2_asset_root), config->asset_root) ||
+        !configure_asset_layout(config->asset_root) ||
         !copy_root(c2_user_data_root, sizeof(c2_user_data_root),
                    config->user_data_root)) {
         fprintf(stderr, "invalid Caesar II host configuration\n");
@@ -683,6 +857,7 @@ void c2_host_shutdown(void)
     c2_mouse_relative = 0;
     c2_mouse_lock_pending = 0;
     c2_mouse_warp_pending = 0;
+    clear_pack_mappings();
 
     free(c2_rgba_frame);
     free(c2_present_frame);
@@ -731,6 +906,22 @@ int c2_host_has_capability(enum c2_host_capability capability)
            capability == C2_HOST_CAPABILITY_VIDEO;
 }
 
+uint64_t c2_host_asset_size(const char *filename)
+{
+    FILE *file;
+    long size;
+
+    file = open_asset(filename);
+    if (file == NULL) return 0;
+    if (fseek(file, 0, SEEK_END) != 0) {
+        fclose(file);
+        return 0;
+    }
+    size = ftell(file);
+    fclose(file);
+    return size < 0 ? 0 : (uint64_t)size;
+}
+
 size_t c2_host_asset_read(const char *filename, void *buffer,
                           size_t size, size_t offset)
 {
@@ -764,7 +955,7 @@ int c2_host_user_file_write(const char *filename, const void *buffer,
     if (file == NULL) {
         return 0;
     }
-    ok = fwrite(buffer, 1, size, file) == size;
+    ok = fwrite(buffer, 1, size, file) == size && flush_user_file(file);
     if (fclose(file) != 0) {
         ok = 0;
     }
@@ -807,7 +998,7 @@ int c2_host_user_file_write_at(const char *filename, const void *buffer,
         if (file != NULL) fclose(file);
         return 0;
     }
-    ok = fwrite(buffer, 1, size, file) == size;
+    ok = fwrite(buffer, 1, size, file) == size && flush_user_file(file);
     if (fclose(file) != 0) ok = 0;
     return ok;
 }
@@ -888,6 +1079,7 @@ struct c2_host_user_stream *c2_host_user_stream_open(
     if (stream == NULL) {
         return NULL;
     }
+    stream->mode = mode;
     stream->file = fopen(path, mode == C2_HOST_USER_STREAM_READ ? "rb" : "wb");
     if (stream->file == NULL) {
         free(stream);
@@ -921,7 +1113,11 @@ int c2_host_user_stream_close(struct c2_host_user_stream *stream)
     if (stream == NULL) {
         return 0;
     }
-    ok = stream->file != NULL && fclose(stream->file) == 0;
+    ok = stream->file != NULL;
+    if (ok && stream->mode == C2_HOST_USER_STREAM_WRITE) {
+        ok = flush_user_file(stream->file);
+    }
+    if (stream->file != NULL && fclose(stream->file) != 0) ok = 0;
     free(stream);
     return ok;
 }

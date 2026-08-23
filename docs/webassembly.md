@@ -11,7 +11,9 @@ all engine/UI control flow run on the same engine worker used by native builds.
 Frames, input, audio, movies, timing, assets, and user files cross the existing
 `c2_host_*` boundary.
 
-The threaded build uses a fixed 64 MiB WebAssembly memory. Growable shared
+The threaded build uses a fixed 96 MiB WebAssembly memory. The recovered game
+fit in 64 MiB; integrated WasmFS startup peaks slightly above 71 MiB, so OPFS
+uses a larger fixed reservation without enabling growable shared memory. Growable shared
 memory exposes resizable typed-array views to JavaScript; WebGL upload APIs do
 not accept those views, which can leave SDL renderer geometry stale and show
 pieces of earlier sprites in later frames. The recovered game and its
@@ -44,22 +46,19 @@ git submodule update --init --recursive
 nix develop
 ```
 
-Package one installed Caesar II language release and build its release bundle:
+Build a release runtime without bundled copyrighted data:
 
 ```bash
-emcmake cmake --preset wasm-release \
-  -B build/port/wasm-release-en \
-  -DC2_LANGUAGE=en \
-  -DC2_WASM_ASSET_ROOT=/path/to/CAESAR2
-cmake --build build/port/wasm-release-en
+emcmake cmake --preset wasm-release -B build/port/wasm-release
+cmake --build build/port/wasm-release
 ```
 
-The output directory contains `caesar2-en.html`, JavaScript, Wasm, and the
-generated English asset data package. Configure `de`, `fr`, and `es` in
-separate build directories with their corresponding complete localized asset
-trees. This keeps localized text, RAW voices, and movies in separate downloads.
-Original game assets remain local build inputs and are never stored in this
-repository. See [localization.md](localization.md).
+On first visit the page accepts an installation folder, ZIP, optimized
+`.c2assets` pack, ISO, or BIN/CUE pair. It imports and validates data into
+OPFS before starting the game. `C2_WASM_ASSET_ROOT` remains available for
+self-hosted/demo bundles; the page offers **Use bundled game data** for those
+builds. A multi-profile `.c2assets` pack can carry all text/speech languages
+and DOS, Win95, Mac, or custom video sets in one deduplicated container.
 
 For assertions, semantic observations, and the recovered province-selection
 smoke test:
@@ -102,12 +101,12 @@ worker, and asset data files. It should also serve `.wasm` as
 `application/wasm`. Opening the HTML directly from disk cannot satisfy this
 contract.
 
-The bundle exposes the immutable packaged tree as `/assets`. SDL mounts
-IDBFS-backed `/user-data` before `SDL_AppInit`, and `SDL_GetPrefPath` selects
-that path for saves, `caesar2.inf`, history, and screenshots. SDL's persistent
-path support performs the initial synchronization and automatically flushes
-changes, so the recovered synchronous file operations remain on the engine
-worker.
+A storage pthread mounts one WasmFS OPFS backend before SDL host startup.
+Imported assets/cache live below `/persistent/game-data`; mutable files live
+below `/persistent/user-data`. Saves, `history.dat`, `caesar2.inf`, and
+screenshots survive reload without mirroring assets into the Wasm heap. The
+page can export individual saves/history/settings or a local store-only ZIP,
+and game-data deletion is deliberately separate from save deletion.
 
 ## Pixel-exact presentation
 
@@ -153,9 +152,9 @@ than being presented as an ordinary game exit.
 
 - This is currently a threaded Wasm product and therefore requires browser
   support for `SharedArrayBuffer` plus the isolation headers above.
-- One complete localized asset tree is packaged at link time. Languages are
-  separate artifacts so a browser downloads only its selected text, speech,
-  and media.
+- Original data is user-supplied at runtime unless a distributor deliberately
+  configures `C2_WASM_ASSET_ROOT`. Multi-profile packs select language, speech,
+  and video before startup without rebuilding the Wasm executable.
 - The native and browser builds share engine, UI, media, save, and SDL host
   implementations. A browser-only replacement screen or control loop would
   violate the platform boundary.

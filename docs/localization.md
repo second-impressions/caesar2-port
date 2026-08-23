@@ -54,33 +54,24 @@ tag to name archives or installers.
 
 ## WebAssembly builds
 
-Configure each language in its own build directory with its matching asset
-root:
+The Wasm executable is language-neutral. On first use the page imports a
+complete installation or a multi-profile `.c2assets` pack. A pack can store all
+observed text/help and speech languages together while storing shared content
+only once. The page selects an asset profile before starting the engine; the
+active view exposes the chosen data through the same canonical `C2.ENG`,
+`HELP.ENG`, and `RAW/*.RAW` names.
 
-```bash
-emcmake cmake --preset wasm-release \
-  -B build/port/wasm-release-de \
-  -DC2_LANGUAGE=de \
-  -DC2_WASM_ASSET_ROOT=/path/to/german/CAESAR2
-cmake --build build/port/wasm-release-de
-```
-
-This emits `caesar2-de.html`, `caesar2-de.js`, `caesar2-de.wasm`, and
-`caesar2-de.data`. The `.data` file contains only that installation. English,
-French, and Spanish use separate build directories and correspondingly tagged
-output names. A deployment can publish all four directories, but a player
-visits one language entry point and downloads only its package.
-
-The language tag names the output files, while every runtime still follows the
-same recovered canonical asset names. A page therefore has no runtime language
-switch that could select German behavior while serving English data.
-`tools/serve-wasm.py` automatically serves a directory containing one tagged
-build; `--entry` selects one explicitly if several outputs are placed together.
+`C2_LANGUAGE` remains an optional output/default-profile label for distributor
+builds. It is no longer necessary to compile a separate runtime for each
+language. Advanced packs may select text and speech independently, while
+observed-release profiles keep localized graphics/text/speech coupled by
+default.
 
 ## Validation
 
-WebAssembly configuration checks for canonical `C2.ENG` and `HELP.ENG` before
-packaging. The recovered startup retains its own required-file validation.
+Build-time bundled-data configuration checks for canonical `C2.ENG` and
+`HELP.ENG`. Runtime imports and optimized packs perform the same validation
+before activation; the recovered startup remains a final guard.
 
 Debug semantic smoke tests exercise the selected complete asset tree through
 the recovered menus. The official asset corpus can run the existing province,

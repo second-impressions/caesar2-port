@@ -89,17 +89,38 @@ For an optimized build, use `cmake --preset linux-release` followed by
 `cmake --build --preset linux-release`. Its native Unity suite is available as
 `ctest --preset linux-release`; Debug-only semantic smoke tests are omitted.
 
-Assets are read only from `--asset-root PATH` or `C2_ASSET_ROOT` (default: the
-current directory). Writable runtime files use the separate
+Game data can be selected with a positional source or `--game-data SOURCE`.
+`SOURCE` may be an installed directory, a ZIP, an optimized `.c2assets` pack,
+a plain ISO, or a CUE beside its BIN. `--asset-root PATH` and `C2_ASSET_ROOT`
+remain compatibility aliases for directory sources. Archives/images are
+validated and cached beneath the user-data directory; subsequent launches
+reuse that cache. `--asset-profile NAME` selects a language/media profile from
+a multi-profile asset pack. Writable runtime files use the separate
 `--user-data-dir PATH` or `C2_USER_DATA_DIR` namespace. Without an override,
 SDL selects and creates the platform-standard application data directory
 (`$XDG_DATA_HOME/second-impressions/caesar2` on Linux, with the usual
 `~/.local/share` fallback).
 
-The asset root may retain the original CD layout. Files are resolved
-case-insensitively from its top level first, then `.pl8`, `.raw`, `.xmi`, and
-`.smk` assets fall back to the matching `pl8/`, `raw/`, `xmi/`, and `smk/`
-media directories.
+A directory source may retain the original DOS CD layout (`HD` plus media
+siblings) or a hybrid `C2WIN95` layout; both are detected automatically. Files
+are resolved case-insensitively from its top level first, then `.pl8`, `.raw`,
+`.xmi`, and `.smk` assets fall back to the matching `pl8/`, `raw/`, `xmi/`,
+and `smk/` media directories.
+
+Create a deduplicated multi-language/media pack with the repository tool:
+
+```bash
+uv run tools/c2-assets.py build \
+  --core /path/to/base-install \
+  --text en=/path/to/english --speech en=/path/to/english \
+  --text de=/path/to/german  --speech de=/path/to/german \
+  --video mac=/path/to/extracted/mac/SMK \
+  --output caesar2-all.c2assets
+uv run tools/c2-assets.py verify caesar2-all.c2assets
+```
+
+`--format iso` emits the same content-addressed pack as an ISO-9660 image.
+The Mac `INTRONEW.SMK` is exposed as the engine's logical `INTRO.SMK`.
 
 Save names retain the recovered 8.3-style UI limit. Lookup and overwrite are
 case-insensitive even on case-sensitive hosts. Set the CMake cache path

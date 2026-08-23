@@ -144,6 +144,7 @@ void c2_host_audio_resume_voice(int voice);
 void c2_host_audio_set_voice_gain(int voice, float gain);
 void c2_host_audio_set_master_gain(float gain);
 
+uint64_t c2_host_asset_size(const char *filename);
 size_t c2_host_asset_read(const char *filename, void *buffer,
                           size_t size, size_t offset);
 size_t c2_host_user_file_read(const char *filename, void *buffer,
