@@ -18,8 +18,10 @@ The durable port design is documented in:
   frame-publication, input, and browser scheduling;
 - [`docs/webassembly.md`](docs/webassembly.md) — browser build, deployment,
   persistence, and Wasm ABI adaptation;
-- [`docs/localization.md`](docs/localization.md) — separate native and browser
-  language builds, localized speech, and asset requirements;
+- [`docs/localization.md`](docs/localization.md) — native language labels,
+  runtime Web profiles, localized speech, and asset requirements;
+- [`docs/game-data-sources-plan.md`](docs/game-data-sources-plan.md) — native
+  and browser data import, durable storage, and optimized asset packs;
 - [`docs/timing.md`](docs/timing.md) — the three original timing mechanisms and
   their monotonic, vertical-blank, and frame-paced portable counterparts;
 - [`docs/media-implementation.md`](docs/media-implementation.md) — the
@@ -35,6 +37,20 @@ Source ownership follows the same boundary: recovered engine C remains in
 backend-neutral legacy shims live in `src/platform/common/`, and concrete host
 backends live in `src/platform/<backend>/`. New backends are selected by the
 build rather than threaded through shared code with compiler-specific tests.
+
+## Versioning and hosted Web build
+
+Builds use `major.minor.patch-build-githash`, beginning at `1.0.0`. CMake
+derives a local build number from the commit count and an eight-character Git
+revision; CI supplies the GitHub Actions run number and revision explicitly.
+The version is available through `caesar2 --version`, the native window title,
+the browser landing page, and the published `version.txt`.
+
+Every push or merge to `main` runs `.github/workflows/pages.yml`, builds the
+asset-free WebAssembly release, and deploys it with GitHub Pages Actions. A
+same-origin service worker supplies COOP/COEP on static Pages hosting so the
+threaded runtime remains cross-origin isolated. The hosted page asks the user
+for game data on first use and retains it in OPFS.
 
 ## Native Linux port
 
@@ -121,6 +137,18 @@ uv run tools/c2-assets.py verify caesar2-all.c2assets
 
 `--format iso` emits the same content-addressed pack as an ISO-9660 image.
 The Mac `INTRONEW.SMK` is exposed as the engine's logical `INTRO.SMK`.
+
+Synthetic ZIP, ISO, BIN/CUE, layout, and pack tests are part of the ordinary
+CTest/Pytest suites and need no copyrighted data. Real corpus tests are opt-in:
+
+```bash
+cmake --preset linux-debug \
+  -DC2_TEST_GAME_DATA_SOURCES="/path/release.iso;/path/other.cue;/path/install.zip"
+cmake --build --preset linux-debug
+ctest --preset linux-debug -L game-data-corpus --output-on-failure
+```
+
+The option is empty in CI; no original images are downloaded automatically.
 
 Save names retain the recovered 8.3-style UI limit. Lookup and overwrite are
 case-insensitive even on case-sensitive hosts. Set the CMake cache path

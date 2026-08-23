@@ -1,9 +1,52 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(caesar2-port VERSION 0.1.0 LANGUAGES C CXX)
+project(caesar2-port VERSION 1.0.0 LANGUAGES C CXX)
+
+set(C2_BUILD_NUMBER "" CACHE STRING
+    "Monotonic build number appended to the semantic version")
+set(C2_GIT_HASH "" CACHE STRING
+    "Short Git revision appended to the build version")
+if(NOT C2_BUILD_NUMBER AND DEFINED ENV{C2_BUILD_NUMBER})
+    set(C2_BUILD_NUMBER "$ENV{C2_BUILD_NUMBER}")
+endif()
+if(NOT C2_GIT_HASH AND DEFINED ENV{C2_GIT_HASH})
+    set(C2_GIT_HASH "$ENV{C2_GIT_HASH}")
+endif()
+if(NOT C2_BUILD_NUMBER)
+    execute_process(COMMAND git rev-list --count HEAD
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        OUTPUT_VARIABLE C2_BUILD_NUMBER
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET)
+endif()
+if(NOT C2_BUILD_NUMBER MATCHES "^[0-9]+$")
+    set(C2_BUILD_NUMBER "0")
+endif()
+if(NOT C2_GIT_HASH)
+    execute_process(COMMAND git rev-parse --short=8 HEAD
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        OUTPUT_VARIABLE C2_GIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET)
+endif()
+if(NOT C2_GIT_HASH MATCHES "^[0-9A-Fa-f]+$")
+    set(C2_GIT_HASH "local")
+else()
+    string(LENGTH "${C2_GIT_HASH}" C2_GIT_HASH_LENGTH)
+    if(C2_GIT_HASH_LENGTH GREATER 8)
+        string(SUBSTRING "${C2_GIT_HASH}" 0 8 C2_GIT_HASH)
+    endif()
+endif()
+set(C2_VERSION_STRING
+    "${PROJECT_VERSION}-${C2_BUILD_NUMBER}-${C2_GIT_HASH}")
+message(STATUS "Caesar II build version: ${C2_VERSION_STRING}")
+configure_file(include/c2_version.h.in
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/c2_version.h" @ONLY)
 
 set(C2_TEST_SAVE_FIXTURE "" CACHE FILEPATH
     "Original 225745-byte Caesar II save used by compatibility tests")
+set(C2_TEST_GAME_DATA_SOURCES "" CACHE STRING
+    "Optional semicolon-separated directories/ZIPs/ISOs/CUEs/packs for corpus smoke tests")
 set(C2_LANGUAGE "en" CACHE STRING
     "Two-letter language tag for this distribution artifact")
 string(TOLOWER "${C2_LANGUAGE}" C2_LANGUAGE)
@@ -304,6 +347,7 @@ endif()
 
 target_include_directories(caesar2 PRIVATE
     include
+    "${CMAKE_CURRENT_BINARY_DIR}/generated"
     src/platform/common
     src/platform/sdl3
 )
@@ -339,10 +383,16 @@ target_link_libraries(caesar2 PRIVATE
     SDL3::SDL3)
 
 if(EMSCRIPTEN)
+    set(C2_WASM_SHELL "${CMAKE_CURRENT_BINARY_DIR}/caesar2-shell.html")
+    configure_file(web/caesar2.html "${C2_WASM_SHELL}" @ONLY)
+    configure_file(web/coi-serviceworker.js
+        "${CMAKE_CURRENT_BINARY_DIR}/coi-serviceworker.js" COPYONLY)
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/version.txt"
+        "${C2_VERSION_STRING}\n")
     set_target_properties(caesar2 PROPERTIES
         OUTPUT_NAME "caesar2-${C2_LANGUAGE}"
         LINK_DEPENDS
-            "${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2.html;${CMAKE_CURRENT_SOURCE_DIR}/web/c2_browser.js"
+            "${C2_WASM_SHELL};${CMAKE_CURRENT_SOURCE_DIR}/web/c2_browser.js;${CMAKE_CURRENT_SOURCE_DIR}/web/coi-serviceworker.js"
         SUFFIX ".html")
     target_compile_options(caesar2 PRIVATE
         -pthread
@@ -362,7 +412,7 @@ if(EMSCRIPTEN)
         -sINVOKE_RUN=0
         -sEXPORTED_RUNTIME_METHODS=callMain
         -sEXIT_RUNTIME=0
-        "--shell-file=${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2.html"
+        "--shell-file=${C2_WASM_SHELL}"
         "--js-library=${CMAKE_CURRENT_SOURCE_DIR}/web/c2_browser.js"
     )
     if(C2_WASM_ASSET_ROOT)
@@ -503,6 +553,11 @@ endif()
 include(CTest)
 
 if(BUILD_TESTING)
+    add_test(NAME version-string COMMAND caesar2 --version)
+    set_tests_properties(version-string PROPERTIES
+        PASS_REGULAR_EXPRESSION
+            "Caesar II 1\\.0\\.0-[0-9]+-[0-9A-Fa-f]+")
+
     find_path(C2_UNITY_INCLUDE_DIR NAMES unity/unity.h REQUIRED)
     find_library(C2_UNITY_LIBRARY NAMES unity REQUIRED)
     add_library(c2_unity_framework UNKNOWN IMPORTED)
@@ -777,4 +832,28 @@ if(BUILD_TESTING AND C2_TEST_DATA_DIR AND
         PASS_REGULAR_EXPRESSION "music buffer smoke completed"
         TIMEOUT 60
     )
+endif()
+
+# Copyrighted corpora are never fetched or enabled by default. Developers can
+# supply any mix of installations, ZIPs, optimized packs, ISOs, and CUEs; each
+# source runs through the same importer and recovered province-selection path.
+if(BUILD_TESTING AND C2_TEST_GAME_DATA_SOURCES AND
+   (CMAKE_CONFIGURATION_TYPES OR CMAKE_BUILD_TYPE STREQUAL "Debug"))
+    set(corpus_index 0)
+    foreach(corpus_source IN LISTS C2_TEST_GAME_DATA_SOURCES)
+        math(EXPR corpus_index "${corpus_index} + 1")
+        set(corpus_user_dir
+            "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/corpus-${corpus_index}")
+        file(MAKE_DIRECTORY "${corpus_user_dir}")
+        add_test(
+            NAME game-data-corpus-${corpus_index}
+            COMMAND caesar2 --smoke-test --game-data "${corpus_source}"
+                    --user-data-dir "${corpus_user_dir}")
+        set_tests_properties(game-data-corpus-${corpus_index} PROPERTIES
+            CONFIGURATIONS Debug
+            LABELS "game-data-corpus;requires-original-assets"
+            PASS_REGULAR_EXPRESSION
+                "recovered province-selection smoke completed"
+            TIMEOUT 180)
+    endforeach()
 endif()

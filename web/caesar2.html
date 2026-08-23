@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Caesar II</title>
+  <title>Caesar II @C2_VERSION_STRING@</title>
+  <script src="coi-serviceworker.js"></script>
   <style>
     html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; color: #eee; font: 16px system-ui, sans-serif; }
     main { width: 100%; height: 100%; display: grid; place-items: center; }
@@ -33,6 +34,7 @@
   <section id="panel">
     <div id="card">
       <h1>Caesar II</h1>
+      <p><small>Version @C2_VERSION_STRING@</small></p>
       <p id="status" role="status">Loading runtime…</p>
       <div class="buttons" id="source-buttons">
         <button id="folder-button" type="button">Choose installation folder</button>
@@ -317,7 +319,16 @@
       printErr(text) { if (smokeOutput) smokeOutput.push(String(text)); console.error(text); },
       setStatus(text) { status.textContent = text || ""; },
       monitorRunDependencies(left) { status.textContent = left ? `Loading runtime (${left})…` : "Runtime ready."; },
-      onRuntimeInitialized() { runtimeReady = true; bootstrap(); },
+      onRuntimeInitialized() {
+        runtimeReady = true;
+        console.log(`cross-origin isolated ${globalThis.crossOriginIsolated}`);
+        if (!globalThis.crossOriginIsolated) {
+          status.textContent = "Cross-origin isolation is unavailable; threaded WebAssembly cannot start.";
+          panel.hidden = false;
+          return;
+        }
+        bootstrap();
+      },
       async onSourceReady(resolved, original) {
         const active = resolved.replace(/\/ACTIVE-[^/]+$/, "");
         localStorage.setItem(ACTIVE_SOURCE, active);
@@ -354,6 +365,21 @@
       }
     };
   </script>
-  {{{ SCRIPT }}}
+  <template id="emscripten-runtime">{{{ SCRIPT }}}</template>
+  <script>
+    (globalThis.coiReady || Promise.resolve(globalThis.crossOriginIsolated))
+      .then(ready => {
+        if (!ready) {
+          status.textContent = "Preparing cross-origin-isolated runtime…";
+          return;
+        }
+        const generated = document.getElementById("emscripten-runtime")
+          .content.querySelector("script");
+        const runtime = document.createElement("script");
+        runtime.src = generated.src;
+        runtime.async = true;
+        document.body.append(runtime);
+      });
+  </script>
 </body>
 </html>

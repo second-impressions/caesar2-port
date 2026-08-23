@@ -20,6 +20,7 @@
 #include "c2_debug_crash.h"
 #endif
 #include "c2_sdl_host.h"
+#include "c2_version.h"
 #if PORT_FEAT_DEBUG_OBSERVATION
 #include "c2_sdl_smoke.h"
 #endif
@@ -231,6 +232,7 @@ static int start_runtime(struct c2_sdl_app *app)
     char resolved_asset_root[4096];
     char import_error[512];
     struct c2_host_config host_config;
+    char title[160];
     const char *cache_root;
 
 #if PORT_PLATFORM_WASM
@@ -250,7 +252,8 @@ static int start_runtime(struct c2_sdl_app *app)
     c2_browser_source_ready(resolved_asset_root, app->asset_source);
 #endif
     memset(&host_config, 0, sizeof(host_config));
-    host_config.title = "Caesar II";
+    snprintf(title, sizeof(title), "Caesar II %s", C2_VERSION_STRING);
+    host_config.title = title;
     host_config.asset_root = resolved_asset_root;
     host_config.user_data_root = app->user_data_root;
     host_config.logical_width = C2_SCREEN_WIDTH;
@@ -366,6 +369,15 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     int smoke_kind;
 
     *appstate = &c2_app;
+    {
+        int i;
+        for (i = 1; i < argc; i++) {
+            if (strcmp(argv[i], "--version") == 0) {
+                printf("Caesar II %s\n", C2_VERSION_STRING);
+                return SDL_APP_SUCCESS;
+            }
+        }
+    }
     /*
      * Keep input and the frame mailbox responsive while the user is
      * interacting. This rate is reduced after host initialization when the

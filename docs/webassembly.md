@@ -96,10 +96,12 @@ python3 tools/serve-wasm.py build/port/wasm-release-en \
   --certfile /path/to/fullchain.pem --keyfile /path/to/key.pem
 ```
 
-A production host must serve the same headers for the HTML, JavaScript, Wasm,
-worker, and asset data files. It should also serve `.wasm` as
-`application/wasm`. Opening the HTML directly from disk cannot satisfy this
-contract.
+A production host should serve the same isolation headers for the HTML,
+JavaScript, Wasm, worker, and asset files, and serve `.wasm` as
+`application/wasm`. GitHub Pages cannot configure COOP/COEP directly, so the
+published build registers `coi-serviceworker.js`; the first visit reloads once
+under that worker and subsequent responses are cross-origin isolated. Opening
+the HTML directly from disk cannot satisfy this contract.
 
 A storage pthread mounts one WasmFS OPFS backend before SDL host startup.
 Imported assets/cache live below `/persistent/game-data`; mutable files live

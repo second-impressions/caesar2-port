@@ -13,6 +13,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  C2_BUILD_NUMBER: ${{ github.run_number }}
+  C2_GIT_HASH: ${{ github.sha }}
+
 jobs:
   # ── Linux ────────────────────────────────────────────────────────────
   # The Nix development shell is the single pinned toolchain definition
@@ -43,11 +47,15 @@ jobs:
             -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
       - name: Build
         run: nix develop --command cmake --build build/ci
-      - name: Test
-        # Only the Unity suite and the static layering checks run here.
-        # The recovered-flow smoke tests need original game data, which is
-        # never committed, so CTest skips them without C2_TEST_DATA_DIR.
+      - name: Test C targets
+        # The recovered-flow and corpus tests need original game data, which
+        # is never committed, so CTest omits them unless explicitly supplied.
         run: nix develop --command ctest --test-dir build/ci --output-on-failure
+      - name: Test static contracts and tooling
+        # The annotation parser file has two tracked reconstruction-era
+        # failures unrelated to the port. Every portable/static/tool test,
+        # including versioning and Pages contracts, runs on every CI build.
+        run: nix develop --command uv run pytest -q --ignore=tests/test_function_annotations.py
 
   # ── WebAssembly ──────────────────────────────────────────────────────
   wasm:

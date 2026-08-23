@@ -109,7 +109,7 @@ def test_language_builds_split_artifacts_without_branching_the_engine():
 def test_wasm_shell_owns_import_switching_and_save_export():
     cmake = (ROOT / "CMakeLists.txt").read_text()
     shell = (ROOT / "web" / "caesar2.html").read_text()
-    assert "${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2.html" in cmake
+    assert "configure_file(web/caesar2.html" in cmake
     assert "--js-library=${CMAKE_CURRENT_SOURCE_DIR}/web/c2_browser.js" in cmake
     assert "resizeCanvasToIntegerScale" in shell
     assert "devicePixelRatio || 1" in shell
