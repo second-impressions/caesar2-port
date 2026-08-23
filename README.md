@@ -46,8 +46,9 @@ revision; CI supplies the GitHub Actions run number and revision explicitly.
 The version is available through `caesar2 --version`, the native window title,
 the browser landing page, and the published `version.txt`.
 
-Every push or merge to `main` runs `.github/workflows/pages.yml`, builds the
-asset-free WebAssembly release, and deploys it with GitHub Pages Actions. A
+Every push or merge to `main` runs the single WebAssembly job in
+`.github/workflows/ci.yml`; its artifact is then deployed by the dependent
+GitHub Pages job without rebuilding. A
 same-origin service worker supplies COOP/COEP on static Pages hosting so the
 threaded runtime remains cross-origin isolated. The hosted page asks the user
 for game data on first use and retains it in OPFS.

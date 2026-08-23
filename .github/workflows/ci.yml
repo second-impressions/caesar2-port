@@ -3,7 +3,6 @@ name: Build
 on:
   push:
     branches: [main]
-    paths-ignore: ['**.md']
   pull_request:
     types: [opened, synchronize]
     paths-ignore: ['**.md']
@@ -13,9 +12,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 env:
   C2_BUILD_NUMBER: ${{ github.run_number }}
   C2_GIT_HASH: ${{ github.sha }}
+  CCACHE_MAXSIZE: 750M
+  CCACHE_COMPRESS: "true"
 
 jobs:
   # ── Linux ────────────────────────────────────────────────────────────
@@ -33,18 +37,20 @@ jobs:
           - cc: clang
             cxx: clang++
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
-      - uses: cachix/install-nix-action@v31
+      - uses: ./.github/actions/setup-nix
         with:
-          extra_nix_config: experimental-features = nix-command flakes
+          scope: dev
       - name: Configure
         run: |
           nix develop --command cmake -S . -B build/ci -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_C_COMPILER=${{ matrix.cc }} \
-            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       - name: Build
         run: nix develop --command cmake --build build/ci
       - name: Test C targets
@@ -52,52 +58,89 @@ jobs:
         # is never committed, so CTest omits them unless explicitly supplied.
         run: nix develop --command ctest --test-dir build/ci --output-on-failure
       - name: Test static contracts and tooling
-        # The annotation parser file has two tracked reconstruction-era
-        # failures unrelated to the port. Every portable/static/tool test,
-        # including versioning and Pages contracts, runs on every CI build.
+        # The annotation parser has two tracked reconstruction-era failures,
+        # and test_reccmp_project exercises the unavailable sibling toolkit.
+        # Every portable/static/tool test, including versioning and Pages
+        # contracts, runs on every CI build.
         run: |
           nix develop --command uv run --no-project --with pytest \
-            pytest -q --ignore=tests/test_function_annotations.py
+            pytest -q \
+              --ignore=tests/test_function_annotations.py \
+              --ignore=tests/test_reccmp_project.py
 
-  # ── WebAssembly ──────────────────────────────────────────────────────
+  # ── WebAssembly + Pages artifact ─────────────────────────────────────
+  # This is the only Wasm compilation. The deploy job below consumes the
+  # exact same files; it never configures or builds a second time.
   wasm:
     name: WebAssembly
     runs-on: ubuntu-latest
+    env:
+      EM_CACHE: ${{ github.workspace }}/.cache/emscripten
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
-      - uses: cachix/install-nix-action@v31
+      - uses: ./.github/actions/setup-nix
         with:
-          extra_nix_config: experimental-features = nix-command flakes
-      - name: Build
-        # No C2_WASM_ASSET_ROOT: this proves the target compiles and links.
-        # Playable bundles are packaged per language against a local asset
-        # tree, which is never committed.
+          scope: dev
+      - name: Restore Wasm configure and system-library cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/ci-wasm
+            .cache/emscripten
+          key: wasm-cmake-${{ runner.os }}-${{ hashFiles('flake.lock', '.gitmodules', 'CMakeLists.txt', 'CMakePresets.json') }}
+          restore-keys: |
+            wasm-cmake-${{ runner.os }}-
+      - name: Configure and build once
+        # Reusing CMakeCache.txt retains libarchive's feature probes. ccache
+        # handles source mtimes from a fresh checkout, while EM_CACHE retains
+        # generated zlib/WasmFS system libraries.
         run: |
-          nix develop --command bash -c '
-            emcmake cmake --preset wasm-release -B build/ci-wasm &&
-            cmake --build build/ci-wasm'
-      - name: Check for Wasm signature mismatches
-        # Wasm encodes the return type and parameter list in a function
-        # signature and traps on a mismatch, unlike the original x86 ABI.
-        # A mismatch is a runtime crash, so fail the build on any.
+          nix develop --command bash -c "
+            set -euo pipefail
+            mkdir -p \"$EM_CACHE\"
+            embuilder build zlib
+            ccache --zero-stats
+            emcmake cmake --preset wasm-release -B build/ci-wasm \
+              -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=ccache 2>&1 | tee /tmp/wasm-configure.log
+            cmake --build build/ci-wasm --parallel 2>&1 | tee /tmp/wasm-build.log
+            ccache --show-stats
+          "
+      - name: Check Wasm link diagnostics
+        # Consume the first build log instead of performing a clean rebuild.
         run: |
-          nix develop --command bash -c '
-            emcmake cmake --preset wasm-release -B build/ci-wasm >/dev/null &&
-            cmake --build build/ci-wasm --clean-first 2>&1 | tee /tmp/wasm.log'
-          if grep -q 'function signature mismatch' /tmp/wasm.log; then
+          if grep -q 'function signature mismatch' /tmp/wasm-build.log; then
             echo '::error::wasm-ld reported function signature mismatches'
-            grep -A2 'function signature mismatch' /tmp/wasm.log
+            grep -A2 'function signature mismatch' /tmp/wasm-build.log
             exit 1
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: caesar2-wasm
+          name: caesar2-wasm-${{ env.C2_BUILD_NUMBER }}-${{ env.C2_GIT_HASH }}
           path: |
             build/ci-wasm/caesar2-*.html
             build/ci-wasm/caesar2-*.js
             build/ci-wasm/caesar2-*.wasm
+            build/ci-wasm/coi-serviceworker.js
+            build/ci-wasm/version.txt
+      - name: Assemble Pages artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p _site
+          cp build/ci-wasm/caesar2-en.html _site/index.html
+          cp build/ci-wasm/caesar2-en.html _site/
+          cp build/ci-wasm/caesar2-en.js _site/
+          cp build/ci-wasm/caesar2-en.wasm _site/
+          cp build/ci-wasm/coi-serviceworker.js _site/
+          cp build/ci-wasm/version.txt _site/
+          touch _site/.nojekyll
+      - name: Upload Pages artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
 
   # ── Windows, cross-compiled ──────────────────────────────────────────
   # The cheap canary: LLP64 and the Win32 headers on a Linux runner.  It
@@ -107,17 +150,19 @@ jobs:
     name: Windows MinGW-w64 x64
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
-      - uses: cachix/install-nix-action@v31
+      - uses: ./.github/actions/setup-nix
         with:
-          extra_nix_config: experimental-features = nix-command flakes
+          scope: mingw
       - name: Build
         run: |
           nix develop .#mingw --command bash -c '
-            cmake --preset windows-mingw-release &&
-            cmake --build --preset windows-mingw-release'
+            cmake --preset windows-mingw-release \
+              -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=ccache &&
+            cmake --build --preset windows-mingw-release --parallel'
       - uses: actions/upload-artifact@v4
         with:
           name: caesar2-windows-mingw-x64
@@ -131,7 +176,7 @@ jobs:
     name: Windows MSVC x64
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
       - uses: ilammy/msvc-dev-cmd@v1
@@ -146,3 +191,25 @@ jobs:
         with:
           name: caesar2-windows-msvc-x64
           path: build/port/windows-msvc-release/caesar2.exe
+
+  # ── GitHub Pages deployment ──────────────────────────────────────────
+  # Deployment is deliberately downstream of the single Wasm build above.
+  pages:
+    name: Deploy GitHub Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: wasm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

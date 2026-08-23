@@ -1,0 +1,29 @@
+name: Set up cached Nix toolchain
+description: Install Nix and restore the pinned flake closure and compiler cache
+inputs:
+  scope:
+    description: Cache scope (dev or mingw)
+    required: false
+    default: dev
+runs:
+  using: composite
+  steps:
+    - uses: cachix/install-nix-action@v31
+      with:
+        extra_nix_config: experimental-features = nix-command flakes
+    - name: Restore and save Nix store
+      uses: nix-community/cache-nix-action@v7
+      with:
+        primary-key: nix-${{ runner.os }}-${{ inputs.scope }}-${{ hashFiles('flake.nix', 'flake.lock') }}
+        restore-prefixes-first-match: |
+          nix-${{ runner.os }}-${{ inputs.scope }}-
+        gc-max-store-size-linux: 2G
+        save: true
+    - name: Restore compiler cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ccache
+        key: ccache-${{ runner.os }}-${{ inputs.scope }}-${{ hashFiles('flake.lock') }}-${{ github.ref_name }}
+        restore-keys: |
+          ccache-${{ runner.os }}-${{ inputs.scope }}-${{ hashFiles('flake.lock') }}-
+          ccache-${{ runner.os }}-${{ inputs.scope }}-

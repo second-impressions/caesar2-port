@@ -20,6 +20,7 @@
           default = pkgs.mkShell {
             packages = [
               pkgs.chromium
+              pkgs.ccache
               pkgs.cmake
               pkgs.emscripten
               pkgs.firefox
@@ -60,6 +61,7 @@
           mingw = pkgs.pkgsCross.mingwW64.mkShell {
             depsBuildBuild = [ pkgs.pkgsCross.mingwW64.buildPackages.pkg-config ];
             nativeBuildInputs = [
+              pkgs.ccache
               pkgs.cmake
               pkgs.ninja
             ];
