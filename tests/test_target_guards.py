@@ -30,7 +30,7 @@ INCLUDE = Path("include")
 TARGET_HEADER = INCLUDE / "c2_target.h"
 BUGFIX_HEADER = INCLUDE / "c2_bugfixes.h"
 
-COND_RE = re.compile(r"^\s*#\s*(if|ifdef|ifndef)\b\s*(.*?)\s*$")
+COND_RE = re.compile(r"^\s*#\s*(if|ifdef|ifndef|elif)\b\s*(.*?)\s*$")
 
 # Conditions allowed outside c2_target.h itself.
 ALLOWED_TOKENS = re.compile(
