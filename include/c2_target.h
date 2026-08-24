@@ -181,6 +181,17 @@
 #  define C2_FEAT_CITY_TOP_DIRECTION_INIT       1
 #  define C2_FEAT_BATTLE_ZOOM2_ROTATE_CLAMP     0
 #  define C2_FEAT_SOFTWARE_BATTLE_SETUP         0
+#elif PORT_PLATFORM
+/* Explicit continuation profile: software UI and host-backed media/files. */
+#  define C2_FEAT_TILE_REFRESH                  0
+#  define C2_FEAT_ROTATE_PM_LIMITS              0
+#  define C2_FEAT_PUMP_FREE_NULLS               0
+#  define C2_FEAT_MODAL_PROMOTION               0
+#  define C2_FEAT_SMACK_CD_PATH                 0
+#  define C2_FEAT_REGION_SIDED_DRAW             1
+#  define C2_FEAT_CITY_TOP_DIRECTION_INIT       1
+#  define C2_FEAT_BATTLE_ZOOM2_ROTATE_CLAMP     1
+#  define C2_FEAT_SOFTWARE_BATTLE_SETUP         1
 #else
 #  error "target has no explicit recovered behavior profile"
 #endif
@@ -209,6 +220,18 @@
 /* Portable hosts save screenshots in a widely supported lossless format.
  * Shipped targets retain the recovered indexed LBM writer and filenames. */
 #define PORT_FEAT_PNG_SCREENSHOTS PORT_PLATFORM
+
+/* The startup notice and the about box both identify the build the user is
+ * actually running. Shipped targets read their fixed "Version 1.1" and
+ * release-date lines from c2.eng; portable builds substitute this port's
+ * exact version tag, which no shipped text asset can carry. */
+#define PORT_FEAT_BUILD_STAMP PORT_PLATFORM
+
+/* Portable hosts can put the game down while their own chrome is in front of
+ * it. The pause itself stays the recovered act_pause(); the port only asks for
+ * it and restores what the player had chosen. Shipped targets have no such
+ * chrome, so the hook is compiled out of them entirely. */
+#define PORT_FEAT_HOST_PAUSE PORT_PLATFORM
 
 /* Read-only engine observations and their smoke driver are development
  * instrumentation. CMake selects them only for portable Debug builds. */

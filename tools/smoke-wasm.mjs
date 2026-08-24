@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createInterface } from "node:readline";
+import { createRequire } from "node:module";
 
 const root = resolve(import.meta.dirname, "..");
 const build = resolve(process.argv[2] ?? `${root}/build/port/wasm-debug`);
@@ -18,7 +19,8 @@ const smokeResults = {
   campania: "Campania speech transition smoke completed",
   contextmenu: "browser context menu suppressed",
   music: "music buffer smoke completed",
-  restart: "restart control shown",
+  restart: "restart after exit completed",
+  prepare: "asset preparation completed without starting the game",
 };
 if (!(smokeKind in smokeResults)) {
   throw new Error(`unknown smoke kind '${smokeKind}'`);
@@ -49,7 +51,12 @@ function waitForLine(stream, predicate, timeoutMs = 15_000) {
 }
 
 async function stop(child) {
-  if (!child || child.exitCode !== null) return;
+  if (!child) return;
+  if (typeof child.close === "function" && typeof child.kill !== "function") {
+    await child.close();
+    return;
+  }
+  if (child.exitCode !== null) return;
   child.kill("SIGTERM");
   await Promise.race([
     once(child, "exit"),
@@ -123,83 +130,50 @@ function smokeWait(socket, navigate, getEntry) {
 }
 
 async function runChromium(gameUrl) {
-  browser = spawn("chromium", [
-    "--headless=new",
-    "--no-sandbox",
-    "--disable-dev-shm-usage",
-    "--enable-unsafe-swiftshader",
-    ...(smokeKind === "music"
-      ? ["--autoplay-policy=no-user-gesture-required"]
-      : []),
-    `--user-data-dir=${profile}`,
-    "--remote-debugging-address=127.0.0.1",
-    "--remote-debugging-port=0",
-    "about:blank"
-  ], { stdio: ["ignore", "ignore", "pipe"] });
-  const devtoolsPort = await waitForLine(browser.stderr, (line) => {
-    const match = line.match(/DevTools listening on ws:\/\/127\.0\.0\.1:(\d+)/);
-    return match ? Number(match[1]) : undefined;
+  const require = createRequire(import.meta.url);
+  let chromium;
+  try {
+    ({chromium} = require("playwright"));
+  } catch {
+    throw new Error(
+      "Chromium smoke tests require Playwright; run them inside `nix develop`"
+    );
+  }
+  browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.C2_CHROMIUM || undefined,
+    args: ["--no-sandbox", "--disable-dev-shm-usage", "--enable-unsafe-swiftshader"],
   });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const pageErrors = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
+  await page.goto(`${gameUrl}?smoke-test=${smokeKind}`, {waitUntil:"domcontentloaded"});
 
-  const pages = await fetch(`http://127.0.0.1:${devtoolsPort}/json`).then(
-    (response) => response.json()
-  );
-  const page = pages.find((entry) => entry.type === "page");
-  if (!page) throw new Error("Chromium did not expose a page target");
+  if (smokeKind === "contextmenu") {
+    await page.waitForFunction(() =>
+      typeof gameRunning !== "undefined" && gameRunning &&
+      document.getElementById("canvas")?.getBoundingClientRect().width > 0,
+      null, {timeout:30_000});
+    const rect = await page.locator("#canvas").boundingBox();
+    if (!rect) throw new Error("running canvas did not become available");
+    await page.mouse.click(rect.x + rect.width / 2, rect.y + rect.height / 2,
+      {button:"right"});
+  }
 
-  const socket = new WebSocket(page.webSocketDebuggerUrl);
-  await waitForSocket(socket);
-  let commandId = 0;
-  const send = (method, params = {}) => {
-    socket.send(JSON.stringify({ id: ++commandId, method, params }));
-  };
-  send("Runtime.enable");
-  send("Page.enable");
-
-  await smokeWait(
-    socket,
-    () => {
-      send("Page.navigate", {
-        url: `${gameUrl}?smoke-test=${smokeKind}`
-      });
-      if (smokeKind === "contextmenu") {
-        setTimeout(() => {
-          send("Input.dispatchMouseEvent", {
-            type: "mousePressed",
-            x: 400,
-            y: 300,
-            button: "right",
-            buttons: 2,
-            clickCount: 1
-          });
-          send("Input.dispatchMouseEvent", {
-            type: "mouseReleased",
-            x: 400,
-            y: 300,
-            button: "right",
-            buttons: 0,
-            clickCount: 1
-          });
-        }, 500);
-      }
-    },
-    (message) => {
-      if (message.method === "Runtime.exceptionThrown") {
-        return {
-          exception: true,
-          text: message.params.exceptionDetails.text
-        };
-      }
-      if (message.method !== "Runtime.consoleAPICalled") return undefined;
-      return {
-        exception: false,
-        text: message.params.args
-          .map((arg) => arg.value ?? arg.description ?? "")
-          .join(" ")
-      };
-    }
-  );
-  socket.close();
+  const deadline = Date.now() + 60_000;
+  let lines = [];
+  while (Date.now() < deadline) {
+    if (pageErrors.length) throw new Error(pageErrors[0]);
+    lines = await page.evaluate(() => globalThis.__c2SmokeOutput ?? []);
+    const failure = lines.find(line =>
+      /exception|signature_mismatch|Aborted\(|smoke test timed out/i.test(line));
+    if (failure) throw new Error(failure);
+    if (lines.some(line => line.includes(smokeResults[smokeKind]))) return;
+    await page.waitForTimeout(250);
+  }
+  const suffix = lines.length ? `\nBrowser output:\n${lines.slice(-40).join("\n")}` : "";
+  throw new Error(`Wasm ${smokeKind} smoke timed out in chromium${suffix}`);
 }
 
 async function runFirefox(gameUrl) {
@@ -267,14 +241,36 @@ async function runFirefox(gameUrl) {
     wait: "complete"
   });
   if (smokeKind === "contextmenu") {
+    // Context menus are intentionally captured only over a running canvas, so
+    // wait until the engine is live and click the canvas rather than the page.
+    let rect;
+    const readyDeadline = Date.now() + 30_000;
+    while (Date.now() < readyDeadline) {
+      const evaluated = await send("script.evaluate", {
+        expression: `JSON.stringify({
+          running: typeof gameRunning !== "undefined" && gameRunning === true,
+          rect: (() => {
+            const r = document.getElementById("canvas")?.getBoundingClientRect();
+            return r ? {x:r.x, y:r.y, width:r.width, height:r.height} : null;
+          })()
+        })`,
+        target: { context }, awaitPromise: false
+      });
+      const state = JSON.parse(evaluated.result?.value ?? "{}");
+      if (state.running && state.rect?.width && state.rect?.height) {
+        rect = state.rect;
+        break;
+      }
+      await new Promise((resolvePoll) => setTimeout(resolvePoll, 250));
+    }
+    if (!rect) throw new Error("running canvas did not become available");
     await send("input.performActions", {
       context,
       actions: [{
-        type: "pointer",
-        id: "mouse",
-        parameters: { pointerType: "mouse" },
+        type: "pointer", id: "mouse", parameters: { pointerType: "mouse" },
         actions: [
-          { type: "pointerMove", x: 400, y: 300, origin: "viewport" },
+          { type: "pointerMove", x: Math.floor(rect.x + rect.width / 2),
+            y: Math.floor(rect.y + rect.height / 2), origin: "viewport" },
           { type: "pointerDown", button: 2 },
           { type: "pointerUp", button: 2 }
         ]
@@ -321,11 +317,9 @@ async function runFirefox(gameUrl) {
 }
 
 try {
-  const entries = (await readdir(build)).filter(
-    (name) => /^caesar2-[a-z]{2}\.html$/.test(name)
-  );
+  const entries = (await readdir(build)).filter((name) => name === "index.html");
   if (entries.length !== 1) {
-    throw new Error(`${build} must contain exactly one language build`);
+    throw new Error(`${build} must contain index.html`);
   }
   server = spawn("python3", [
     `${root}/tools/serve-wasm.py`, build, "--entry", entries[0],

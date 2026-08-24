@@ -81,6 +81,7 @@ struct c2_host_config {
     int window_scale;
     int headless;
     int mouse_lock;
+    int fractional_scaling;
 #if PORT_FEAT_DEBUG_OBSERVATION
     int enable_observation;
 #endif
@@ -183,6 +184,17 @@ void c2_host_input_poll(struct c2_host_input *input);
 void c2_host_set_mouse_position(int x, int y);
 void c2_host_set_mouse_bounds(int min_x, int min_y, int max_x, int max_y);
 void c2_host_request_shutdown(void);
+
+/*
+ * Host chrome (browser dialogs, native menus) asks the engine to pause while it
+ * is in front of the game, and to restore the player's own choice afterwards.
+ * c2_host_take_pause_request returns 1 to pause, 0 to restore, or -1 when
+ * nothing is pending, and clears the request.
+ */
+void c2_host_request_pause(int paused);
+int c2_host_take_pause_request(void);
+void c2_host_set_fractional_scaling(int enabled);
+void c2_host_set_canvas_size(int width, int height);
 int c2_host_shutdown_requested(void);
 
 #if PORT_FEAT_DEBUG_OBSERVATION

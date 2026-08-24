@@ -40,11 +40,15 @@ build rather than threaded through shared code with compiler-specific tests.
 
 ## Versioning and hosted Web build
 
-Builds use `major.minor.patch-build-githash`, beginning at `1.0.0`. CMake
-derives a local build number from the commit count and an eight-character Git
-revision; CI supplies the GitHub Actions run number and revision explicitly.
-The version is available through `caesar2 --version`, the native window title,
-the browser landing page, and the published `version.txt`.
+Published builds use `major.minor.patch-build-githash`, beginning at `1.0.0`.
+CMake derives the local clean-checkout build number from the commit count and
+an eight-character revision; CI supplies the GitHub Actions run number and
+revision explicitly. An edited local worktree instead uses the honest,
+cache-distinct `1.0.0-YYYYMMDD-HHMMSS` form. The version is available through
+`caesar2 --version`, the native window title, browser shell, published
+`version.txt`, startup notice, and in-game about box. The latter two replace
+the shipped "Version 1.1" and release date from `c2.eng` with a
+"Caesar II - Portable" heading and this build's exact version tag.
 
 Every push or merge to `main` runs the single WebAssembly job in
 `.github/workflows/ci.yml`; its artifact is then deployed by the dependent

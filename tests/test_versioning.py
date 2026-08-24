@@ -9,7 +9,15 @@ def test_version_scheme_starts_at_one_and_has_build_metadata():
     cmake = (ROOT / "CMakeLists.txt").read_text()
     template = (ROOT / "include" / "c2_version.h.in").read_text()
     assert "project(caesar2-port VERSION 1.0.0" in cmake
-    assert '"${PROJECT_VERSION}-${C2_BUILD_NUMBER}-${C2_GIT_HASH}"' in cmake
+    assert ('set(C2_VERSION_STRING "${PROJECT_VERSION}-${C2_BUILD_NUMBER}'
+            '-${C2_GIT_HASH}")') in cmake
+    # A clean checkout keeps the published format; an edited worktree matches no
+    # commit, so it is named after its configure time instead.
+    assert 'git status --porcelain --untracked-files=no' in cmake
+    assert 'set(C2_LOCAL_BUILD_STAMP "")' in cmake
+    assert 'string(TIMESTAMP C2_LOCAL_BUILD_STAMP "%Y%m%d-%H%M%S" UTC)' in cmake
+    assert 'set(C2_VERSION_STRING "${PROJECT_VERSION}-${C2_LOCAL_BUILD_STAMP}")' in cmake
+    assert r'"Caesar II 1\\.0\\.0-([0-9]+-[0-9A-Fa-f]+|[0-9]{8}-[0-9]{6})")' in cmake
     assert "git rev-list --count HEAD" in cmake
     assert "git rev-parse --short=8 HEAD" in cmake
     assert '#define C2_VERSION_STRING "@C2_VERSION_STRING@"' in template
@@ -26,7 +34,29 @@ def test_pages_deploys_the_single_main_wasm_build():
     assert "actions/upload-pages-artifact@v3" in workflow
     assert "actions/deploy-pages@v4" in workflow
     assert "coi-serviceworker.js" in workflow
-    assert "caesar2-en.wasm" in workflow
+    assert "c2-shell.js" in workflow
+    assert "c2-shell.css" in workflow
+    assert "index.wasm" in workflow
+
+
+def test_about_box_reports_the_running_build():
+    cmake = (ROOT / "CMakeLists.txt").read_text()
+    header = (ROOT / "include" / "c2_version.h.in").read_text()
+    target = (ROOT / "include" / "c2_target.h").read_text()
+    screens = (ROOT / "src" / "screens.c").read_text()
+    assert "#define PORT_FEAT_BUILD_STAMP PORT_PLATFORM" in target
+    # Shipped targets keep the recovered c2.eng version lines.
+    assert "#if PORT_FEAT_BUILD_STAMP" in screens
+    assert "put_a_font_string(c2_port_version_line()" in screens
+    assert "font_list(0xb, 0, 0xa0, 0x58, font1, 0x10);" in screens
+    # The startup notice carries the same stamp; other warnings are untouched.
+    controls = (ROOT / "src" / "controls.c").read_text()
+    assert "#if PORT_FEAT_BUILD_STAMP" in controls
+    assert "if (message_idx == 0) {" in controls
+    assert "put_a_font_string(c2_port_version_line()" in controls
+    compat = (ROOT / "src" / "platform" / "common" / "c2_port_compat.c").read_text()
+    assert '"Version: " C2_VERSION_STRING' in compat
+    assert "font_list(0xb, message_idx,     x + 0x10, y + 0x10, font1, 0x10);" in controls
     assert not (ROOT / ".github" / "workflows" / "pages.yml").exists()
 
 

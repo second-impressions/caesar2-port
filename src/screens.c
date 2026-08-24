@@ -5,6 +5,9 @@ extern int current_no_of_regulars;
 #if PORT_FEAT_TEXT_ASSET_COMPAT
 #include "c2_text_compat.h"
 #endif
+#if PORT_FEAT_BUILD_STAMP
+extern char *c2_port_version_line(void);
+#endif
 
 int history_graph_years[5] = { 10, 20, 50, 100, 200 };
 
@@ -1152,8 +1155,13 @@ void show_fx_box(int settings_page)
 void show_about_box(void)
 {
     show_a_mosaic_window(0x80, 0x40, 0x14, 0xa);
+#if PORT_FEAT_BUILD_STAMP
+    put_a_font_string("Caesar II - Portable", 0xa0, 0x58, font1, 0x10);
+    put_a_font_string(c2_port_version_line(), 0xa0, 0x68, font1, 0x10);
+#else
     font_list(0xb, 0, 0xa0, 0x58, font1, 0x10);
     font_list(0x3b, 0, 0xa0, 0x68, font1, 0x10);
+#endif
     write_image(logos, 0, 0x150, 0x78);
     font_list(9, 1, 0xc0, 0xc0, font1, 0x10);
     show_an_exit_button(0x194, 0xb4);

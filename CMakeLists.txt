@@ -37,8 +37,34 @@ else()
         string(SUBSTRING "${C2_GIT_HASH}" 0 8 C2_GIT_HASH)
     endif()
 endif()
-set(C2_VERSION_STRING
-    "${PROJECT_VERSION}-${C2_BUILD_NUMBER}-${C2_GIT_HASH}")
+# string(TIMESTAMP) honors SOURCE_DATE_EPOCH, which the Nix dev shell pins to
+# 315532800; that would stamp every build 1980-01-01, so read the real clock
+# and put the variable back for the rest of the configure.
+set(C2_SAVED_SOURCE_DATE_EPOCH "$ENV{SOURCE_DATE_EPOCH}")
+unset(ENV{SOURCE_DATE_EPOCH})
+# A build from an edited worktree matches no commit, so a commit count and
+# revision would misidentify it. Those builds are named after their configure
+# time instead, which also keeps successive local builds distinguishable.
+if(NOT DEFINED C2_LOCAL_BUILD_STAMP)
+    execute_process(COMMAND git status --porcelain --untracked-files=no
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        OUTPUT_VARIABLE C2_WORKTREE_STATUS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET)
+    if(C2_WORKTREE_STATUS STREQUAL "")
+        set(C2_LOCAL_BUILD_STAMP "")
+    else()
+        string(TIMESTAMP C2_LOCAL_BUILD_STAMP "%Y%m%d-%H%M%S" UTC)
+    endif()
+endif()
+if(C2_SAVED_SOURCE_DATE_EPOCH)
+    set(ENV{SOURCE_DATE_EPOCH} "${C2_SAVED_SOURCE_DATE_EPOCH}")
+endif()
+if(C2_LOCAL_BUILD_STAMP STREQUAL "")
+    set(C2_VERSION_STRING "${PROJECT_VERSION}-${C2_BUILD_NUMBER}-${C2_GIT_HASH}")
+else()
+    set(C2_VERSION_STRING "${PROJECT_VERSION}-${C2_LOCAL_BUILD_STAMP}")
+endif()
 message(STATUS "Caesar II build version: ${C2_VERSION_STRING}")
 configure_file(include/c2_version.h.in
     "${CMAKE_CURRENT_BINARY_DIR}/generated/c2_version.h" @ONLY)
@@ -157,6 +183,11 @@ add_library(c2_import_core STATIC
 target_compile_features(c2_import_core PRIVATE c_std_11)
 target_include_directories(c2_import_core PUBLIC include)
 target_link_libraries(c2_import_core PUBLIC archive_static SDL3::SDL3)
+if(WIN32)
+    # archive.h otherwise decorates calls as dllimport even though this target
+    # deliberately links the reduced static libarchive build.
+    target_compile_definitions(c2_import_core PRIVATE LIBARCHIVE_STATIC)
+endif()
 
 option(PORT_FIX_MEDIUM_RIGHT_HAT_OFFSET
     "Correct the misplaced pixel pair in the medium right diamond hat" ON)
@@ -178,6 +209,17 @@ option(PORT_ENABLE_ARROW_KEY_SCROLL
     "Use held arrow keys to pan the active map instead of moving the cursor" ON)
 option(PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER
     "Install native fatal-signal diagnostics in POSIX Debug builds" ON)
+option(PORT_ASAN_DISABLE_GLOBALS
+    "Disable ASan global instrumentation for the recovered global data image" OFF)
+if(PORT_ASAN_DISABLE_GLOBALS)
+    if(NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
+        message(FATAL_ERROR "PORT_ASAN_DISABLE_GLOBALS requires Clang")
+    endif()
+    # Compile-only options belong here, not in CMAKE_*_FLAGS: CMake also puts
+    # those flags on feature-check link commands, where Clang 21 warns (and
+    # libarchive promotes the warning to an error).
+    add_compile_options(-mllvm -asan-globals=0)
+endif()
 set(C2_WASM_ASSET_ROOT "" CACHE PATH
     "Original Caesar II asset directory to package into the WASM build")
 
@@ -298,6 +340,7 @@ add_executable(caesar2
     src/platform/common/c2_port_mouse.c
     src/platform/common/c2_port_save.c
     src/platform/common/c2_port_save_compat.c
+    src/platform/common/c2_port_pause.c
     src/platform/common/c2_port_save_registry.c
     src/platform/common/c2_port_text_compat.c
     src/platform/common/c2_port_timing.c
@@ -334,6 +377,13 @@ target_compile_definitions(caesar2 PRIVATE
     PORT_PLATFORM=1
     ${C2_PLATFORM_LEAF}=1
     $<$<CONFIG:Debug>:PORT_DEBUG_BUILD=1>
+)
+# Import readers are a separate target and need the same host leaf; otherwise
+# Windows silently takes the POSIX fseeko path (MinGW happens to provide it,
+# MSVC does not).
+target_compile_definitions(c2_import_core PRIVATE
+    PORT_PLATFORM=1
+    ${C2_PLATFORM_LEAF}=1
 )
 
 if(UNIX AND NOT EMSCRIPTEN AND PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER)
@@ -383,16 +433,33 @@ target_link_libraries(caesar2 PRIVATE
     SDL3::SDL3)
 
 if(EMSCRIPTEN)
+    if(C2_WASM_ASSET_ROOT)
+        set(C2_HAS_BUNDLED_ASSETS 1)
+    else()
+        set(C2_HAS_BUNDLED_ASSETS 0)
+    endif()
     set(C2_WASM_SHELL "${CMAKE_CURRENT_BINARY_DIR}/caesar2-shell.html")
+    set(C2_WASM_UI_JS "${CMAKE_CURRENT_BINARY_DIR}/c2-shell.js")
     configure_file(web/caesar2.html "${C2_WASM_SHELL}" @ONLY)
+    configure_file(web/c2_shell.js.in "${C2_WASM_UI_JS}" @ONLY)
+    configure_file(web/c2_shell.css
+        "${CMAKE_CURRENT_BINARY_DIR}/c2-shell.css" COPYONLY)
+    # The worker carries the build version so browsers see a changed file and
+    # install it; a byte-identical worker is never replaced.
     configure_file(web/coi-serviceworker.js
-        "${CMAKE_CURRENT_BINARY_DIR}/coi-serviceworker.js" COPYONLY)
+        "${CMAKE_CURRENT_BINARY_DIR}/coi-serviceworker.js" @ONLY)
+    configure_file(web/vendor/pico.min.css
+        "${CMAKE_CURRENT_BINARY_DIR}/pico.min.css" COPYONLY)
+    configure_file(web/caesar2-background.jpg
+        "${CMAKE_CURRENT_BINARY_DIR}/caesar2-background.jpg" COPYONLY)
+    configure_file(web/caesar2-background-light.jpg
+        "${CMAKE_CURRENT_BINARY_DIR}/caesar2-background-light.jpg" COPYONLY)
     file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/version.txt"
         "${C2_VERSION_STRING}\n")
     set_target_properties(caesar2 PROPERTIES
-        OUTPUT_NAME "caesar2-${C2_LANGUAGE}"
+        OUTPUT_NAME "index"
         LINK_DEPENDS
-            "${C2_WASM_SHELL};${CMAKE_CURRENT_SOURCE_DIR}/web/c2_browser.js;${CMAKE_CURRENT_SOURCE_DIR}/web/coi-serviceworker.js"
+            "${C2_WASM_SHELL};${C2_WASM_UI_JS};${CMAKE_CURRENT_SOURCE_DIR}/web/c2_shell.css;${CMAKE_CURRENT_SOURCE_DIR}/web/c2_browser.js;${CMAKE_CURRENT_SOURCE_DIR}/web/coi-serviceworker.js;${CMAKE_CURRENT_SOURCE_DIR}/web/vendor/pico.min.css;${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2-background.jpg;${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2-background-light.jpg"
         SUFFIX ".html")
     target_compile_options(caesar2 PRIVATE
         -pthread
@@ -554,9 +621,20 @@ include(CTest)
 
 if(BUILD_TESTING)
     add_test(NAME version-string COMMAND caesar2 --version)
+    # Published builds carry a commit count and revision; local builds from an
+    # edited worktree carry their configure time instead.
     set_tests_properties(version-string PROPERTIES
         PASS_REGULAR_EXPRESSION
-            "Caesar II 1\\.0\\.0-[0-9]+-[0-9A-Fa-f]+")
+            "Caesar II 1\\.0\\.0-([0-9]+-[0-9A-Fa-f]+|[0-9]{8}-[0-9]{6})")
+
+    # Importing game data must not start the engine, so the browser shell can
+    # validate an upload and return to its main window.
+    add_test(NAME prepare-assets-rejects-missing-source
+        COMMAND caesar2 --prepare-assets
+            --game-data "${CMAKE_CURRENT_BINARY_DIR}/no-such-game-data.zip"
+            --user-data-dir "${CMAKE_CURRENT_BINARY_DIR}/prepare-assets-test")
+    set_tests_properties(prepare-assets-rejects-missing-source PROPERTIES
+        WILL_FAIL TRUE)
 
     find_path(C2_UNITY_INCLUDE_DIR NAMES unity/unity.h REQUIRED)
     find_library(C2_UNITY_LIBRARY NAMES unity REQUIRED)
@@ -613,6 +691,22 @@ if(BUILD_TESTING)
         src/platform/common)
     target_link_libraries(c2-port-mouse-test PRIVATE c2_unity_framework)
     add_test(NAME port-mouse COMMAND c2-port-mouse-test)
+
+    add_executable(c2-port-pause-test
+        tests/c2_port_pause_test.c
+        src/platform/common/c2_port_pause.c)
+    target_compile_features(c2-port-pause-test PRIVATE c_std_11)
+    target_compile_definitions(c2-port-pause-test PRIVATE
+        PORT_PLATFORM=1
+        PORT_PLATFORM_LINUX=1)
+    target_include_directories(c2-port-pause-test PRIVATE
+        include
+        src/platform/common)
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
+        target_compile_options(c2-port-pause-test PRIVATE -fms-extensions)
+    endif()
+    target_link_libraries(c2-port-pause-test PRIVATE c2_unity_framework)
+    add_test(NAME port-pause COMMAND c2-port-pause-test)
 
     add_executable(c2-save-compat-test
         tests/c2_save_compat_test.c

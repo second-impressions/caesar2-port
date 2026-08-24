@@ -26,7 +26,28 @@
 #endif
 
 #if PORT_PLATFORM_WASM
+#include <emscripten.h>
 extern void c2_browser_show_restart(void);
+/*
+ * Browser chrome pauses the game while its own dialogs are in front of it.
+ * The request only crosses the host boundary here; the engine applies it with
+ * its own pause action.
+ */
+EMSCRIPTEN_KEEPALIVE void c2_browser_set_pause(int paused)
+{
+    c2_host_request_pause(paused);
+}
+
+EMSCRIPTEN_KEEPALIVE void c2_browser_set_fractional_scaling(int enabled)
+{
+    c2_host_set_fractional_scaling(enabled);
+}
+
+EMSCRIPTEN_KEEPALIVE void c2_browser_set_canvas_size(int width, int height)
+{
+    c2_host_set_canvas_size(width, height);
+}
+
 extern void c2_browser_source_ready(const char *resolved,
                                     const char *original);
 #endif
@@ -39,6 +60,7 @@ struct c2_sdl_app {
 #if PORT_PLATFORM_WASM
     SDL_Thread *storage_thread;
     SDL_AtomicInt storage_result;
+    int pointer_watch_installed;
 #endif
     SDL_AtomicInt engine_result;
     struct c2_port_app_config engine_config;
@@ -53,19 +75,45 @@ struct c2_sdl_app {
     char asset_profile[128];
     int headless;
     int mouse_lock;
+    int fractional_scaling;
     int smoke_kind;
+    int prepare_only;
     int host_initialized;
     int host_interactive;
 };
 
 static struct c2_sdl_app c2_app;
 
+#if PORT_PLATFORM_WASM
+static int is_pointer_event(Uint32 type)
+{
+    return type == SDL_EVENT_MOUSE_MOTION ||
+           type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
+           type == SDL_EVENT_MOUSE_BUTTON_UP ||
+           type == SDL_EVENT_MOUSE_WHEEL;
+}
+
+/*
+ * SDL event watches run when an event is added, before SDL_AppEvent drains the
+ * queue. Browser pointer input therefore reaches the shared host snapshot as
+ * it is pushed instead of waiting for the next fixed-rate main callback.
+ */
+static bool SDLCALL push_pointer_event(void *userdata, SDL_Event *event)
+{
+    (void)userdata;
+    if (is_pointer_event(event->type)) c2_sdl_host_handle_event(event);
+    return true;
+}
+#endif
+
 static int parse_arguments(int argc, char *argv[], const char **asset_root,
                            const char **user_data_root,
                            char **default_user_data_root,
                            const char **screenshot_filename,
                            const char **asset_profile,
-                           int *headless, int *mouse_lock, int *smoke_kind)
+                           int *headless, int *mouse_lock,
+                           int *fractional_scaling, int *smoke_kind,
+                           int *prepare_only)
 {
     int i;
 
@@ -80,7 +128,9 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
     *default_user_data_root = NULL;
     *headless = 0;
     *mouse_lock = 0;
+    *fractional_scaling = 0;
     *smoke_kind = 0;
+    *prepare_only = 0;
     *screenshot_filename = NULL;
     *asset_profile = getenv("C2_ASSET_PROFILE");
 
@@ -91,6 +141,10 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
             *mouse_lock = 1;
         } else if (strcmp(argv[i], "--no-mouse-lock") == 0) {
             *mouse_lock = 0;
+        } else if (strcmp(argv[i], "--prepare-assets") == 0) {
+            *prepare_only = 1;
+        } else if (strcmp(argv[i], "--fractional-scaling") == 0) {
+            *fractional_scaling = 1;
 #if PORT_FEAT_DEBUG_OBSERVATION
         } else if (strcmp(argv[i], "--smoke-test") == 0) {
             *headless = 1;
@@ -128,7 +182,8 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
             fprintf(stderr,
                     "usage: %s [--headless] [--game-data SOURCE] "
                     "[--user-data-dir PATH] [--screenshot FILE] "
-                    "[--mouse-lock|--no-mouse-lock] "
+                    "[--mouse-lock|--no-mouse-lock] [--prepare-assets] "
+                    "[--fractional-scaling] "
                     "[--smoke-test|--city-smoke-test|"
                     "--tutorial-smoke-test|--save-load-smoke-test|"
                     "--music-buffer-smoke-test|"
@@ -138,7 +193,8 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
             fprintf(stderr,
                     "usage: %s [--headless] [--game-data SOURCE] "
                     "[--user-data-dir PATH] [--screenshot FILE] "
-                    "[--mouse-lock|--no-mouse-lock]\n",
+                    "[--mouse-lock|--no-mouse-lock] [--prepare-assets] "
+                    "[--fractional-scaling]\n",
                     argv[0]);
 #endif
             return 0;
@@ -227,6 +283,36 @@ static void save_asset_source(const struct c2_sdl_app *app)
 }
 #endif
 
+/*
+ * Import and cache the selected game data without starting the engine so the
+ * shell can validate an upload and return to its main window.
+ */
+static int prepare_assets(struct c2_sdl_app *app)
+{
+    char resolved_asset_root[4096];
+    char import_error[512];
+    const char *cache_root;
+
+#if PORT_PLATFORM_WASM
+    cache_root = "/persistent";
+#else
+    cache_root = app->user_data_root;
+#endif
+    if (!c2_import_path(app->asset_source, cache_root,
+                        app->asset_profile[0] ? app->asset_profile : NULL,
+                        resolved_asset_root, sizeof(resolved_asset_root),
+                        import_error, sizeof(import_error))) {
+        fprintf(stderr, "could not import game data '%s': %s\n",
+                app->asset_source, import_error);
+        return 0;
+    }
+#if PORT_PLATFORM_WASM
+    c2_browser_source_ready(resolved_asset_root, app->asset_source);
+#endif
+    printf("prepared game data: %s\n", resolved_asset_root);
+    return 1;
+}
+
 static int start_runtime(struct c2_sdl_app *app)
 {
     char resolved_asset_root[4096];
@@ -261,6 +347,7 @@ static int start_runtime(struct c2_sdl_app *app)
     host_config.window_scale = 2;
     host_config.headless = app->headless;
     host_config.mouse_lock = app->mouse_lock;
+    host_config.fractional_scaling = app->fractional_scaling;
 #if PORT_FEAT_DEBUG_OBSERVATION
     host_config.enable_observation = app->smoke_kind != C2_SDL_SMOKE_NONE;
 #endif
@@ -275,6 +362,14 @@ static int start_runtime(struct c2_sdl_app *app)
     save_asset_source(app);
 #endif
     app->host_initialized = 1;
+#if PORT_PLATFORM_WASM
+    if (!SDL_AddEventWatch(push_pointer_event, app)) {
+        fprintf(stderr, "warning: could not install push pointer input: %s\n",
+                SDL_GetError());
+    } else {
+        app->pointer_watch_installed = 1;
+    }
+#endif
     update_host_callback_rate(app);
     app->engine_config.screenshot_filename = app->screenshot_filename[0]
         ? app->screenshot_filename : NULL;
@@ -366,7 +461,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     const char *asset_profile;
     int headless;
     int mouse_lock;
+    int fractional_scaling;
     int smoke_kind;
+    int prepare_only;
 
     *appstate = &c2_app;
     {
@@ -393,8 +490,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     if (!parse_arguments(argc, argv, &asset_root, &user_data_root,
                          &c2_app.default_user_data_root,
                          &screenshot_filename, &asset_profile,
-                         &headless, &mouse_lock,
-                         &smoke_kind)) {
+                         &headless, &mouse_lock, &fractional_scaling,
+                         &smoke_kind, &prepare_only)) {
         return SDL_APP_FAILURE;
     }
 
@@ -421,13 +518,22 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     }
     c2_app.headless = headless;
     c2_app.mouse_lock = mouse_lock;
+    c2_app.fractional_scaling = fractional_scaling;
     c2_app.smoke_kind = smoke_kind;
+    c2_app.prepare_only = prepare_only;
 #if PORT_PLATFORM_WASM
     SDL_SetAtomicInt(&c2_app.storage_result, 0);
     c2_app.storage_thread = SDL_CreateThread(storage_main, "caesar2-storage", NULL);
     if (c2_app.storage_thread == NULL) return SDL_APP_FAILURE;
     return SDL_APP_CONTINUE;
 #else
+    if (c2_app.prepare_only) {
+        SDL_AppResult prepared = prepare_assets(&c2_app)
+            ? SDL_APP_SUCCESS : SDL_APP_FAILURE;
+        SDL_free(c2_app.default_user_data_root);
+        c2_app.default_user_data_root = NULL;
+        return prepared;
+    }
     if (!start_runtime(&c2_app)) {
         fprintf(stderr, "Select an installed Caesar II folder, or restart with --game-data ZIP/ISO/CUE.\n");
         c2_app.asset_source[0] = '\0';
@@ -449,6 +555,12 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
 
     app = appstate;
     if (!app->host_initialized) return SDL_APP_CONTINUE;
+#if PORT_PLATFORM_WASM
+    if (app->pointer_watch_installed && is_pointer_event(event->type)) {
+        update_host_callback_rate(app);
+        return SDL_APP_CONTINUE; /* already delivered synchronously by watch */
+    }
+#endif
     c2_sdl_host_handle_event(event);
     update_host_callback_rate(app);
     return SDL_APP_CONTINUE;
@@ -468,7 +580,11 @@ SDL_AppResult SDL_AppIterate(void *appstate)
             SDL_WaitThread(app->storage_thread, NULL);
             app->storage_thread = NULL;
         }
-        if (storage_result < 0 || !start_runtime(app)) return SDL_APP_FAILURE;
+        if (storage_result < 0) return SDL_APP_FAILURE;
+        if (app->prepare_only) {
+            return prepare_assets(app) ? SDL_APP_SUCCESS : SDL_APP_FAILURE;
+        }
+        if (!start_runtime(app)) return SDL_APP_FAILURE;
         return SDL_APP_CONTINUE;
     }
 #endif
@@ -506,6 +622,12 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
 
     (void)result;
     app = appstate;
+#if PORT_PLATFORM_WASM
+    if (app != NULL && app->pointer_watch_installed) {
+        SDL_RemoveEventWatch(push_pointer_event, app);
+        app->pointer_watch_installed = 0;
+    }
+#endif
     if (app != NULL && app->host_initialized) {
         c2_host_request_shutdown();
     }

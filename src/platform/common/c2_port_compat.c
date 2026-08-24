@@ -5,11 +5,18 @@
 #include "c2_host.h"
 #include "c2_port.h"
 #include "c2_port_save.h"
+#include "c2_version.h"
 
+static char c2_port_version_text[] = "Version: " C2_VERSION_STRING;
 static char c2_language_filename[13];
 static char c2_media_filename[13];
 
 #define C2_ASSET_SIZE_LIMIT (512u * 1024u * 1024u)
+
+char *c2_port_version_line(void)
+{
+    return c2_port_version_text;
+}
 
 void *c2_port_load_asset(const char *filename, size_t *size_out)
 {

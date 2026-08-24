@@ -31,7 +31,46 @@ extern void setup_refresh_area(int screen_x, int screen_y,
                                int width, int height, int refresh_value);
 extern void setup_whole_screen_refresh(void);
 extern void stop_samples(void);
+extern void general_sprite(int sprite_idx, int x, int y);
+extern void set_palette(char *palette);
 void stop_smacking(void);
+
+static int show_movie_fallback(const char *filename, int left, int top,
+                               int mode)
+{
+    char path[256];
+    char *extension;
+    unsigned char *pixels;
+    unsigned char *palette;
+    size_t pixels_size;
+    size_t palette_size;
+
+    if (mode != 1 || filename == NULL || strlen(filename) >= sizeof(path)) {
+        return 0;
+    }
+    strcpy(path, filename);
+    extension = strrchr(path, '.');
+    if (extension == NULL || strlen(extension) != 4) return 0;
+    memcpy(extension + 1, "pl8", 4);
+    pixels = c2_port_load_asset(path, &pixels_size);
+    memcpy(extension + 1, "256", 4);
+    palette = c2_port_load_asset(path, &palette_size);
+    if (pixels == NULL || palette == NULL || palette_size < 0x300 ||
+        pixels_size > 0x186a0) {
+        free(pixels);
+        free(palette);
+        return 0;
+    }
+    memcpy(scratch_buffer, pixels, pixels_size);
+    memcpy(temp_palette, palette, 0x300);
+    free(pixels);
+    free(palette);
+    set_palette((char *)temp_palette);
+    general_sprite(0, left, top);
+    setup_refresh_area(left, top, 0x14, 0xa, 1);
+    refresh_svga_screen();
+    return 1;
+}
 
 static uint64_t frame_duration_ms(void)
 {
@@ -150,9 +189,16 @@ void start_smacking(char *filename, int left, int top, int mode)
     signed char first_result;
 
     stop_smacking();
-    if (filename == NULL || c2inf.anims_on == 0) return;
+    if (filename == NULL) return;
+    if (c2inf.anims_on == 0) {
+        show_movie_fallback(filename, left, top, mode);
+        return;
+    }
     c2_movie.asset = c2_port_load_asset(filename, &asset_size);
-    if (c2_movie.asset == NULL) return;
+    if (c2_movie.asset == NULL) {
+        show_movie_fallback(filename, left, top, mode);
+        return;
+    }
     c2_movie.decoder = smk_open_memory(c2_movie.asset,
                                        (unsigned long)asset_size);
     if (c2_movie.decoder == NULL ||
@@ -162,6 +208,7 @@ void start_smacking(char *filename, int left, int top, int mode)
                        &c2_movie.height, NULL) < 0 ||
         smk_enable_video(c2_movie.decoder, 1) < 0) {
         stop_smacking();
+        show_movie_fallback(filename, left, top, mode);
         return;
     }
 

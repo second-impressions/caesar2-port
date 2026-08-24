@@ -6,6 +6,9 @@
 #if PORT_FEAT_DEBUG_OBSERVATION
 #include "c2_observation.h"
 #endif
+#if PORT_FEAT_HOST_PAUSE
+#include "c2_port_pause.h"
+#endif
 
 int mouse_styles[10] = { 0, 1, 2, 3, 9, 0, 2, 3, 4, 4 };
 
@@ -86,6 +89,9 @@ void forum_explanations(int department_idx, int highlight_flag);
 // FUNCTION: C2WIN 0x0040f7f0
 void gloop_start(void)
 {
+#if PORT_FEAT_HOST_PAUSE
+    c2_port_apply_pause_request();
+#endif
     cycle_count++;
     cover_mouse_droppings();
     get_mouse();
@@ -259,11 +265,18 @@ void main_game_loop(void)
 #if PORT_FEAT_DEBUG_OBSERVATION
     c2_observe(PORT_OBSERVATION_CITY_LOOP, 0);
 #endif
+#if PORT_FEAT_HOST_PAUSE
+    c2_port_apply_pause_request();
+#endif
 
     cycle_count++;
     button_time_flag = running_delay1();
 
-    if (game_speed() != 0) {
+    if (game_speed() != 0
+#if PORT_FEAT_HOST_PAUSE
+        && !c2_port_host_pause_active()
+#endif
+    ) {
         if (turbo_mode != 0) loops = 4;
         else loops = 1;
         for (i = 0; i < loops; i++) {
@@ -481,6 +494,9 @@ extern void update_window_battle_stats(void);
 // FUNCTION: C2WIN 0x004101e4
 void battle_game_loop(void)
 {
+#if PORT_FEAT_HOST_PAUSE
+    c2_port_apply_pause_request();
+#endif
     cycle_count++;
     button_time_flag = running_delay1();
 #if PLATFORM_WINDOWS
@@ -493,7 +509,11 @@ void battle_game_loop(void)
 #endif
     random();
 
-    if (game_speed() != 0 || battle_turbo != 0) {
+    if ((game_speed() != 0 || battle_turbo != 0)
+#if PORT_FEAT_HOST_PAUSE
+        && !c2_port_host_pause_active()
+#endif
+    ) {
         if (zoom_level == 1) {
             arrow_update();
             update_units_morale();

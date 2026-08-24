@@ -27,6 +27,7 @@ extern int fileno(FILE *stream);
 
 static SDL_Window *c2_window;
 static SDL_Renderer *c2_renderer;
+static int c2_fractional_scaling;
 static SDL_Texture *c2_texture;
 static SDL_Mutex *c2_frame_mutex;
 static SDL_Mutex *c2_event_mutex;
@@ -781,7 +782,10 @@ int c2_host_init(const struct c2_host_config *config)
     presentation = SDL_LOGICAL_PRESENTATION_LETTERBOX;
 #if PORT_PLATFORM_WASM
     window_flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
-    presentation = SDL_LOGICAL_PRESENTATION_INTEGER_SCALE;
+    c2_fractional_scaling = config->fractional_scaling != 0;
+    presentation = c2_fractional_scaling
+        ? SDL_LOGICAL_PRESENTATION_LETTERBOX
+        : SDL_LOGICAL_PRESENTATION_INTEGER_SCALE;
 #endif
     if (!SDL_CreateWindowAndRenderer(config->title,
                                      c2_frame_width * config->window_scale,
@@ -1303,6 +1307,65 @@ void c2_host_set_mouse_bounds(int min_x, int min_y, int max_x, int max_y)
         c2_input.generation++;
     }
     SDL_UnlockMutex(c2_event_mutex);
+}
+
+/*
+ * Pause requests cross from the host's own UI thread to the engine thread, so
+ * they travel through the same mutex as the rest of the input state.
+ */
+static int c2_pause_request = -1;
+
+void c2_host_set_canvas_size(int width, int height)
+{
+    if (c2_window == NULL || width <= 0 || height <= 0) return;
+    if (!SDL_SetWindowSize(c2_window, width, height)) {
+        fprintf(stderr, "could not resize browser canvas: %s\n", SDL_GetError());
+    }
+}
+
+void c2_host_set_fractional_scaling(int enabled)
+{
+    SDL_RendererLogicalPresentation presentation;
+
+    c2_fractional_scaling = enabled != 0;
+    if (c2_renderer == NULL) return;
+    presentation = c2_fractional_scaling
+        ? SDL_LOGICAL_PRESENTATION_LETTERBOX
+        : SDL_LOGICAL_PRESENTATION_INTEGER_SCALE;
+    if (!SDL_SetRenderLogicalPresentation(c2_renderer,
+                                          c2_frame_width,
+                                          c2_frame_height,
+                                          presentation)) {
+        fprintf(stderr, "could not change logical presentation: %s\n",
+                SDL_GetError());
+    }
+}
+
+void c2_host_request_pause(int paused)
+{
+    if (c2_event_mutex == NULL) {
+        c2_pause_request = paused ? 1 : 0;
+        return;
+    }
+    SDL_LockMutex(c2_event_mutex);
+    c2_pause_request = paused ? 1 : 0;
+    SDL_UnlockMutex(c2_event_mutex);
+}
+
+int c2_host_take_pause_request(void)
+{
+    int request;
+
+    if (c2_event_mutex == NULL) {
+        request = c2_pause_request;
+        c2_pause_request = -1;
+        return request;
+    }
+    SDL_LockMutex(c2_event_mutex);
+    request = c2_pause_request;
+    c2_pause_request = -1;
+    SDL_UnlockMutex(c2_event_mutex);
+    return request;
 }
 
 void c2_host_request_shutdown(void)

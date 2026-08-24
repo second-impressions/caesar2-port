@@ -14,6 +14,10 @@
 #if PORT_FEAT_DEBUG_OBSERVATION
 #include "c2_observation.h"
 #endif
+#if PORT_FEAT_BUILD_STAMP
+extern char *c2_port_version_line(void);
+extern void put_a_font_string(char *text, int x, int y, unsigned char *font, int color);
+#endif
 
 char button_speed_profile[40] = { 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1 };
 
@@ -405,8 +409,21 @@ void show_warning_panel(int message_idx, int x, int y)
     cover_mouse_droppings();
     hold_mouse_replace = 1;
     show_a_system_window(x, y, 0x14, 5);
-    font_list(0xb, message_idx,     x + 0x10, y + 0x10, font1, 0x10);
-    font_list(0xb, message_idx + 1, x + 0x10, y + 0x20, font1, 0x10);
+#if PORT_FEAT_BUILD_STAMP
+    /*
+     * Message 0 is the startup notice, whose two c2.eng lines are the shipped
+     * version and its release date. A portable build states its own instead.
+     */
+    if (message_idx == 0) {
+        /* Three lines have to clear the OK prompt at y + 0x3c. */
+        put_a_font_string("Caesar II - Portable", x + 0x10, y + 0x0c, font1, 0x10);
+        put_a_font_string(c2_port_version_line(), x + 0x10, y + 0x1c, font1, 0x10);
+    } else
+#endif
+    {
+        font_list(0xb, message_idx,     x + 0x10, y + 0x10, font1, 0x10);
+        font_list(0xb, message_idx + 1, x + 0x10, y + 0x20, font1, 0x10);
+    }
     font_list(9,   0,        x + 0x60, y + 0x3c, font1, 0x10);
 }
 

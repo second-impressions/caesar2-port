@@ -26,6 +26,8 @@
               pkgs.firefox
               pkgs.ninja
               pkgs.nodejs
+              pkgs.playwright-test
+              pkgs.playwright-driver.browsers
               pkgs.pkg-config
               pkgs.sdl3
               pkgs.clang
@@ -42,6 +44,8 @@
               pkgs.stdenv.cc.cc.lib
               pkgs.zlib
             ];
+            env.PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
+            env.NODE_PATH = "${pkgs.playwright-test}/lib/node_modules";
 
             # The Watcom 10.0a toolchain itself is NOT in this shell: c2
             # rebuild/delink shell out to the system podman with the

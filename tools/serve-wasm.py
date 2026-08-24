@@ -15,6 +15,9 @@ class Caesar2Handler(SimpleHTTPRequestHandler):
         self.send_header("Cross-Origin-Opener-Policy", "same-origin")
         self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
         self.send_header("Cross-Origin-Resource-Policy", "same-origin")
+        # A preview server must always hand out the build that is on disk;
+        # heuristic caching otherwise mixes an old page with a new runtime.
+        self.send_header("Cache-Control", "no-store, must-revalidate")
         super().end_headers()
 
 
@@ -35,13 +38,13 @@ def main() -> None:
     if args.entry:
         entry = directory / args.entry
     else:
-        entries = sorted(directory.glob("caesar2-*.html"))
-        if not entries and (directory / "caesar2.html").is_file():
-            entries = [directory / "caesar2.html"]
-        if len(entries) != 1:
+        entries = [directory / "index.html"]
+        if not entries[0].is_file():
+            entries = sorted(directory.glob("caesar2*.html"))
+        if len(entries) != 1 or not entries[0].is_file():
             parser.error(
-                f"{directory} must contain one language build; "
-                "use --entry when it contains several"
+                f"{directory} must contain index.html; "
+                "use --entry to select another page"
             )
         entry = entries[0]
     if entry.parent != directory or not entry.is_file():

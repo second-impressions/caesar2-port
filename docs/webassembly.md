@@ -56,8 +56,8 @@ cmake --build build/port/wasm-release
 On first visit the page accepts an installation folder, ZIP, optimized
 `.c2assets` pack, ISO, or BIN/CUE pair. It imports and validates data into
 OPFS before starting the game. `C2_WASM_ASSET_ROOT` remains available for
-self-hosted/demo bundles; the page offers **Use bundled game data** for those
-builds. A multi-profile `.c2assets` pack can carry all text/speech languages
+self-hosted/demo bundles; the Assets settings page offers **Bundled data** for
+those builds. A multi-profile `.c2assets` pack can carry all text/speech languages
 and DOS, Win95, Mac, or custom video sets in one deduplicated container.
 
 For assertions, semantic observations, and the recovered province-selection
@@ -65,16 +65,16 @@ smoke test:
 
 ```bash
 emcmake cmake --preset wasm-debug \
-  -B build/port/wasm-debug-en \
+  -B build/port/wasm-debug \
   -DC2_LANGUAGE=en \
   -DC2_WASM_ASSET_ROOT=/path/to/CAESAR2
-cmake --build build/port/wasm-debug-en
-node tools/smoke-wasm.mjs build/port/wasm-debug-en
-node tools/smoke-wasm.mjs build/port/wasm-debug-en city
-node tools/smoke-wasm.mjs build/port/wasm-debug-en music
-node tools/smoke-wasm.mjs build/port/wasm-debug-en campania firefox
-node tools/smoke-wasm.mjs build/port/wasm-debug-en contextmenu firefox
-node tools/smoke-wasm.mjs build/port/wasm-debug-en canvas firefox
+cmake --build build/port/wasm-debug
+node tools/smoke-wasm.mjs build/port/wasm-debug
+node tools/smoke-wasm.mjs build/port/wasm-debug city
+node tools/smoke-wasm.mjs build/port/wasm-debug music
+node tools/smoke-wasm.mjs build/port/wasm-debug campania firefox
+node tools/smoke-wasm.mjs build/port/wasm-debug contextmenu firefox
+node tools/smoke-wasm.mjs build/port/wasm-debug canvas firefox
 ```
 
 ## Serving and deployment
@@ -84,14 +84,14 @@ sets `Cross-Origin-Opener-Policy: same-origin` and
 `Cross-Origin-Embedder-Policy: require-corp`:
 
 ```bash
-python3 tools/serve-wasm.py build/port/wasm-release-en
+python3 tools/serve-wasm.py build/port/wasm-release
 ```
 
 For testing from another machine, use HTTPS so the threaded runtime remains a
 secure context. The server accepts an existing certificate and private key:
 
 ```bash
-python3 tools/serve-wasm.py build/port/wasm-release-en \
+python3 tools/serve-wasm.py build/port/wasm-release \
   --bind 0.0.0.0 --port 8444 \
   --certfile /path/to/fullchain.pem --keyfile /path/to/key.pem
 ```
@@ -121,34 +121,66 @@ the chosen display size when Emscripten updates the canvas backing dimensions.
 
 This distinction is load-bearing: a 640×480 CSS rectangle is not necessarily a
 640×480 physical render target. Validation covers fractional display densities
-as well as ordinary 1× and 2× displays.
+as well as ordinary 1× and 2× displays. Integer scaling is the default;
+fractional scaling is an explicit Game setting that fits the canvas to the
+viewport while retaining aspect-ratio bars. Fullscreen transitions settle the
+canvas size over subsequent animation frames because browsers can report the
+old fullscreen viewport briefly after exit.
 
 The default pointer remains free so windowed play does not unexpectedly trap
 the browser cursor. Add `?mouse-lock=1` to request Pointer Lock; when browser
 policy requires a user gesture, the backend retries on the next click. Debug
 bundles accept `?smoke-test=province` for automated semantic verification.
-The document suppresses the browser context menu at capture time so right
-click remains an ordinary game input in Firefox as well as Chromium.
+While the game is running, the canvas suppresses its browser context menu so
+right-click remains an ordinary Caesar II input. Outside the running canvas the
+page keeps the browser's normal context menu. Firefox users who set
+`dom.event.contextmenu.enabled` to `false` explicitly forbid sites from doing
+this; Shift-right-click is also Firefox's unconditional native-menu bypass.
 
-The browser main thread services input and the published-frame mailbox at
-120 Hz while the canvas has focus and contains the physical pointer, matching
-the native host's interactive cadence. It reduces SDL's runtime-changeable
-callback-rate hint to 15 Hz after the pointer leaves or focus is lost, then
-restores 120 Hz on re-entry. The recovered engine remains paced independently
-at 60 Hz; this changes only event pumping and presentation latency, not game
-time.
+Browser pointer motion, buttons, and wheel input are push-based: an SDL event
+watch updates the mutex-protected host snapshot at the moment SDL receives the
+browser event, before `SDL_AppEvent` drains its queue. The recovered engine
+consumes the latest position on its own frame, so pointer latency is not tied to
+a configurable polling frequency. The 120 Hz active callback hint remains for
+published-frame presentation and non-pointer event pumping; it drops to 15 Hz
+when the pointer leaves or focus is lost. The recovered engine remains paced
+independently at 60 Hz, so these host cadences do not change game time.
 
 The canvas remains programmatically focusable for keyboard input, but browser
 selection, dragging, tap highlighting, and the default focus outline are
 disabled. Focus therefore stays functional without drawing a browser-owned
 border over the game.
 
+### Browser diagnostics
+
+Current SDL 3 uses `ScriptProcessorNode` in its Emscripten audio backend
+(`third_party/SDL/src/audio/emscripten/SDL_emscriptenaudio.c`), so Chromium logs
+the Web Audio deprecation notice on first audio initialization. Moving to
+`AudioWorkletNode` belongs in SDL's audio driver and is not papered over in the
+game shell. Firefox can likewise issue one-time WebGL notices when SDL lazily
+initializes its first texture and when integer logical presentation draws into
+a letterboxed viewport. These warnings do not indicate lost content; the audio,
+province, city, canvas, restart, and music smoke paths cover the affected
+subsystems.
+
+Media preferences live in persistent `caesar2.inf` independently of imported
+assets. Music, speech, effects, ambient sound, and embedded animations each
+have their own switch. The startup intro temporarily forces animations on, so
+an intro with sound does not prove those saved switches are enabled. The
+specific combination “intro/effects/ambient work; MIDI, narration, and message
+movies do not” means Tunes, Speech, and Animations are disabled in the in-game
+settings. Re-enable those options (or replace `caesar2.inf`) before diagnosing
+asset lookup. Select the inner installation directory containing `C2.ENG`, not
+a wrapper directory containing a `caesar2/` child.
+
 The recovered quit paths still end the game exactly as they do on DOS. Once
-SDL reports a clean engine shutdown, the browser shell replaces the stopped
-canvas with a Restart button. Restarting reloads the page to create a fresh
-Emscripten runtime; the persistent `/user-data` mount retains saves and
-settings across that reload. Runtime failures remain visible as errors rather
-than being presented as an ordinary game exit.
+SDL reports a clean engine shutdown, the browser shell restores its main
+window. Pressing Play again reloads the page and autostarts the selected assets
+to create a fresh Emscripten runtime; the recovered globals and a shut-down SDL
+instance cannot safely be initialized twice in one page. The persistent
+`/user-data` mount retains saves and settings across that reload. Runtime
+failures remain visible as errors rather than being presented as an ordinary
+game exit.
 
 ## Deliberate constraints
 

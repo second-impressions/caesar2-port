@@ -23,6 +23,7 @@ reader the guard is port-added rather than recovered.
 from __future__ import annotations
 
 import re
+import subprocess
 from pathlib import Path
 
 SRC = Path("src")
@@ -128,6 +129,41 @@ def test_bugfixes_default_to_the_portable_target_only():
         assert re.search(
             rf"#\s*define\s+{name}\s+PORT_PLATFORM\b", text
         ), f"{name} does not default to PORT_PLATFORM"
+
+
+def test_every_target_has_an_explicit_recovered_behavior_profile():
+    features = {
+        "C2_FEAT_TILE_REFRESH", "C2_FEAT_ROTATE_PM_LIMITS",
+        "C2_FEAT_PUMP_FREE_NULLS", "C2_FEAT_MODAL_PROMOTION",
+        "C2_FEAT_SMACK_CD_PATH", "C2_FEAT_REGION_SIDED_DRAW",
+        "C2_FEAT_CITY_TOP_DIRECTION_INIT",
+        "C2_FEAT_BATTLE_ZOOM2_ROTATE_CLAMP",
+        "C2_FEAT_SOFTWARE_BATTLE_SETUP",
+    }
+    profiles = {
+        "dos": ([], {"C2_FEAT_TILE_REFRESH", "C2_FEAT_SMACK_CD_PATH",
+                      "C2_FEAT_BATTLE_ZOOM2_ROTATE_CLAMP",
+                      "C2_FEAT_SOFTWARE_BATTLE_SETUP"}),
+        "windows": (["PLATFORM_WINDOWS=1"], {"C2_FEAT_ROTATE_PM_LIMITS",
+                    "C2_FEAT_PUMP_FREE_NULLS", "C2_FEAT_MODAL_PROMOTION",
+                    "C2_FEAT_REGION_SIDED_DRAW",
+                    "C2_FEAT_CITY_TOP_DIRECTION_INIT"}),
+        "port": (["PORT_PLATFORM_LINUX=1"], {"C2_FEAT_REGION_SIDED_DRAW",
+               "C2_FEAT_CITY_TOP_DIRECTION_INIT",
+               "C2_FEAT_BATTLE_ZOOM2_ROTATE_CLAMP",
+               "C2_FEAT_SOFTWARE_BATTLE_SETUP"}),
+    }
+    for _name, (defines, enabled) in profiles.items():
+        command = ["cc", "-dM", "-E", "-x", "c", "-"]
+        command += [f"-D{define}" for define in defines]
+        result = subprocess.run(command,
+                                input='#include "include/c2_target.h"\n',
+                                text=True, check=True, capture_output=True)
+        values = dict(re.findall(
+            r"^#define (C2_FEAT_[A-Z0-9_]+) ([01])$",
+            result.stdout, re.MULTILINE))
+        assert features <= values.keys()
+        assert {feature for feature in features if values[feature] == "1"} == enabled
 
 
 def test_portable_target_keeps_the_recovered_software_menus():

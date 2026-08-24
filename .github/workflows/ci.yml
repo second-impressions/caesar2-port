@@ -122,20 +122,29 @@ jobs:
         with:
           name: caesar2-wasm-${{ env.C2_BUILD_NUMBER }}-${{ env.C2_GIT_HASH }}
           path: |
-            build/ci-wasm/caesar2-*.html
-            build/ci-wasm/caesar2-*.js
-            build/ci-wasm/caesar2-*.wasm
+            build/ci-wasm/index.html
+            build/ci-wasm/index.js
+            build/ci-wasm/index.wasm
             build/ci-wasm/coi-serviceworker.js
+            build/ci-wasm/c2-shell.js
+            build/ci-wasm/c2-shell.css
+            build/ci-wasm/pico.min.css
+            build/ci-wasm/caesar2-background.jpg
+            build/ci-wasm/caesar2-background-light.jpg
             build/ci-wasm/version.txt
       - name: Assemble Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           mkdir -p _site
-          cp build/ci-wasm/caesar2-en.html _site/index.html
-          cp build/ci-wasm/caesar2-en.html _site/
-          cp build/ci-wasm/caesar2-en.js _site/
-          cp build/ci-wasm/caesar2-en.wasm _site/
+          cp build/ci-wasm/index.html _site/
+          cp build/ci-wasm/index.js _site/
+          cp build/ci-wasm/index.wasm _site/
           cp build/ci-wasm/coi-serviceworker.js _site/
+          cp build/ci-wasm/c2-shell.js _site/
+          cp build/ci-wasm/c2-shell.css _site/
+          cp build/ci-wasm/pico.min.css _site/
+          cp build/ci-wasm/caesar2-background.jpg _site/
+          cp build/ci-wasm/caesar2-background-light.jpg _site/
           cp build/ci-wasm/version.txt _site/
           touch _site/.nojekyll
       - name: Upload Pages artifact
