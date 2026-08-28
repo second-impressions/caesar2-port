@@ -12,4 +12,13 @@ mergeInto(LibraryManager.library, {
       Module["onSourceReady"](UTF8ToString(resolved), UTF8ToString(original));
     }
   },
+  c2_browser_import_progress__deps: ["$UTF8ToString"],
+  c2_browser_import_progress__proxy: "sync",
+  c2_browser_import_progress: function(phase, completed, total,
+                                       completedFiles, totalFiles) {
+    if (Module["onImportProgress"]) {
+      Module["onImportProgress"](UTF8ToString(phase), completed, total,
+                                 completedFiles, totalFiles);
+    }
+  },
 });

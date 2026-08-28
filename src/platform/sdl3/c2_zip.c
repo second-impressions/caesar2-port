@@ -24,6 +24,16 @@ static void set_error(char *error, size_t capacity, const char *message)
     if (error && capacity) snprintf(error, capacity, "%s", message ? message : "archive error");
 }
 
+static void report_progress(const struct c2_import_progress *progress,
+                            uint64_t completed, uint64_t total,
+                            size_t files, size_t total_files)
+{
+    if (progress != NULL && progress->update != NULL) {
+        progress->update(progress->userdata, "Extracting asset archive",
+                         completed, total, files, total_files);
+    }
+}
+
 static int runtime_path(const char *path)
 {
     static const char *extensions[] = {
@@ -135,6 +145,7 @@ static int make_parents(const char *path)
 }
 
 int c2_zip_extract(const char *zip_path, const char *destination,
+                   const struct c2_import_progress *progress,
                    char *error, size_t error_capacity)
 {
     struct archive *a;
@@ -147,6 +158,7 @@ int c2_zip_extract(const char *zip_path, const char *destination,
     int common_valid = 1;
     int result;
     size_t i;
+    uint64_t completed = 0;
 
     if (!open_zip(&a, zip_path, error, error_capacity)) return 0;
     while ((result = archive_read_next_header(a, &entry)) == ARCHIVE_OK) {
@@ -218,6 +230,7 @@ int c2_zip_extract(const char *zip_path, const char *destination,
         }
     }
 
+    report_progress(progress, 0, total, 0, count);
     if (!SDL_CreateDirectory(destination) && !SDL_GetPathInfo(destination, NULL)) {
         set_error(error, error_capacity, SDL_GetError()); free_items(items, count); return 0;
     }
@@ -244,9 +257,12 @@ int c2_zip_extract(const char *zip_path, const char *destination,
         if (!file) { set_error(error, error_capacity, "could not create imported file"); archive_read_free(a); free_items(items, count); return 0; }
         while ((got = archive_read_data(a, buffer, sizeof(buffer))) > 0) {
             if (fwrite(buffer, 1, (size_t)got, file) != (size_t)got) { fclose(file); archive_read_free(a); free_items(items, count); return 0; }
+            completed += (uint64_t)got;
+            report_progress(progress, completed, total, i, count);
         }
         if (got < 0 || fclose(file) != 0) { set_error(error, error_capacity, archive_error_string(a)); archive_read_free(a); free_items(items, count); return 0; }
         i++;
+        report_progress(progress, completed, total, i, count);
     }
     archive_read_free(a);
     free_items(items, count);

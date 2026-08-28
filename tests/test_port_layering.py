@@ -139,6 +139,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert 'id="operation-dialog"' in shell
     assert 'id="operation-progress"' in shell
     assert "beginTimedOperation(\"Checking game data\")" in shell
+    assert "onImportProgress(phase, completedKiB, totalKiB" in shell
     assert "beginOperation(\"Removing cached assets\"" in shell
     assert "writeBrowserFile(root, relative, file, onBytes)" in shell
     assert "Installation folder" in shell
@@ -357,6 +358,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
         ROOT / "tools" / "serve-wasm.py"
     ).read_text()
     browser_bridge = (ROOT / "web" / "c2_browser.js").read_text()
+    assert "c2_browser_import_progress" in browser_bridge
     assert 'c2_browser_show_restart__proxy: "sync"' in browser_bridge
     assert 'Module["onGameExit"]()' in browser_bridge
     video = (ROOT / "src" / "platform" / "common" / "c2_port_video.c").read_text()

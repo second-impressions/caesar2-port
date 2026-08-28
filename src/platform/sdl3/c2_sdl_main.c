@@ -50,6 +50,11 @@ EMSCRIPTEN_KEEPALIVE void c2_browser_set_canvas_size(int width, int height)
 
 extern void c2_browser_source_ready(const char *resolved,
                                     const char *original);
+extern void c2_browser_import_progress(const char *phase,
+                                       unsigned int completed_kib,
+                                       unsigned int total_kib,
+                                       int completed_files,
+                                       int total_files);
 #endif
 
 #define C2_HOST_ACTIVE_CALLBACK_RATE "120"
@@ -289,11 +294,49 @@ static void save_asset_source(const struct c2_sdl_app *app)
  * Import and cache the selected game data without starting the engine so the
  * shell can validate an upload and return to its main window.
  */
+#if PORT_PLATFORM_WASM
+struct c2_browser_progress_state {
+    uint64_t last_bytes;
+    size_t last_files;
+    int reported;
+};
+
+static void publish_import_progress(void *userdata, const char *phase,
+                                    uint64_t completed, uint64_t total,
+                                    size_t completed_files,
+                                    size_t total_files)
+{
+    struct c2_browser_progress_state *state = userdata;
+    if (state->reported && completed < total &&
+        completed_files == state->last_files &&
+        completed - state->last_bytes < 1024 * 1024) {
+        return;
+    }
+    state->last_bytes = completed;
+    state->last_files = completed_files;
+    state->reported = 1;
+    c2_browser_import_progress(
+        phase,
+        (unsigned int)(completed / 1024),
+        (unsigned int)((total + 1023) / 1024),
+        (int)completed_files, (int)total_files);
+}
+#endif
+
 static int prepare_assets(struct c2_sdl_app *app)
 {
     char resolved_asset_root[4096];
     char import_error[512];
     const char *cache_root;
+    const struct c2_import_progress *progress_ptr = NULL;
+#if PORT_PLATFORM_WASM
+    struct c2_import_progress progress;
+    struct c2_browser_progress_state progress_state;
+    memset(&progress_state, 0, sizeof(progress_state));
+    progress.update = publish_import_progress;
+    progress.userdata = &progress_state;
+    progress_ptr = &progress;
+#endif
 
 #if PORT_PLATFORM_WASM
     cache_root = "/persistent";
@@ -302,6 +345,7 @@ static int prepare_assets(struct c2_sdl_app *app)
 #endif
     if (!c2_import_path(app->asset_source, cache_root,
                         app->asset_profile[0] ? app->asset_profile : NULL,
+                        progress_ptr,
                         resolved_asset_root, sizeof(resolved_asset_root),
                         import_error, sizeof(import_error))) {
         fprintf(stderr, "could not import game data '%s': %s\n",
@@ -330,6 +374,7 @@ static int start_runtime(struct c2_sdl_app *app)
 #endif
     if (!c2_import_path(app->asset_source, cache_root,
                         app->asset_profile[0] ? app->asset_profile : NULL,
+                        NULL,
                         resolved_asset_root, sizeof(resolved_asset_root),
                         import_error, sizeof(import_error))) {
         fprintf(stderr, "could not import game data '%s': %s\n",

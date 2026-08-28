@@ -18,6 +18,16 @@ static void set_error(char *error, size_t capacity, const char *message)
     if (error && capacity) snprintf(error, capacity, "%s", message ? message : "import failed");
 }
 
+static void report_progress(const struct c2_import_progress *progress,
+                            const char *phase, uint64_t completed,
+                            uint64_t total, size_t files, size_t total_files)
+{
+    if (progress != NULL && progress->update != NULL) {
+        progress->update(progress->userdata, phase, completed, total,
+                         files, total_files);
+    }
+}
+
 static int file_read_at(void *userdata, uint64_t offset, void *buffer,
                         size_t size, size_t *read_out)
 {
@@ -82,11 +92,24 @@ static int make_parents(const char *path)
 
 int c2_iso_extract(const struct c2_source_reader *source,
                    const char *destination,
+                   const struct c2_import_progress *progress,
                    char *error, size_t error_capacity)
 {
     struct c2_iso_catalog catalog;
+    uint64_t total_bytes = 0;
+    uint64_t completed_bytes = 0;
+    size_t total_files = 0;
+    size_t completed_files = 0;
     size_t i;
     if (!c2_iso_catalog_open(source, &catalog, error, error_capacity)) return 0;
+    for (i = 0; i < catalog.count; i++) {
+        if (runtime_path(catalog.entries[i].path)) {
+            total_bytes += catalog.entries[i].size;
+            total_files++;
+        }
+    }
+    report_progress(progress, "Extracting disc image", 0, total_bytes,
+                    0, total_files);
     if (!SDL_CreateDirectory(destination) && !SDL_GetPathInfo(destination, NULL)) {
         c2_iso_catalog_close(&catalog); set_error(error, error_capacity, SDL_GetError()); return 0;
     }
@@ -112,8 +135,16 @@ int c2_iso_extract(const struct c2_source_reader *source,
                 fclose(file); c2_iso_catalog_close(&catalog); set_error(error, error_capacity, "could not extract ISO file"); return 0;
             }
             offset += got;
+            completed_bytes += got;
+            report_progress(progress, "Extracting disc image",
+                            completed_bytes, total_bytes,
+                            completed_files, total_files);
         }
         if (fclose(file) != 0) { c2_iso_catalog_close(&catalog); return 0; }
+        completed_files++;
+        report_progress(progress, "Extracting disc image",
+                        completed_bytes, total_bytes,
+                        completed_files, total_files);
     }
     c2_iso_catalog_close(&catalog);
     return 1;
@@ -144,18 +175,20 @@ static uint64_t source_key(const char *path, const SDL_PathInfo *info)
 }
 
 static int import_iso_file(const char *path, const char *destination,
+                           const struct c2_import_progress *progress,
                            char *error, size_t error_capacity)
 {
     struct file_reader file;
     struct c2_source_reader source;
     int ok;
     if (!open_file_source(path, &file, &source)) { set_error(error, error_capacity, "could not open ISO"); return 0; }
-    ok = c2_iso_extract(&source, destination, error, error_capacity);
+    ok = c2_iso_extract(&source, destination, progress, error, error_capacity);
     fclose(file.file);
     return ok;
 }
 
 static int import_cue(const char *cue_path, const char *destination,
+                      const struct c2_import_progress *progress,
                       char *error, size_t error_capacity)
 {
     SDL_PathInfo info;
@@ -196,13 +229,14 @@ static int import_cue(const char *cue_path, const char *destination,
     }
     if (!c2_raw_cd_reader_init(&adapter, &raw_source, mode, error, error_capacity)) { fclose(raw_file.file); return 0; }
     c2_raw_cd_source(&adapter, &iso_source);
-    ok = c2_iso_extract(&iso_source, destination, error, error_capacity);
+    ok = c2_iso_extract(&iso_source, destination, progress, error, error_capacity);
     fclose(raw_file.file);
     return ok;
 }
 
 int c2_import_path(const char *source_path, const char *cache_root,
                    const char *asset_profile,
+                   const struct c2_import_progress *progress,
                    char *asset_root, size_t asset_root_capacity,
                    char *error, size_t error_capacity)
 {
@@ -236,11 +270,11 @@ int c2_import_path(const char *source_path, const char *cache_root,
         set_error(error, error_capacity, "could not create game-data cache"); return 0;
     }
     if (extension_is(source_path, ".zip") || extension_is(source_path, ".c2assets"))
-        ok = c2_zip_extract(source_path, destination, error, error_capacity);
+        ok = c2_zip_extract(source_path, destination, progress, error, error_capacity);
     else if (extension_is(source_path, ".iso"))
-        ok = import_iso_file(source_path, destination, error, error_capacity);
+        ok = import_iso_file(source_path, destination, progress, error, error_capacity);
     else if (extension_is(source_path, ".cue"))
-        ok = import_cue(source_path, destination, error, error_capacity);
+        ok = import_cue(source_path, destination, progress, error, error_capacity);
     else {
         set_error(error, error_capacity, "unsupported game-data source type"); return 0;
     }

@@ -14,6 +14,17 @@ struct c2_source_reader {
     c2_source_read_at_fn read_at;
 };
 
+typedef void (*c2_import_progress_fn)(void *userdata, const char *phase,
+                                      uint64_t completed_bytes,
+                                      uint64_t total_bytes,
+                                      size_t completed_files,
+                                      size_t total_files);
+
+struct c2_import_progress {
+    c2_import_progress_fn update;
+    void *userdata;
+};
+
 struct c2_iso_entry {
     char *path;
     uint64_t offset;
@@ -60,12 +71,15 @@ void c2_raw_cd_source(struct c2_raw_cd_reader *reader,
                       struct c2_source_reader *source);
 
 int c2_zip_extract(const char *zip_path, const char *destination,
+                   const struct c2_import_progress *progress,
                    char *error, size_t error_capacity);
 int c2_iso_extract(const struct c2_source_reader *source,
                    const char *destination,
+                   const struct c2_import_progress *progress,
                    char *error, size_t error_capacity);
 int c2_import_path(const char *source_path, const char *cache_root,
                    const char *asset_profile,
+                   const struct c2_import_progress *progress,
                    char *asset_root, size_t asset_root_capacity,
                    char *error, size_t error_capacity);
 int c2_pack_activate(const char *pack_root, const char *profile,

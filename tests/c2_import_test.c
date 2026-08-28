@@ -145,6 +145,25 @@ static void test_cue_accepts_observed_modes(void)
         name, sizeof(name), &mode, error, sizeof(error)));
 }
 
+static int progress_calls;
+static uint64_t progress_completed;
+static uint64_t progress_total;
+static size_t progress_files;
+static size_t progress_total_files;
+
+static void record_progress(void *userdata, const char *phase,
+                            uint64_t completed, uint64_t total,
+                            size_t files, size_t total_files)
+{
+    (void)userdata;
+    TEST_ASSERT_NOT_NULL(phase);
+    progress_calls++;
+    progress_completed = completed;
+    progress_total = total;
+    progress_files = files;
+    progress_total_files = total_files;
+}
+
 static void test_zip_extracts_one_outer_directory(void)
 {
     static const unsigned char zip_data[] = {
@@ -161,7 +180,11 @@ static void test_zip_extracts_one_outer_directory(void)
     FILE *file;
     char error[128];
     char text[5] = {0};
+    struct c2_import_progress progress = {record_progress, NULL};
 
+    progress_calls = 0;
+    progress_completed = progress_total = 0;
+    progress_files = progress_total_files = 0;
     remove("c2-import-test.zip");
     remove("c2-import-output/C2.ENG");
     remove("c2-import-output");
@@ -169,7 +192,12 @@ static void test_zip_extracts_one_outer_directory(void)
     TEST_ASSERT_NOT_NULL(file);
     TEST_ASSERT_EQUAL_size_t(sizeof(zip_data), fwrite(zip_data, 1, sizeof(zip_data), file));
     TEST_ASSERT_EQUAL_INT(0, fclose(file));
-    TEST_ASSERT_TRUE_MESSAGE(c2_zip_extract("c2-import-test.zip", "c2-import-output", error, sizeof(error)), error);
+    TEST_ASSERT_TRUE_MESSAGE(c2_zip_extract("c2-import-test.zip", "c2-import-output", &progress, error, sizeof(error)), error);
+    TEST_ASSERT_TRUE(progress_calls >= 2);
+    TEST_ASSERT_EQUAL_UINT64(4, progress_completed);
+    TEST_ASSERT_EQUAL_UINT64(4, progress_total);
+    TEST_ASSERT_EQUAL_size_t(1, progress_files);
+    TEST_ASSERT_EQUAL_size_t(1, progress_total_files);
     file = fopen("c2-import-output/C2.ENG", "rb");
     TEST_ASSERT_NOT_NULL(file);
     TEST_ASSERT_EQUAL_size_t(4, fread(text, 1, 4, file));

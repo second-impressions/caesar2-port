@@ -908,6 +908,14 @@
         }
         bootstrap();
       },
+      onImportProgress(phase, completedKiB, totalKiB,
+                       completedFiles, totalFiles) {
+        operationTitle.textContent = phase;
+        const suffix = totalFiles > 0
+          ? ` · ${completedFiles}/${totalFiles} files`
+          : "";
+        updateOperation(completedKiB * 1024, totalKiB * 1024, suffix);
+      },
       async onSourceReady(resolved, original) {
         const active = resolved.replace(/\/ACTIVE-[^/]+$/, "");
         localStorage.setItem(ACTIVE_SOURCE, active);
