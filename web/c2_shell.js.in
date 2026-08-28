@@ -290,7 +290,7 @@
       }
       localStorage.setItem(PENDING_SOURCE, `/persistent/incoming/${generation}`);
       rememberOrigin(folderName(files));
-      await requestPersistence();
+      requestPersistence().catch(() => {});
       location.href = location.pathname;
     }
     async function importFiles(files) {
@@ -315,7 +315,7 @@
       if (!primary) throw new Error("Select one archive/image, or one CUE together with its BIN");
       localStorage.setItem(PENDING_SOURCE, `/persistent/incoming/${generation}/${primary.name}`);
       rememberOrigin(allowed.map(f => f.name).join(", "));
-      await requestPersistence();
+      requestPersistence().catch(() => {});
       location.href = location.pathname;
     }
     function zipStore(files) {
@@ -416,7 +416,7 @@
         await writeUserData(file.name, new Uint8Array(await file.arrayBuffer()));
         userDataStatus.textContent = `Imported ${++count}/${files.length} user-data files…`;
       }
-      await requestPersistence();
+      requestPersistence().catch(() => {});
       userDataStatus.textContent = `Imported ${count} user-data file${count === 1 ? "" : "s"}.`;
     }
     function findZipEnd(data) {
@@ -488,7 +488,7 @@
         await writeUserData(name, content);
         imported++;
       }
-      await requestPersistence();
+      requestPersistence().catch(() => {});
       userDataStatus.textContent = `Imported ${imported} user-data file${imported === 1 ? "" : "s"} from ZIP.`;
     }
     function originLabel() {
