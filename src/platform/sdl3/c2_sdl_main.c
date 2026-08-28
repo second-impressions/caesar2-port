@@ -59,7 +59,9 @@ struct c2_sdl_app {
     SDL_Thread *engine_thread;
 #if PORT_PLATFORM_WASM
     SDL_Thread *storage_thread;
+    SDL_Thread *prepare_thread;
     SDL_AtomicInt storage_result;
+    SDL_AtomicInt prepare_result;
     int pointer_watch_installed;
 #endif
     SDL_AtomicInt engine_result;
@@ -434,6 +436,35 @@ done:
 #endif
 
 #if PORT_PLATFORM_WASM
+static int prepare_main(void *userdata)
+{
+    struct c2_sdl_app *app = userdata;
+    int ok = prepare_assets(app);
+    SDL_SetAtomicInt(&app->prepare_result, ok ? 1 : -1);
+    return ok ? 0 : -1;
+}
+
+static SDL_Thread *create_prepare_thread(struct c2_sdl_app *app)
+{
+    SDL_PropertiesID props = SDL_CreateProperties();
+    SDL_Thread *thread;
+
+    if (props == 0) return NULL;
+    SDL_SetPointerProperty(props,
+        SDL_PROP_THREAD_CREATE_ENTRY_FUNCTION_POINTER, (void *)prepare_main);
+    SDL_SetStringProperty(props,
+        SDL_PROP_THREAD_CREATE_NAME_STRING, "caesar2-import");
+    SDL_SetPointerProperty(props,
+        SDL_PROP_THREAD_CREATE_USERDATA_POINTER, app);
+    /* ISO/CUE extraction nests a 64 KiB copy buffer below path/catalog state;
+     * Emscripten's small default pthread stack is not sufficient. */
+    SDL_SetNumberProperty(props,
+        SDL_PROP_THREAD_CREATE_STACKSIZE_NUMBER, 1024 * 1024);
+    thread = SDL_CreateThreadWithProperties(props);
+    SDL_DestroyProperties(props);
+    return thread;
+}
+
 static int storage_main(void *unused)
 {
     backend_t backend;
@@ -523,6 +554,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     c2_app.prepare_only = prepare_only;
 #if PORT_PLATFORM_WASM
     SDL_SetAtomicInt(&c2_app.storage_result, 0);
+    SDL_SetAtomicInt(&c2_app.prepare_result, 0);
     c2_app.storage_thread = SDL_CreateThread(storage_main, "caesar2-storage", NULL);
     if (c2_app.storage_thread == NULL) return SDL_APP_FAILURE;
     return SDL_APP_CONTINUE;
@@ -582,7 +614,19 @@ SDL_AppResult SDL_AppIterate(void *appstate)
         }
         if (storage_result < 0) return SDL_APP_FAILURE;
         if (app->prepare_only) {
-            return prepare_assets(app) ? SDL_APP_SUCCESS : SDL_APP_FAILURE;
+            int prepare_result = SDL_GetAtomicInt(&app->prepare_result);
+            if (prepare_result == 0) {
+                if (app->prepare_thread == NULL) {
+                    app->prepare_thread = create_prepare_thread(app);
+                    if (app->prepare_thread == NULL) return SDL_APP_FAILURE;
+                }
+                return SDL_APP_CONTINUE;
+            }
+            if (app->prepare_thread != NULL) {
+                SDL_WaitThread(app->prepare_thread, NULL);
+                app->prepare_thread = NULL;
+            }
+            return prepare_result > 0 ? SDL_APP_SUCCESS : SDL_APP_FAILURE;
         }
         if (!start_runtime(app)) return SDL_APP_FAILURE;
         return SDL_APP_CONTINUE;
@@ -639,6 +683,10 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
     if (app != NULL && app->storage_thread != NULL) {
         SDL_WaitThread(app->storage_thread, NULL);
         app->storage_thread = NULL;
+    }
+    if (app != NULL && app->prepare_thread != NULL) {
+        SDL_WaitThread(app->prepare_thread, NULL);
+        app->prepare_thread = NULL;
     }
 #endif
     if (app != NULL && app->host_initialized) {

@@ -136,6 +136,11 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert 'id="iso-input" type="file" accept=".iso"' in shell
     assert 'id="cue-input" type="file" accept=".bin,.cue" multiple' in shell
     assert "webkitdirectory" in shell
+    assert 'id="operation-dialog"' in shell
+    assert 'id="operation-progress"' in shell
+    assert "beginTimedOperation(\"Checking game data\")" in shell
+    assert "beginOperation(\"Removing cached assets\"" in shell
+    assert "writeBrowserFile(root, relative, file, onBytes)" in shell
     assert "Installation folder" in shell
     assert "Asset ZIP" in shell
     assert "ISO image" in shell
@@ -149,8 +154,12 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert 'data-tooltip="Load assets first"' in shell
     # Uploads are imported without starting the engine.
     assert "--prepare-assets" in shell
-    assert "--prepare-assets" in (SDL_BACKEND / "c2_sdl_main.c").read_text()
-    assert "prepare_assets" in (SDL_BACKEND / "c2_sdl_main.c").read_text()
+    sdl_main = (SDL_BACKEND / "c2_sdl_main.c").read_text()
+    assert "--prepare-assets" in sdl_main
+    assert "prepare_assets" in sdl_main
+    assert "create_prepare_thread(app)" in sdl_main
+    assert "SDL_PROP_THREAD_CREATE_STACKSIZE_NUMBER, 1024 * 1024" in sdl_main
+    assert "SDL_GetAtomicInt(&app->prepare_result)" in sdl_main
     assert "prepare-assets-rejects-missing-source" in cmake
     assert "startGame(pending" not in shell
     # Play is offered for remembered, cached, or bundled data alike.
@@ -294,7 +303,8 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert 'id="assets-loaded"' in shell
     assert "No assets have been loaded yet" in shell
     assert "sourceButtons.hidden = info.available" in shell
-    assert "Removing cached assets\u2026 ${++removed}/${targets.length}" in shell
+    assert 'beginOperation("Removing cached assets", targets.length)' in shell
+    assert "updateOperation(removed, targets.length" in shell
     assert "@media (prefers-color-scheme: light)" in shell
     assert ':root:not([data-theme])' in shell
     assert 'localStorage.getItem("c2.theme.v1")' in shell

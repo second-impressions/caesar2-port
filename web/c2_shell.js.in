@@ -1,6 +1,10 @@
     const canvas = document.getElementById("canvas");
     const panel = document.getElementById("panel");
     const status = document.getElementById("status");
+    const operationDialog = document.getElementById("operation-dialog");
+    const operationTitle = document.getElementById("operation-title");
+    const operationProgress = document.getElementById("operation-progress");
+    const operationDetail = document.getElementById("operation-detail");
     const toolbar = document.getElementById("toolbar");
     const assetsButton = document.getElementById("assets-button");
     const bundledButton = document.getElementById("bundled-button");
@@ -44,6 +48,8 @@
     let scalingMode = localStorage.getItem(SCALING_MODE) === "fractional" ? "fractional" : "integer";
     let pausedByChrome = false;
     let engineHasRun = false;
+    let progressTimer;
+    let progressStarted;
     let downloadUrls = [];
 
     function resizeCanvasToIntegerScale() {
@@ -196,14 +202,60 @@
       } catch {}
       return {available:false, profiles:[]};
     }
-    async function writeBrowserFile(root, relative, file) {
+    function formatBytes(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
+    }
+    function beginOperation(title, total = 0) {
+      clearInterval(progressTimer);
+      progressTimer = undefined;
+      progressStarted = performance.now();
+      operationTitle.textContent = title;
+      if (total > 0) {
+        operationProgress.max = total;
+        operationProgress.value = 0;
+      } else {
+        operationProgress.removeAttribute("max");
+        operationProgress.removeAttribute("value");
+      }
+      operationDetail.textContent = total ? `0 B / ${formatBytes(total)}` : "Starting…";
+      if (!operationDialog.open) operationDialog.showModal();
+    }
+    function updateOperation(value, total, suffix = "") {
+      if (total > 0) {
+        operationProgress.max = total;
+        operationProgress.value = Math.min(value, total);
+        operationDetail.textContent = `${formatBytes(value)} / ${formatBytes(total)}${suffix}`;
+      } else {
+        operationDetail.textContent = suffix || `${Math.floor((performance.now() - progressStarted) / 1000)}s elapsed`;
+      }
+    }
+    function beginTimedOperation(title) {
+      beginOperation(title);
+      progressTimer = setInterval(() => updateOperation(0, 0), 1000);
+    }
+    function endOperation() {
+      clearInterval(progressTimer);
+      progressTimer = undefined;
+      if (operationDialog.open) operationDialog.close();
+    }
+    async function writeBrowserFile(root, relative, file, onBytes) {
       const parts = relative.replaceAll("\\", "/").split("/").filter(Boolean);
       if (!parts.length || parts.some(p => p === "." || p === "..")) throw new Error("Unsafe input path");
       let dir = root;
       for (const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part, {create:true});
       const handle = await dir.getFileHandle(parts.at(-1), {create:true});
       const writable = await handle.createWritable();
-      await file.stream().pipeTo(writable);
+      const progress = new TransformStream({
+        transform(chunk, controller) {
+          onBytes?.(chunk.byteLength);
+          controller.enqueue(chunk);
+        }
+      });
+      // Keep the browser's optimized stream-to-OPFS path; awaiting one write
+      // per chunk makes large BIN images orders of magnitude slower.
+      await file.stream().pipeThrough(progress).pipeTo(writable);
     }
     async function requestPersistence() {
       if (!navigator.storage?.persist) return false;
@@ -219,15 +271,22 @@
       localStorage.setItem(PENDING_ORIGIN, JSON.stringify({kind: chosenSourceLabel, name}));
     }
     async function importFolder(files) {
+      const total = [...files].reduce((sum, file) => sum + file.size, 0);
+      let loaded = 0;
+      let done = 0;
       showMessage("Importing installation folder…");
+      beginOperation("Copying installation folder", total);
       const generation = `folder-${Date.now()}`;
       const incoming = await directoryAt(`incoming/${generation}`);
-      let done = 0;
       for (const file of files) {
         const path = file.webkitRelativePath || file.name;
         const slash = path.indexOf("/");
-        await writeBrowserFile(incoming, slash >= 0 ? path.slice(slash + 1) : path, file);
-        showMessage(`Importing installation folder… ${++done}/${files.length}`);
+        await writeBrowserFile(incoming,
+          slash >= 0 ? path.slice(slash + 1) : path, file,
+          bytes => { loaded += bytes; updateOperation(loaded, total,
+            ` · ${done}/${files.length} files`); });
+        done++;
+        updateOperation(loaded, total, ` · ${done}/${files.length} files`);
       }
       localStorage.setItem(PENDING_SOURCE, `/persistent/incoming/${generation}`);
       rememberOrigin(folderName(files));
@@ -237,11 +296,19 @@
     async function importFiles(files) {
       const allowed = [...files].filter(f => /\.(zip|c2assets|iso|bin|cue)$/i.test(f.name));
       if (!allowed.length) throw new Error("No supported file selected");
+      const total = allowed.reduce((sum, file) => sum + file.size, 0);
+      let loaded = 0;
+      let done = 0;
+      beginOperation("Copying game data", total);
       const generation = `files-${Date.now()}`;
       const incoming = await directoryAt(`incoming/${generation}`);
-      for (let i = 0; i < allowed.length; i++) {
-        showMessage(`Importing source… ${i + 1}/${allowed.length}`);
-        await writeBrowserFile(incoming, allowed[i].name, allowed[i]);
+      for (const file of allowed) {
+        showMessage(`Importing source… ${done + 1}/${allowed.length}`);
+        await writeBrowserFile(incoming, file.name, file,
+          bytes => { loaded += bytes; updateOperation(loaded, total,
+            ` · ${done}/${allowed.length} files`); });
+        done++;
+        updateOperation(loaded, total, ` · ${done}/${allowed.length} files`);
       }
       const cue = allowed.find(f => /\.cue$/i.test(f.name));
       const primary = cue || (allowed.length === 1 ? allowed[0] : null);
@@ -499,6 +566,7 @@
     }
     async function forgetAssets() {
       if (!confirm("Delete cached/imported game data? Saves and settings will be kept.")) return;
+      settingsDialog.close();
       const root = await opfsRoot();
       const targets = [];
       for (const name of ["game-data", "incoming"]) {
@@ -508,13 +576,16 @@
         } catch {}
       }
       let removed = 0;
-      assetsStatus.textContent = `Removing cached assets… 0/${targets.length}`;
+      beginOperation("Removing cached assets", targets.length);
+      updateOperation(0, targets.length, ` · 0/${targets.length} items`);
       for (const [parent, child] of targets) {
         try {
           const dir = await root.getDirectoryHandle(parent);
           await dir.removeEntry(child, {recursive:true});
         } catch {}
-        assetsStatus.textContent = `Removing cached assets… ${++removed}/${targets.length}`;
+        removed++;
+        updateOperation(removed, targets.length,
+          ` · ${removed}/${targets.length} items`);
       }
       for (const name of ["game-data", "incoming"]) {
         try { await root.removeEntry(name, {recursive:true}); } catch {}
@@ -526,7 +597,9 @@
       assetsStatus.textContent = removed === 1
         ? "Removed 1 cached asset set."
         : `Removed ${removed} cached asset sets.`;
+      endOperation();
       showMainWindow({available:false, profiles:[]});
+      openSettings("assets");
     }
     function gameArgs(source) {
       const args = ["--game-data", source];
@@ -572,6 +645,7 @@
       preparingAssets = true;
       panel.hidden = false;
       showMessage("Checking game data…");
+      beginTimedOperation("Checking game data");
       const args = ["--game-data", source, "--prepare-assets"];
       const profile = localStorage.getItem(ACTIVE_PROFILE);
       if (profile) args.push("--asset-profile", profile);
@@ -797,7 +871,11 @@
     document.getElementById("userdata-import-files").onclick = () => userDataFilesInput.click();
     document.getElementById("userdata-import-zip").onclick = () => userDataZipInput.click();
     forgetButton.onclick = forgetAssets;
-    const importFailed = e => { settingsDialog.close(); showMessage(`Import failed: ${e.message}`); };
+    const importFailed = e => {
+      settingsDialog.close();
+      endOperation();
+      showMessage(`Import failed: ${e.message}`);
+    };
     folderInput.onchange = () => { settingsDialog.close(); importFolder(folderInput.files).catch(importFailed); };
     fileInput.onchange = () => { settingsDialog.close(); importFiles(fileInput.files).catch(importFailed); };
     isoInput.onchange = () => { settingsDialog.close(); importFiles(isoInput.files).catch(importFailed); };
@@ -854,17 +932,20 @@
             const message = playDisabled()
               ? "asset preparation left play disabled"
               : "asset preparation completed without starting the game";
+            endOperation();
             smokeOutput.push(message); console.log(message);
             return;
           }
           // Reload so the imported data is served by a fresh runtime and the
           // user returns to the main window instead of straight into the game.
+          updateOperation(0, 0, "Complete");
           showMessage("Game data imported.");
           location.replace(location.pathname);
         }
       },
       onAbort(reason) {
         gameRunning = false; preparingAssets = false; panel.hidden = false;
+        endOperation();
         document.body.classList.remove("playing");
         localStorage.removeItem(PENDING_SOURCE);
         localStorage.removeItem(PENDING_ORIGIN);
