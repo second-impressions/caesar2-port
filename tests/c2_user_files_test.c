@@ -109,14 +109,18 @@ static void remove_layout_test(void)
         "c2-layout-test/C2WIN95/SMK/Intro.SMK",
         "c2-layout-test/C2WIN95/HD/C2.ENG",
         "c2-layout-test/C2WIN95/HD/Windows.Dat",
+        "c2-layout-test/C2WIN95/HD/Empire.PL8",
         "c2-layout-test/HD/CAESAR.OPL",
         "c2-layout-test/HD/C2.ENG",
+        "c2-layout-test/HD/Empire.PL8",
+        "c2-layout-test/SMK/Intro.SMK",
         "c2-layout-test/HD/Root.Dat",
         "c2-layout-test/PL8/Media.PL8",
         "c2-layout-test/C2WIN95/SMK",
         "c2-layout-test/C2WIN95/HD",
         "c2-layout-test/C2WIN95",
         "c2-layout-test/PL8",
+        "c2-layout-test/SMK",
         "c2-layout-test/HD",
         "c2-layout-test"
     };
@@ -147,15 +151,21 @@ static void test_cd_and_win95_layouts_are_detected(void)
 
     TEST_ASSERT_TRUE(SDL_CreateDirectory("c2-layout-test/C2WIN95/HD"));
     TEST_ASSERT_TRUE(SDL_CreateDirectory("c2-layout-test/C2WIN95/SMK"));
+    TEST_ASSERT_TRUE(SDL_CreateDirectory("c2-layout-test/SMK"));
     write_test_asset("c2-layout-test/C2WIN95/HD/C2.ENG", 'W');
     write_test_asset("c2-layout-test/C2WIN95/HD/Windows.Dat", 'N');
-    write_test_asset("c2-layout-test/C2WIN95/SMK/Intro.SMK", 'S');
+    write_test_asset("c2-layout-test/C2WIN95/HD/Empire.PL8", 'W');
+    write_test_asset("c2-layout-test/C2WIN95/SMK/Intro.SMK", 'W');
     write_test_asset("c2-layout-test/HD/CAESAR.OPL", 'O');
+    write_test_asset("c2-layout-test/HD/Empire.PL8", 'D');
+    write_test_asset("c2-layout-test/SMK/Intro.SMK", 'D');
     TEST_ASSERT_TRUE(c2_host_init(&config));
     TEST_ASSERT_EQUAL_size_t(1, c2_host_asset_read("windows.dat", &byte, 1, 0));
     TEST_ASSERT_EQUAL_UINT8('N', byte);
     TEST_ASSERT_EQUAL_size_t(1, c2_host_asset_read("intro.smk", &byte, 1, 0));
-    TEST_ASSERT_EQUAL_UINT8('S', byte);
+    TEST_ASSERT_EQUAL_UINT8('D', byte);
+    TEST_ASSERT_EQUAL_size_t(1, c2_host_asset_read("empire.pl8", &byte, 1, 0));
+    TEST_ASSERT_EQUAL_UINT8('D', byte);
     TEST_ASSERT_EQUAL_size_t(1, c2_host_asset_read("caesar.opl", &byte, 1, 0));
     TEST_ASSERT_EQUAL_UINT8('O', byte);
     c2_host_shutdown();

@@ -451,15 +451,21 @@ static int configure_asset_layout(const char *source)
     if (resolve_directory_at(win_root, sizeof(win_root), source, "C2WIN95") &&
         resolve_directory_at(win_hd, sizeof(win_hd), win_root, "HD") &&
         directory_has_asset(win_hd, "C2.ENG")) {
-        if (!add_asset_base_root(win_hd)) return 0;
+        /* The continuation runs the recovered DOS renderer. Hybrid CDs carry
+         * incompatible Win95 PL8/UI assets beside the DOS installation, so
+         * prefer DOS HD/media and use Win95 only as a fallback. */
         if (resolve_directory_at(dos_hd, sizeof(dos_hd), source, "HD")) {
             if (!add_asset_base_root(dos_hd)) return 0;
         }
+        if (!add_asset_base_root(win_hd)) return 0;
         for (i = 0; i < C2_ASSET_MEDIA_KIND_COUNT; i++) {
-            const char *media_parent = i == C2_ASSET_MEDIA_XMI ? source : win_root;
-            resolve_directory_at(c2_asset_media_roots[i],
-                                 sizeof(c2_asset_media_roots[i]),
-                                 media_parent, media_names[i]);
+            if (!resolve_directory_at(c2_asset_media_roots[i],
+                                      sizeof(c2_asset_media_roots[i]),
+                                      source, media_names[i])) {
+                resolve_directory_at(c2_asset_media_roots[i],
+                                     sizeof(c2_asset_media_roots[i]),
+                                     win_root, media_names[i]);
+            }
         }
         return 1;
     }
