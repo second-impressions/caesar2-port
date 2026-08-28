@@ -155,8 +155,6 @@
       "e26ac14fd8ff64860cc0b78b55373bd20ea7c2e6fa81558e4393b1a5165a7219":
         {language:"German", edition:"Germany, Windows 95 tree"}
     };
-    const layoutNames = {"":"Installed game directory", "HD":"CD layout",
-                         "C2WIN95/HD":"Windows 95 CD layout"};
     async function sourceInfo(source) {
       if (source === "/assets") {
         return {
@@ -183,8 +181,15 @@
             components: [...components]
           };
         }
-        for (const parts of [[], ["HD"], ["C2WIN95", "HD"]]) {
-          const base = await descendCaseInsensitive(root, parts);
+        const direct = await descendCaseInsensitive(root, []);
+        const dos = await descendCaseInsensitive(root, ["HD"]);
+        const win = await descendCaseInsensitive(root, ["C2WIN95", "HD"]);
+        const candidates = [
+          [direct, "Installed game directory"],
+          [dos, win ? "DOS/Win95 hybrid · DOS assets" : "DOS CD layout"],
+          [win, "Windows 95 CD layout"],
+        ];
+        for (const [base, layout] of candidates) {
           if (!base) continue;
           const text = await childCaseInsensitive(base, "C2.ENG", "file");
           const help = await childCaseInsensitive(base, "HELP.ENG", "file");
@@ -195,7 +200,7 @@
               profiles: [],
               language: known?.language || "Unrecognised text data",
               edition: known?.edition || "Unrecognised release",
-              layout: layoutNames[parts.join("/")]
+              layout
             };
           }
         }

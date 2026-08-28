@@ -245,6 +245,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "originLabel" in shell
     assert '["Edition", info.edition]' in shell
     assert 'rows.push(["Layout", info.layout])' in shell
+    assert "DOS/Win95 hybrid · DOS assets" in shell
     assert "sourceInfo" in shell
     assert '<title>Caesar II — @C2_VERSION_STRING@</title>' in shell
     assert 'id="about-dialog"' in shell
