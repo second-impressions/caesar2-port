@@ -245,6 +245,12 @@
  * builds use a separate deterministic branch sequence only while paused. */
 #define PORT_FIX_PAUSED_MUSIC_VARIETY PORT_PLATFORM
 
+/* Loading restarts the portable engine loop. A mouse button still held from
+ * the load dialog can reach the province builder without its preceding press,
+ * making the recovered empty-tool path restore an uninitialized treasury
+ * snapshot. Ignore region builds with no selected tool and drain load input. */
+#define PORT_FIX_REGION_IDLE_CLICK_FUNDS PORT_PLATFORM
+
 /* Read-only engine observations and their smoke driver are development
  * instrumentation. CMake selects them only for portable Debug builds. */
 #if defined(PORT_DEBUG_BUILD)

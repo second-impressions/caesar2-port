@@ -665,6 +665,9 @@ void load_a_game(void)
                 refresh_svga_screen();
 #if PORT_PLATFORM
                 if (loadgame(filename) != 0) {
+#if PORT_FIX_REGION_IDLE_CLICK_FUNDS
+                    clear_mouse();
+#endif
                     pre_loaded_status = 2;
                     restart_flag = 1;
                 } else {

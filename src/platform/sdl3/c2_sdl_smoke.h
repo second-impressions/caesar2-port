@@ -45,6 +45,7 @@ struct c2_sdl_smoke {
     int saved_map_x;
     int saved_map_y;
     int saved_zoom;
+    int saved_denarii;
     Uint64 music_started;
     Uint64 music_last_sample;
     Uint64 music_initial_produced_bytes;

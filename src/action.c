@@ -1589,6 +1589,9 @@ void build_region_item(void)
     unsigned int edges;
     unsigned int item_kind;
 
+#if PORT_FIX_REGION_IDLE_CLICK_FUNDS
+    if (reg_placing_type == 0) return;
+#endif
     (*(struct region_cell *)((unsigned char *)region_map + (pm_over_cm_ptr))).edge_bits |= 1;
     illegal_build = 2;
 

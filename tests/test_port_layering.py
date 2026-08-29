@@ -227,6 +227,11 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "PORT_FEAT_REGION_SIDED_DRAW" not in target_header
     assert "#define PORT_FEAT_STICKY_REGION_DROPDOWNS PORT_PLATFORM" in target_header
     assert "#define PORT_FIX_PAUSED_MUSIC_VARIETY PORT_PLATFORM" in target_header
+    assert "#define PORT_FIX_REGION_IDLE_CLICK_FUNDS PORT_PLATFORM" in target_header
+    action_source = (SRC / "action.c").read_text()
+    loadsave = (SRC / "loadsave.c").read_text()
+    assert "if (reg_placing_type == 0) return;" in action_source
+    assert "#if PORT_FIX_REGION_IDLE_CLICK_FUNDS\n                    clear_mouse();" in loadsave
     music = (SRC / "pcsound.c").read_text()
     assert "c2_port_city_music_branch" in music
     assert "c2inf.paused != 0" in music

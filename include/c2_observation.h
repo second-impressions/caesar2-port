@@ -45,6 +45,7 @@ struct c2_observation {
     int in_forum;
     int map_x;
     int map_y;
+    int denarii;
     int construction_plebs;
     int required_construction_plebs;
     int sequences_running;

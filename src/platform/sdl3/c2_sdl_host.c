@@ -1416,6 +1416,10 @@ void c2_host_publish_observation(const struct c2_observation *observation)
     c2_observation.in_forum = observation->in_forum;
     c2_observation.map_x = observation->map_x;
     c2_observation.map_y = observation->map_y;
+    c2_observation.denarii = observation->denarii;
+    c2_observation.construction_plebs = observation->construction_plebs;
+    c2_observation.required_construction_plebs =
+        observation->required_construction_plebs;
     c2_observation.sequences_running = observation->sequences_running;
     c2_observation.speech_playing = observation->speech_playing;
     c2_observation.query_type = observation->query_type;

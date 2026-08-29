@@ -296,7 +296,8 @@ static int saved_view_matches(const struct c2_sdl_smoke *smoke,
     return observation->province == smoke->saved_province &&
            observation->map_x == smoke->saved_map_x &&
            observation->map_y == smoke->saved_map_y &&
-           observation->zoom_level == smoke->saved_zoom;
+           observation->zoom_level == smoke->saved_zoom &&
+           observation->denarii == smoke->saved_denarii;
 }
 
 static enum c2_sdl_smoke_result drive_save_load(
@@ -353,6 +354,7 @@ static enum c2_sdl_smoke_result drive_save_load(
             smoke->saved_map_x = observation->map_x;
             smoke->saved_map_y = observation->map_y;
             smoke->saved_zoom = observation->zoom_level;
+            smoke->saved_denarii = observation->denarii;
             smoke->file_phase = FILE_SMOKE_CLEAR;
             smoke->phase = SAVE_LOAD_MUTATE;
         }
@@ -389,12 +391,13 @@ static enum c2_sdl_smoke_result drive_save_load(
                                   PORT_OBSERVATION_LOAD_COMPLETE)) {
             if (!saved_view_matches(smoke, observation)) {
                 fprintf(stderr,
-                        "loaded view differs: province %d/%d zoom %d/%d "
-                        "map (%d,%d)/(%d,%d)\n",
+                        "loaded state differs: province %d/%d zoom %d/%d "
+                        "map (%d,%d)/(%d,%d) denarii %d/%d\n",
                         observation->province, smoke->saved_province,
                         observation->zoom_level, smoke->saved_zoom,
                         observation->map_x, observation->map_y,
-                        smoke->saved_map_x, smoke->saved_map_y);
+                        smoke->saved_map_x, smoke->saved_map_y,
+                        observation->denarii, smoke->saved_denarii);
                 return C2_SDL_SMOKE_FAILURE;
             }
             smoke->phase = SAVE_LOAD_WAIT_FOR_LOADED_CITY;
@@ -403,7 +406,8 @@ static enum c2_sdl_smoke_result drive_save_load(
     case SAVE_LOAD_WAIT_FOR_LOADED_CITY:
         if (observation_is(observation, PORT_OBSERVATION_CITY_LOOP)) {
             if (observation->province != smoke->saved_province ||
-                observation->zoom_level != smoke->saved_zoom) {
+                observation->zoom_level != smoke->saved_zoom ||
+                observation->denarii != smoke->saved_denarii) {
                 fprintf(stderr, "loaded game entered with the wrong view state\n");
                 return C2_SDL_SMOKE_FAILURE;
             }
