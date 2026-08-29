@@ -325,7 +325,15 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "https://github.com/second-impressions/caesar2-reconstruction" in shell
     assert "game assets are not distributed" in shell
     assert "supplied by the user" in shell
-    assert "No project-wide source license is currently declared" in shell
+    assert 'href="LICENSE"' in shell
+    assert "AGPL-3.0-or-later" in shell
+    license_text = (ROOT / "LICENSE").read_text()
+    assert "GNU AFFERO GENERAL PUBLIC LICENSE" in license_text
+    assert "Version 3, 19 November 2007" in license_text
+    assert 'configure_file(LICENSE "${CMAKE_CURRENT_BINARY_DIR}/LICENSE" COPYONLY)' in cmake
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    assert "build/ci-wasm/LICENSE" in workflow
+    assert "cp build/ci-wasm/LICENSE _site/" in workflow
     assert (shell.index('id="pane-general"') <
             shell.index('id="confirm-close-toggle"') <
             shell.index('id="pane-rendering"'))

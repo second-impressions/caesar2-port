@@ -132,6 +132,7 @@ jobs:
             build/ci-wasm/caesar2-background.jpg
             build/ci-wasm/caesar2-background-light.jpg
             build/ci-wasm/version.txt
+            build/ci-wasm/LICENSE
       - name: Assemble Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
@@ -146,6 +147,7 @@ jobs:
           cp build/ci-wasm/caesar2-background.jpg _site/
           cp build/ci-wasm/caesar2-background-light.jpg _site/
           cp build/ci-wasm/version.txt _site/
+          cp build/ci-wasm/LICENSE _site/
           touch _site/.nojekyll
       - name: Upload Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

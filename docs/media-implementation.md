@@ -152,9 +152,9 @@ embedded bank only to retain libADLMIDI's generated note-lifetime metadata,
 then overlays every instrument from the user's shipped `CAESAR.OPL` or
 `CAESAR.AD` Miles bank. The asset's OPL register values, note offsets, bank
 selection, and percussion mapping therefore remain authoritative. The fork
-and port must retain their respective license notices; the port's eventual
-distribution terms must be compatible with libADLMIDI's GPLv3-covered complete
-synthesizer.
+and port must retain their respective license notices. The port's
+AGPL-3.0-or-later terms are compatible with libADLMIDI's GPLv3-covered complete
+synthesizer through AGPLv3 section 13.
 
 Miles GTL voice records store the modulator's five OPL registers first, then
 the feedback/connection byte, then the carrier's five registers. libADLMIDI's

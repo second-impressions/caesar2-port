@@ -408,3 +408,16 @@ podman run --rm -v "$PWD/install/caesar2:/src" \
     ghcr.io/second-impressions/watcom-10.0a-dosemu2 \
     PSREBLD.EXE   # expect the CD-check prompt
 ```
+
+## License
+
+Except for third-party components carrying their own notices, this project is
+licensed under the [GNU Affero General Public License, version 3 or later](LICENSE)
+(`AGPL-3.0-or-later`). It is distributed without warranty.
+
+This license declaration applies to contributions that project contributors
+are entitled to license. It does not grant rights to original Caesar II game
+assets or other third-party material. Game assets are not distributed by this
+project and must be supplied by users from copies they are authorized to use.
+Third-party components retain the licenses recorded in their own license and
+notice files.
