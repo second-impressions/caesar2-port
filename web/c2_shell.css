@@ -211,6 +211,9 @@
     label input[type=checkbox] { margin: 0; }
     #profile-row label { display: block; }
     .about-version { display: inline-block; align-self: flex-start; padding: var(--c2-space-1) var(--c2-space-3); border-radius: 99px; background: var(--pico-primary-focus); color: var(--pico-primary); font-size: .72rem; }
+    .c2-about-links { display: flex; flex-wrap: wrap; gap: var(--c2-space-3) var(--c2-space-5); }
+    .c2-about-links a { font-size: .82rem; }
+    .c2-disclaimer, .c2-license { color: var(--c2-muted); font-size: .76rem; }
     dialog p { font-size: .82rem; }
     dialog::backdrop { background: transparent; }
     /* Author display rules must not defeat the hidden attribute. */

@@ -321,6 +321,11 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert ".topbar .nav-action" in shell
     assert shell.index('id="settings-button"') < shell.index('id="about-button"')
     assert 'id="settings-button"' in shell
+    assert "https://github.com/second-impressions/caesar2-port" in shell
+    assert "https://github.com/second-impressions/caesar2-reconstruction" in shell
+    assert "game assets are not distributed" in shell
+    assert "supplied by the user" in shell
+    assert "No project-wide source license is currently declared" in shell
     assert (shell.index('id="pane-general"') <
             shell.index('id="confirm-close-toggle"') <
             shell.index('id="pane-rendering"'))
