@@ -207,8 +207,12 @@ the final continue prompt, and verifies return to the original menu:
 ```
 
 The save/load scenario enters a city, saves `c2smoke.sav` through the recovered
-filename editor, changes the view, loads through the recovered dialog, and
-verifies both restored state and re-entry into the city loop:
+filename editor, reads the file back from the host, and compares all 221,745
+registered state bytes plus the 4,000-byte history block. It then changes the
+view, loads through the recovered dialog, repeats the complete comparison, and
+verifies semantic state after re-entry into the city loop. The native,
+corruption-injection, and browser/OPFS layers are documented in
+[`docs/save-testing.md`](docs/save-testing.md):
 
 ```bash
 ./build/port/linux-debug/caesar2 --save-load-smoke-test --asset-root /path/to/CAESAR2

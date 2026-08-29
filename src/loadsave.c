@@ -14,6 +14,7 @@
 #include "c2_data.h"
 #include "c2_types.h"
 #if PORT_FEAT_DEBUG_OBSERVATION
+#include <stdio.h>
 #include "c2_observation.h"
 #endif
 
@@ -871,6 +872,10 @@ void act_cancel_file_op(void) { out1 = 1; }
 // FUNCTION: C2WIN 0x0048309c
 int savegame(char *save_filename)
 {
+#if PORT_FEAT_DEBUG_OBSERVATION
+    size_t save_mismatch_offset;
+    int save_state_verified = 0;
+#endif
 #if !PORT_PLATFORM
     int save_fd;
     int history_file;
@@ -912,6 +917,15 @@ int savegame(char *save_filename)
 #if PORT_PLATFORM
     if (!c2_port_save_game_state(save_filename, savegame_entries, 500,
                                  figure_list, arrow_list)) return 0;
+#if PORT_FEAT_DEBUG_OBSERVATION
+    save_state_verified = c2_port_save_state_file_matches(
+        save_filename, savegame_entries, 500, figure_list, arrow_list,
+        &save_mismatch_offset);
+    if (!save_state_verified) {
+        fprintf(stderr, "save readback differs at offset %zu\n",
+                save_mismatch_offset);
+    }
+#endif
 #else
     save_fd = open(save_filename, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0x180);
     if (save_fd == -1) return 0;
@@ -938,7 +952,8 @@ int savegame(char *save_filename)
     unflag_all_cm(3, 0xfd);
     update_landfill = 1;
 #if PORT_FEAT_DEBUG_OBSERVATION
-    c2_observe(PORT_OBSERVATION_SAVE_COMPLETE, 0);
+    c2_observe(PORT_OBSERVATION_SAVE_COMPLETE,
+               save_state_verified ? 0 : 1);
 #endif
     return 1;
 }
@@ -948,6 +963,10 @@ int savegame(char *save_filename)
 // FUNCTION: C2WIN 0x004832e3
 int loadgame(char *save_filename)
 {
+#if PORT_FEAT_DEBUG_OBSERVATION
+    size_t load_mismatch_offset;
+    int load_state_verified = 0;
+#endif
 #if !PORT_PLATFORM
     int save_fd;
     int history_file;
@@ -960,6 +979,15 @@ int loadgame(char *save_filename)
 #if PORT_PLATFORM
     if (!c2_port_load_game_state(save_filename, savegame_entries, 500,
                                  figure_list, arrow_list)) return 0;
+#if PORT_FEAT_DEBUG_OBSERVATION
+    load_state_verified = c2_port_save_state_file_matches(
+        save_filename, savegame_entries, 500, figure_list, arrow_list,
+        &load_mismatch_offset);
+    if (!load_state_verified) {
+        fprintf(stderr, "loaded state differs at offset %zu\n",
+                load_mismatch_offset);
+    }
+#endif
 #else
     save_fd = open(save_filename, O_BINARY);
     if (save_fd == -1) return 0;
@@ -1007,7 +1035,17 @@ int loadgame(char *save_filename)
     get_old_mood();
     if (no_of_warehouses != 0) c2inf.peace_mode = 0;
 #if PORT_FEAT_DEBUG_OBSERVATION
-    c2_observe(PORT_OBSERVATION_LOAD_COMPLETE, 0);
+    if (load_state_verified) {
+        load_state_verified = c2_port_save_state_file_matches(
+            save_filename, savegame_entries, 500, figure_list, arrow_list,
+            &load_mismatch_offset);
+        if (!load_state_verified) {
+            fprintf(stderr, "post-load state differs at offset %zu\n",
+                    load_mismatch_offset);
+        }
+    }
+    c2_observe(PORT_OBSERVATION_LOAD_COMPLETE,
+               load_state_verified ? 0 : 1);
 #endif
     return 1;
 }

@@ -20,6 +20,7 @@ const smokeResults = {
   contextmenu: "browser context menu suppressed",
   music: "music buffer smoke completed",
   restart: "restart after exit completed",
+  save: "save/load disk and full-state verification restored",
   prepare: "asset preparation completed without starting the game",
 };
 if (!(smokeKind in smokeResults)) {

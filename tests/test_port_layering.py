@@ -385,6 +385,8 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "c2_browser_import_progress" in browser_bridge
     assert "c2_browser_import_error" in browser_bridge
     assert 'c2_browser_show_restart__proxy: "sync"' in browser_bridge
+    wasm_smoke = (ROOT / "tools/smoke-wasm.mjs").read_text()
+    assert 'save: "save/load disk and full-state verification restored"' in wasm_smoke
     assert 'Module["onGameExit"]()' in browser_bridge
     video = (ROOT / "src" / "platform" / "common" / "c2_port_video.c").read_text()
     assert "static int show_movie_fallback" in video

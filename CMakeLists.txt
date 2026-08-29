@@ -939,7 +939,8 @@ if(BUILD_TESTING AND C2_TEST_DATA_DIR AND
     )
     set_tests_properties(recovered-save-load-smoke PROPERTIES
         CONFIGURATIONS Debug
-        PASS_REGULAR_EXPRESSION "recovered save/load smoke restored"
+        PASS_REGULAR_EXPRESSION
+            "save/load disk and full-state verification restored"
         TIMEOUT 100
     )
     add_test(

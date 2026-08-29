@@ -58,6 +58,7 @@ static void test_portable_save_and_load_round_trip(void)
 {
     struct c2_host_config config;
     size_t bytes_read;
+    size_t mismatch_offset;
     size_t i;
 
     remove_test_files();
@@ -96,6 +97,24 @@ static void test_portable_save_and_load_round_trip(void)
     bytes_read = c2_host_user_file_read("roundtrip.sav", saved_file,
                                         sizeof(saved_file), 0);
     TEST_ASSERT_EQUAL_size_t(C2_SAVE_FILE_SIZE, bytes_read);
+    TEST_ASSERT_TRUE(c2_port_save_state_file_matches(
+        "roundtrip.sav", entries, 500, figures, arrows, &mismatch_offset));
+
+    ordinary_state[42] ^= 0xff;
+    TEST_ASSERT_FALSE(c2_port_save_state_file_matches(
+        "roundtrip.sav", entries, 500, figures, arrows, &mismatch_offset));
+    TEST_ASSERT_EQUAL_size_t(42, mismatch_offset);
+    ordinary_state[42] ^= 0xff;
+
+    saved_file[123] ^= 0xff;
+    TEST_ASSERT_TRUE(c2_host_user_file_write("roundtrip.sav", saved_file,
+                                             C2_SAVE_FILE_SIZE));
+    TEST_ASSERT_FALSE(c2_port_save_state_file_matches(
+        "roundtrip.sav", entries, 500, figures, arrows, &mismatch_offset));
+    TEST_ASSERT_EQUAL_size_t(123, mismatch_offset);
+    saved_file[123] ^= 0xff;
+    TEST_ASSERT_TRUE(c2_host_user_file_write("roundtrip.sav", saved_file,
+                                             C2_SAVE_FILE_SIZE));
 
     memset(ordinary_state, 0, sizeof(ordinary_state));
     memset(figures, 0, sizeof(figures));
@@ -116,6 +135,18 @@ static void test_portable_save_and_load_round_trip(void)
     TEST_ASSERT_EQUAL_size_t(sizeof(history),
         c2_host_user_file_read("history.dat", history, sizeof(history), 0));
     TEST_ASSERT_EQUAL_MEMORY(expected_history, history, sizeof(history));
+    TEST_ASSERT_TRUE(c2_port_save_state_file_matches(
+        "roundtrip.sav", entries, 500, figures, arrows, &mismatch_offset));
+
+    history[17] ^= 0xff;
+    TEST_ASSERT_TRUE(c2_host_user_file_write("history.dat", history,
+                                             sizeof(history)));
+    TEST_ASSERT_FALSE(c2_port_save_state_file_matches(
+        "roundtrip.sav", entries, 500, figures, arrows, &mismatch_offset));
+    TEST_ASSERT_EQUAL_size_t(C2_SAVE_STATE_SIZE + 17, mismatch_offset);
+    history[17] ^= 0xff;
+    TEST_ASSERT_TRUE(c2_host_user_file_write("history.dat", history,
+                                             sizeof(history)));
 
     TEST_ASSERT_TRUE(c2_host_user_file_write("truncated.sav", saved_file,
                                              C2_SAVE_FILE_SIZE - 1));

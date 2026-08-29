@@ -342,6 +342,10 @@ static enum c2_sdl_smoke_result drive_save_load(
             drive_file_entry(smoke, now, observation);
         } else if (observation_is(observation,
                                   PORT_OBSERVATION_SAVE_COMPLETE)) {
+            if (observation->detail != 0) {
+                fprintf(stderr, "saved file does not match live game state\n");
+                return C2_SDL_SMOKE_FAILURE;
+            }
             if (SDL_strcasecmp(observation->filename, smoke_save_name) != 0 ||
                 !c2_host_user_file_exists(smoke_save_name)) {
                 fprintf(stderr,
@@ -389,6 +393,10 @@ static enum c2_sdl_smoke_result drive_save_load(
             drive_file_entry(smoke, now, observation);
         } else if (observation_is(observation,
                                   PORT_OBSERVATION_LOAD_COMPLETE)) {
+            if (observation->detail != 0) {
+                fprintf(stderr, "loaded game does not match its save file\n");
+                return C2_SDL_SMOKE_FAILURE;
+            }
             if (!saved_view_matches(smoke, observation)) {
                 fprintf(stderr,
                         "loaded state differs: province %d/%d zoom %d/%d "
@@ -411,7 +419,7 @@ static enum c2_sdl_smoke_result drive_save_load(
                 fprintf(stderr, "loaded game entered with the wrong view state\n");
                 return C2_SDL_SMOKE_FAILURE;
             }
-            printf("recovered save/load smoke restored '%s'\n",
+            printf("save/load disk and full-state verification restored '%s'\n",
                    smoke_save_name);
             return C2_SDL_SMOKE_SUCCESS;
         }
