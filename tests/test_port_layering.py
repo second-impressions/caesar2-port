@@ -182,7 +182,10 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     # The user-data pane uses the same setting rows as the rest of the dialog.
     assert 'class="setting-action' in shell
     # A Game tab owns presentation settings.
-    assert 'id="pane-game"' in shell
+    assert 'id="pane-rendering"' in shell
+    assert 'data-pane="rendering"' in shell
+    assert '>Rendering</button>' in shell
+    assert 'id="pane-game"' not in shell
     assert 'id="fullscreen-toggle"' in shell
     assert 'name="c2-scaling"' in shell
     assert 'requestFullscreen()' in shell
@@ -307,7 +310,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert 'id="settings-button"' in shell
     assert (shell.index('id="pane-general"') <
             shell.index('id="confirm-close-toggle"') <
-            shell.index('id="pane-game"'))
+            shell.index('id="pane-rendering"'))
     assert 'role="radiogroup"' in shell
     assert 'value="system"' in shell
     assert 'value="light"' in shell
