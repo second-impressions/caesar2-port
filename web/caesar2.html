@@ -25,92 +25,92 @@
     </ul>
   </nav>
   <section id="panel">
-    <article id="card">
+    <article id="card" class="c2-surface c2-splash c2-stack">
       <h1>Caesar II</h1>
-      <p id="status" class="hint" role="status">Load your Caesar II game data to play.</p>
+      <p id="status" class="c2-hint" role="status">Load your Caesar II game data to play.</p>
       <p id="profile-row" hidden><label>Language<select id="profile-select"></select></label></p>
-      <div class="actions">
+      <div class="c2-action-grid">
         <button id="play-button" type="button" aria-disabled="true" data-tooltip="Load assets first" data-placement="bottom">Play</button>
         <button id="assets-button" class="secondary outline" type="button">Load assets</button>
       </div>
     </article>
   </section>
   <dialog id="settings-dialog">
-    <article class="settings">
-      <div class="head"><h2>Settings</h2><button id="settings-close" class="close" type="button" aria-label="Close"></button></div>
-      <div class="settings-body">
-        <div class="settings-tabs" role="tablist" aria-label="Settings sections">
-          <button id="tab-general" class="settings-tab" type="button" role="tab" data-pane="general" aria-selected="true" aria-controls="pane-general">General</button>
-          <button id="tab-rendering" class="settings-tab" type="button" role="tab" data-pane="rendering" aria-selected="false" aria-controls="pane-rendering">Rendering</button>
-          <button id="tab-assets" class="settings-tab" type="button" role="tab" data-pane="assets" aria-selected="false" aria-controls="pane-assets">Assets</button>
-          <button id="tab-userdata" class="settings-tab" type="button" role="tab" data-pane="userdata" aria-selected="false" aria-controls="pane-userdata">User Data</button>
+    <article class="c2-surface c2-settings c2-stack">
+      <div class="c2-modal-header"><h2>Settings</h2><button id="settings-close" class="close" type="button" aria-label="Close"></button></div>
+      <div class="c2-settings-layout">
+        <div class="c2-settings-tabs" role="tablist" aria-label="Settings sections">
+          <button id="tab-general" class="c2-settings-tab" type="button" role="tab" data-pane="general" aria-selected="true" aria-controls="pane-general">General</button>
+          <button id="tab-rendering" class="c2-settings-tab" type="button" role="tab" data-pane="rendering" aria-selected="false" aria-controls="pane-rendering">Rendering</button>
+          <button id="tab-assets" class="c2-settings-tab" type="button" role="tab" data-pane="assets" aria-selected="false" aria-controls="pane-assets">Assets</button>
+          <button id="tab-userdata" class="c2-settings-tab" type="button" role="tab" data-pane="userdata" aria-selected="false" aria-controls="pane-userdata">User Data</button>
         </div>
-        <div class="settings-panes">
-          <section id="pane-general" role="tabpanel" aria-labelledby="tab-general">
-            <div class="setting">
-              <span class="setting-name">Theme</span>
-              <div class="segmented" role="radiogroup" aria-label="Theme">
+        <div class="c2-settings-panes">
+          <section id="pane-general" class="c2-settings-pane c2-stack" role="tabpanel" aria-labelledby="tab-general">
+            <div class="c2-settings-row">
+              <span class="c2-settings-label">Theme</span>
+              <div class="c2-segmented" role="radiogroup" aria-label="Theme">
                 <label><input type="radio" name="c2-theme" value="system"><span>System</span></label>
                 <label><input type="radio" name="c2-theme" value="light"><span>Light</span></label>
                 <label><input type="radio" name="c2-theme" value="dark"><span>Dark</span></label>
               </div>
             </div>
-            <div class="setting">
-              <span class="setting-name">Ask before closing the tab</span>
+            <div class="c2-settings-row">
+              <span class="c2-settings-label">Ask before closing the tab</span>
               <input id="confirm-close-toggle" type="checkbox" role="switch">
             </div>
-            <p class="hint">Caesar II never saves by itself. With this on, the browser asks before a running game is closed.</p>
+            <p class="c2-hint">Caesar II never saves by itself. With this on, the browser asks before a running game is closed.</p>
           </section>
-          <section id="pane-rendering" role="tabpanel" aria-labelledby="tab-rendering" hidden>
-            <div class="setting">
-              <span class="setting-name">Fullscreen</span>
+          <section id="pane-rendering" class="c2-settings-pane c2-stack" role="tabpanel" aria-labelledby="tab-rendering" hidden>
+            <div class="c2-settings-row">
+              <span class="c2-settings-label">Fullscreen</span>
               <input id="fullscreen-toggle" type="checkbox" role="switch">
             </div>
-            <div class="setting">
-              <span class="setting-name">Scaling</span>
-              <div class="segmented" role="radiogroup" aria-label="Scaling">
+            <div class="c2-settings-row">
+              <span class="c2-settings-label">Scaling</span>
+              <div class="c2-segmented" role="radiogroup" aria-label="Scaling">
                 <label><input type="radio" name="c2-scaling" value="integer"><span>Integer</span></label>
                 <label><input type="radio" name="c2-scaling" value="fractional"><span>Fractional</span></label>
               </div>
             </div>
-            <p class="hint">Integer scaling keeps square pixels; fractional scaling fills the window and leaves bars.</p>
+            <p class="c2-hint">Integer scaling keeps square pixels; fractional scaling fills the window and leaves bars.</p>
           </section>
-          <section id="pane-assets" role="tabpanel" aria-labelledby="tab-assets" hidden>
-            <p id="assets-status" class="hint" role="status"></p>
-            <div id="assets-loaded" hidden>
+          <section id="pane-assets" class="c2-settings-pane c2-stack" role="tabpanel" aria-labelledby="tab-assets" hidden>
+            <p id="assets-status" class="c2-hint" role="status"></p>
+            <div id="assets-loaded" class="c2-stack" hidden>
               <dl id="assets-summary"></dl>
-              <div class="setting">
-                <span class="setting-name">Cached assets</span>
-                <button id="forget-button" class="setting-action outline" type="button">Remove</button>
+              <div class="c2-settings-row">
+                <span class="c2-settings-label">Cached assets</span>
+                <button id="forget-button" class="c2-compact-action outline" type="button">Remove</button>
               </div>
             </div>
-            <p id="assets-empty" class="hint">No assets have been loaded yet. Add your Caesar II data to play.</p>
-            <div class="choices" id="source-buttons">
-              <button id="folder-button" class="choice secondary outline" type="button">Installation folder<small>Installed game directory</small></button>
-              <button id="file-button" class="choice secondary outline" type="button">Asset ZIP<small>ZIP or C2ASSETS pack</small></button>
-              <button id="iso-button" class="choice secondary outline" type="button">ISO image<small>Single CD image file</small></button>
-              <button id="cue-button" class="choice secondary outline" type="button">BIN + CUE<small>CD image and sheet</small></button>
-              <button id="bundled-button" class="choice secondary outline" type="button" hidden>Bundled data<small>Included with this build</small></button>
+            <p id="assets-empty" class="c2-hint">No assets have been loaded yet. Add your Caesar II data to play.</p>
+            <div class="c2-choice-grid" id="source-buttons">
+              <button id="folder-button" class="c2-source-choice secondary outline" type="button">Installation folder<small>Installed game directory</small></button>
+              <button id="file-button" class="c2-source-choice secondary outline" type="button">Asset ZIP<small>ZIP or C2ASSETS pack</small></button>
+              <button id="iso-button" class="c2-source-choice secondary outline" type="button">ISO image<small>Single CD image file</small></button>
+              <button id="cue-button" class="c2-source-choice secondary outline" type="button">BIN + CUE<small>CD image and sheet</small></button>
+              <button id="bundled-button" class="c2-source-choice secondary outline" type="button" hidden>Bundled data<small>Included with this build</small></button>
             </div>
             <input id="folder-input" type="file" webkitdirectory multiple>
             <input id="file-input" type="file" accept=".zip,.c2assets">
             <input id="iso-input" type="file" accept=".iso">
             <input id="cue-input" type="file" accept=".bin,.cue" multiple>
           </section>
-          <section id="pane-userdata" role="tabpanel" aria-labelledby="tab-userdata" hidden>
-            <div class="setting">
-              <span class="setting-name">Saves, history and settings</span>
-              <button id="userdata-export" class="setting-action" type="button">Export</button>
+          <section id="pane-userdata" class="c2-settings-pane c2-stack" role="tabpanel" aria-labelledby="tab-userdata" hidden>
+            <div class="c2-settings-row">
+              <span class="c2-settings-label">Saves, history and settings</span>
+              <button id="userdata-export" class="c2-compact-action" type="button">Export</button>
             </div>
-            <p class="hint">Export downloads all saves, history, and settings as one ZIP that can be imported again.</p>
-            <div class="setting">
-              <span class="setting-name">Import</span>
-              <span class="setting-group">
-                <button id="userdata-import-files" class="setting-action secondary outline" type="button">Files</button>
-                <button id="userdata-import-zip" class="setting-action secondary outline" type="button">ZIP</button>
+            <p class="c2-hint">Export downloads all saves, history, and settings as one ZIP that can be imported again.</p>
+            <div class="c2-settings-row">
+              <span class="c2-settings-label">Import</span>
+              <span class="c2-inline-actions">
+                <button id="userdata-import-files" class="c2-compact-action secondary outline" type="button">Files</button>
+                <button id="userdata-import-zip" class="c2-compact-action secondary outline" type="button">ZIP</button>
               </span>
             </div>
-            <p id="userdata-status" class="hint" role="status"></p>
+            <p id="userdata-status" class="c2-hint" role="status"></p>
             <input id="userdata-files-input" type="file" accept=".sav,.dat,.inf" multiple>
             <input id="userdata-zip-input" type="file" accept=".zip">
           </section>
@@ -119,16 +119,16 @@
     </article>
   </dialog>
   <dialog id="operation-dialog" class="operation-dialog">
-    <article>
+    <article class="c2-surface c2-operation-panel c2-stack">
       <h2 id="operation-title">Working with assets…</h2>
       <progress id="operation-progress"></progress>
-      <p id="operation-detail" class="hint"></p>
+      <p id="operation-detail" class="c2-hint"></p>
       <button id="operation-close" class="secondary" type="button" hidden>Okay</button>
     </article>
   </dialog>
   <dialog id="about-dialog">
-    <article>
-      <div class="head"><h2>About</h2><button id="about-close" class="close" type="button" aria-label="Close"></button></div>
+    <article class="c2-surface c2-dialog-panel c2-stack">
+      <div class="c2-modal-header"><h2>About</h2><button id="about-close" class="close" type="button" aria-label="Close"></button></div>
       <span class="about-version">@C2_VERSION_STRING@</span>
       <p>A modern, portable build of the classic city builder.</p>
       <p><a href="https://github.com/second-impressions/caesar2-port" target="_blank" rel="noopener">Project on GitHub</a></p>

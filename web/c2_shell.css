@@ -91,6 +91,13 @@
       --pico-modal-overlay-backdrop-filter: none;
       --c2-backdrop-blur: 5px;
       --c2-backdrop-playing: .25;
+      /* Shared spacing scale for layout components. */
+      --c2-space-1: .15rem;
+      --c2-space-2: .25rem;
+      --c2-space-3: .4rem;
+      --c2-space-4: .7rem;
+      --c2-space-5: 1rem;
+      --c2-space-6: 1.5rem;
     }
     :root:root:root {
       --pico-primary: var(--c2-accent);
@@ -129,6 +136,14 @@
     html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
     html { background: var(--c2-page); }
     body { background: transparent; color: var(--pico-color); }
+    /* Reusable layout and surface primitives. Components set --c2-stack-gap. */
+    .c2-stack { display: flex; flex-direction: column; gap: var(--c2-stack-gap, var(--c2-space-4)); }
+    .c2-stack > * { margin-block: 0; }
+    .c2-surface { margin: 0; padding: var(--c2-space-5); border: 1px solid var(--c2-edge); border-radius: .6rem; background: var(--c2-surface); box-shadow: 0 .75rem 3rem rgba(0,0,0,.35); backdrop-filter: blur(12px); }
+    .c2-splash, .c2-dialog-panel { width: min(27rem, 100%); max-width: min(27rem, 100%); }
+    .c2-splash { --c2-stack-gap: var(--c2-space-4); text-align: center; }
+    .c2-settings { --c2-stack-gap: var(--c2-space-5); width: min(36rem, 100%); max-width: min(36rem, 100%); }
+    .c2-operation-panel { --c2-stack-gap: var(--c2-space-4); width: min(23rem, calc(100% - 2rem)); text-align: center; }
     /* Decorative backdrop: always softly blurred, and dimmed while playing. */
     body::before, body::after { content: ""; position: fixed; inset: -3%; pointer-events: none; }
     body::before { z-index: -2; background: var(--c2-backdrop) center / cover no-repeat; filter: blur(var(--c2-backdrop-blur)); transition: opacity 1.6s ease, filter 1.6s ease; }
@@ -146,67 +161,60 @@
     .topbar .nav-action, .topbar .nav-action:is(:hover, :focus-visible, :active) { color: var(--c2-title); }
     .nav-action { font-size: .75rem; text-decoration: none; opacity: .8; }
     .nav-action:hover, .nav-action:focus-visible { opacity: 1; text-decoration: underline; }
-    .settings > .settings-body { display: grid; grid-template-columns: 8.5rem 1fr; gap: 0 .9rem; padding-top: .15rem; }
-    .settings-tabs { display: flex; flex-direction: column; gap: .15rem; padding-right: .9rem; border-right: 1px solid var(--c2-edge); }
-    .settings-tab { width: 100%; margin: 0; padding: .35rem .5rem; border: 0; border-radius: var(--pico-border-radius); background: transparent; color: var(--c2-muted); font-size: .8rem; text-align: left; }
-    .settings-tab:hover { background: var(--c2-field); color: var(--pico-color); }
-    .settings-tab[aria-selected="true"] { background: var(--pico-primary-background); color: var(--pico-primary-inverse); }
-    /* One tall, fixed pane box: switching tabs never resizes or scrolls it. */
-    .settings-panes { height: 15rem; overflow: visible; }
-    .settings-panes > section > *:last-child { margin-bottom: 0; }
-    .setting { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin: 0 0 .7rem; }
-    .setting-name { font-size: .82rem; }
-    .setting-group { display: inline-flex; gap: .35rem; }
-    .setting-action { width: auto; margin: 0; padding: .25rem .7rem; font-size: .76rem; }
-    .setting input[type=checkbox] { margin: 0; }
-    /* Tri-state selector: one control, three mutually exclusive choices. */
-    .segmented { display: inline-flex; padding: .12rem; border: 1px solid var(--c2-edge); border-radius: var(--pico-border-radius); background: var(--c2-field); }
-    .segmented label { margin: 0; }
-    .segmented input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
-    .segmented span { display: block; padding: .25rem .6rem; border-radius: calc(var(--pico-border-radius) - .1rem); color: var(--c2-muted); font-size: .76rem; cursor: pointer; }
-    .segmented label:hover span { color: var(--pico-color); }
-    .segmented input:checked + span { background: var(--pico-primary-background); color: var(--pico-primary-inverse); }
-    .segmented input:focus-visible + span { outline: 2px solid var(--pico-primary); outline-offset: 1px; }
-    #panel { position: fixed; z-index: 5; inset: 0; display: grid; place-items: center; padding: 3.25rem 1rem 1rem; overflow: auto; }
+    .c2-settings-layout { display: grid; grid-template-columns: 8.5rem 1fr; gap: var(--c2-space-5); }
+    .c2-settings-tabs { display: flex; flex-direction: column; gap: var(--c2-space-1); padding-right: var(--c2-space-5); border-right: 1px solid var(--c2-edge); }
+    .c2-settings-tab { width: 100%; margin: 0; padding: var(--c2-space-3) var(--c2-space-4); border: 0; border-radius: var(--pico-border-radius); background: transparent; color: var(--c2-muted); font-size: .8rem; text-align: left; }
+    .c2-settings-tab:hover { background: var(--c2-field); color: var(--pico-color); }
+    .c2-settings-tab[aria-selected="true"] { background: var(--pico-primary-background); color: var(--pico-primary-inverse); }
+    /* One fixed pane box: component gaps stay stable when controls are hidden. */
+    .c2-settings-panes { height: 15rem; overflow: visible; }
+    .c2-settings-pane { --c2-stack-gap: var(--c2-space-4); }
+    .c2-settings-row { display: flex; align-items: center; justify-content: space-between; gap: var(--c2-space-4); }
+    .c2-settings-label { font-size: .82rem; }
+    .c2-inline-actions { display: inline-flex; gap: var(--c2-space-3); }
+    .c2-compact-action { width: auto; margin: 0; padding: var(--c2-space-2) var(--c2-space-4); font-size: .76rem; }
+    .c2-settings-row input[type=checkbox] { margin: 0; }
+    /* Segmented selector is a reusable mutually-exclusive control. */
+    .c2-segmented { display: inline-flex; padding: .12rem; border: 1px solid var(--c2-edge); border-radius: var(--pico-border-radius); background: var(--c2-field); }
+    .c2-segmented label { margin: 0; }
+    .c2-segmented input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
+    .c2-segmented span { display: block; padding: var(--c2-space-2) .6rem; border-radius: calc(var(--pico-border-radius) - .1rem); color: var(--c2-muted); font-size: .76rem; cursor: pointer; }
+    .c2-segmented label:hover span { color: var(--pico-color); }
+    .c2-segmented input:checked + span { background: var(--pico-primary-background); color: var(--pico-primary-inverse); }
+    .c2-segmented input:focus-visible + span { outline: 2px solid var(--pico-primary); outline-offset: 1px; }
+    #panel { position: fixed; z-index: 5; inset: 0; display: grid; place-items: center; padding: 3.25rem var(--c2-space-5) var(--c2-space-5); overflow: auto; }
     #panel[hidden] { display: none; }
-    #settings-dialog > article { width: min(36rem, 100%); max-width: min(36rem, 100%); }
-    #card, dialog > article { width: min(27rem, 100%); max-width: min(27rem, 100%); margin: 0; padding: .9rem 1rem; border: 1px solid var(--c2-edge); border-radius: .6rem; background: var(--c2-surface); box-shadow: 0 .75rem 3rem rgba(0,0,0,.35); backdrop-filter: blur(12px); }
-    #card { text-align: center; }
-    #card h1 { margin: 0 0 .1rem; color: var(--c2-title); font-family: Georgia, serif; font-size: 1.6rem; font-weight: 500; letter-spacing: .03em; }
-    .head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin: 0 0 1rem; padding-bottom: .55rem; border-bottom: 1px solid var(--c2-edge); }
-    .head h2 { margin: 0; color: var(--c2-title); font-family: Georgia, serif; font-size: 1.05rem; font-weight: 500; }
-    dialog > article .close { margin: 0; }
-    .hint { margin: 0 0 .7rem; color: var(--c2-muted); font-size: .8rem; }
+    #card h1 { margin: 0; color: var(--c2-title); font-family: Georgia, serif; font-size: 1.6rem; font-weight: 500; letter-spacing: .03em; }
+    .c2-modal-header { display: flex; align-items: center; justify-content: space-between; gap: var(--c2-space-4); padding-bottom: var(--c2-space-4); border-bottom: 1px solid var(--c2-edge); }
+    .c2-modal-header h2, .c2-operation-panel h2 { margin: 0; color: var(--c2-title); font-family: Georgia, serif; font-size: 1.05rem; font-weight: 500; }
+    .c2-modal-header .close { margin: 0; }
+    .c2-hint { color: var(--c2-muted); font-size: .8rem; }
     #status:not(:empty) { min-height: 1.1rem; }
-    /* A status line that has nothing to say must not reserve its space. */
-    .hint:empty { display: none; }
-    .operation-dialog > article { width: min(23rem, calc(100% - 2rem)); text-align: center; }
-    .operation-dialog h2 { margin: 0 0 .7rem; color: var(--c2-title); font-family: Georgia, serif; font-size: 1.05rem; font-weight: 500; }
-    .operation-dialog progress { height: .55rem; margin: 0; }
-    .operation-dialog .hint { margin: .35rem 0 0; text-align: center; }
-    .operation-dialog button { width: auto; margin: .7rem auto 0; padding: .35rem .9rem; }
-    #assets-summary { display: grid; grid-template-columns: auto 1fr; gap: .3rem .75rem; margin: 0 0 .7rem; font-size: .82rem; }
+    .c2-hint:empty { display: none; }
+    .c2-operation-panel progress { height: .55rem; margin: 0; }
+    .c2-operation-panel .c2-hint { text-align: center; }
+    .c2-operation-panel button { width: auto; margin-inline: auto; padding: var(--c2-space-3) var(--c2-space-5); }
+    #assets-summary { display: grid; grid-template-columns: auto 1fr; gap: var(--c2-space-2) var(--c2-space-4); margin: 0; font-size: .82rem; }
     #assets-summary dt { color: var(--c2-muted); }
     #assets-summary dd { margin: 0; color: var(--pico-color); text-align: right; }
-    .choices { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; margin: 0; }
-    .choices button, .actions button { margin: 0; }
-    .choice { padding: .5rem .6rem; font-size: .82rem; line-height: 1.3; text-align: left; }
-    .choice small { display: block; color: var(--c2-muted); font-size: .68rem; }
-    .actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr)); gap: .45rem; margin: 0 0 .7rem; }
-    dialog article > *:last-child, #card > *:last-child { margin-bottom: 0; }
+    .c2-choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--c2-space-3); }
+    .c2-choice-grid button, .c2-action-grid button { margin: 0; }
+    .c2-source-choice { padding: var(--c2-space-3) var(--c2-space-4); font-size: .82rem; line-height: 1.3; text-align: left; }
+    .c2-source-choice small { display: block; color: var(--c2-muted); font-size: .68rem; }
+    .c2-action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr)); gap: var(--c2-space-3); }
     #play-button[aria-disabled="true"] { border-color: var(--pico-muted-border-color); background: transparent; color: var(--c2-muted); cursor: not-allowed; }
-    #forget-button { width: auto; margin: .6rem 0 0; padding: .25rem .5rem; color: var(--c2-danger); border-color: var(--c2-danger-border); font-size: .72rem; }
-    #profile-row { margin: 0 0 .6rem; color: var(--c2-muted); font-size: .86rem; }
-    #profile-row select { margin: .3rem 0 0; padding-block: .45rem; text-align: left; }
+    #forget-button { width: auto; margin: 0; padding: var(--c2-space-2) var(--c2-space-3); color: var(--c2-danger); border-color: var(--c2-danger-border); font-size: .72rem; }
+    #profile-row { color: var(--c2-muted); font-size: .86rem; }
+    #profile-row select { margin: var(--c2-space-3) 0 0; padding-block: .45rem; text-align: left; }
     #profile-row[hidden] { display: none; }
-    label { display: flex; align-items: center; gap: .5rem; margin: 0 0 .7rem; font-size: .8rem; }
+    label { display: flex; align-items: center; gap: var(--c2-space-3); margin: 0; font-size: .8rem; }
     label input[type=checkbox] { margin: 0; }
     #profile-row label { display: block; }
-    .about-version { display: inline-block; margin-bottom: .7rem; padding: .15rem .45rem; border-radius: 99px; background: var(--pico-primary-focus); color: var(--pico-primary); font-size: .72rem; }
+    .about-version { display: inline-block; align-self: flex-start; padding: var(--c2-space-1) var(--c2-space-3); border-radius: 99px; background: var(--pico-primary-focus); color: var(--pico-primary); font-size: .72rem; }
     dialog p { font-size: .82rem; }
     dialog::backdrop { background: transparent; }
     /* Author display rules must not defeat the hidden attribute. */
     [hidden] { display: none !important; }
     input[type=file] { display: none; }
-    @media (max-width: 560px) { .version { display: none; } #panel { padding-top: 4rem; } .choices, .actions { grid-template-columns: 1fr; } .settings > .settings-body { grid-template-columns: 1fr; gap: .6rem; } .settings-tabs { flex-direction: row; padding: 0 0 .5rem; border-right: 0; border-bottom: 1px solid var(--c2-edge); } }
+    @media (max-width: 560px) { .version { display: none; } #panel { padding-top: 4rem; } .c2-choice-grid, .c2-action-grid { grid-template-columns: 1fr; } .c2-settings-layout { grid-template-columns: 1fr; gap: var(--c2-space-4); } .c2-settings-tabs { flex-direction: row; padding: 0 0 var(--c2-space-3); border-right: 0; border-bottom: 1px solid var(--c2-edge); } }
     @media (prefers-reduced-motion: reduce) { body::before, body::after { transition: none; } }

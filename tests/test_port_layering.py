@@ -179,9 +179,10 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert 'id="userdata-files-input"' in shell
     assert 'id="userdata-zip-input"' in shell
     assert 'id="userdata-import-files"' in shell
-    # The user-data pane uses the same setting rows as the rest of the dialog.
-    assert 'class="setting-action' in shell
-    # A Game tab owns presentation settings.
+    # The user-data pane uses the same reusable setting components.
+    assert 'class="c2-settings-row"' in shell
+    assert 'class="c2-compact-action' in shell
+    # The Rendering tab owns presentation settings.
     assert 'id="pane-rendering"' in shell
     assert 'data-pane="rendering"' in shell
     assert '>Rendering</button>' in shell
@@ -297,13 +298,25 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert 'id="settings-dialog"' in shell
     # One settings modal with categories on the left, content on the right.
     assert 'role="tablist"' in shell
-    assert 'class="settings-tab"' in shell
+    assert 'class="c2-settings-tab"' in shell
     assert 'id="pane-general"' in shell
     assert "function selectSettingsPane" in shell
     assert "grid-template-columns: 8.5rem 1fr" in shell
+    # Shared primitives and spacing tokens own component geometry.
+    assert "--c2-space-4: .7rem" in shell
+    assert ".c2-stack {" in shell
+    assert ".c2-surface {" in shell
+    assert ".c2-action-grid {" in shell
+    assert 'class="c2-surface c2-splash c2-stack"' in shell
+    assert 'class="c2-settings-row"' in shell
+    for legacy_class in ("setting", "setting-action", "segmented", "hint",
+                         "actions", "choices"):
+        assert f'class="{legacy_class}"' not in shell
+    components_doc = (ROOT / "web" / "COMPONENTS.md").read_text()
+    assert "Vertical rhythm belongs to the parent" in components_doc
     # The dialog keeps one size and empty status lines take no space.
-    assert ".settings-panes { height: 15rem; overflow: visible; }" in shell
-    assert ".hint:empty { display: none; }" in shell
+    assert ".c2-settings-panes { height: 15rem; overflow: visible; }" in shell
+    assert ".c2-hint:empty { display: none; }" in shell
     # Top-bar links use the brand colour, and About sits last.
     assert ".topbar .nav-action" in shell
     assert shell.index('id="settings-button"') < shell.index('id="about-button"')
@@ -315,7 +328,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert 'value="system"' in shell
     assert 'value="light"' in shell
     assert 'value="dark"' in shell
-    assert "class=\"segmented\"" in shell
+    assert "class=\"c2-segmented\"" in shell
     assert 'systemDark.addEventListener("change"' in shell
     assert 'id="theme-toggle"' not in shell
     assert 'id="theme-menu"' not in shell

@@ -543,7 +543,7 @@
         assetsSummary.append(dt, dd);
       }
     }
-    const settingsTabs = [...document.querySelectorAll(".settings-tab")];
+    const settingsTabs = [...document.querySelectorAll(".c2-settings-tab")];
     function selectSettingsPane(pane, focus = false) {
       for (const tab of settingsTabs) {
         const active = tab.dataset.pane === pane;
