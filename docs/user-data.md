@@ -53,9 +53,10 @@ LBM writer and `shotN.lbm` names; only the portable feature branch uses PNG.
 The engine worker uses these synchronous operations. In the browser, OPFS is
 mounted before SDL host initialization. Successful writes are flushed before
 the save operation completes; the recovered save code does not become
-asynchronous. The page exposes all `*.sav` plus `history.dat` as downloads and
-can produce a local store-only ZIP; `caesar2.inf` is an optional settings/career
-export.
+asynchronous. Export immediately downloads one `caesar2-user-data.zip`
+containing every `*.sav`, `history.dat`, and `caesar2.inf` file in the durable
+namespace. The same ZIP can be imported directly, with every entry passing the
+normal size and filename validation before it is written.
 
 Portable save serialization is owned by `src/platform/common`. The recovered
 registry contains exactly 500 live entries rather than a shorter list followed

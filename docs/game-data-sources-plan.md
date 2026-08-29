@@ -192,15 +192,17 @@ OPFS writes do not need IDBFS `syncfs` copies.
 
 The page should always expose a small **Export saves** control. Export can occur from the landing screen or from a toolbar which briefly snapshots the user namespace under a lock.
 
-First release:
+Current behavior:
 
-- list individual `.sav` and `history.dat` files as Blob-backed download links;
-- provide **Download all saves** as a store-only ZIP generated locally;
-- include a small manifest with filename, size, and SHA-256;
-- offer `caesar2.inf` through a “include settings/career” checkbox; and
-- revoke Blob URLs after use.
+- **Export** immediately downloads one store-only `caesar2-user-data.zip`;
+- the archive includes all `.sav` files, `history.dat`, and `caesar2.inf`;
+- no intermediate list of individual download links or settings checkbox is shown;
+- generated Blob URLs are revoked after the download starts; and
+- the exported ZIP can be imported directly through the same tab.
 
-Do not fetch JSZip or other code from a CDN. Saves are small, so a tiny project-owned store-only ZIP writer or a ZIP writer in the importer module is sufficient. Add save import later using the same strict 225,745-byte validator.
+Do not fetch JSZip or other code from a CDN. The project-owned ZIP writer and
+reader enforce the strict save, history, settings, filename, and decompression
+limits on round trip.
 
 ## Browser source selection and switching
 

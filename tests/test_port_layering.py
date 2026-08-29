@@ -255,8 +255,13 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert '>Export</button>' in shell
     assert "history.dat" in shell
     assert "caesar2.inf" in shell
-    assert "caesar2-saves.zip" in shell
+    assert "caesar2-user-data.zip" in shell
     assert "zipStore" in shell
+    assert "async function exportUserData()" in shell
+    assert "link.click();" in shell
+    assert 'id="include-settings"' not in shell
+    assert 'id="user-downloads"' not in shell
+    assert "Download all saves" not in shell
     assert 'id="profile-select"' in shell
     assert 'id="profile-input"' not in shell
     assert 'id="single-language"' not in shell

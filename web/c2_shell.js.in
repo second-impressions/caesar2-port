@@ -25,7 +25,6 @@
     const sourceButtons = document.getElementById("source-buttons");
     const aboutDialog = document.getElementById("about-dialog");
     const userDataStatus = document.getElementById("userdata-status");
-    const userDownloads = document.getElementById("user-downloads");
     const userDataFilesInput = document.getElementById("userdata-files-input");
     const userDataZipInput = document.getElementById("userdata-zip-input");
     const query = new URLSearchParams(location.search);
@@ -49,7 +48,6 @@
     let pausedByChrome = false;
     let engineHasRun = false;
     let pendingImportError;
-    let downloadUrls = [];
 
     function resizeCanvasToIntegerScale() {
       const density = devicePixelRatio || 1;
@@ -385,35 +383,32 @@
       }
       return result;
     }
-    async function exportSaves() {
-      userDownloads.replaceChildren();
-      for (const url of downloadUrls) URL.revokeObjectURL(url);
-      downloadUrls = [];
+    async function exportUserData() {
       let dir;
       try { dir = await directoryAt("user-data", false); }
       catch { userDataStatus.textContent = "No saves, history, or settings stored yet."; return; }
-      const includeSettings = document.getElementById("include-settings").checked;
       const archiveFiles = [];
       for await (const [name, handle] of dir.entries()) {
         if (handle.kind !== "file" ||
             (!/\.sav$/i.test(name) && name.toLowerCase() !== "history.dat" &&
-             !(includeSettings && name.toLowerCase() === "caesar2.inf"))) continue;
+             name.toLowerCase() !== "caesar2.inf")) continue;
         const file = await handle.getFile();
         archiveFiles.push({name, data:new Uint8Array(await file.arrayBuffer())});
-        const url = URL.createObjectURL(file); downloadUrls.push(url);
-        const link = document.createElement("a");
-        link.className = "download"; link.href = url; link.download = name; link.textContent = `Download ${name}`;
-        userDownloads.append(link);
       }
-      if (archiveFiles.length) {
-        const url = URL.createObjectURL(zipStore(archiveFiles)); downloadUrls.push(url);
-        const link = document.createElement("a");
-        link.className = "download"; link.href = url; link.download = "caesar2-saves.zip";
-        link.textContent = "Download all saves (.zip)"; userDownloads.prepend(link);
+      if (!archiveFiles.length) {
+        userDataStatus.textContent = "No saves, history, or settings stored yet.";
+        return;
       }
-      userDataStatus.textContent = userDownloads.children.length
-        ? "Ready to download."
-        : "No saves, history, or settings stored yet.";
+      archiveFiles.sort((a, b) => a.name.localeCompare(b.name));
+      const url = URL.createObjectURL(zipStore(archiveFiles));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "caesar2-user-data.zip";
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      userDataStatus.textContent = `Exported ${archiveFiles.length} user-data file${archiveFiles.length === 1 ? "" : "s"}.`;
     }
     function canonicalUserDataName(name) {
       const base = name.replaceAll("\\", "/").split("/").at(-1);
@@ -581,11 +576,6 @@
       assetsStatus.textContent = "";
       updateAssetsSummary();
       openSettings("assets");
-    }
-    function openUserDataModal() {
-      userDownloads.replaceChildren();
-      userDataStatus.textContent = "";
-      openSettings("userdata");
     }
     async function forgetAssets() {
       if (!confirm("Delete cached/imported game data? Saves and settings will be kept.")) return;
@@ -879,7 +869,7 @@
         if (!settingsDialog.open && !aboutDialog.open) setChromePause(false);
       });
     }
-    document.getElementById("userdata-export").onclick = exportSaves;
+    document.getElementById("userdata-export").onclick = exportUserData;
     document.getElementById("userdata-import-files").onclick = () => userDataFilesInput.click();
     document.getElementById("userdata-import-zip").onclick = () => userDataZipInput.click();
     forgetButton.onclick = forgetAssets;
