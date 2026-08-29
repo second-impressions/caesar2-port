@@ -552,6 +552,12 @@
         document.getElementById(`pane-${tab.dataset.pane}`).hidden = !active;
         if (active && focus) tab.focus();
       }
+      if (pane === "assets") {
+        assetsStatus.textContent = "";
+        updateAssetsSummary().catch(error => {
+          assetsStatus.textContent = `Could not inspect loaded assets: ${error.message}`;
+        });
+      }
     }
     selectSettingsPane("general");
     for (const tab of settingsTabs) {
@@ -573,8 +579,6 @@
       if (!settingsDialog.open) settingsDialog.showModal();
     }
     function openAssetsModal() {
-      assetsStatus.textContent = "";
-      updateAssetsSummary();
       openSettings("assets");
     }
     async function forgetAssets() {

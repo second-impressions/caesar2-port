@@ -329,6 +329,8 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert 'id="assets-loaded"' in shell
     assert "No assets have been loaded yet" in shell
     assert "sourceButtons.hidden = info.available" in shell
+    assert 'if (pane === "assets") {' in shell
+    assert "updateAssetsSummary().catch(error =>" in shell
     assert 'beginOperation("Removing cached assets", targets.length)' in shell
     assert "updateOperation(removed, targets.length" in shell
     assert "@media (prefers-color-scheme: light)" in shell
