@@ -233,6 +233,12 @@
  * chrome, so the hook is compiled out of them entirely. */
 #define PORT_FEAT_HOST_PAUSE PORT_PLATFORM
 
+/* The DOS province construction lists use press-drag-release interaction.
+ * Keep their initial release from dismissing the list in portable builds so
+ * an ordinary click behaves like the city construction lists; dragging to an
+ * entry and releasing remains available. */
+#define PORT_FEAT_STICKY_REGION_DROPDOWNS PORT_PLATFORM
+
 /* Read-only engine observations and their smoke driver are development
  * instrumentation. CMake selects them only for portable Debug builds. */
 #if defined(PORT_DEBUG_BUILD)

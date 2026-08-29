@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 
+#include "c2_target.h"
+
 #define C2_SCREEN_WIDTH 640
 #define C2_SCREEN_HEIGHT 480
 #define C2_SCREEN_PIXELS (C2_SCREEN_WIDTH * C2_SCREEN_HEIGHT)
@@ -26,6 +28,10 @@ int c2_port_save_screenshot(const char *filename);
 int check_user_file_exists(const char *filename);
 void *c2_port_load_asset(const char *filename, size_t *size_out);
 unsigned int c2_port_scroll_keys(void);
+#if PORT_FEAT_STICKY_REGION_DROPDOWNS
+void c2_port_region_selection_begin(void);
+void c2_port_region_selection_end(void);
+#endif
 void mouserange(int xmin, int ymin, int xmax, int ymax);
 
 #endif /* PORT_H */

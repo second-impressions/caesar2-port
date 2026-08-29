@@ -1,5 +1,8 @@
 #include "c2_data.h"
 #include "c2_types.h"
+#if PORT_FEAT_STICKY_REGION_DROPDOWNS
+#include "c2_port.h"
+#endif
 
 #if PLATFORM_WINDOWS
 #define SELECTION_TEXT_WIDTH select_cost_flag
@@ -884,6 +887,20 @@ int over_item(struct menu_item_rec *item_list, int item_count, int x, int y)
     return 0;
 }
 
+#if PORT_FEAT_STICKY_REGION_DROPDOWNS
+static int c2_port_region_initial_release;
+
+void c2_port_region_selection_begin(void)
+{
+    c2_port_region_initial_release = 1;
+}
+
+void c2_port_region_selection_end(void)
+{
+    c2_port_region_initial_release = 0;
+}
+#endif
+
 #if PLATFORM_WINDOWS
 void get_text_string(int text_group, int text_word, char *destination);
 void show_native_message(void *window, char *message);
@@ -913,9 +930,19 @@ int control_selection(struct selection_rec *selection_list, int selection_count,
         gloop_end();
         selection_is = over_selection(select_count, x, y);
         if (mouse_left_click != 0 && selection_is != 0) break;
-        if (mouse_left_click != 0 && is_icon_over(last_icon_over) == 0) {
-            selection_is = 0;
-            break;
+        if (mouse_left_click != 0) {
+#if PORT_FEAT_STICKY_REGION_DROPDOWNS
+            /* A release over a row was handled above, preserving the DOS
+             * drag gesture. Ignore only the opening click's empty release. */
+            if (c2_port_region_initial_release != 0) {
+                c2_port_region_initial_release = 0;
+                continue;
+            }
+#endif
+            if (is_icon_over(last_icon_over) == 0) {
+                selection_is = 0;
+                break;
+            }
         }
         if (mouse_left_preclick != 0 && selection_is != 0) break;
         if (mouse_right_preclick != 0) { selection_is = 0; break; }

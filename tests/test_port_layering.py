@@ -225,6 +225,13 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     ):
         assert f"#  define {feature}" in target_header
     assert "PORT_FEAT_REGION_SIDED_DRAW" not in target_header
+    assert "#define PORT_FEAT_STICKY_REGION_DROPDOWNS PORT_PLATFORM" in target_header
+    action = (SRC / "action.c").read_text()
+    controls = (SRC / "controls.c").read_text()
+    assert action.count("c2_port_region_selection_begin();") == 2
+    assert action.count("c2_port_region_selection_end();") == 2
+    assert "if (c2_port_region_initial_release != 0)" in controls
+    assert "c2_port_region_initial_release = 0;\n                continue;" in controls
     pm_map2 = (SRC / "pm_map2.c").read_text()
     assert pm_map2.count("#if C2_FEAT_REGION_SIDED_DRAW") == 6
     assert '<div class="actions">\n              <button id="userdata-export"' not in shell
