@@ -28,6 +28,10 @@ int c2_port_save_screenshot(const char *filename);
 int check_user_file_exists(const char *filename);
 void *c2_port_load_asset(const char *filename, size_t *size_out);
 unsigned int c2_port_scroll_keys(void);
+#if PORT_FIX_PAUSED_MUSIC_VARIETY
+int c2_port_paused_music_branch(int base, int count,
+                                int current_branch, int branch_count);
+#endif
 #if PORT_FEAT_STICKY_REGION_DROPDOWNS
 void c2_port_region_selection_begin(int mouse_x, int mouse_y);
 void c2_port_region_selection_end(void);

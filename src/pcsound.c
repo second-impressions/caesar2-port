@@ -13,6 +13,9 @@
 #if PORT_PLATFORM
 #include <string.h>
 #endif
+#if PORT_FIX_PAUSED_MUSIC_VARIETY
+#include "c2_port.h"
+#endif
 #if PLATFORM_DOS
 char __far *MK_FP(int off, int seg);
 #pragma aux MK_FP = parm [eax] [edx] value [dx eax];
@@ -622,6 +625,20 @@ void get_old_mood(void)
     else               tune_mood = last_city_mood;
 }
 
+#if PORT_FIX_PAUSED_MUSIC_VARIETY
+static int c2_port_city_music_branch(int base)
+{
+    int branch = (rand128 & 7) + base;
+
+    if (branch > base + 6) branch = base + 6;
+    if (c2inf.paused != 0) {
+        branch = c2_port_paused_music_branch(base, 7, tune_branch,
+                                             tune_branch_count);
+    }
+    return branch;
+}
+#endif
+
 // Choose the music branch from the current mood, including temporary threat and emergency states.
 // FUNCTION: C2 0x1247f
 // FUNCTION: C2WIN 0x00402231
@@ -641,10 +658,17 @@ void get_city_mood(void)
     else if (tune_mood == 21) { tune_mood = 3; tune_branch = 0x33; emergency_mood = 0xc8; }
     else if (tune_mood == 22) { tune_mood = 3; tune_branch = 0x34; emergency_mood = 0xc8; }
     else if (tune_mood == 23) { tune_mood = 3; tune_branch = 0x35; emergency_mood = 0xc8; }
+#if PORT_FIX_PAUSED_MUSIC_VARIETY
+    else if (tune_mood == 0) tune_branch = c2_port_city_music_branch(0);
+    else if (tune_mood == 1) tune_branch = c2_port_city_music_branch(0xa);
+    else if (tune_mood == 2) tune_branch = c2_port_city_music_branch(0x14);
+    else if (tune_mood == 3) tune_branch = c2_port_city_music_branch(0x1e);
+#else
     else if (tune_mood == 0) { tune_branch = rand128 & 7; if (tune_branch > 6) tune_branch = 6; }
     else if (tune_mood == 1) { tune_branch = (rand128 & 7) + 0xa; if (tune_branch > 0x10) tune_branch = 0x10; }
     else if (tune_mood == 2) { tune_branch = (rand128 & 7) + 0x14; if (tune_branch > 0x1a) tune_branch = 0x1a; }
     else if (tune_mood == 3) { tune_branch = (rand128 & 7) + 0x1e; if (tune_branch > 0x24) tune_branch = 0x24; }
+#endif
     else { tune_mood = 0; tune_branch = 0; }
     if (bad_mood != 0)       tune_mood = 1;
     if (threat_mood != 0)    tune_mood = 2;

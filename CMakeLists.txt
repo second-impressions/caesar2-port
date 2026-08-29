@@ -338,6 +338,7 @@ add_executable(caesar2
     src/platform/common/c2_port_keymap.c
     src/platform/common/c2_port_miles_bank.c
     src/platform/common/c2_port_mouse.c
+    src/platform/common/c2_port_music.c
     src/platform/common/c2_port_save.c
     src/platform/common/c2_port_save_compat.c
     src/platform/common/c2_port_pause.c
@@ -692,6 +693,19 @@ if(BUILD_TESTING)
         src/platform/common)
     target_link_libraries(c2-port-mouse-test PRIVATE c2_unity_framework)
     add_test(NAME port-mouse COMMAND c2-port-mouse-test)
+
+    add_executable(c2-port-music-test
+        tests/c2_port_music_test.c
+        src/platform/common/c2_port_music.c)
+    target_compile_features(c2-port-music-test PRIVATE c_std_11)
+    target_compile_definitions(c2-port-music-test PRIVATE
+        PORT_PLATFORM=1
+        PORT_PLATFORM_LINUX=1)
+    target_include_directories(c2-port-music-test PRIVATE
+        include
+        src/platform/common)
+    target_link_libraries(c2-port-music-test PRIVATE c2_unity_framework)
+    add_test(NAME port-music COMMAND c2-port-music-test)
 
     add_executable(c2-port-selection-test
         tests/c2_port_selection_test.c

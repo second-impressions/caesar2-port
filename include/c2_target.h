@@ -239,6 +239,12 @@
  * entry and releasing remains available. */
 #define PORT_FEAT_STICKY_REGION_DROPDOWNS PORT_PLATFORM
 
+/* The shipped city/province score chooses its next XMI branch from the
+ * simulation RNG. That RNG correctly stops while paused, but the MIDI branch
+ * callback does not, causing one phrase to repeat indefinitely. Portable
+ * builds use a separate deterministic branch sequence only while paused. */
+#define PORT_FIX_PAUSED_MUSIC_VARIETY PORT_PLATFORM
+
 /* Read-only engine observations and their smoke driver are development
  * instrumentation. CMake selects them only for portable Debug builds. */
 #if defined(PORT_DEBUG_BUILD)
