@@ -5,6 +5,7 @@
     const operationTitle = document.getElementById("operation-title");
     const operationProgress = document.getElementById("operation-progress");
     const operationDetail = document.getElementById("operation-detail");
+    const operationClose = document.getElementById("operation-close");
     const toolbar = document.getElementById("toolbar");
     const assetsButton = document.getElementById("assets-button");
     const bundledButton = document.getElementById("bundled-button");
@@ -48,8 +49,7 @@
     let scalingMode = localStorage.getItem(SCALING_MODE) === "fractional" ? "fractional" : "integer";
     let pausedByChrome = false;
     let engineHasRun = false;
-    let progressTimer;
-    let progressStarted;
+    let pendingImportError;
     let downloadUrls = [];
 
     function resizeCanvasToIntegerScale() {
@@ -212,11 +212,10 @@
       if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
       return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
     }
-    function beginOperation(title, total = 0) {
-      clearInterval(progressTimer);
-      progressTimer = undefined;
-      progressStarted = performance.now();
+    function beginOperation(title, total = 0, detail = "Starting…") {
       operationTitle.textContent = title;
+      operationClose.hidden = true;
+      operationProgress.hidden = false;
       if (total > 0) {
         operationProgress.max = total;
         operationProgress.value = 0;
@@ -224,25 +223,27 @@
         operationProgress.removeAttribute("max");
         operationProgress.removeAttribute("value");
       }
-      operationDetail.textContent = total ? `0 B / ${formatBytes(total)}` : "Starting…";
+      operationDetail.textContent = total ? `0 B / ${formatBytes(total)}` : detail;
       if (!operationDialog.open) operationDialog.showModal();
     }
     function updateOperation(value, total, suffix = "") {
       if (total > 0) {
+        operationProgress.hidden = false;
         operationProgress.max = total;
         operationProgress.value = Math.min(value, total);
         operationDetail.textContent = `${formatBytes(value)} / ${formatBytes(total)}${suffix}`;
-      } else {
-        operationDetail.textContent = suffix || `${Math.floor((performance.now() - progressStarted) / 1000)}s elapsed`;
+      } else if (suffix) {
+        operationDetail.textContent = suffix;
       }
     }
-    function beginTimedOperation(title) {
-      beginOperation(title);
-      progressTimer = setInterval(() => updateOperation(0, 0), 1000);
+    function showOperationError(message) {
+      operationTitle.textContent = "Import failed";
+      operationProgress.hidden = true;
+      operationDetail.textContent = message;
+      operationClose.hidden = false;
+      if (!operationDialog.open) operationDialog.showModal();
     }
     function endOperation() {
-      clearInterval(progressTimer);
-      progressTimer = undefined;
       if (operationDialog.open) operationDialog.close();
     }
     async function writeBrowserFile(root, relative, file, onBytes) {
@@ -299,8 +300,29 @@
       location.href = location.pathname;
     }
     async function importFiles(files) {
-      const allowed = [...files].filter(f => /\.(zip|c2assets|iso|bin|cue)$/i.test(f.name));
+      const selected = [...files];
+      const allowed = selected.filter(f => /\.(zip|c2assets|iso|bin|cue)$/i.test(f.name));
       if (!allowed.length) throw new Error("No supported file selected");
+      if (allowed.length !== selected.length) throw new Error("The selection contains unsupported files");
+      const cues = allowed.filter(file => /\.cue$/i.test(file.name));
+      const bins = allowed.filter(file => /\.bin$/i.test(file.name));
+      let primary;
+      if (cues.length || bins.length) {
+        if (cues.length !== 1 || bins.length !== 1 || allowed.length !== 2) {
+          throw new Error("Select exactly one CUE file together with its BIN file");
+        }
+        const cueText = await cues[0].text();
+        const match = cueText.match(/^\s*FILE\s+"([^"]+)"\s+BINARY/im);
+        if (!match) throw new Error("The CUE file does not name a binary data track");
+        const referenced = match[1].replaceAll("\\", "/").split("/").at(-1);
+        if (referenced.toLowerCase() !== bins[0].name.toLowerCase()) {
+          throw new Error(`The CUE references ${referenced}; select that BIN file`);
+        }
+        primary = cues[0];
+      } else {
+        if (allowed.length !== 1) throw new Error("Select one archive or ISO at a time");
+        primary = allowed[0];
+      }
       const total = allowed.reduce((sum, file) => sum + file.size, 0);
       let loaded = 0;
       let done = 0;
@@ -315,9 +337,6 @@
         done++;
         updateOperation(loaded, total, ` · ${done}/${allowed.length} files`);
       }
-      const cue = allowed.find(f => /\.cue$/i.test(f.name));
-      const primary = cue || (allowed.length === 1 ? allowed[0] : null);
-      if (!primary) throw new Error("Select one archive/image, or one CUE together with its BIN");
       localStorage.setItem(PENDING_SOURCE, `/persistent/incoming/${generation}/${primary.name}`);
       rememberOrigin(allowed.map(f => f.name).join(", "));
       requestPersistence().catch(() => {});
@@ -650,7 +669,8 @@
       preparingAssets = true;
       panel.hidden = false;
       showMessage("Checking game data…");
-      beginTimedOperation("Checking game data");
+      pendingImportError = undefined;
+      beginOperation("Checking game data", 0, "Reading source catalog…");
       const args = ["--game-data", source, "--prepare-assets"];
       const profile = localStorage.getItem(ACTIVE_PROFILE);
       if (profile) args.push("--asset-profile", profile);
@@ -864,6 +884,10 @@
     document.getElementById("about-close").onclick = () => aboutDialog.close();
     document.getElementById("settings-button").onclick = () => openSettings("general");
     document.getElementById("settings-close").onclick = () => settingsDialog.close();
+    operationClose.onclick = () => {
+      operationDialog.close();
+      openSettings("assets");
+    };
     for (const tab of settingsTabs) tab.onclick = () => selectSettingsPane(tab.dataset.pane);
     for (const dialog of [settingsDialog, aboutDialog]) {
       dialog.addEventListener("click", event => { if (event.target === dialog) dialog.close(); });
@@ -878,7 +902,7 @@
     forgetButton.onclick = forgetAssets;
     const importFailed = e => {
       settingsDialog.close();
-      endOperation();
+      showOperationError(e.message);
       showMessage(`Import failed: ${e.message}`);
     };
     folderInput.onchange = () => { settingsDialog.close(); importFolder(folderInput.files).catch(importFailed); };
@@ -912,6 +936,9 @@
           return;
         }
         bootstrap();
+      },
+      onImportError(message) {
+        pendingImportError = message;
       },
       onImportProgress(phase, completedKiB, totalKiB,
                        completedFiles, totalFiles) {
@@ -957,14 +984,22 @@
         }
       },
       onAbort(reason) {
+        const importFailure = preparingAssets;
+        const message = pendingImportError || reason || "Invalid game data";
         gameRunning = false; preparingAssets = false; panel.hidden = false;
-        endOperation();
         document.body.classList.remove("playing");
         localStorage.removeItem(PENDING_SOURCE);
         localStorage.removeItem(PENDING_ORIGIN);
         const previous = localStorage.getItem(ACTIVE_SOURCE);
-        showReady(previous, `Import failed: ${reason || 'invalid game data'}.` +
-          (previous ? " Your previous game data is still available." : ""));
+        if (importFailure) {
+          showOperationError(message);
+          showReady(previous, `Import failed: ${message}.` +
+            (previous ? " Your previous game data is still available." : ""));
+        } else {
+          endOperation();
+          showReady(previous, `Start failed: ${message}.`);
+        }
+        pendingImportError = undefined;
       },
       onExit(code) {
         if (code) Module.onAbort(`exit status ${code}`);

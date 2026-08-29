@@ -21,4 +21,11 @@ mergeInto(LibraryManager.library, {
                                  completedFiles, totalFiles);
     }
   },
+  c2_browser_import_error__deps: ["$UTF8ToString"],
+  c2_browser_import_error__proxy: "sync",
+  c2_browser_import_error: function(message) {
+    if (Module["onImportError"]) {
+      Module["onImportError"](UTF8ToString(message));
+    }
+  },
 });

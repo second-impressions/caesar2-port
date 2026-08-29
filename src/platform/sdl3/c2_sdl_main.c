@@ -55,6 +55,7 @@ extern void c2_browser_import_progress(const char *phase,
                                        unsigned int total_kib,
                                        int completed_files,
                                        int total_files);
+extern void c2_browser_import_error(const char *message);
 #endif
 
 #define C2_HOST_ACTIVE_CALLBACK_RATE "120"
@@ -350,6 +351,9 @@ static int prepare_assets(struct c2_sdl_app *app)
                         import_error, sizeof(import_error))) {
         fprintf(stderr, "could not import game data '%s': %s\n",
                 app->asset_source, import_error);
+#if PORT_PLATFORM_WASM
+        c2_browser_import_error(import_error);
+#endif
         return 0;
     }
 #if PORT_PLATFORM_WASM
@@ -379,6 +383,9 @@ static int start_runtime(struct c2_sdl_app *app)
                         import_error, sizeof(import_error))) {
         fprintf(stderr, "could not import game data '%s': %s\n",
                 app->asset_source, import_error);
+#if PORT_PLATFORM_WASM
+        c2_browser_import_error(import_error);
+#endif
         return 0;
     }
 #if PORT_PLATFORM_WASM

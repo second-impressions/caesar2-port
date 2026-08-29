@@ -187,6 +187,7 @@
     .operation-dialog h2 { margin: 0 0 .7rem; color: var(--c2-title); font-family: Georgia, serif; font-size: 1.05rem; font-weight: 500; }
     .operation-dialog progress { height: .55rem; margin: 0; }
     .operation-dialog .hint { margin: .35rem 0 0; text-align: center; }
+    .operation-dialog button { width: auto; margin: .7rem auto 0; padding: .35rem .9rem; }
     #assets-summary { display: grid; grid-template-columns: auto 1fr; gap: .3rem .75rem; margin: 0 0 .7rem; font-size: .82rem; }
     #assets-summary dt { color: var(--c2-muted); }
     #assets-summary dd { margin: 0; color: var(--pico-color); text-align: right; }
