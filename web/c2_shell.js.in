@@ -17,7 +17,6 @@
     const playButton = document.getElementById("play-button");
     const profileRow = document.getElementById("profile-row");
     const profileSelect = document.getElementById("profile-select");
-    const tagline = document.getElementById("tagline");
     const settingsDialog = document.getElementById("settings-dialog");
     const assetsSummary = document.getElementById("assets-summary");
     const assetsLoaded = document.getElementById("assets-loaded");
@@ -702,24 +701,8 @@
     function playDisabled() {
       return playButton.getAttribute("aria-disabled") === "true";
     }
-    /* Period promotional lines from the original Caesar II advertising. */
-    const taglines = [
-      ["Veni, Vidi, Vici", "I came, I saw, I looked great in a toga"],
-      ["Pictura praeferenda est mille verbis", "A picture is worth a thousand words"],
-      ["Tempus figit", "Time flies, or my sundial is fast"],
-      ["Carpe diem", "Seize this game"],
-      ["Impera!", ""],
-      ["Build a city… Build an empire!", ""]
-    ];
     function showMessage(text) {
       status.textContent = text || "";
-    }
-    /* The tagline is picked once per visit and stays visible in every state. */
-    function showTagline() {
-      const [line, gloss] = taglines[Math.floor(Math.random() * taglines.length)];
-      tagline.textContent = line;
-      if (gloss) tagline.setAttribute("data-tooltip", gloss);
-      else tagline.removeAttribute("data-tooltip");
     }
     function showMainWindow(info, message) {
       configureAssetChoices(info);
@@ -914,7 +897,6 @@
     for (const link of document.querySelectorAll(".nav-action")) {
       link.addEventListener("click", event => event.preventDefault());
     }
-    showTagline();
     console.log(`Caesar II ${BUILD_VERSION}`);
     if (smokeOutput) globalThis.__c2SmokeOutput = smokeOutput;
 

@@ -311,21 +311,12 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     # Pico's own light palette outranks a plain :root rule, so the accent
     # mapping must be more specific than :root:not([data-theme=dark]).
     assert ":root:root:root {" in shell
-    # Period advertising lines replace the invented "Ready to rule".
-    assert '"Veni, Vidi, Vici"' in shell
-    assert '"Pictura praeferenda est mille verbis"' in shell
-    assert '"Tempus figit"' in shell
-    assert '"Carpe diem"' in shell
-    assert '"Impera!"' in shell
-    assert "Build a city" in shell
     assert "Ready to rule" not in shell
-    assert "function showTagline" in shell
-    # The tagline is part of the card, not a transient status message.
-    assert 'id="tagline"' in shell
-    # The translation is a tooltip, not a second line of text.
-    assert 'tagline.setAttribute("data-tooltip", gloss)' in shell
-    assert 'id="tagline-gloss"' not in shell
-    assert "showTagline();\n    console.log(`Caesar II ${BUILD_VERSION}`);" in shell
+    assert "tagline" not in shell
+    for slogan in ("Veni, Vidi, Vici", "Pictura praeferenda est mille verbis",
+                   "Tempus figit", "Carpe diem", "Impera!",
+                   "Build a city… Build an empire!"):
+        assert slogan not in shell
     # The assets modal owns its own state: summary plus removal, or choices.
     assert 'id="assets-loaded"' in shell
     assert "No assets have been loaded yet" in shell

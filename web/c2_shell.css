@@ -178,9 +178,6 @@
     dialog > article .close { margin: 0; }
     .hint { margin: 0 0 .7rem; color: var(--c2-muted); font-size: .8rem; }
     #status:not(:empty) { min-height: 1.1rem; }
-    .tagline { margin: 0 0 .5rem; color: var(--pico-color); font-family: Georgia, serif; font-size: .95rem; font-style: italic; }
-    /* The translation lives in the tooltip, hinted by the dotted underline. */
-    #tagline[data-tooltip] { border-bottom-color: var(--c2-edge); }
     /* A status line that has nothing to say must not reserve its space. */
     .hint:empty { display: none; }
     .operation-dialog > article { width: min(23rem, calc(100% - 2rem)); text-align: center; }
