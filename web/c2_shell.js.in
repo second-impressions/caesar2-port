@@ -724,7 +724,7 @@
     function showMainWindow(info, message) {
       configureAssetChoices(info);
       setPlayEnabled(info.available);
-      assetsButton.textContent = info.available ? "Change assets" : "Load assets";
+      assetsButton.hidden = info.available;
       showMessage(message || (info.available ? "" : "Load your Caesar II game data to play."));
       panel.hidden = false;
     }

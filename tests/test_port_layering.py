@@ -154,7 +154,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "Load your Caesar II game data to play." in shell
     assert "Preparing…" not in shell
     assert "Load assets" in shell
-    assert "Change assets" in shell
+    assert "Change assets" not in shell
     # Play stays disabled and explains itself until validated data exists.
     assert 'data-tooltip="Load assets first"' in shell
     # Uploads are imported without starting the engine.
@@ -269,6 +269,8 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert '["Edition", info.edition]' in shell
     assert 'rows.push(["Layout", info.layout])' in shell
     assert "DOS/Win95 hybrid · DOS assets" in shell
+    assert "assetsButton.hidden = info.available" in shell
+    assert "Change assets" not in shell
     assert "sourceInfo" in shell
     assert '<title>Caesar II — @C2_VERSION_STRING@</title>' in shell
     assert 'id="about-dialog"' in shell
