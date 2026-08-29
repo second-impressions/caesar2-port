@@ -300,6 +300,9 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert ".topbar .nav-action" in shell
     assert shell.index('id="settings-button"') < shell.index('id="about-button"')
     assert 'id="settings-button"' in shell
+    assert (shell.index('id="pane-general"') <
+            shell.index('id="confirm-close-toggle"') <
+            shell.index('id="pane-game"'))
     assert 'role="radiogroup"' in shell
     assert 'value="system"' in shell
     assert 'value="light"' in shell

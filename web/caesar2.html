@@ -55,6 +55,11 @@
                 <label><input type="radio" name="c2-theme" value="dark"><span>Dark</span></label>
               </div>
             </div>
+            <div class="setting">
+              <span class="setting-name">Ask before closing the tab</span>
+              <input id="confirm-close-toggle" type="checkbox" role="switch">
+            </div>
+            <p class="hint">Caesar II never saves by itself. With this on, the browser asks before a running game is closed.</p>
           </section>
           <section id="pane-game" role="tabpanel" aria-labelledby="tab-game" hidden>
             <div class="setting">
@@ -69,11 +74,6 @@
               </div>
             </div>
             <p class="hint">Integer scaling keeps square pixels; fractional scaling fills the window and leaves bars.</p>
-            <div class="setting">
-              <span class="setting-name">Ask before closing the tab</span>
-              <input id="confirm-close-toggle" type="checkbox" role="switch">
-            </div>
-            <p class="hint">Caesar II never saves by itself. With this on, the browser asks before a running game is closed.</p>
           </section>
           <section id="pane-assets" role="tabpanel" aria-labelledby="tab-assets" hidden>
             <p id="assets-status" class="hint" role="status"></p>
