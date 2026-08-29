@@ -29,8 +29,9 @@ int check_user_file_exists(const char *filename);
 void *c2_port_load_asset(const char *filename, size_t *size_out);
 unsigned int c2_port_scroll_keys(void);
 #if PORT_FEAT_STICKY_REGION_DROPDOWNS
-void c2_port_region_selection_begin(void);
+void c2_port_region_selection_begin(int mouse_x, int mouse_y);
 void c2_port_region_selection_end(void);
+int c2_port_region_selection_consume_release(int mouse_x, int mouse_y);
 #endif
 void mouserange(int xmin, int ymin, int xmax, int ymax);
 

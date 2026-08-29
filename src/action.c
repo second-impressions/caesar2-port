@@ -3426,7 +3426,7 @@ void act_rm_security(void)
     control_selection(rm_security_selection, 3, 0x14, 0xFA, 0x36);
 #else
 #if PORT_FEAT_STICKY_REGION_DROPDOWNS
-    c2_port_region_selection_begin();
+    c2_port_region_selection_begin(mouse_x, mouse_y);
 #endif
     control_selection(rm_security_selection, 3,
                       mouse_x - 0x90, mouse_y - 0x20, 0x36);
@@ -3451,7 +3451,7 @@ void act_rm_industry(void)
     control_selection(rm_industry_selection, 7, 0x14, 0xE6, 0x37);
 #else
 #if PORT_FEAT_STICKY_REGION_DROPDOWNS
-    c2_port_region_selection_begin();
+    c2_port_region_selection_begin(mouse_x, mouse_y);
 #endif
     control_selection(rm_industry_selection, 7,
                       mouse_x - 0x90, mouse_y - 0x30, 0x37);

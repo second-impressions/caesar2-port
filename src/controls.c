@@ -887,20 +887,6 @@ int over_item(struct menu_item_rec *item_list, int item_count, int x, int y)
     return 0;
 }
 
-#if PORT_FEAT_STICKY_REGION_DROPDOWNS
-static int c2_port_region_initial_release;
-
-void c2_port_region_selection_begin(void)
-{
-    c2_port_region_initial_release = 1;
-}
-
-void c2_port_region_selection_end(void)
-{
-    c2_port_region_initial_release = 0;
-}
-#endif
-
 #if PLATFORM_WINDOWS
 void get_text_string(int text_group, int text_word, char *destination);
 void show_native_message(void *window, char *message);
@@ -929,16 +915,17 @@ int control_selection(struct selection_rec *selection_list, int selection_count,
         show_selections(selection_list, selection_count, x, y, text_group, selection_is);
         gloop_end();
         selection_is = over_selection(select_count, x, y);
-        if (mouse_left_click != 0 && selection_is != 0) break;
         if (mouse_left_click != 0) {
 #if PORT_FEAT_STICKY_REGION_DROPDOWNS
-            /* A release over a row was handled above, preserving the DOS
-             * drag gesture. Ignore only the opening click's empty release. */
-            if (c2_port_region_initial_release != 0) {
-                c2_port_region_initial_release = 0;
+            /* The province lists overlap their source icons, so the opening
+             * release can already be over a row. Consume an unmoved opening
+             * click before considering that row; moved drag releases remain
+             * selections. */
+            if (c2_port_region_selection_consume_release(mouse_x, mouse_y)) {
                 continue;
             }
 #endif
+            if (selection_is != 0) break;
             if (is_icon_over(last_icon_over) == 0) {
                 selection_is = 0;
                 break;

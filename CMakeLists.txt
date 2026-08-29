@@ -341,6 +341,7 @@ add_executable(caesar2
     src/platform/common/c2_port_save.c
     src/platform/common/c2_port_save_compat.c
     src/platform/common/c2_port_pause.c
+    src/platform/common/c2_port_selection.c
     src/platform/common/c2_port_save_registry.c
     src/platform/common/c2_port_text_compat.c
     src/platform/common/c2_port_timing.c
@@ -691,6 +692,19 @@ if(BUILD_TESTING)
         src/platform/common)
     target_link_libraries(c2-port-mouse-test PRIVATE c2_unity_framework)
     add_test(NAME port-mouse COMMAND c2-port-mouse-test)
+
+    add_executable(c2-port-selection-test
+        tests/c2_port_selection_test.c
+        src/platform/common/c2_port_selection.c)
+    target_compile_features(c2-port-selection-test PRIVATE c_std_11)
+    target_compile_definitions(c2-port-selection-test PRIVATE
+        PORT_PLATFORM=1
+        PORT_PLATFORM_LINUX=1)
+    target_include_directories(c2-port-selection-test PRIVATE
+        include
+        src/platform/common)
+    target_link_libraries(c2-port-selection-test PRIVATE c2_unity_framework)
+    add_test(NAME port-selection COMMAND c2-port-selection-test)
 
     add_executable(c2-port-pause-test
         tests/c2_port_pause_test.c
