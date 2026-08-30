@@ -456,13 +456,15 @@ if(EMSCRIPTEN)
         "${CMAKE_CURRENT_BINARY_DIR}/caesar2-background.jpg" COPYONLY)
     configure_file(web/caesar2-background-light.jpg
         "${CMAKE_CURRENT_BINARY_DIR}/caesar2-background-light.jpg" COPYONLY)
+    configure_file(web/favicon.svg
+        "${CMAKE_CURRENT_BINARY_DIR}/favicon.svg" COPYONLY)
     file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/version.txt"
         "${C2_VERSION_STRING}\n")
     configure_file(LICENSE "${CMAKE_CURRENT_BINARY_DIR}/LICENSE" COPYONLY)
     set_target_properties(caesar2 PROPERTIES
         OUTPUT_NAME "index"
         LINK_DEPENDS
-            "${C2_WASM_SHELL};${C2_WASM_UI_JS};${CMAKE_CURRENT_SOURCE_DIR}/LICENSE;${CMAKE_CURRENT_SOURCE_DIR}/web/c2_shell.css;${CMAKE_CURRENT_SOURCE_DIR}/web/c2_browser.js;${CMAKE_CURRENT_SOURCE_DIR}/web/coi-serviceworker.js;${CMAKE_CURRENT_SOURCE_DIR}/web/vendor/pico.min.css;${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2-background.jpg;${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2-background-light.jpg"
+            "${C2_WASM_SHELL};${C2_WASM_UI_JS};${CMAKE_CURRENT_SOURCE_DIR}/LICENSE;${CMAKE_CURRENT_SOURCE_DIR}/web/c2_shell.css;${CMAKE_CURRENT_SOURCE_DIR}/web/c2_browser.js;${CMAKE_CURRENT_SOURCE_DIR}/web/coi-serviceworker.js;${CMAKE_CURRENT_SOURCE_DIR}/web/vendor/pico.min.css;${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2-background.jpg;${CMAKE_CURRENT_SOURCE_DIR}/web/caesar2-background-light.jpg;${CMAKE_CURRENT_SOURCE_DIR}/web/favicon.svg"
         SUFFIX ".html")
     target_compile_options(caesar2 PRIVATE
         -pthread

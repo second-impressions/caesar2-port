@@ -291,6 +291,18 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "configure_file(web/vendor/pico.min.css" in cmake
     assert "configure_file(web/caesar2-background.jpg" in cmake
     assert "configure_file(web/caesar2-background-light.jpg" in cmake
+    # The production favicon ships with the page; candidate galleries live in
+    # the separate second-impressions/assets repository.
+    favicon = (ROOT / "web" / "favicon.svg").read_text()
+    assert favicon.startswith('<svg xmlns="http://www.w3.org/2000/svg"')
+    assert 'viewBox="0 0 64 64"' in favicon
+    assert '<link rel="icon" href="favicon.svg" type="image/svg+xml" sizes="any">' in shell
+    assert "configure_file(web/favicon.svg" in cmake
+    workflow_text = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    assert "build/ci-wasm/favicon.svg" in workflow_text
+    assert "cp build/ci-wasm/favicon.svg _site/" in workflow_text
+    assert not (ROOT / "web" / "favicon-gallery.html").exists()
+    assert not (ROOT / "web" / "favicon-candidates").exists()
     assert (ROOT / "web" / "vendor" / "pico.min.css").stat().st_size > 10_000
     assert (ROOT / "web" / "caesar2-background.jpg").stat().st_size > 100_000
     assert (ROOT / "web" / "caesar2-background-light.jpg").stat().st_size > 100_000
