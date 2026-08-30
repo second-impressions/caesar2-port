@@ -13,4 +13,4 @@
 
   Flood-filling from the corners keeps light pixels inside the city artwork untouched.
 - `vendor/pico.min.css` is Pico CSS 2.1.1, distributed under the MIT license in `vendor/PICO-LICENSE.md`.
-- `favicon.svg` is an original isometric terracotta plaza-rosette tile drawn for this port; it contains no extracted or traced Caesar II game assets. The full candidate set and comparison gallery live under `caesar2/` in the separate [assets](https://github.com/second-impressions/assets) repository.
+- `favicon.svg` is an original Roman helmet drawn in profile for this port; it contains no extracted or traced Caesar II game assets. The full candidate set, comparison gallery, and PNG renders live under `caesar2/` in the separate [assets](https://github.com/second-impressions/assets) repository.
