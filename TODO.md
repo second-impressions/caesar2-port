@@ -93,7 +93,7 @@ from this TU's text.
 canonicalization from MSVC 4.0's compiler itself:
 
 1. extract the C compiler pass (C1.EXE / C1XX or the combined CL) from
-   the `localhost/msvc-4.00-wibo` toolchain image in the tooling repo;
+   `ghcr.io/second-impressions/msvc-4.00-wibo:latest`;
 2. locate the expression-tree construction for binary commutative ops
    and the relational emitter — find the comparison that picks the
    first-loaded operand (likely an id/pointer compare on hash-consed
