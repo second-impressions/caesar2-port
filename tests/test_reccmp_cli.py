@@ -1,5 +1,6 @@
 """CLI wiring for the stock reccmp report commands."""
 
+import re
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,18 @@ from c2.commands import reccmp as reccmp_command
 
 
 runner = CliRunner()
+
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def plain(text: str) -> str:
+    """Strip the styling typer's rich help emits when it detects colour.
+
+    Rich renders ``--reccmp`` as separately bolded ``-`` and ``-reccmp`` runs,
+    so a plain substring check on the raw output fails on any runner that
+    reports colour support, as GitHub Actions does.
+    """
+    return _ANSI.sub("", text)
 
 
 @pytest.mark.parametrize(
@@ -58,6 +71,7 @@ def test_rebuild_help_exposes_reccmp_publication_switch():
     result = runner.invoke(app, ["rebuild", "--help"])
 
     assert result.exit_code == 0
-    assert "--reccmp" in result.output
-    assert "--no-reccmp" in result.output
-    assert "--reccmp-config" in result.output
+    help_text = plain(result.output)
+    assert "--reccmp" in help_text
+    assert "--no-reccmp" in help_text
+    assert "--reccmp-config" in help_text
