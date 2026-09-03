@@ -42,7 +42,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "reccmp", editable = "../reccmp" },
+    { name = "reccmp", git = "https://github.com/second-impressions/reccmp.git?rev=57742eab25b98b14d987913626a57fb56575bf1e" },
     { name = "requests", specifier = ">=2.34.2" },
     { name = "typer", specifier = ">=0.27.0" },
 ]
@@ -475,7 +475,8 @@ wheels = [
 
 [[package]]
 name = "reccmp"
-source = { editable = "../reccmp" }
+version = "0.1.6"
+source = { git = "https://github.com/second-impressions/reccmp.git?rev=57742eab25b98b14d987913626a57fb56575bf1e#57742eab25b98b14d987913626a57fb56575bf1e" }
 dependencies = [
     { name = "capstone" },
     { name = "colorama" },
@@ -485,18 +486,6 @@ dependencies = [
     { name = "pyghidra" },
     { name = "pystache" },
     { name = "ruamel-yaml" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "capstone", specifier = "==5.0.9" },
-    { name = "colorama", specifier = ">=0.4.6" },
-    { name = "cydifflib", specifier = "==1.2.0" },
-    { name = "pydantic", specifier = "==2.13.4" },
-    { name = "pydemumble", specifier = "==0.0.1" },
-    { name = "pyghidra", specifier = "==3.1.0" },
-    { name = "pystache", specifier = "==0.6.8" },
-    { name = "ruamel-yaml", specifier = "==0.19.1" },
 ]
 
 [[package]]

@@ -20,8 +20,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.uv.sources]
-reccmp = { path = "../reccmp", editable = true }  # TEMP during formats migration; final pin below
-# reccmp = { git = "https://github.com/second-impressions/reccmp.git", rev = "e9bb551f4ce243f0d25f4d1639025b9ac1c9ea68" }
+reccmp = { git = "https://github.com/second-impressions/reccmp.git", rev = "57742eab25b98b14d987913626a57fb56575bf1e" }
 
 [project.scripts]
 c2 = "c2.app:app"

@@ -58,15 +58,14 @@ jobs:
         # is never committed, so CTest omits them unless explicitly supplied.
         run: nix develop --command ctest --test-dir build/ci --output-on-failure
       - name: Test static contracts and tooling
-        # The annotation parser has two tracked reconstruction-era failures,
-        # and test_reccmp_project exercises the unavailable sibling toolkit.
-        # Every portable/static/tool test, including versioning and Pages
-        # contracts, runs on every CI build.
+        # Runs inside the project environment so the local c2 package and
+        # the git-pinned reccmp toolkit resolve on a clean checkout. The
+        # annotation parser has two tracked reconstruction-era failures;
+        # everything else, including versioning and Pages contracts, runs
+        # on every CI build.
         run: |
-          nix develop --command uv run --no-project --with pytest \
-            pytest -q \
-              --ignore=tests/test_function_annotations.py \
-              --ignore=tests/test_reccmp_project.py
+          nix develop --command uv run pytest -q \
+            --ignore=tests/test_function_annotations.py
 
   # ── WebAssembly + Pages artifact ─────────────────────────────────────
   # This is the only Wasm compilation. The deploy job below consumes the
