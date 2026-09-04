@@ -48,6 +48,17 @@ struct c2_raw_cd_reader {
     enum c2_cd_sector_mode mode;
 };
 
+/* A physical CD-ROM drive exposed as logical 2048-byte ISO sectors.
+ * win32_handle carries the Windows volume HANDLE; fd carries the POSIX
+ * device descriptor.  size and fingerprint come from the disc's primary
+ * volume descriptor. */
+struct c2_cdrom_reader {
+    void *win32_handle;
+    int fd;
+    uint64_t size;
+    uint64_t fingerprint;
+};
+
 int c2_iso_catalog_open(const struct c2_source_reader *source,
                         struct c2_iso_catalog *catalog,
                         char *error, size_t error_capacity);
@@ -69,6 +80,19 @@ int c2_raw_cd_reader_init(struct c2_raw_cd_reader *reader,
                           char *error, size_t error_capacity);
 void c2_raw_cd_source(struct c2_raw_cd_reader *reader,
                       struct c2_source_reader *source);
+
+#define C2_CDROM_DRIVE_PATH_CAPACITY 32
+
+int c2_cdrom_is_device_path(const char *path);
+/* Fill paths[0..max) with candidate optical drive device paths present on
+ * this machine ("/dev/sr0", "D:", ...) and return how many were found.
+ * Presence of a drive does not imply a readable disc is inserted. */
+int c2_cdrom_find_drives(char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max);
+int c2_cdrom_open(const char *path, struct c2_cdrom_reader *reader,
+                  char *error, size_t error_capacity);
+void c2_cdrom_source(struct c2_cdrom_reader *reader,
+                     struct c2_source_reader *source);
+void c2_cdrom_close(struct c2_cdrom_reader *reader);
 
 int c2_zip_extract(const char *zip_path, const char *destination,
                    const struct c2_import_progress *progress,

@@ -6,8 +6,10 @@ The portable build should accept:
 
 - an installed Caesar II directory;
 - a ZIP containing an installed directory or optimized asset pack;
-- a plain ISO-9660 image; and
-- a single-track BIN/CUE image through a MODE1/2352 or MODE2/2352 adapter.
+- a plain ISO-9660 image;
+- a single-track BIN/CUE image through a MODE1/2352 or MODE2/2352 adapter; and
+- (native only) a physical CD-ROM drive read directly as logical ISO-9660
+  sectors, cached by the disc's primary volume descriptor fingerprint.
 
 An already-installed GOG copy is an ordinary installation directory. Importing a GOG installer is explicitly out of scope; users can install or unpack it first.
 

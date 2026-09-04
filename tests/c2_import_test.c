@@ -281,6 +281,62 @@ static void test_raw_sector_adapter_feeds_iso_reader(void)
     free(iso_memory.data);
 }
 
+static void test_cdrom_reader_serves_iso_sectors(void)
+{
+#if defined(_WIN32)
+    /* The Windows implementation opens \\.\X: volume handles, which need
+     * real drive hardware; the shared PVD/read logic is covered on POSIX
+     * where a regular file stands in for the block device. */
+    TEST_IGNORE_MESSAGE("needs a physical drive on Windows");
+#else
+    struct memory_source memory;
+    struct c2_cdrom_reader cdrom;
+    struct c2_source_reader source;
+    struct c2_iso_catalog catalog;
+    const struct c2_iso_entry *entry;
+    FILE *file;
+    char error[128];
+    char value[5] = {0};
+    size_t read;
+
+    memory.data = make_iso(&memory.size);
+    remove("c2-cdrom-test.dev");
+    file = fopen("c2-cdrom-test.dev", "wb");
+    TEST_ASSERT_NOT_NULL(file);
+    TEST_ASSERT_EQUAL_size_t(memory.size,
+                             fwrite(memory.data, 1, memory.size, file));
+    TEST_ASSERT_EQUAL_INT(0, fclose(file));
+
+    /* A regular file must never be routed through the device importer. */
+    TEST_ASSERT_FALSE(c2_cdrom_is_device_path("c2-cdrom-test.dev"));
+
+    TEST_ASSERT_TRUE_MESSAGE(c2_cdrom_open("c2-cdrom-test.dev", &cdrom,
+                                           error, sizeof(error)), error);
+    /* Size derives from the PVD volume space, not from any stat result. */
+    TEST_ASSERT_EQUAL_UINT64(32 * SECTOR, cdrom.size);
+    TEST_ASSERT_TRUE(cdrom.fingerprint != 0);
+    c2_cdrom_source(&cdrom, &source);
+    TEST_ASSERT_EQUAL_UINT64(32 * SECTOR, source.size);
+    TEST_ASSERT_TRUE(c2_iso_catalog_open(&source, &catalog,
+                                         error, sizeof(error)));
+    entry = c2_iso_catalog_find(&catalog, "HD/C2.ENG");
+    TEST_ASSERT_NOT_NULL(entry);
+    TEST_ASSERT_TRUE(c2_iso_entry_read(&source, entry, 0, value, 4, &read));
+    TEST_ASSERT_EQUAL_size_t(4, read);
+    TEST_ASSERT_EQUAL_STRING("text", value);
+    /* Sub-sector reads bounce through an aligned sector buffer. */
+    memset(value, 0, sizeof(value));
+    TEST_ASSERT_TRUE(c2_iso_entry_read(&source, entry, 1, value, 2, &read));
+    TEST_ASSERT_EQUAL_size_t(2, read);
+    TEST_ASSERT_EQUAL_STRING("ex", value);
+    c2_iso_catalog_close(&catalog);
+    c2_cdrom_close(&cdrom);
+    TEST_ASSERT_TRUE(cdrom.fd < 0);
+    remove("c2-cdrom-test.dev");
+    free(memory.data);
+#endif
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -289,5 +345,6 @@ int main(void)
     RUN_TEST(test_zip_extracts_one_outer_directory);
     RUN_TEST(test_pack_activates_default_profile);
     RUN_TEST(test_raw_sector_adapter_feeds_iso_reader);
+    RUN_TEST(test_cdrom_reader_serves_iso_sectors);
     return UNITY_END();
 }

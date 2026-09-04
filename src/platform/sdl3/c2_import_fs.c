@@ -187,6 +187,21 @@ static int import_iso_file(const char *path, const char *destination,
     return ok;
 }
 
+static int import_cdrom_device(const char *device_path,
+                               const char *destination,
+                               const struct c2_import_progress *progress,
+                               char *error, size_t error_capacity)
+{
+    struct c2_cdrom_reader cdrom;
+    struct c2_source_reader source;
+    int ok;
+    if (!c2_cdrom_open(device_path, &cdrom, error, error_capacity)) return 0;
+    c2_cdrom_source(&cdrom, &source);
+    ok = c2_iso_extract(&source, destination, progress, error, error_capacity);
+    c2_cdrom_close(&cdrom);
+    return ok;
+}
+
 static int import_cue(const char *cue_path, const char *destination,
                       const struct c2_import_progress *progress,
                       char *error, size_t error_capacity)
@@ -247,21 +262,34 @@ int c2_import_path(const char *source_path, const char *cache_root,
     char key[32];
     FILE *done;
     int ok;
+    int is_cdrom;
 
-    if (!SDL_GetPathInfo(source_path, &info)) { set_error(error, error_capacity, "game-data source does not exist"); return 0; }
-    if (info.type == SDL_PATHTYPE_DIRECTORY) {
-        char index_path[C2_IMPORT_PATH_CAPACITY];
-        if (join_path(index_path, sizeof(index_path), source_path, "C2PACK.IDX") &&
-            SDL_GetPathInfo(index_path, NULL)) {
-            return c2_pack_activate(source_path, asset_profile,
-                                    asset_root, asset_root_capacity,
-                                    error, error_capacity);
+    is_cdrom = c2_cdrom_is_device_path(source_path);
+    if (is_cdrom) {
+        /* Key the cache by the disc's primary volume descriptor: the
+         * device path is identical for every disc in the drive and the
+         * device node reports no useful size or modify time. */
+        struct c2_cdrom_reader cdrom;
+        if (!c2_cdrom_open(source_path, &cdrom, error, error_capacity)) return 0;
+        snprintf(key, sizeof(key), "%016llx",
+                 (unsigned long long)cdrom.fingerprint);
+        c2_cdrom_close(&cdrom);
+    } else {
+        if (!SDL_GetPathInfo(source_path, &info)) { set_error(error, error_capacity, "game-data source does not exist"); return 0; }
+        if (info.type == SDL_PATHTYPE_DIRECTORY) {
+            char index_path[C2_IMPORT_PATH_CAPACITY];
+            if (join_path(index_path, sizeof(index_path), source_path, "C2PACK.IDX") &&
+                SDL_GetPathInfo(index_path, NULL)) {
+                return c2_pack_activate(source_path, asset_profile,
+                                        asset_root, asset_root_capacity,
+                                        error, error_capacity);
+            }
+            if (strlen(source_path) >= asset_root_capacity) return 0;
+            strcpy(asset_root, source_path);
+            return 1;
         }
-        if (strlen(source_path) >= asset_root_capacity) return 0;
-        strcpy(asset_root, source_path);
-        return 1;
+        snprintf(key, sizeof(key), "%016llx", (unsigned long long)source_key(source_path, &info));
     }
-    snprintf(key, sizeof(key), "%016llx", (unsigned long long)source_key(source_path, &info));
     if (!join_path(game_data_root, sizeof(game_data_root), cache_root, "game-data") ||
         !join_path(destination, sizeof(destination), game_data_root, key) ||
         !join_path(marker, sizeof(marker), destination, ".complete")) return 0;
@@ -269,7 +297,9 @@ int c2_import_path(const char *source_path, const char *cache_root,
     if (!make_parents(marker) || (!SDL_CreateDirectory(destination) && !SDL_GetPathInfo(destination, NULL))) {
         set_error(error, error_capacity, "could not create game-data cache"); return 0;
     }
-    if (extension_is(source_path, ".zip") || extension_is(source_path, ".c2assets"))
+    if (is_cdrom)
+        ok = import_cdrom_device(source_path, destination, progress, error, error_capacity);
+    else if (extension_is(source_path, ".zip") || extension_is(source_path, ".c2assets"))
         ok = c2_zip_extract(source_path, destination, progress, error, error_capacity);
     else if (extension_is(source_path, ".iso"))
         ok = import_iso_file(source_path, destination, progress, error, error_capacity);

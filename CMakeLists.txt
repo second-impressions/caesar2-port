@@ -179,6 +179,7 @@ add_library(c2_import_core STATIC
     src/platform/common/c2_cue.c
     src/platform/sdl3/c2_zip.c
     src/platform/sdl3/c2_import_fs.c
+    src/platform/sdl3/c2_cdrom_fs.c
     src/platform/sdl3/c2_pack.c)
 target_compile_features(c2_import_core PRIVATE c_std_11)
 target_include_directories(c2_import_core PUBLIC include)
