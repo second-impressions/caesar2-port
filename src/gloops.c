@@ -1161,7 +1161,11 @@ void initreg_game_loop(void)
         if (INITREG_REGION_READY) {
             this_region();
             if (decision == 1) {
+#if PORT_FIX_MODAL_BUTTON_LATENCY
+                out2 = PORT_MODAL_BUTTON_FRAMES;
+#else
                 out2 = 0x64;
+#endif
                 province_is = region_over - 1;
 #if PORT_PLATFORM
                 province_difficulty = provincial_difficulty[region_over - 1];

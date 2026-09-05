@@ -910,6 +910,9 @@ int control_selection(struct selection_rec *selection_list, int selection_count,
     show_selection_box(selection_count, x, y, text_group);
     setup_whole_screen_refresh();
     mouse_left_preclick = 0;
+#if PORT_FEAT_DEBUG_OBSERVATION
+    c2_observe_selection(text_group, x, y, select_count);
+#endif
     for (;;) {
         gloop_start();
         show_selections(selection_list, selection_count, x, y, text_group, selection_is);
@@ -1079,6 +1082,9 @@ void extended_confirm(int message_idx, int x, int y)
     refresh_svga_screen();
     clear_mouse();
     out1 = 0;
+#if PORT_FEAT_DEBUG_OBSERVATION
+    c2_observe(PORT_OBSERVATION_CONFIRMATION, message_idx);
+#endif
     while (out1 != 1) {
         gloop_start();
         show_buttons(x, y, confirming_buttons, 2);

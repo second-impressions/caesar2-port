@@ -2827,7 +2827,11 @@ void act_exit_help(void)
 void act_yes(void)
 {
     decision = 1;
+#if PORT_FIX_MODAL_BUTTON_LATENCY
+    out1     = PORT_MODAL_BUTTON_FRAMES;
+#else
     out1     = 100;
+#endif
 }
 
 // Generic "no" button: decision = 0, out1 = 100 — dismiss the modal.
@@ -2836,7 +2840,11 @@ void act_yes(void)
 void act_no(void)
 {
     decision = 0;
+#if PORT_FIX_MODAL_BUTTON_LATENCY
+    out1     = PORT_MODAL_BUTTON_FRAMES;
+#else
     out1     = 100;
+#endif
 }
 
 // Toggle the global pause flag.

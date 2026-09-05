@@ -1457,6 +1457,10 @@ void c2_host_publish_observation(const struct c2_observation *observation)
     c2_observation.sequences_running = observation->sequences_running;
     c2_observation.speech_playing = observation->speech_playing;
     c2_observation.query_type = observation->query_type;
+    c2_observation.region_tool = observation->region_tool;
+    c2_observation.selection_x = observation->selection_x;
+    c2_observation.selection_y = observation->selection_y;
+    c2_observation.selection_rows = observation->selection_rows;
     c2_observation.out1 = observation->out1;
     c2_observation.out2 = observation->out2;
     c2_observation.out3 = observation->out3;

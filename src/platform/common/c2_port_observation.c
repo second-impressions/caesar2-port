@@ -25,6 +25,7 @@ static void fill_observation(struct c2_observation *observation)
     observation->sequences_running = sequences_running;
     observation->speech_playing = db_playing;
     observation->query_type = q_type;
+    observation->region_tool = reg_placing_type;
     observation->out1 = out1;
     observation->out2 = out2;
     observation->out3 = out3;
@@ -66,6 +67,19 @@ void c2_observe_menu_bar(int menu_count, int active_menu)
     observation.point = PORT_OBSERVATION_MENU_BAR;
     observation.menu_count = menu_count;
     observation.active_menu = active_menu;
+    c2_host_publish_observation(&observation);
+}
+
+void c2_observe_selection(int text_group, int x, int y, int rows)
+{
+    struct c2_observation observation;
+
+    fill_observation(&observation);
+    observation.point = PORT_OBSERVATION_SELECTION;
+    observation.detail = text_group;
+    observation.selection_x = x;
+    observation.selection_y = y;
+    observation.selection_rows = rows;
     c2_host_publish_observation(&observation);
 }
 

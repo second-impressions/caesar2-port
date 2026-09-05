@@ -61,6 +61,23 @@ enum campania_smoke_phase {
     CAMPANIA_SMOKE_WAIT_FOR_QUERY_CLOSE
 };
 
+/* Province build smoke: farm, its goods list, the warehouse question, the
+ * warehouse, the work-camp question, all by mouse. */
+enum {
+    BUILD_SMOKE_WAIT_FOR_CITY,
+    BUILD_SMOKE_SETTLE,
+    BUILD_SMOKE_WAIT_FOR_PROVINCE,
+    BUILD_SMOKE_OPEN_INDUSTRY,
+    BUILD_SMOKE_PICK_FARM,
+    BUILD_SMOKE_PLACE_FARM,
+    BUILD_SMOKE_PICK_GOODS,
+    BUILD_SMOKE_ANSWER_WAREHOUSE,
+    BUILD_SMOKE_WAIT_WAREHOUSE_TOOL,
+    BUILD_SMOKE_PLACE_WAREHOUSE,
+    BUILD_SMOKE_ANSWER_WORK_CAMP,
+    BUILD_SMOKE_WAIT_DONE
+};
+
 enum {
     CITY_FORUM_ICON_X = 560,
     CITY_FORUM_ICON_Y = 251,
@@ -77,6 +94,30 @@ enum {
     MUSIC_SAMPLE_LOG_INTERVAL_MS = 250,
     MUSIC_MIN_SAFE_QUEUE_MS = 40,
     CAMPANIA_CONFIRM_DELAY_MS = 3000,
+    /* Modal Yes/No buttons at the standard (0xa0, 0xa0) panel origin. */
+    CONFIRM_YES_X = 0xa0 + 32 + 14,
+    CONFIRM_NO_X = 0xa0 + 80 + 15,
+    CONFIRM_BUTTON_Y = 0xa0 + 48 + 16,
+    /* A modal must be gone this soon after its button was clicked. */
+    MODAL_DISMISS_LIMIT_MS = 600,
+    PROVINCE_ENTRY_LIMIT_MS = 1200,
+    PROVINCE_VIEW_ICON_X = 612,
+    PROVINCE_VIEW_ICON_Y = 250,
+    PROVINCE_INDUSTRY_ICON_X = 560,
+    PROVINCE_INDUSTRY_ICON_Y = 328,
+    /* Campania's initial view: the fertile patch south of the town takes a
+     * farm, and a warehouse must sit within reach of an industry. */
+    PROVINCE_FARM_X = 365,
+    PROVINCE_FARM_Y = 385,
+    PROVINCE_WAREHOUSE_X = 420,
+    PROVINCE_WAREHOUSE_Y = 372,
+    REGION_TOOL_FARM = 0x25,
+    REGION_TOOL_WAREHOUSE = 0x24,
+    REGION_TOOL_WORK_CAMP = 0x23,
+    CONFIRM_WAREHOUSE = 0x0b,
+    CONFIRM_WORK_CAMP = 0x0c,
+    SELECTION_INDUSTRY = 0x37,
+    SELECTION_FARM_GOODS = 0x11,
     SMOKE_TIMEOUT_MS = 45000,
     SAVE_LOAD_SMOKE_TIMEOUT_MS = 90000
 };
@@ -789,6 +830,216 @@ static int capture_music_voices(
     return 1;
 }
 
+static int click_selection_row(struct c2_sdl_smoke *smoke, Uint64 now,
+                               int row)
+{
+    return click_mouse(smoke, now, smoke->build_selection_x + 20,
+                       smoke->build_selection_y + 7 + row * 20 + 10,
+                       C2_HOST_MOUSE_LEFT);
+}
+
+static int modal_dismissed_in_time(const struct c2_sdl_smoke *smoke,
+                                   Uint64 now, const char *what)
+{
+    Uint64 elapsed;
+
+    elapsed = now - smoke->modal_clicked_at;
+    printf("%s dismissed %llu ms after its button was clicked\n", what,
+           (unsigned long long)elapsed);
+    if (elapsed > MODAL_DISMISS_LIMIT_MS) {
+        fprintf(stderr, "%s stayed open for %llu ms after its button\n", what,
+                (unsigned long long)elapsed);
+        return 0;
+    }
+    return 1;
+}
+
+static enum c2_sdl_smoke_result drive_province_build(
+    struct c2_sdl_smoke *smoke, Uint64 now,
+    const struct c2_observation *observation)
+{
+    int in_city_loop;
+
+    if (observation_is(observation, PORT_OBSERVATION_MESSAGE)) {
+        smoke->city_quiet_since = now;
+        click_mouse(smoke, now, 0, 479, C2_HOST_MOUSE_RIGHT);
+        return C2_SDL_SMOKE_RUNNING;
+    }
+    in_city_loop = observation_is(observation, PORT_OBSERVATION_CITY_LOOP);
+    if (in_city_loop && smoke->province_clicked_at != 0 &&
+        smoke->phase == BUILD_SMOKE_WAIT_FOR_CITY) {
+        Uint64 elapsed = now - smoke->province_clicked_at;
+        printf("province entered %llu ms after its confirmation was clicked\n",
+               (unsigned long long)elapsed);
+        /* The world map used to count 99 paced frames after the province
+         * confirmation before handing over. */
+        if (elapsed > PROVINCE_ENTRY_LIMIT_MS) {
+            fprintf(stderr, "province confirmation took %llu ms to hand over\n",
+                    (unsigned long long)elapsed);
+            return C2_SDL_SMOKE_FAILURE;
+        }
+    }
+
+    switch (smoke->phase) {
+    case BUILD_SMOKE_WAIT_FOR_CITY:
+        if (in_city_loop) {
+            if (observation->construction_plebs <
+                observation->required_construction_plebs) {
+                fprintf(stderr, "new province lacks construction plebs\n");
+                return C2_SDL_SMOKE_FAILURE;
+            }
+            smoke->city_quiet_since = now;
+            smoke->phase = BUILD_SMOKE_SETTLE;
+        }
+        break;
+    case BUILD_SMOKE_SETTLE:
+        if (in_city_loop && now - smoke->city_quiet_since >= 300 &&
+            click_mouse(smoke, now, PROVINCE_VIEW_ICON_X, PROVINCE_VIEW_ICON_Y,
+                        C2_HOST_MOUSE_LEFT)) {
+            smoke->phase = BUILD_SMOKE_WAIT_FOR_PROVINCE;
+        }
+        break;
+    case BUILD_SMOKE_WAIT_FOR_PROVINCE:
+        if (in_city_loop && observation->map_mode == 1) {
+            smoke->city_quiet_since = now;
+            smoke->build_denarii = observation->denarii;
+            smoke->phase = BUILD_SMOKE_OPEN_INDUSTRY;
+        } else if (in_city_loop && now - smoke->last_input >= 500) {
+            click_mouse(smoke, now, PROVINCE_VIEW_ICON_X, PROVINCE_VIEW_ICON_Y,
+                        C2_HOST_MOUSE_LEFT);
+        }
+        break;
+    case BUILD_SMOKE_OPEN_INDUSTRY:
+        if (in_city_loop && now - smoke->city_quiet_since >= 300 &&
+            click_mouse(smoke, now, PROVINCE_INDUSTRY_ICON_X,
+                        PROVINCE_INDUSTRY_ICON_Y, C2_HOST_MOUSE_LEFT)) {
+            smoke->phase = BUILD_SMOKE_PICK_FARM;
+        }
+        break;
+    case BUILD_SMOKE_PICK_FARM:
+        if (observation_is(observation, PORT_OBSERVATION_SELECTION) &&
+            observation->detail == SELECTION_INDUSTRY) {
+            smoke->build_selection_x = observation->selection_x;
+            smoke->build_selection_y = observation->selection_y;
+            if (click_selection_row(smoke, now, 0)) {
+                smoke->phase = BUILD_SMOKE_PLACE_FARM;
+            }
+        } else if (in_city_loop && now - smoke->last_input >= 500) {
+            click_mouse(smoke, now, PROVINCE_INDUSTRY_ICON_X,
+                        PROVINCE_INDUSTRY_ICON_Y, C2_HOST_MOUSE_LEFT);
+        }
+        break;
+    case BUILD_SMOKE_PLACE_FARM:
+        if (in_city_loop && observation->region_tool == REGION_TOOL_FARM &&
+            now - smoke->last_input >= 250 &&
+            click_mouse(smoke, now, PROVINCE_FARM_X, PROVINCE_FARM_Y,
+                        C2_HOST_MOUSE_LEFT)) {
+            smoke->phase = BUILD_SMOKE_PICK_GOODS;
+        }
+        break;
+    case BUILD_SMOKE_PICK_GOODS:
+        if (observation_is(observation, PORT_OBSERVATION_SELECTION) &&
+            observation->detail == SELECTION_FARM_GOODS) {
+            if (observation->selection_rows < 2) {
+                fprintf(stderr, "farm goods list offers no goods\n");
+                return C2_SDL_SMOKE_FAILURE;
+            }
+            smoke->build_selection_x = observation->selection_x;
+            smoke->build_selection_y = observation->selection_y;
+            if (click_selection_row(smoke, now, 0)) {
+                smoke->phase = BUILD_SMOKE_ANSWER_WAREHOUSE;
+            }
+        } else if (in_city_loop && now - smoke->last_input >= 1500) {
+            fprintf(stderr, "farm placement did not open its goods list\n");
+            return C2_SDL_SMOKE_FAILURE;
+        }
+        break;
+    case BUILD_SMOKE_ANSWER_WAREHOUSE:
+        if (observation_is(observation, PORT_OBSERVATION_CONFIRMATION) &&
+            observation->detail == CONFIRM_WAREHOUSE) {
+            if (click_mouse(smoke, now, CONFIRM_YES_X, CONFIRM_BUTTON_Y,
+                            C2_HOST_MOUSE_LEFT)) {
+                smoke->modal_clicked_at = now;
+                smoke->phase = BUILD_SMOKE_WAIT_WAREHOUSE_TOOL;
+            }
+        } else if (in_city_loop && now - smoke->last_input >= 1500) {
+            fprintf(stderr, "farm did not ask for a warehouse\n");
+            return C2_SDL_SMOKE_FAILURE;
+        }
+        break;
+    case BUILD_SMOKE_WAIT_WAREHOUSE_TOOL:
+        if (in_city_loop) {
+            if (!modal_dismissed_in_time(smoke, now, "warehouse question")) {
+                return C2_SDL_SMOKE_FAILURE;
+            }
+            if (observation->region_tool != REGION_TOOL_WAREHOUSE) {
+                fprintf(stderr, "answering yes did not select the warehouse "
+                                "tool (tool %d)\n", observation->region_tool);
+                return C2_SDL_SMOKE_FAILURE;
+            }
+            if (observation->denarii >= smoke->build_denarii) {
+                fprintf(stderr, "the farm did not cost anything\n");
+                return C2_SDL_SMOKE_FAILURE;
+            }
+            smoke->build_denarii = observation->denarii;
+            smoke->phase = BUILD_SMOKE_PLACE_WAREHOUSE;
+        } else if (now - smoke->modal_clicked_at > MODAL_DISMISS_LIMIT_MS &&
+                   observation_is(observation, PORT_OBSERVATION_CONFIRMATION)) {
+            /* Still open: click again, as a player would. */
+            click_mouse(smoke, now, CONFIRM_YES_X, CONFIRM_BUTTON_Y,
+                        C2_HOST_MOUSE_LEFT);
+            if (now - smoke->modal_clicked_at > 5000) {
+                fprintf(stderr, "warehouse question ignores its yes button\n");
+                return C2_SDL_SMOKE_FAILURE;
+            }
+        }
+        break;
+    case BUILD_SMOKE_PLACE_WAREHOUSE:
+        if (in_city_loop && now - smoke->last_input >= 250 &&
+            click_mouse(smoke, now, PROVINCE_WAREHOUSE_X, PROVINCE_WAREHOUSE_Y,
+                        C2_HOST_MOUSE_LEFT)) {
+            smoke->phase = BUILD_SMOKE_ANSWER_WORK_CAMP;
+        }
+        break;
+    case BUILD_SMOKE_ANSWER_WORK_CAMP:
+        if (observation_is(observation, PORT_OBSERVATION_CONFIRMATION) &&
+            observation->detail == CONFIRM_WORK_CAMP) {
+            if (click_mouse(smoke, now, CONFIRM_NO_X, CONFIRM_BUTTON_Y,
+                            C2_HOST_MOUSE_LEFT)) {
+                smoke->modal_clicked_at = now;
+                smoke->phase = BUILD_SMOKE_WAIT_DONE;
+            }
+        } else if (in_city_loop && now - smoke->last_input >= 1500) {
+            fprintf(stderr, "warehouse did not ask for a work camp\n");
+            return C2_SDL_SMOKE_FAILURE;
+        }
+        break;
+    case BUILD_SMOKE_WAIT_DONE:
+        if (in_city_loop) {
+            if (!modal_dismissed_in_time(smoke, now, "work camp question")) {
+                return C2_SDL_SMOKE_FAILURE;
+            }
+            if (observation->region_tool == REGION_TOOL_WORK_CAMP) {
+                fprintf(stderr, "answering no selected the work camp tool\n");
+                return C2_SDL_SMOKE_FAILURE;
+            }
+            if (observation->denarii >= smoke->build_denarii) {
+                fprintf(stderr, "the warehouse did not cost anything\n");
+                return C2_SDL_SMOKE_FAILURE;
+            }
+            printf("province build smoke completed: farm and warehouse built, "
+                   "%d denarii left\n", observation->denarii);
+            return C2_SDL_SMOKE_SUCCESS;
+        }
+        if (now - smoke->modal_clicked_at > 5000) {
+            fprintf(stderr, "work camp question ignores its no button\n");
+            return C2_SDL_SMOKE_FAILURE;
+        }
+        break;
+    }
+    return C2_SDL_SMOKE_RUNNING;
+}
+
 static enum c2_sdl_smoke_result drive_music_buffer(
     struct c2_sdl_smoke *smoke, Uint64 now,
     const struct c2_observation *observation)
@@ -936,7 +1187,7 @@ enum c2_sdl_smoke_result c2_sdl_smoke_iterate(
                 "smoke test timed out at observation %d detail %d phase %d "
                 "paused %d zoom %d map (%d,%d) mode %d pointer %d query %d "
                 "out %d/%d/%d mouse %d/%d/%d %d/%d/%d speech %d "
-                "music %d branch %d count %d "
+                "music %d branch %d count %d tool %d "
                 "file '%s'\n",
                 observation.point, observation.detail, smoke->phase,
                 observation.paused, observation.zoom_level,
@@ -952,7 +1203,7 @@ enum c2_sdl_smoke_result c2_sdl_smoke_iterate(
                 observation.mouse_right_click,
                 observation.speech_playing,
                 observation.sequences_running, observation.tune_branch,
-                observation.tune_branch_count,
+                observation.tune_branch_count, observation.region_tool,
                 observation.filename);
         return C2_SDL_SMOKE_FAILURE;
     }
@@ -987,6 +1238,7 @@ enum c2_sdl_smoke_result c2_sdl_smoke_iterate(
                  CAMPANIA_CONFIRM_DELAY_MS) &&
             click_mouse(smoke, now, 410, 330, C2_HOST_MOUSE_LEFT)) {
             smoke->confirmation_clicked = 1;
+            smoke->province_clicked_at = now;
             if (smoke->kind == C2_SDL_SMOKE_CAMPANIA_TRANSITION) {
                 printf("Campania confirmation clicked after %llu ms\n",
                        (unsigned long long)(
@@ -1000,6 +1252,20 @@ enum c2_sdl_smoke_result c2_sdl_smoke_iterate(
     }
     if (smoke->kind == C2_SDL_SMOKE_CAMPANIA_TRANSITION) {
         return drive_campania_transition(smoke, now, &observation);
+    }
+    if (smoke->kind == C2_SDL_SMOKE_PROVINCE_BUILD) {
+        int phase = smoke->phase;
+        enum c2_sdl_smoke_result r =
+            drive_province_build(smoke, now, &observation);
+        if (phase != smoke->phase) {
+            printf("province build smoke phase %d -> %d at %llu ms "
+                   "(observation %d/%d, tool %d)\n",
+                   phase, smoke->phase,
+                   (unsigned long long)(now - smoke->started),
+                   observation.point, observation.detail,
+                   observation.region_tool);
+        }
+        return r;
     }
     if (smoke->kind == C2_SDL_SMOKE_MUSIC_BUFFER) {
         return drive_music_buffer(smoke, now, &observation);

@@ -251,6 +251,16 @@
  * snapshot. Ignore region builds with no selected tool and drain load input. */
 #define PORT_FIX_REGION_IDLE_CLICK_FUNDS PORT_PLATFORM
 
+/* Modal buttons acknowledge a press by counting frames before the loop
+ * exits: act_yes/act_no set out1 to 100 and the province pick counts out2
+ * down from 100. The DOS loops ran unpaced, so that was a brief flash; the
+ * port paces every frame at 60 Hz, which turns it into a 1.65 s freeze that
+ * each further click restarts. The recovered this_region() already clamps
+ * its own countdown to 10 frames; portable builds apply that clamp to the
+ * other modal countdowns. */
+#define PORT_FIX_MODAL_BUTTON_LATENCY PORT_PLATFORM
+#define PORT_MODAL_BUTTON_FRAMES 10
+
 /* Read-only engine observations and their smoke driver are development
  * instrumentation. CMake selects them only for portable Debug builds. */
 #if defined(PORT_DEBUG_BUILD)

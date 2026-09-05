@@ -10,7 +10,8 @@ enum c2_sdl_smoke_kind {
     C2_SDL_SMOKE_TUTORIAL,
     C2_SDL_SMOKE_SAVE_LOAD,
     C2_SDL_SMOKE_MUSIC_BUFFER,
-    C2_SDL_SMOKE_CAMPANIA_TRANSITION
+    C2_SDL_SMOKE_CAMPANIA_TRANSITION,
+    C2_SDL_SMOKE_PROVINCE_BUILD
 };
 
 enum c2_sdl_smoke_result {
@@ -46,6 +47,11 @@ struct c2_sdl_smoke {
     int saved_map_y;
     int saved_zoom;
     int saved_denarii;
+    Uint64 modal_clicked_at;
+    Uint64 province_clicked_at;
+    int build_denarii;
+    int build_selection_x;
+    int build_selection_y;
     Uint64 music_started;
     Uint64 music_last_sample;
     Uint64 music_initial_produced_bytes;

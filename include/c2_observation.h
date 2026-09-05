@@ -25,6 +25,7 @@ enum c2_observation_point {
     PORT_OBSERVATION_MENU_BAR,
     PORT_OBSERVATION_MENU_ITEMS,
     PORT_OBSERVATION_QUERY_PANEL,
+    PORT_OBSERVATION_SELECTION,
     PORT_OBSERVATION_ENGINE_STOPPED
 };
 
@@ -51,6 +52,10 @@ struct c2_observation {
     int sequences_running;
     int speech_playing;
     int query_type;
+    int region_tool;
+    int selection_x;
+    int selection_y;
+    int selection_rows;
     int out1;
     int out2;
     int out3;
@@ -76,5 +81,6 @@ struct c2_observation {
 void c2_observe(enum c2_observation_point point, int detail);
 void c2_observe_menu_bar(int menu_count, int active_menu);
 void c2_observe_menu_items(int text_group, int item_count, int active_item);
+void c2_observe_selection(int text_group, int x, int y, int rows);
 
 #endif /* PORT_OBSERVATION_H */

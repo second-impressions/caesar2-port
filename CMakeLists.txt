@@ -888,6 +888,7 @@ if(BUILD_TESTING AND C2_TEST_DATA_DIR AND
         "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/save-load-smoke"
         "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/music-buffer-smoke"
         "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/campania-transition-smoke"
+        "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/province-build-smoke"
     )
     add_test(
         NAME startup-reaches-province-selection
@@ -923,6 +924,18 @@ if(BUILD_TESTING AND C2_TEST_DATA_DIR AND
         PASS_REGULAR_EXPRESSION
             "Campania speech transition smoke completed"
         TIMEOUT 50
+    )
+    add_test(
+        NAME recovered-province-build-smoke
+        COMMAND caesar2 --province-build-smoke-test
+                --asset-root "${C2_TEST_DATA_DIR}"
+                --user-data-dir
+                "${CMAKE_CURRENT_BINARY_DIR}/test-user-data/province-build-smoke"
+    )
+    set_tests_properties(recovered-province-build-smoke PROPERTIES
+        CONFIGURATIONS Debug
+        PASS_REGULAR_EXPRESSION "province build smoke completed"
+        TIMEOUT 60
     )
     add_test(
         NAME recovered-tutorial-flow-smoke
