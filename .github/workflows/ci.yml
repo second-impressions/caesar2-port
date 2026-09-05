@@ -33,9 +33,7 @@ jobs:
       matrix:
         include:
           - cc: gcc
-            cxx: g++
           - cc: clang
-            cxx: clang++
     steps:
       - uses: actions/checkout@v5
         with:
@@ -48,9 +46,7 @@ jobs:
           nix develop --command cmake -S . -B build/ci -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_C_COMPILER=${{ matrix.cc }} \
-            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
-            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache
       - name: Build
         run: nix develop --command cmake --build build/ci
       - name: Test C targets
@@ -104,8 +100,7 @@ jobs:
             embuilder build zlib
             ccache --zero-stats
             emcmake cmake --preset wasm-release -B build/ci-wasm \
-              -DCMAKE_C_COMPILER_LAUNCHER=ccache \
-              -DCMAKE_CXX_COMPILER_LAUNCHER=ccache 2>&1 | tee /tmp/wasm-configure.log
+              -DCMAKE_C_COMPILER_LAUNCHER=ccache 2>&1 | tee /tmp/wasm-configure.log
             cmake --build build/ci-wasm --parallel 2>&1 | tee /tmp/wasm-build.log
             ccache --show-stats
           "
@@ -174,8 +169,7 @@ jobs:
         run: |
           nix develop .#mingw --command bash -c '
             cmake --preset windows-mingw-release \
-              -DCMAKE_C_COMPILER_LAUNCHER=ccache \
-              -DCMAKE_CXX_COMPILER_LAUNCHER=ccache &&
+              -DCMAKE_C_COMPILER_LAUNCHER=ccache &&
             cmake --build --preset windows-mingw-release --parallel'
       - uses: actions/upload-artifact@v4
         with:

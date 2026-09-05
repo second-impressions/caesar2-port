@@ -458,8 +458,30 @@ def test_asan_backend_options_are_compile_only():
     cmake = (ROOT / "CMakeLists.txt").read_text()
     assert '"PORT_ASAN_DISABLE_GLOBALS": "ON"' in presets
     assert '"CMAKE_C_FLAGS": "-fsanitize=address,undefined"' in presets
-    assert '"CMAKE_CXX_FLAGS": "-fsanitize=address,undefined"' in presets
     assert "add_compile_options(-mllvm -asan-globals=0)" in cmake
+
+
+def test_music_library_is_plain_c_without_a_midi_dependency():
+    cmake = (ROOT / "CMakeLists.txt").read_text()
+    modules = (ROOT / ".gitmodules").read_text()
+    audio = (ROOT / "src/platform/common/c2_port_audio.c").read_text()
+    assert "LANGUAGES C)" in cmake
+    assert "CXX" not in cmake
+    assert "ADLMIDI" not in cmake
+    assert "ADLMIDI" not in modules
+    assert "add_library(c2_xmidi STATIC" in cmake
+    assert "third_party/nuked-opl3/opl3.c" in cmake
+    assert '#include "xmidi/xmidi.h"' in audio
+    assert "adl_" not in audio
+    # The driver tables are exported so the test can verify them against the
+    # shipped OPL3.MDI image.
+    header = (ROOT / "include/xmidi/miles_opl.h").read_text()
+    test = (ROOT / "tests/c2_xmidi_test.c").read_text()
+    for table in ("fnum_table", "velocity_table", "init_registers",
+                  "4op_enable_mask"):
+        assert "miles_opl_" + table in header
+        assert "miles_opl_" + table in test
+    assert '"OPL3.MDI"' in test
 
 
 def test_optional_media_is_an_explicit_host_capability():

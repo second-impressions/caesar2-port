@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(caesar2-port VERSION 1.0.0 LANGUAGES C CXX)
+project(caesar2-port VERSION 1.0.0 LANGUAGES C)
 
 set(C2_BUILD_NUMBER "" CACHE STRING
     "Monotonic build number appended to the semantic version")
@@ -154,21 +154,26 @@ set(ENABLE_ACL OFF CACHE BOOL "" FORCE)
 set(ENABLE_XATTR OFF CACHE BOOL "" FORCE)
 add_subdirectory(third_party/libarchive EXCLUDE_FROM_ALL)
 
-set(libADLMIDI_STATIC ON CACHE BOOL "" FORCE)
-set(libADLMIDI_SHARED OFF CACHE BOOL "" FORCE)
-set(WITH_MIDI_SEQUENCER ON CACHE BOOL "" FORCE)
-set(WITH_EMBEDDED_BANKS ON CACHE BOOL "" FORCE)
-set(WITH_XMI_SUPPORT ON CACHE BOOL "" FORCE)
-set(USE_DOSBOX_EMULATOR OFF CACHE BOOL "" FORCE)
-set(USE_NUKED_EMULATOR ON CACHE BOOL "" FORCE)
-set(USE_OPAL_EMULATOR OFF CACHE BOOL "" FORCE)
-set(USE_JAVA_EMULATOR OFF CACHE BOOL "" FORCE)
-set(USE_ESFMU_EMULATOR OFF CACHE BOOL "" FORCE)
-set(USE_MAME_EMULATOR OFF CACHE BOOL "" FORCE)
-set(USE_YMFM_EMULATOR OFF CACHE BOOL "" FORCE)
-set(WITH_MIDIPLAY OFF CACHE BOOL "" FORCE)
-set(WITH_UNIT_TESTS OFF CACHE BOOL "" FORCE)
-add_subdirectory(third_party/libADLMIDI EXCLUDE_FROM_ALL)
+# Nuked OPL3 (LGPL-2.1-or-later): the FM chip behind the port's Miles
+# OPL3 music driver.
+add_library(c2_nuked_opl3 STATIC third_party/nuked-opl3/opl3.c)
+target_compile_features(c2_nuked_opl3 PRIVATE c_std_11)
+target_include_directories(c2_nuked_opl3 PUBLIC third_party/nuked-opl3)
+
+# XMIDI sequencer and Miles OPL3 driver, reimplemented from the AIL 3.x
+# library in PS.EXE and the shipped OPL3.MDI driver.
+add_library(c2_xmidi STATIC
+    src/xmidi/xmidi.c
+    src/xmidi/miles_opl.c
+    src/xmidi/miles_opl_tables.c)
+target_compile_features(c2_xmidi PRIVATE c_std_11)
+target_include_directories(c2_xmidi PUBLIC include)
+target_link_libraries(c2_xmidi PRIVATE c2_nuked_opl3)
+
+# Renders an XMIDI score through the driver to WAV for listening tests.
+add_executable(c2-xmi-render EXCLUDE_FROM_ALL tools/c2-xmi-render.c)
+target_compile_features(c2-xmi-render PRIVATE c_std_11)
+target_link_libraries(c2-xmi-render PRIVATE c2_xmidi)
 
 add_library(c2_libsmacker STATIC third_party/libsmacker/smacker.c)
 target_compile_features(c2_libsmacker PRIVATE c_std_11)
@@ -337,7 +342,6 @@ add_executable(caesar2
     src/platform/common/c2_port_compat.c
     src/platform/common/c2_port_input.c
     src/platform/common/c2_port_keymap.c
-    src/platform/common/c2_port_miles_bank.c
     src/platform/common/c2_port_mouse.c
     src/platform/common/c2_port_music.c
     src/platform/common/c2_port_save.c
@@ -433,7 +437,7 @@ target_link_libraries(caesar2 PRIVATE
     c2_asm_portable
     c2_import_core
     c2_libsmacker
-    ADLMIDI
+    c2_xmidi
     SDL3::SDL3)
 
 if(EMSCRIPTEN)
@@ -579,8 +583,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/platform/common/c2_port_compat.c
         src/platform/common/c2_port_input.c
         src/platform/common/c2_port_keymap.c
-        src/platform/common/c2_port_miles_bank.c
-        src/platform/common/c2_port_mouse.c
+            src/platform/common/c2_port_mouse.c
         src/platform/common/c2_port_observation.c
         src/platform/common/c2_port_save.c
         src/platform/common/c2_port_save_compat.c
@@ -815,15 +818,12 @@ if(BUILD_TESTING)
             ENVIRONMENT "C2_TEST_DATA_DIR=${C2_TEST_DATA_DIR}")
     endif()
 
-    add_executable(c2-adlmidi-test
-        tests/c2_adlmidi_test.c
-        src/platform/common/c2_port_miles_bank.c)
-    target_compile_features(c2-adlmidi-test PRIVATE c_std_11)
-    target_include_directories(c2-adlmidi-test PRIVATE src/platform/common)
-    target_link_libraries(c2-adlmidi-test PRIVATE ADLMIDI)
-    add_test(NAME adlmidi-assets COMMAND c2-adlmidi-test)
+    add_executable(c2-xmidi-test tests/c2_xmidi_test.c)
+    target_compile_features(c2-xmidi-test PRIVATE c_std_11)
+    target_link_libraries(c2-xmidi-test PRIVATE c2_xmidi c2_nuked_opl3)
+    add_test(NAME xmidi-music COMMAND c2-xmidi-test)
     if(C2_TEST_DATA_DIR)
-        set_tests_properties(adlmidi-assets PROPERTIES
+        set_tests_properties(xmidi-music PROPERTIES
             ENVIRONMENT "C2_TEST_DATA_DIR=${C2_TEST_DATA_DIR}")
     endif()
 
@@ -865,7 +865,7 @@ if(BUILD_TESTING)
         c2-import-test
         c2-sdl-audio-test
         c2-smacker-test
-        c2-adlmidi-test
+        c2-xmidi-test
         c2-asm-memory-test
         c2-asm-internal-raster-test
         c2-asm-sprite-test

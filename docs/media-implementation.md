@@ -1,8 +1,8 @@
 # Audio and movie implementation decision record
 
 Status: accepted architecture, recorded 2026-07-21. SDL3 effects and speech,
-libsmacker movies, and branch-aware libADLMIDI music are implemented on the
-native SDL3 target.
+libsmacker movies, and branch-aware XMIDI/OPL3 music (the port's own `xmidi`
+library) are implemented on the native SDL3 target.
 
 ## Outcome
 
@@ -122,47 +122,61 @@ At least `CITYPROV.XMI` and `BATEST2.XMI` in the examined assets contain
 explicit `RBRN` tables. Flattening these files to ordinary MIDI would lose the
 dynamic city and battle score even if the notes themselves played correctly.
 
-[libADLMIDI](https://github.com/Wohlstand/libADLMIDI) is the strongest
-implementation reference. It supports AIL XMIDI, trigger callbacks, internal
-branch machinery, AIL volume behavior, OPL3 emulation, and Emscripten. Its
-database also identifies a Caesar II instrument bank. It is not an automatic
-dependency choice, however:
+The port therefore carries its own music library, `src/xmidi/` with the
+public headers in `include/xmidi/`, reimplemented in C from the two binaries
+that defined the original behaviour:
 
-- its public C API exposes trigger callbacks but not the external numbered
-  branch jump required to replace `AIL_branch_index`;
-- the complete synthesizer contains GPLv3 portions, despite individual
-  sequencer, converter, and chip components carrying MIT or LGPL licenses; and
-- the port should load the user's shipped `CAESAR.AD`/`CAESAR.OPL` data rather
-  than embedding a derived copy of that asset.
+- **`xmidi.c` — the AIL 3.x XMIDI sequencer.** PS.EXE links Miles Sound
+  System 3.x statically with full symbols, so `XMI_serve`,
+  `XMI_send_channel_voice_message`, `XMI_read_log`/`XMI_write_log`,
+  `XMI_refresh_channel`, `AIL_API_branch_index` and the sequence API were
+  decompiled and transliterated. The library keeps the 120 Hz service tick
+  (`MDI_SERVICE_RATE`), the 32-entry note-duration queue, the four-deep
+  for-loop stack shared by all channels, numbered `RBRN` branches that set the
+  event pointer and abandon open loops (`MDI_ALLOW_LOOP_BRANCHING` off),
+  callback triggers, the controller log that a resumed sequence replays, the
+  per-channel controller preset the driver constructor sends, and the volume
+  model where sequence volume × controller 7 × master volume / 16129 reaches
+  the driver, refreshed on every eighth service interval during fades. The
+  default loop count is one, as in AIL: `FORUM3.XMI`, which has no loop
+  controllers, plays once and then reports `SEQ_DONE`, exactly as under DOS.
+- **`miles_opl.c` — the Miles OPL3 driver.** `HD/OPL3.MDI` is a 16 KiB
+  real-mode driver compiled from C; it was disassembled with Ghidra and
+  reimplemented function by function: 20 virtual voices over 18 physical
+  channels, round-robin allocation, priority-based stealing with the voice
+  protect controller, 4-op pairs through register 0x104, the velocity table,
+  the 12×16 F-number table with its block/row tables, the channel-volume ×
+  expression × velocity product applied to carrier levels, pan thresholds at
+  28 and 99, bend range from controller 6 and the register image written at
+  reset. `miles_opl_tables.c` holds those tables verbatim and
+  `tests/c2_xmidi_test.c` compares every one of them byte-for-byte against the
+  shipped driver image, and checks that the other Miles FM drivers on the disc
+  (`ADLIB.MDI`, `SBPRO2.MDI`, `PAS.MDI`, ...) carry the same tables. Known
+  driver quirks, such as the partner lookup in the stealing routine indexing
+  by virtual voice, are reproduced and commented.
+- **Nuked OPL3** (`third_party/nuked-opl3`, LGPL-2.1-or-later, one C file) is
+  the chip emulator. It is the only third-party code in the music path.
 
-The selected route is the public
-[Second Impressions libADLMIDI fork](https://github.com/second-impressions/libADLMIDI),
-whose git remote is `git@github.com:second-impressions/libADLMIDI.git`. The
-fork commit `7ca7092` closes both gaps in the upstream implementation: the SMF
-marker parser turns the converter's `:XBRN:hh` markers into song-wide branch
-locations, and `adl_jumpToBranch` exposes the existing sequencer jump with a
-bounded branch ID and an explicit success result. A synthetic XMIDI regression
-proves branch discovery, missing and out-of-range failures, and the resulting
-playback-position jump. Direct validation against the examined Caesar II
-assets finds all 54 branches in `BATEST2.XMI` and all 42 branches in
-`CITYPROV.XMI`; the three linear `FORUM` scores correctly expose no branches.
+Timbres come from the user's shipped `CAESAR.OPL` (or `CAESAR.AD`) Miles
+Global Timbre Library, loaded whole; the DOS driver's 4 KiB timbre cache and
+its LRU eviction are the only part not reproduced. Miles GTL voice records
+store the modulator's five OPL registers first, then the feedback/connection
+byte, then the carrier's five registers, and for 4-op timbres a second voice
+after that; bit 7 of the first connection byte is the second pair's
+connection. The asset test checks the known 2-op and 4-op instruments.
 
-The port pins that fork as an SSH git submodule. It initializes the Caesar II
-embedded bank only to retain libADLMIDI's generated note-lifetime metadata,
-then overlays every instrument from the user's shipped `CAESAR.OPL` or
-`CAESAR.AD` Miles bank. The asset's OPL register values, note offsets, bank
-selection, and percussion mapping therefore remain authoritative. The fork
-and port must retain their respective license notices. The port's
-AGPL-3.0-or-later terms are compatible with libADLMIDI's GPLv3-covered complete
-synthesizer through AGPLv3 section 13.
+The sequencer reproduces one AIL bug on purpose, behind
+`XMI_QUIRK_BRANCH_SKIPS_EVENT` (on by default): after a controller that moves
+the playback position, `XMI_serve` advances past whatever event sits at the
+new position. Branch targets in the shipped scores follow their own marker,
+so nine of the 42 city branches lose their first note when reached from the
+trigger callback, just as they did under DOS. Clearing the quirk plays them.
 
-Miles GTL voice records store the modulator's five OPL registers first, then
-the feedback/connection byte, then the carrier's five registers. libADLMIDI's
-public `ADL_Instrument` representation exposes the carrier first. The adapter
-performs that ordering conversion explicitly and its asset test checks known
-2-op and 4-op instruments against the embedded Caesar reference metadata.
-Copying the two blocks in file order reverses the synthesis roles, producing
-quiet, metallic-sounding instruments despite otherwise valid playback.
+`c2-xmi-render` (built on demand) renders a score through the driver to a WAV
+file for listening tests. Against the previous libADLMIDI-based path the
+timing is identical (100 ms envelope correlation 0.89–0.92 at zero lag) and
+the level is about 1.7× higher, because libADLMIDI's "AIL" volume model only
+approximated the driver's total-level arithmetic.
 
 The recovered digital-sample master volume and sequence volume are independent
 Miles controls. The common adapter applies the former only to effects, speech,
@@ -170,9 +184,9 @@ PC-speaker feedback, and movie audio voices; it applies sequence fades and the
 tune slider only to the two music voices. Neither setting is multiplied into
 the other.
 
-FluidSynth may later be offered as an optional General MIDI backend. It should
-not be the default because it requires a separate SoundFont and would not
-reproduce the shipped DOS OPL timbres.
+FluidSynth may later be offered as an optional General MIDI backend behind the
+sequencer's MIDI callback. It should not be the default because it requires a
+separate SoundFont and would not reproduce the shipped DOS OPL timbres.
 
 Music generation runs from an engine-thread pump through the already frequent
 `continue_db` boundary. Each of the two recovered sequence handles owns a

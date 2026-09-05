@@ -32,9 +32,7 @@
       "binaryDir": "${sourceDir}/build/port/linux-tsan",
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
         "CMAKE_C_FLAGS": "-fsanitize=thread",
-        "CMAKE_CXX_FLAGS": "-fsanitize=thread",
         "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=thread",
         "PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER": "OFF"
       }
@@ -46,9 +44,7 @@
       "binaryDir": "${sourceDir}/build/port/linux-asan",
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
         "CMAKE_C_FLAGS": "-fsanitize=address,undefined",
-        "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined",
         "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined",
         "PORT_ASAN_DISABLE_GLOBALS": "ON",
         "PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER": "OFF"

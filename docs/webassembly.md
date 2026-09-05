@@ -38,7 +38,7 @@ target ABI adapter, not a duplicate engine API.
 
 ## Building
 
-Initialize the pinned SDL, libsmacker, and libADLMIDI submodules and enter the
+Initialize the pinned SDL, libarchive, and libsmacker submodules and enter the
 development shell:
 
 ```bash

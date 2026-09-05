@@ -3,25 +3,23 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <adlmidi.h>
-
 #include "ail.h"
 #include "c2_data.h"
 #include "c2_host.h"
 #include "c2_port.h"
-#include "c2_port_miles_bank.h"
 #include "pcsound.h"
+#include "xmidi/xmidi.h"
 
 #define C2_SAMPLE_VOICE_COUNT 6
 #define C2_AUDIO_VOICE_COUNT 10
 #define C2_BEEP_VOICE 6
 #define C2_DIGITAL_VOICE_COUNT 8
-#define C2_MUSIC_VOICE_FIRST 8
+#define C2_MUSIC_VOICE 8
+#define C2_MUSIC_SAMPLE_RATE 44100
 #define C2_SEQUENCE_COUNT 2
-#define C2_SEQUENCE_BUFFER_SAMPLES 4096
+#define C2_SEQUENCE_BUFFER_FRAMES 2048
 #define C2_SEQUENCE_QUEUE_TARGET_MS 100
 #define C2_SEQUENCE_DATA_LIMIT PORT_TUNE_BUFFER_SIZE
-#define C2_CAESAR_BANK 40
 #define C2_SAMPLE_BUFFER_LIMIT 20000
 
 struct c2_ail_sample {
@@ -31,20 +29,19 @@ struct c2_ail_sample {
     int status;
 };
 
+/* Music: one Miles OPL3 synthesizer shared by both AIL sequence handles,
+ * exactly as one MDI driver served both sequences in the DOS game. The
+ * sequencer runs at the XMIDI service rate inside the player and the mixed
+ * chip output streams into a single host voice. */
 struct c2_ail_sequence {
-    struct ADL_MIDIPlayer *player;
+    struct xmi_sequence *sequence;
     AILTRIGGERCB callback;
-    uint64_t fade_started_ms;
-    uint64_t fade_ends_ms;
-    float fade_started_gain;
-    float gain;
-    float target_gain;
     int handle;
-    int status;
 };
 
 static struct c2_ail_sample c2_samples[C2_SAMPLE_VOICE_COUNT];
 static struct c2_ail_sequence c2_sequences[C2_SEQUENCE_COUNT];
+static struct xmi_player *c2_music;
 static int c2_next_sample_handle;
 static int c2_next_sequence_handle;
 static int c2_speech_paused;
@@ -61,14 +58,6 @@ static uint32_t read_u32_le(const unsigned char *bytes)
            ((uint32_t)bytes[3] << 24);
 }
 
-static uint32_t read_u32_be(const unsigned char *bytes)
-{
-    return ((uint32_t)bytes[0] << 24) |
-           ((uint32_t)bytes[1] << 16) |
-           ((uint32_t)bytes[2] << 8) |
-           (uint32_t)bytes[3];
-}
-
 static struct c2_ail_sample *sample_from_handle(int handle)
 {
     if (handle < 1 || handle > C2_SAMPLE_VOICE_COUNT) return NULL;
@@ -81,115 +70,71 @@ static struct c2_ail_sequence *sequence_from_handle(int handle)
     return &c2_sequences[handle - 1];
 }
 
-static size_t xmi_size(const unsigned char *bytes)
-{
-    size_t xdir_size;
-    size_t cat_offset;
-    size_t cat_size;
-
-    if (bytes == NULL || memcmp(bytes, "FORM", 4) != 0) return 0;
-    xdir_size = (size_t)read_u32_be(bytes + 4);
-    if (xdir_size > C2_SEQUENCE_DATA_LIMIT - 8) return 0;
-    cat_offset = 8 + ((xdir_size + 1) & ~(size_t)1);
-    if (cat_offset > C2_SEQUENCE_DATA_LIMIT - 8 ||
-        memcmp(bytes + cat_offset, "CAT ", 4) != 0) {
-        return 0;
-    }
-    cat_size = (size_t)read_u32_be(bytes + cat_offset + 4);
-    if (cat_size > C2_SEQUENCE_DATA_LIMIT - cat_offset - 8) return 0;
-    return cat_offset + 8 + ((cat_size + 1) & ~(size_t)1);
-}
-
-static int load_miles_bank(struct ADL_MIDIPlayer *player)
+static int load_music_bank(struct xmi_player *player)
 {
     unsigned char *data;
     size_t data_size;
-    int result;
+    int loaded;
 
     data = c2_port_load_asset("caesar.opl", &data_size);
     if (data == NULL) data = c2_port_load_asset("caesar.ad", &data_size);
     if (data == NULL) return 0;
-    result = c2_port_apply_miles_bank(player, data, data_size);
+    loaded = xmi_player_load_bank(player, data, data_size);
     free(data);
-    return result;
+    return loaded > 0;
 }
 
-static void sequence_trigger(void *user_data, unsigned trigger, size_t track)
+static void sequence_trigger(void *user_data, struct xmi_sequence *seq,
+                             int channel, int value)
 {
     struct c2_ail_sequence *sequence;
 
+    (void)seq;
     sequence = user_data;
     if (sequence != NULL && sequence->callback != NULL) {
-        sequence->callback(sequence->handle, (int)trigger, (int)track);
+        sequence->callback(sequence->handle, channel, value);
     }
 }
 
-static void update_sequence_gain(struct c2_ail_sequence *sequence)
+static int any_sequence_playing(void)
 {
-    uint64_t now;
-    float progress;
-
-    if (sequence == NULL || sequence->fade_ends_ms == 0) return;
-    now = c2_host_ticks_ms();
-    if (now >= sequence->fade_ends_ms) {
-        sequence->gain = sequence->target_gain;
-        sequence->fade_started_ms = 0;
-        sequence->fade_ends_ms = 0;
-    } else {
-        progress = (float)(now - sequence->fade_started_ms) /
-                   (float)(sequence->fade_ends_ms - sequence->fade_started_ms);
-        sequence->gain = sequence->fade_started_gain +
-                         (sequence->target_gain - sequence->fade_started_gain) *
-                         progress;
-    }
-    c2_host_audio_set_voice_gain(C2_MUSIC_VOICE_FIRST + sequence->handle - 1,
-                                 sequence->gain);
-}
-
-static void pump_sequences(void)
-{
-    short pcm[C2_SEQUENCE_BUFFER_SAMPLES];
-    struct c2_ail_sequence *sequence;
-    int generated;
     int index;
-    int voice;
 
     for (index = 0; index < C2_SEQUENCE_COUNT; index++) {
-        sequence = &c2_sequences[index];
-        if (sequence->player == NULL || sequence->status != 4) continue;
-        voice = C2_MUSIC_VOICE_FIRST + index;
-        update_sequence_gain(sequence);
-        while (c2_host_audio_voice_queued_ms(voice) <
-               C2_SEQUENCE_QUEUE_TARGET_MS) {
-            generated = adl_play(sequence->player,
-                                 C2_SEQUENCE_BUFFER_SAMPLES, pcm);
-            if (generated <= 0) {
-                sequence->status = 2;
-                break;
-            }
-            if (!c2_host_audio_queue_pcm(voice, pcm,
-                    (size_t)generated * sizeof(*pcm), 44100, 2, 16,
-                    adl_atEnd(sequence->player))) {
-                sequence->status = 2;
-                break;
-            }
-            if (adl_atEnd(sequence->player)) {
-                sequence->status = 2;
-                break;
-            }
+        if (c2_sequences[index].sequence != NULL &&
+            xmi_sequence_status(c2_sequences[index].sequence) ==
+                XMI_SEQ_PLAYING) {
+            return 1;
         }
+    }
+    return 0;
+}
+
+/* Keep the host voice fed while music plays; the chip keeps streaming for
+ * a moment after the last sequence stops so release tails are not cut. */
+static void pump_sequences(void)
+{
+    static int16_t pcm[C2_SEQUENCE_BUFFER_FRAMES * 2];
+    static int tail_chunks;
+
+    if (c2_music == NULL) return;
+    if (any_sequence_playing()) tail_chunks = 16;
+    else if (tail_chunks == 0) return;
+    while (c2_host_audio_voice_queued_ms(C2_MUSIC_VOICE) <
+           C2_SEQUENCE_QUEUE_TARGET_MS) {
+        xmi_player_render(c2_music, pcm, C2_SEQUENCE_BUFFER_FRAMES);
+        if (!c2_host_audio_queue_pcm(C2_MUSIC_VOICE, pcm, sizeof(pcm),
+                                     C2_MUSIC_SAMPLE_RATE, 2, 16, 0)) {
+            break;
+        }
+        if (!any_sequence_playing() && --tail_chunks == 0) break;
     }
 }
 
 void AIL_shutdown(void)
 {
-    int index;
-
-    for (index = 0; index < C2_SEQUENCE_COUNT; index++) {
-        if (c2_sequences[index].player != NULL) {
-            adl_close(c2_sequences[index].player);
-        }
-    }
+    xmi_player_destroy(c2_music);
+    c2_music = NULL;
     memset(c2_sequences, 0, sizeof(c2_sequences));
     c2_next_sequence_handle = 0;
     c2_host_audio_shutdown();
@@ -378,6 +323,17 @@ int AIL_install_MDI_INI(int *mdi_handle_out)
         c2inf.tunes_on = 0;
         return 1;
     }
+    if (c2_music == NULL) {
+        c2_music = xmi_player_create(C2_MUSIC_SAMPLE_RATE);
+        if (c2_music == NULL || !load_music_bank(c2_music)) {
+            fprintf(stderr, "could not load the Miles OPL bank "
+                            "(CAESAR.OPL or CAESAR.AD)\n");
+            xmi_player_destroy(c2_music);
+            c2_music = NULL;
+            c2inf.tunes_on = 0;
+            return 1;
+        }
+    }
     if (mdi_handle_out != NULL) *mdi_handle_out = 1;
     return 0;
 }
@@ -387,31 +343,15 @@ int AIL_allocate_sequence_handle(int mdi_handle)
     struct c2_ail_sequence *sequence;
 
     (void)mdi_handle;
-    if (c2_next_sequence_handle >= C2_SEQUENCE_COUNT) return 0;
+    if (c2_music == NULL || c2_next_sequence_handle >= C2_SEQUENCE_COUNT) {
+        return 0;
+    }
     sequence = &c2_sequences[c2_next_sequence_handle];
     memset(sequence, 0, sizeof(*sequence));
-    sequence->player = adl_init(44100);
-    if (sequence->player == NULL) {
-        fprintf(stderr, "could not initialize libADLMIDI: %s\n",
-                adl_errorString());
-        return 0;
-    }
-    if (adl_setBank(sequence->player, C2_CAESAR_BANK) < 0 ||
-        adl_setNumChips(sequence->player, 1) < 0 ||
-        !load_miles_bank(sequence->player)) {
-        fprintf(stderr, "could not configure libADLMIDI: %s\n",
-                adl_errorInfo(sequence->player));
-        adl_close(sequence->player);
-        sequence->player = NULL;
-        return 0;
-    }
-    adl_setVolumeRangeModel(sequence->player, ADLMIDI_VolumeModel_AIL);
-    adl_setLoopEnabled(sequence->player, 1);
+    sequence->sequence = xmi_sequence_create(xmi_player_driver(c2_music));
+    if (sequence->sequence == NULL) return 0;
     c2_next_sequence_handle++;
     sequence->handle = c2_next_sequence_handle;
-    sequence->gain = 1.0f;
-    sequence->target_gain = 1.0f;
-    sequence->status = 2;
     return sequence->handle;
 }
 
@@ -420,8 +360,8 @@ int AIL_sequence_status(int handle)
     struct c2_ail_sequence *sequence;
 
     sequence = sequence_from_handle(handle);
-    if (sequence == NULL) return 2;
-    return sequence->status;
+    if (sequence == NULL || sequence->sequence == NULL) return 2;
+    return xmi_sequence_status(sequence->sequence);
 }
 
 void AIL_end_sequence(int handle)
@@ -429,10 +369,8 @@ void AIL_end_sequence(int handle)
     struct c2_ail_sequence *sequence;
 
     sequence = sequence_from_handle(handle);
-    if (sequence == NULL || sequence->player == NULL) return;
-    c2_host_audio_stop_voice(C2_MUSIC_VOICE_FIRST + handle - 1);
-    adl_positionRewind(sequence->player);
-    sequence->status = 2;
+    if (sequence == NULL || sequence->sequence == NULL) return;
+    xmi_sequence_end(sequence->sequence);
 }
 
 void AIL_stop_sequence(int handle)
@@ -440,48 +378,33 @@ void AIL_stop_sequence(int handle)
     struct c2_ail_sequence *sequence;
 
     sequence = sequence_from_handle(handle);
-    if (sequence == NULL || sequence->status != 4) return;
-    c2_host_audio_stop_voice(C2_MUSIC_VOICE_FIRST + handle - 1);
-    sequence->status = 8;
+    if (sequence == NULL || sequence->sequence == NULL) return;
+    xmi_sequence_stop(sequence->sequence);
 }
 
 void AIL_set_sequence_volume(int handle, int volume, int milliseconds)
 {
     struct c2_ail_sequence *sequence;
-    uint64_t now;
 
     sequence = sequence_from_handle(handle);
-    if (sequence == NULL) return;
-    if (volume < 0) volume = 0;
-    if (volume > 127) volume = 127;
-    update_sequence_gain(sequence);
-    sequence->target_gain = (float)volume / 127.0f;
-    if (milliseconds <= 0) {
-        sequence->gain = sequence->target_gain;
-        sequence->fade_started_ms = 0;
-        sequence->fade_ends_ms = 0;
-        c2_host_audio_set_voice_gain(C2_MUSIC_VOICE_FIRST + handle - 1,
-                                     sequence->gain);
-        return;
-    }
-    now = c2_host_ticks_ms();
-    sequence->fade_started_gain = sequence->gain;
-    sequence->fade_started_ms = now;
-    sequence->fade_ends_ms = now + (uint64_t)milliseconds;
+    if (sequence == NULL || sequence->sequence == NULL) return;
+    xmi_sequence_set_volume(sequence->sequence, volume, milliseconds);
 }
+
 int AIL_init_sequence(int handle, void *bytes, int sequence_num)
 {
     struct c2_ail_sequence *sequence;
     size_t size;
 
-    (void)sequence_num;
     sequence = sequence_from_handle(handle);
-    size = xmi_size(bytes);
-    if (sequence == NULL || sequence->player == NULL || size == 0) return 0;
-    c2_host_audio_stop_voice(C2_MUSIC_VOICE_FIRST + handle - 1);
-    if (adl_openData(sequence->player, bytes, (unsigned long)size) < 0) return 0;
-    adl_setTriggerHandler(sequence->player, sequence_trigger, sequence);
-    sequence->status = 2;
+    if (sequence == NULL || sequence->sequence == NULL) return 0;
+    size = xmi_image_size(bytes, C2_SEQUENCE_DATA_LIMIT);
+    if (size == 0) return 0;
+    if (!xmi_sequence_init(sequence->sequence, bytes, size, sequence_num)) {
+        return 0;
+    }
+    xmi_sequence_set_trigger_callback(sequence->sequence, sequence_trigger,
+                                      sequence);
     return 1;
 }
 
@@ -490,15 +413,21 @@ char *AIL_start_sequence(int handle)
     struct c2_ail_sequence *sequence;
 
     sequence = sequence_from_handle(handle);
-    if (sequence == NULL || sequence->player == NULL) return NULL;
-    sequence->status = 4;
+    if (sequence == NULL || sequence->sequence == NULL) return NULL;
+    xmi_sequence_start(sequence->sequence);
     pump_sequences();
     return (char *)sequence;
 }
 
 char *AIL_resume_sequence(int handle)
 {
-    return AIL_start_sequence(handle);
+    struct c2_ail_sequence *sequence;
+
+    sequence = sequence_from_handle(handle);
+    if (sequence == NULL || sequence->sequence == NULL) return NULL;
+    xmi_sequence_resume(sequence->sequence);
+    pump_sequences();
+    return (char *)sequence;
 }
 
 AILTRIGGERCB AIL_register_trigger_callback(int handle, AILTRIGGERCB callback)
@@ -510,18 +439,16 @@ AILTRIGGERCB AIL_register_trigger_callback(int handle, AILTRIGGERCB callback)
     if (sequence == NULL) return NULL;
     previous = sequence->callback;
     sequence->callback = callback;
-    if (sequence->player != NULL) {
-        adl_setTriggerHandler(sequence->player, sequence_trigger, sequence);
-    }
     return previous;
 }
+
 void AIL_branch_index(int handle, int marker)
 {
     struct c2_ail_sequence *sequence;
 
     sequence = sequence_from_handle(handle);
-    if (sequence == NULL || sequence->player == NULL || marker < 0) return;
-    adl_jumpToBranch(sequence->player, (unsigned)marker);
+    if (sequence == NULL || sequence->sequence == NULL || marker < 0) return;
+    xmi_sequence_branch(sequence->sequence, (unsigned)marker);
 }
 
 void set_db_sound(char *filename)

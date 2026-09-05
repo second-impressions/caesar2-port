@@ -16,7 +16,6 @@ if(NOT C2_MINGW_TRIPLE)
 endif()
 
 set(CMAKE_C_COMPILER   "${C2_MINGW_TRIPLE}-gcc")
-set(CMAKE_CXX_COMPILER "${C2_MINGW_TRIPLE}-g++")
 set(CMAKE_RC_COMPILER  "${C2_MINGW_TRIPLE}-windres")
 
 # Look for headers and libraries only in the target sysroot, but keep host

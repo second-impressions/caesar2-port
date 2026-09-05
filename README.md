@@ -71,9 +71,11 @@ or replacement screens.
 WAV effects and RAW speech use SDL3 audio streams. `INTRO.SMK`, embedded
 message movies, and the VGA-era cinematics are decoded by the pinned Second
 Impressions libsmacker fork and run through the recovered playback loops.
-Branch-aware XMIDI music is sequenced and synthesized by the pinned Second
-Impressions libADLMIDI fork, with the recovered mood and branch policy still
-in control. Save-file
+Branch-aware XMIDI music is sequenced and synthesized by the port's own
+`xmidi` library (`src/xmidi/`), a C reimplementation of the AIL 3.x XMIDI
+player in PS.EXE and of the shipped `OPL3.MDI` Miles driver on top of the Nuked
+OPL3 chip emulator, with the recovered mood and branch policy still in
+control. Save-file
 enumeration, original-format save/load streams, preferences, history,
 autosaves, and screenshots use the portable user-data service described in
 [docs/user-data.md](docs/user-data.md).
