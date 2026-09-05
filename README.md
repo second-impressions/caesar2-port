@@ -110,13 +110,33 @@ For an optimized build, use `cmake --preset linux-release` followed by
 `cmake --build --preset linux-release`. Its native Unity suite is available as
 `ctest --preset linux-release`; Debug-only semantic smoke tests are omitted.
 
-Game data can be selected with a positional source or `--game-data SOURCE`.
-`SOURCE` may be an installed directory, a ZIP, an optimized `.c2assets` pack,
-a plain ISO, or a CUE beside its BIN. `--asset-root PATH` and `C2_ASSET_ROOT`
-remain compatibility aliases for directory sources. Archives/images are
-validated and cached beneath the user-data directory; subsequent launches
-reuse that cache. `--asset-profile NAME` selects a language/media profile from
-a multi-profile asset pack. Writable runtime files use the separate
+Every interactive start opens a small **launcher window** first, the native
+counterpart of the browser landing page. It shows what game data is active
+(kind plus the version line from its own `C2.ENG`) and offers just *Play*,
+*Choose game data…*, a *Language* row when the data is a multi-profile pack,
+one *Use the disc in …* row per optical drive that currently holds a disc,
+and *Quit*. The chooser is a single file dialog: pick any file inside an
+installation (e.g. `C2.ENG`), an ISO or BIN image, a ZIP, or a `.c2assets`
+pack — or drop it onto the window — and the importer classifies it by
+content. Imports show a progress bar and a rejected selection comes back
+with the reason. The source and language are remembered for the next start;
+repeat the same steps to switch. `--skip-launcher` (and any `--headless`,
+`--prepare-assets`, or smoke-test run) bypasses the window and exits
+non-zero instead of asking when the source is unusable.
+
+Game data can also be selected with a positional source or `--game-data SOURCE`.
+`SOURCE` may be an installed directory (or any file inside one), a ZIP (of
+an installation, or wrapping an ISO or CUE/BIN dump, which is streamed out
+of the archive without a staging copy), an optimized `.c2assets` pack, a
+plain ISO, a raw BIN with or without its CUE, or a real CD-ROM drive holding an
+original disc (`/dev/sr0` or `/dev/cdrom` on Linux, a `/dev` optical device
+on macOS/BSD, and `D:`, `D:\`, or `\\.\D:` on Windows). `--asset-root PATH`
+and `C2_ASSET_ROOT` remain compatibility aliases for directory sources.
+Archives/images are validated and cached beneath the user-data directory;
+subsequent launches reuse that cache, so a disc only needs to be inserted
+once and each different disc is cached separately by its volume descriptor.
+`--asset-profile NAME` selects a language/media profile from a multi-profile
+asset pack. Writable runtime files use the separate
 `--user-data-dir PATH` or `C2_USER_DATA_DIR` namespace. Without an override,
 SDL selects and creates the platform-standard application data directory
 (`$XDG_DATA_HOME/second-impressions/caesar2` on Linux, with the usual

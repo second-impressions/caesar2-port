@@ -52,6 +52,12 @@ int c2_cdrom_find_drives(char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max)
     return 0;
 }
 
+int c2_cdrom_drive_has_disc(const char *path)
+{
+    (void)path;
+    return 0;
+}
+
 #else /* native */
 
 static uint32_t read_le32(const unsigned char *p)
@@ -140,6 +146,22 @@ void c2_cdrom_close(struct c2_cdrom_reader *reader)
     memset(reader, 0, sizeof(*reader));
 }
 
+int c2_cdrom_drive_has_disc(const char *path)
+{
+    char device[8];
+    HANDLE handle;
+    DWORD returned = 0;
+    BOOL ok;
+    if (!device_letter_path(path, device, sizeof(device))) return 0;
+    handle = CreateFileA(device, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                         OPEN_EXISTING, 0, NULL);
+    if (handle == INVALID_HANDLE_VALUE) return 0;
+    ok = DeviceIoControl(handle, IOCTL_STORAGE_CHECK_VERIFY2, NULL, 0, NULL, 0,
+                         &returned, NULL);
+    CloseHandle(handle);
+    return ok ? 1 : 0;
+}
+
 int c2_cdrom_find_drives(char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max)
 {
     DWORD mask = GetLogicalDrives();
@@ -162,6 +184,28 @@ int c2_cdrom_find_drives(char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max)
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#ifdef __linux__
+#include <limits.h>
+#include <linux/cdrom.h>
+#include <sys/ioctl.h>
+#endif
+
+int c2_cdrom_drive_has_disc(const char *path)
+{
+#ifdef __linux__
+    int fd = open(path, O_RDONLY | O_NONBLOCK);
+    int status;
+    if (fd < 0) return 0;
+    status = ioctl(fd, CDROM_DRIVE_STATUS, CDSL_CURRENT);
+    close(fd);
+    return status == CDS_DISC_OK;
+#else
+    struct c2_cdrom_reader reader;
+    if (!c2_cdrom_open(path, &reader, NULL, 0)) return 0;
+    c2_cdrom_close(&reader);
+    return 1;
+#endif
+}
 
 int c2_cdrom_is_device_path(const char *path)
 {

@@ -217,6 +217,14 @@ static int walk_directory(const struct c2_source_reader *source,
     return 1;
 }
 
+static int compare_extent(const void *left, const void *right)
+{
+    const struct c2_iso_entry *a = left;
+    const struct c2_iso_entry *b = right;
+    if (a->offset != b->offset) return a->offset < b->offset ? -1 : 1;
+    return strcmp(a->path, b->path);
+}
+
 int c2_iso_catalog_open(const struct c2_source_reader *source,
                         struct c2_iso_catalog *catalog,
                         char *error, size_t error_capacity)
@@ -267,6 +275,10 @@ int c2_iso_catalog_open(const struct c2_source_reader *source,
         c2_iso_catalog_close(catalog);
         return 0;
     }
+    /* Extent order makes extraction a single forward sweep, which is what
+     * optical drives and sequential (deflated) sources want. */
+    qsort(catalog->entries, catalog->count, sizeof(*catalog->entries),
+          compare_extent);
     return 1;
 }
 

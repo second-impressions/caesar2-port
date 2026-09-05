@@ -144,6 +144,206 @@ static int make_parents(const char *path)
     return 1;
 }
 
+static int disc_image_kind(const char *normalized)
+{
+    const char *dot = strrchr(normalized, '.');
+    if (!dot) return 0;
+    if (SDL_strcasecmp(dot, ".cue") == 0) return C2_ZIP_CUE_IMAGE;
+    if (SDL_strcasecmp(dot, ".iso") == 0) return C2_ZIP_ISO_IMAGE;
+    return 0;
+}
+
+int c2_zip_probe(const char *zip_path, enum c2_zip_content *content,
+                 char *entry, size_t entry_capacity,
+                 char *error, size_t error_capacity)
+{
+    struct archive *a;
+    struct archive_entry *item;
+    int result;
+    char cue[C2_IMPORT_MAX_PATH] = {0};
+    char iso[C2_IMPORT_MAX_PATH] = {0};
+
+    *content = C2_ZIP_EMPTY;
+    if (entry_capacity) entry[0] = '\0';
+    if (!open_zip(&a, zip_path, error, error_capacity)) return 0;
+    while ((result = archive_read_next_header(a, &item)) == ARCHIVE_OK) {
+        const char *raw = archive_entry_pathname(item);
+        char normalized[C2_IMPORT_MAX_PATH];
+        archive_read_data_skip(a);
+        if (archive_entry_filetype(item) != AE_IFREG ||
+            !safe_path(raw, normalized, sizeof(normalized))) continue;
+        if (runtime_path(normalized)) {
+            *content = C2_ZIP_RUNTIME_FILES;
+            archive_read_free(a);
+            return 1;
+        }
+        switch (disc_image_kind(normalized)) {
+        case C2_ZIP_CUE_IMAGE:
+            if (!cue[0]) snprintf(cue, sizeof(cue), "%s", raw);
+            break;
+        case C2_ZIP_ISO_IMAGE:
+            if (!iso[0]) snprintf(iso, sizeof(iso), "%s", raw);
+            break;
+        default:
+            break;
+        }
+    }
+    archive_read_free(a);
+    if (result != ARCHIVE_EOF) {
+        set_error(error, error_capacity, "could not enumerate ZIP");
+        return 0;
+    }
+    if (cue[0]) {
+        *content = C2_ZIP_CUE_IMAGE;
+        snprintf(entry, entry_capacity, "%s", cue);
+    } else if (iso[0]) {
+        *content = C2_ZIP_ISO_IMAGE;
+        snprintf(entry, entry_capacity, "%s", iso);
+    }
+    return 1;
+}
+
+/* Position a freshly opened archive at the named entry. */
+static int seek_entry(struct archive *a, const char *entry,
+                      uint64_t *size_out)
+{
+    struct archive_entry *item;
+    while (archive_read_next_header(a, &item) == ARCHIVE_OK) {
+        if (archive_entry_filetype(item) == AE_IFREG &&
+            same_fold(archive_entry_pathname(item), entry)) {
+            *size_out = (uint64_t)archive_entry_size(item);
+            return 1;
+        }
+        archive_read_data_skip(a);
+    }
+    return 0;
+}
+
+int c2_zip_read_entry(const char *zip_path, const char *entry,
+                      void *buffer, size_t capacity, size_t *size_out,
+                      char *error, size_t error_capacity)
+{
+    struct archive *a;
+    uint64_t size;
+    size_t done = 0;
+    la_ssize_t got;
+
+    *size_out = 0;
+    if (!open_zip(&a, zip_path, error, error_capacity)) return 0;
+    if (!seek_entry(a, entry, &size)) {
+        set_error(error, error_capacity, "ZIP entry was not found");
+        archive_read_free(a); return 0;
+    }
+    if (size > capacity) {
+        set_error(error, error_capacity, "ZIP entry is too large");
+        archive_read_free(a); return 0;
+    }
+    while (done < size &&
+           (got = archive_read_data(a, (unsigned char *)buffer + done,
+                                    (size_t)size - done)) > 0) {
+        done += (size_t)got;
+    }
+    archive_read_free(a);
+    if (done != size) {
+        set_error(error, error_capacity, "could not read ZIP entry");
+        return 0;
+    }
+    *size_out = done;
+    return 1;
+}
+
+#define C2_ZIP_SCRATCH 65536u
+
+static int stream_rewind(struct c2_zip_stream *stream)
+{
+    struct archive *a;
+    uint64_t size;
+    if (stream->archive) {
+        archive_read_free(stream->archive);
+        stream->archive = NULL;
+    }
+    if (!open_zip(&a, stream->zip_path, NULL, 0)) return 0;
+    if (!seek_entry(a, stream->entry, &size)) {
+        archive_read_free(a);
+        return 0;
+    }
+    stream->archive = a;
+    stream->size = size;
+    stream->position = 0;
+    stream->rewinds++;
+    return 1;
+}
+
+static int stream_read_at(void *userdata, uint64_t offset, void *buffer,
+                          size_t size, size_t *read_out)
+{
+    struct c2_zip_stream *stream = userdata;
+    size_t done = 0;
+
+    if (read_out) *read_out = 0;
+    if (offset > stream->size) return 0;
+    if (size > stream->size - offset) size = (size_t)(stream->size - offset);
+    if (stream->archive == NULL || offset < stream->position) {
+        if (!stream_rewind(stream)) return 0;
+    }
+    while (stream->position < offset) {
+        uint64_t gap = offset - stream->position;
+        size_t wanted = gap > C2_ZIP_SCRATCH ? C2_ZIP_SCRATCH : (size_t)gap;
+        la_ssize_t got = archive_read_data(stream->archive, stream->scratch,
+                                          wanted);
+        if (got <= 0) return 0;
+        stream->position += (uint64_t)got;
+    }
+    while (done < size) {
+        la_ssize_t got = archive_read_data(stream->archive,
+                                          (unsigned char *)buffer + done,
+                                          size - done);
+        if (got <= 0) break;
+        done += (size_t)got;
+        stream->position += (uint64_t)got;
+    }
+    if (read_out) *read_out = done;
+    return done == size;
+}
+
+int c2_zip_stream_open(struct c2_zip_stream *stream, const char *zip_path,
+                       const char *entry, char *error, size_t error_capacity)
+{
+    memset(stream, 0, sizeof(*stream));
+    stream->zip_path = copy_string(zip_path);
+    stream->entry = copy_string(entry);
+    stream->scratch = malloc(C2_ZIP_SCRATCH);
+    if (!stream->zip_path || !stream->entry || !stream->scratch) {
+        c2_zip_stream_close(stream);
+        set_error(error, error_capacity, "out of memory");
+        return 0;
+    }
+    if (!stream_rewind(stream)) {
+        c2_zip_stream_close(stream);
+        set_error(error, error_capacity, "ZIP entry was not found");
+        return 0;
+    }
+    stream->rewinds = 0;
+    return 1;
+}
+
+void c2_zip_stream_source(struct c2_zip_stream *stream,
+                          struct c2_source_reader *source)
+{
+    source->userdata = stream;
+    source->size = stream->size;
+    source->read_at = stream_read_at;
+}
+
+void c2_zip_stream_close(struct c2_zip_stream *stream)
+{
+    if (stream->archive) archive_read_free(stream->archive);
+    free(stream->zip_path);
+    free(stream->entry);
+    free(stream->scratch);
+    memset(stream, 0, sizeof(*stream));
+}
+
 int c2_zip_extract(const char *zip_path, const char *destination,
                    const struct c2_import_progress *progress,
                    char *error, size_t error_capacity)
@@ -156,6 +356,7 @@ int c2_zip_extract(const char *zip_path, const char *destination,
     uint64_t total = 0;
     char common[C2_IMPORT_MAX_PATH] = {0};
     int common_valid = 1;
+    int saw_disc_image = 0;
     int result;
     size_t i;
     uint64_t completed = 0;
@@ -175,6 +376,12 @@ int c2_zip_extract(const char *zip_path, const char *destination,
             archive_read_free(a); free_items(items, count); return 0;
         }
         if (!runtime_path(normalized)) {
+            const char *dot = strrchr(normalized, '.');
+            if (dot && (SDL_strcasecmp(dot, ".bin") == 0 ||
+                        SDL_strcasecmp(dot, ".cue") == 0 ||
+                        SDL_strcasecmp(dot, ".iso") == 0)) {
+                saw_disc_image = 1;
+            }
             archive_read_data_skip(a);
             continue;
         }
@@ -209,8 +416,14 @@ int c2_zip_extract(const char *zip_path, const char *destination,
         archive_read_data_skip(a);
     }
     archive_read_free(a);
-    if (result != ARCHIVE_EOF || count == 0) {
+    if (result != ARCHIVE_EOF) {
         set_error(error, error_capacity, "could not enumerate ZIP"); free_items(items, count); return 0;
+    }
+    if (count == 0) {
+        set_error(error, error_capacity, saw_disc_image
+                  ? "ZIP wraps a disc image; unzip it and select the ISO or CUE"
+                  : "ZIP contains no Caesar II game files");
+        free_items(items, count); return 0;
     }
     for (i = 0; i < count; i++) {
         const char *logical = items[i].logical_path;

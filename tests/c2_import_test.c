@@ -337,6 +337,147 @@ static void test_cdrom_reader_serves_iso_sectors(void)
 #endif
 }
 
+static uint32_t crc32_of(const unsigned char *data, size_t size)
+{
+    uint32_t crc = 0xffffffffu;
+    size_t i;
+    int bit;
+    for (i = 0; i < size; i++) {
+        crc ^= data[i];
+        for (bit = 0; bit < 8; bit++) {
+            crc = (crc >> 1) ^ (0xedb88320u & (0u - (crc & 1u)));
+        }
+    }
+    return ~crc;
+}
+
+static void put16(FILE *f, unsigned v) { fputc(v & 0xff, f); fputc((v >> 8) & 0xff, f); }
+static void put32(FILE *f, uint32_t v) { put16(f, v & 0xffff); put16(f, v >> 16); }
+
+/* Minimal stored (method 0) ZIP with the given entries. */
+static void write_stored_zip(const char *path, const char *const names[],
+                             const unsigned char *const datas[],
+                             const size_t sizes[], int count)
+{
+    FILE *f = fopen(path, "wb");
+    long offsets[4];
+    long central;
+    long central_size;
+    int i;
+    TEST_ASSERT_NOT_NULL(f);
+    for (i = 0; i < count; i++) {
+        uint32_t crc = crc32_of(datas[i], sizes[i]);
+        offsets[i] = ftell(f);
+        put32(f, 0x04034b50u); put16(f, 20); put16(f, 0); put16(f, 0);
+        put16(f, 0); put16(f, 0); put32(f, crc);
+        put32(f, (uint32_t)sizes[i]); put32(f, (uint32_t)sizes[i]);
+        put16(f, (unsigned)strlen(names[i])); put16(f, 0);
+        fputs(names[i], f);
+        fwrite(datas[i], 1, sizes[i], f);
+    }
+    central = ftell(f);
+    for (i = 0; i < count; i++) {
+        uint32_t crc = crc32_of(datas[i], sizes[i]);
+        put32(f, 0x02014b50u); put16(f, 20); put16(f, 20); put16(f, 0);
+        put16(f, 0); put16(f, 0); put16(f, 0); put32(f, crc);
+        put32(f, (uint32_t)sizes[i]); put32(f, (uint32_t)sizes[i]);
+        put16(f, (unsigned)strlen(names[i])); put16(f, 0); put16(f, 0);
+        put16(f, 0); put16(f, 0); put32(f, 0); put32(f, (uint32_t)offsets[i]);
+        fputs(names[i], f);
+    }
+    central_size = ftell(f) - central;
+    put32(f, 0x06054b50u); put16(f, 0); put16(f, 0);
+    put16(f, (unsigned)count); put16(f, (unsigned)count);
+    put32(f, (uint32_t)central_size); put32(f, (uint32_t)central);
+    put16(f, 0);
+    TEST_ASSERT_EQUAL_INT(0, fclose(f));
+}
+
+static void test_zip_streams_wrapped_cue_image(void)
+{
+    static const unsigned char sync[12] = {
+        0x00, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0x00
+    };
+    static const char cue_text[] =
+        "FILE \"Disc.bin\" BINARY\r\n  TRACK 01 MODE1/2352\r\n    INDEX 01 00:00:00\r\n";
+    struct memory_source iso_memory;
+    unsigned char *raw;
+    size_t raw_size;
+    size_t sector;
+    const char *names[2];
+    const unsigned char *datas[2];
+    size_t sizes[2];
+    enum c2_zip_content content;
+    char entry[512];
+    char error[256];
+    struct c2_zip_stream stream;
+    struct c2_source_reader source;
+    unsigned char probe[16];
+    size_t got;
+    FILE *file;
+    char text[5] = {0};
+
+    iso_memory.data = make_iso(&iso_memory.size);
+    raw_size = (iso_memory.size / SECTOR) * RAW_SECTOR;
+    raw = calloc(1, raw_size);
+    for (sector = 0; sector < iso_memory.size / SECTOR; sector++) {
+        unsigned char *s = raw + sector * RAW_SECTOR;
+        memcpy(s, sync, sizeof(sync));
+        s[15] = 1;
+        memcpy(s + 16, iso_memory.data + sector * SECTOR, SECTOR);
+    }
+    names[0] = "Caesar II/DISC.CUE"; datas[0] = (const unsigned char *)cue_text; sizes[0] = sizeof(cue_text) - 1;
+    names[1] = "Caesar II/disc.bin"; datas[1] = raw; sizes[1] = raw_size;
+    remove("c2-wrapped.zip");
+    write_stored_zip("c2-wrapped.zip", names, datas, sizes, 2);
+
+    /* Probe classifies it as a wrapped CUE and names the CUE entry. */
+    TEST_ASSERT_TRUE_MESSAGE(c2_zip_probe("c2-wrapped.zip", &content, entry,
+                                          sizeof(entry), error, sizeof(error)), error);
+    TEST_ASSERT_EQUAL(C2_ZIP_CUE_IMAGE, content);
+    TEST_ASSERT_EQUAL_STRING("Caesar II/DISC.CUE", entry);
+
+    /* Stream: forward read, then a backward read forces one rewind, and
+     * lookup is case-insensitive (CUE says Disc.bin, ZIP has disc.bin). */
+    TEST_ASSERT_TRUE(c2_zip_stream_open(&stream, "c2-wrapped.zip",
+                                        "Caesar II/Disc.bin", error, sizeof(error)));
+    c2_zip_stream_source(&stream, &source);
+    TEST_ASSERT_EQUAL_UINT64(raw_size, source.size);
+    TEST_ASSERT_TRUE(source.read_at(source.userdata, 16 * RAW_SECTOR + 16 + 1, probe, 5, &got));
+    TEST_ASSERT_EQUAL_size_t(5, got);
+    TEST_ASSERT_EQUAL_MEMORY("CD001", probe, 5);
+    TEST_ASSERT_EQUAL_UINT(0, stream.rewinds);
+    TEST_ASSERT_TRUE(source.read_at(source.userdata, 0, probe, 12, &got));
+    TEST_ASSERT_EQUAL_MEMORY(sync, probe, 12);
+    TEST_ASSERT_EQUAL_UINT(1, stream.rewinds);
+    c2_zip_stream_close(&stream);
+
+    /* End to end through the importer into a cache directory. */
+    remove("c2-wrapped-cache/game-data");
+    {
+        char root[512];
+        TEST_ASSERT_TRUE_MESSAGE(c2_import_path("c2-wrapped.zip", "c2-wrapped-cache",
+                                                NULL, NULL, root, sizeof(root),
+                                                error, sizeof(error)), error);
+        snprintf(entry, sizeof(entry), "%s/HD/C2.ENG", root);
+        file = fopen(entry, "rb");
+        TEST_ASSERT_NOT_NULL_MESSAGE(file, entry);
+        TEST_ASSERT_EQUAL_size_t(4, fread(text, 1, 4, file));
+        fclose(file);
+        TEST_ASSERT_EQUAL_STRING("text", text);
+        remove(entry);
+        snprintf(entry, sizeof(entry), "%s/HD", root); remove(entry);
+        snprintf(entry, sizeof(entry), "%s/.complete", root); remove(entry);
+        remove(root);
+    }
+    remove("c2-wrapped-cache/game-data");
+    remove("c2-wrapped-cache");
+    remove("c2-wrapped.zip");
+    free(raw);
+    free(iso_memory.data);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -346,5 +487,6 @@ int main(void)
     RUN_TEST(test_pack_activates_default_profile);
     RUN_TEST(test_raw_sector_adapter_feeds_iso_reader);
     RUN_TEST(test_cdrom_reader_serves_iso_sectors);
+    RUN_TEST(test_zip_streams_wrapped_cue_image);
     return UNITY_END();
 }

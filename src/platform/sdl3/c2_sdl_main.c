@@ -20,6 +20,7 @@
 #include "c2_debug_crash.h"
 #endif
 #include "c2_sdl_host.h"
+#include "c2_setup_ui.h"
 #include "c2_version.h"
 #if PORT_FEAT_DEBUG_OBSERVATION
 #include "c2_sdl_smoke.h"
@@ -86,8 +87,11 @@ struct c2_sdl_app {
     int fractional_scaling;
     int smoke_kind;
     int prepare_only;
+    int skip_launcher;
+    int launcher_active;
     int host_initialized;
     int host_interactive;
+    char last_error[512];
 };
 
 static struct c2_sdl_app c2_app;
@@ -121,14 +125,17 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                            const char **asset_profile,
                            int *headless, int *mouse_lock,
                            int *fractional_scaling, int *smoke_kind,
-                           int *prepare_only)
+                           int *prepare_only, int *skip_launcher,
+                           int *explicit_source)
 {
     int i;
 
     *asset_root = getenv("C2_ASSET_ROOT");
-    if (*asset_root == NULL || **asset_root == '\0') {
+    *explicit_source = *asset_root != NULL && **asset_root != '\0';
+    if (!*explicit_source) {
         *asset_root = ".";
     }
+    *skip_launcher = 0;
     *user_data_root = getenv("C2_USER_DATA_DIR");
     if (*user_data_root == NULL || **user_data_root == '\0') {
         *user_data_root = NULL;
@@ -151,6 +158,8 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
             *mouse_lock = 0;
         } else if (strcmp(argv[i], "--prepare-assets") == 0) {
             *prepare_only = 1;
+        } else if (strcmp(argv[i], "--skip-launcher") == 0) {
+            *skip_launcher = 1;
         } else if (strcmp(argv[i], "--fractional-scaling") == 0) {
             *fractional_scaling = 1;
 #if PORT_FEAT_DEBUG_OBSERVATION
@@ -177,6 +186,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
         } else if ((strcmp(argv[i], "--asset-root") == 0 ||
                     strcmp(argv[i], "--game-data") == 0) && i + 1 < argc) {
             *asset_root = argv[++i];
+            *explicit_source = 1;
         } else if (strcmp(argv[i], "--user-data-dir") == 0 && i + 1 < argc) {
             *user_data_root = argv[++i];
         } else if (strcmp(argv[i], "--asset-profile") == 0 && i + 1 < argc) {
@@ -185,13 +195,14 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
             *screenshot_filename = argv[++i];
         } else if (argv[i][0] != '-') {
             *asset_root = argv[i];
+            *explicit_source = 1;
         } else {
 #if PORT_FEAT_DEBUG_OBSERVATION
             fprintf(stderr,
                     "usage: %s [--headless] [--game-data SOURCE] "
                     "[--user-data-dir PATH] [--screenshot FILE] "
                     "[--mouse-lock|--no-mouse-lock] [--prepare-assets] "
-                    "[--fractional-scaling] "
+                    "[--skip-launcher] [--fractional-scaling] "
                     "[--smoke-test|--city-smoke-test|"
                     "--tutorial-smoke-test|--save-load-smoke-test|"
                     "--music-buffer-smoke-test|"
@@ -202,7 +213,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                     "usage: %s [--headless] [--game-data SOURCE] "
                     "[--user-data-dir PATH] [--screenshot FILE] "
                     "[--mouse-lock|--no-mouse-lock] [--prepare-assets] "
-                    "[--fractional-scaling]\n",
+                    "[--skip-launcher] [--fractional-scaling]\n",
                     argv[0]);
 #endif
             return 0;
@@ -264,19 +275,29 @@ static void update_host_callback_rate(struct c2_sdl_app *app)
 }
 
 #if !PORT_PLATFORM_WASM
-static int load_saved_asset_source(const char *user_root, char *source, size_t capacity)
+static void chomp(char *text)
+{
+    size_t length = strlen(text);
+    while (length && (text[length - 1] == '\n' || text[length - 1] == '\r')) text[--length] = '\0';
+}
+
+/* asset-source.txt: line 1 the source, optional line 2 the pack profile. */
+static int load_saved_asset_source(const char *user_root, char *source, size_t capacity,
+                                   char *profile, size_t profile_capacity)
 {
     char path[4096];
     FILE *file;
-    size_t length;
     if (snprintf(path, sizeof(path), "%s/asset-source.txt", user_root) >= (int)sizeof(path)) return 0;
     file = fopen(path, "rb");
     if (!file) return 0;
     if (!fgets(source, (int)capacity, file)) { fclose(file); return 0; }
+    chomp(source);
+    if (profile && profile_capacity && !profile[0]) {
+        if (fgets(profile, (int)profile_capacity, file)) chomp(profile);
+        else profile[0] = '\0';
+    }
     fclose(file);
-    length = strlen(source);
-    while (length && (source[length - 1] == '\n' || source[length - 1] == '\r')) source[--length] = '\0';
-    return length != 0;
+    return source[0] != '\0';
 }
 
 static void save_asset_source(const struct c2_sdl_app *app)
@@ -286,7 +307,7 @@ static void save_asset_source(const struct c2_sdl_app *app)
     if (snprintf(path, sizeof(path), "%s/asset-source.txt", app->user_data_root) >= (int)sizeof(path)) return;
     file = fopen(path, "wb");
     if (!file) return;
-    fprintf(file, "%s\n", app->asset_source);
+    fprintf(file, "%s\n%s\n", app->asset_source, app->asset_profile);
     fclose(file);
 }
 #endif
@@ -376,6 +397,7 @@ static int start_runtime(struct c2_sdl_app *app)
 #else
     cache_root = app->user_data_root;
 #endif
+    app->last_error[0] = '\0';
     if (!c2_import_path(app->asset_source, cache_root,
                         app->asset_profile[0] ? app->asset_profile : NULL,
                         NULL,
@@ -383,6 +405,7 @@ static int start_runtime(struct c2_sdl_app *app)
                         import_error, sizeof(import_error))) {
         fprintf(stderr, "could not import game data '%s': %s\n",
                 app->asset_source, import_error);
+        snprintf(app->last_error, sizeof(app->last_error), "%s", import_error);
 #if PORT_PLATFORM_WASM
         c2_browser_import_error(import_error);
 #endif
@@ -405,10 +428,16 @@ static int start_runtime(struct c2_sdl_app *app)
 #if PORT_FEAT_DEBUG_OBSERVATION
     host_config.enable_observation = app->smoke_kind != C2_SDL_SMOKE_NONE;
 #endif
-    if (!c2_host_init(&host_config)) return 0;
+    if (!c2_host_init(&host_config)) {
+        snprintf(app->last_error, sizeof(app->last_error),
+                 "could not initialize the display: %s", SDL_GetError());
+        return 0;
+    }
     if (c2_host_asset_size("C2.ENG") == 0 ||
         c2_host_asset_size("HELP.ENG") == 0) {
         fprintf(stderr, "selected game data is missing C2.ENG or HELP.ENG\n");
+        snprintf(app->last_error, sizeof(app->last_error),
+                 "selected game data is missing C2.ENG or HELP.ENG");
         c2_host_shutdown();
         return 0;
     }
@@ -434,56 +463,38 @@ static int start_runtime(struct c2_sdl_app *app)
     app->engine_thread = SDL_CreateThread(engine_main, "caesar2-engine", app);
     if (app->engine_thread == NULL) {
         fprintf(stderr, "could not start the Caesar II engine: %s\n", SDL_GetError());
+        snprintf(app->last_error, sizeof(app->last_error),
+                 "could not start the engine: %s", SDL_GetError());
         return 0;
     }
     return 1;
 }
 
 #if !PORT_PLATFORM_WASM
-struct source_dialog {
-    SDL_Mutex *mutex;
-    SDL_Condition *condition;
-    char path[4096];
-    int closed;
-};
-
-static void SDLCALL source_dialog_closed(void *userdata,
-                                          const char *const *filelist,
-                                          int filter)
+/*
+ * The launcher is the native counterpart of the browser landing page. It owns
+ * source selection, import progress, and error retry; the engine only starts
+ * once it reports C2_SETUP_PLAY.
+ */
+static int open_launcher(struct c2_sdl_app *app, const char *error)
 {
-    struct source_dialog *dialog = userdata;
-    (void)filter;
-    SDL_LockMutex(dialog->mutex);
-    if (filelist && filelist[0]) {
-        snprintf(dialog->path, sizeof(dialog->path), "%s", filelist[0]);
-    }
-    dialog->closed = 1;
-    SDL_SignalCondition(dialog->condition);
-    SDL_UnlockMutex(dialog->mutex);
+    struct c2_setup_config config;
+    memset(&config, 0, sizeof(config));
+    config.version = C2_VERSION_STRING;
+    config.source = app->asset_source;
+    config.cache_root = app->user_data_root;
+    config.asset_profile = app->asset_profile[0] ? app->asset_profile : NULL;
+    config.error = error;
+    if (!c2_setup_open(&config)) return 0;
+    app->launcher_active = 1;
+    return 1;
 }
 
-static int choose_installation_folder(char *path, size_t capacity)
+static void print_source_hint(void)
 {
-    struct source_dialog dialog;
-    memset(&dialog, 0, sizeof(dialog));
-    if (!SDL_Init(SDL_INIT_EVENTS)) return 0;
-    dialog.mutex = SDL_CreateMutex();
-    dialog.condition = SDL_CreateCondition();
-    if (!dialog.mutex || !dialog.condition) goto done;
-    SDL_LockMutex(dialog.mutex);
-    SDL_ShowOpenFolderDialog(source_dialog_closed, &dialog, NULL, NULL, false);
-    while (!dialog.closed) {
-        SDL_WaitConditionTimeout(dialog.condition, dialog.mutex, 30);
-        SDL_PumpEvents();
-    }
-    SDL_UnlockMutex(dialog.mutex);
-    if (dialog.path[0] && strlen(dialog.path) < capacity) strcpy(path, dialog.path);
-
-done:
-    SDL_DestroyCondition(dialog.condition);
-    SDL_DestroyMutex(dialog.mutex);
-    SDL_Quit();
-    return path[0] != '\0';
+    fprintf(stderr,
+            "Start with --game-data pointing at an installed Caesar II folder, "
+            "a ZIP/ISO/CUE image, an asset pack, or a CD-ROM drive.\n");
 }
 #endif
 
@@ -547,6 +558,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     int fractional_scaling;
     int smoke_kind;
     int prepare_only;
+    int skip_launcher;
+    int explicit_source;
+    int saved_source = 0;
 
     *appstate = &c2_app;
     {
@@ -574,16 +588,24 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
                          &c2_app.default_user_data_root,
                          &screenshot_filename, &asset_profile,
                          &headless, &mouse_lock, &fractional_scaling,
-                         &smoke_kind, &prepare_only)) {
+                         &smoke_kind, &prepare_only, &skip_launcher,
+                         &explicit_source)) {
         return SDL_APP_FAILURE;
     }
 
     snprintf(c2_app.user_data_root, sizeof(c2_app.user_data_root), "%s", user_data_root);
+    if (asset_profile && *asset_profile) {
+        snprintf(c2_app.asset_profile, sizeof(c2_app.asset_profile), "%s", asset_profile);
+    } else {
+        c2_app.asset_profile[0] = '\0';
+    }
 #if !PORT_PLATFORM_WASM
-    if (strcmp(asset_root, ".") == 0 &&
+    if (!explicit_source &&
         load_saved_asset_source(user_data_root, c2_app.asset_source,
-                                sizeof(c2_app.asset_source))) {
+                                sizeof(c2_app.asset_source),
+                                c2_app.asset_profile, sizeof(c2_app.asset_profile))) {
         asset_root = c2_app.asset_source;
+        saved_source = 1;
     }
 #endif
     if (asset_root != c2_app.asset_source) {
@@ -594,16 +616,16 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     } else {
         c2_app.screenshot_filename[0] = '\0';
     }
-    if (asset_profile && *asset_profile) {
-        snprintf(c2_app.asset_profile, sizeof(c2_app.asset_profile), "%s", asset_profile);
-    } else {
-        c2_app.asset_profile[0] = '\0';
-    }
     c2_app.headless = headless;
     c2_app.mouse_lock = mouse_lock;
     c2_app.fractional_scaling = fractional_scaling;
     c2_app.smoke_kind = smoke_kind;
     c2_app.prepare_only = prepare_only;
+    c2_app.skip_launcher = skip_launcher;
+    c2_app.launcher_active = 0;
+    c2_app.last_error[0] = '\0';
+    (void)explicit_source;
+    (void)saved_source;
 #if PORT_PLATFORM_WASM
     SDL_SetAtomicInt(&c2_app.storage_result, 0);
     SDL_SetAtomicInt(&c2_app.prepare_result, 0);
@@ -618,12 +640,29 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
         c2_app.default_user_data_root = NULL;
         return prepared;
     }
-    if (!start_runtime(&c2_app)) {
-        fprintf(stderr, "Select an installed Caesar II folder, or restart with --game-data ZIP/ISO/CUE.\n");
+    if (c2_app.headless || c2_app.skip_launcher) {
+        /* Non-interactive runs must never open a dialog: fail fast with a
+         * non-zero exit so CI and smoke runs cannot hang. */
+        if (!start_runtime(&c2_app)) {
+            print_source_hint();
+            SDL_free(c2_app.default_user_data_root);
+            c2_app.default_user_data_root = NULL;
+            return SDL_APP_FAILURE;
+        }
+        return SDL_APP_CONTINUE;
+    }
+    /* Interactive: show the launcher first. The implicit "." default only
+     * counts as a source when the working directory really holds the game,
+     * so first-run users see "none selected" instead of a cryptic error. */
+    if (!explicit_source && !saved_source &&
+        !c2_setup_source_looks_valid(c2_app.asset_source)) {
         c2_app.asset_source[0] = '\0';
-        if (!choose_installation_folder(c2_app.asset_source,
-                                        sizeof(c2_app.asset_source)) ||
-            !start_runtime(&c2_app)) {
+    }
+    if (!open_launcher(&c2_app, NULL)) {
+        /* No usable display for the launcher; fall back to a direct start so
+         * a scripted --game-data invocation still works. */
+        if (!start_runtime(&c2_app)) {
+            print_source_hint();
             SDL_free(c2_app.default_user_data_root);
             c2_app.default_user_data_root = NULL;
             return SDL_APP_FAILURE;
@@ -638,6 +677,12 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
     struct c2_sdl_app *app;
 
     app = appstate;
+#if !PORT_PLATFORM_WASM
+    if (app->launcher_active) {
+        c2_setup_handle_event(event);
+        return SDL_APP_CONTINUE;
+    }
+#endif
     if (!app->host_initialized) return SDL_APP_CONTINUE;
 #if PORT_PLATFORM_WASM
     if (app->pointer_watch_installed && is_pointer_event(event->type)) {
@@ -656,6 +701,28 @@ SDL_AppResult SDL_AppIterate(void *appstate)
     int result;
 
     app = appstate;
+#if !PORT_PLATFORM_WASM
+    if (app->launcher_active) {
+        enum c2_setup_result setup = c2_setup_iterate();
+        if (setup == C2_SETUP_RUNNING) return SDL_APP_CONTINUE;
+        snprintf(app->asset_source, sizeof(app->asset_source), "%s",
+                 c2_setup_selected_source());
+        snprintf(app->asset_profile, sizeof(app->asset_profile), "%s",
+                 c2_setup_selected_profile());
+        c2_setup_close();
+        app->launcher_active = 0;
+        if (setup == C2_SETUP_QUIT) return SDL_APP_SUCCESS;
+        SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, C2_HOST_ACTIVE_CALLBACK_RATE);
+        app->host_interactive = -1;
+        if (start_runtime(app)) return SDL_APP_CONTINUE;
+        /* Return to the launcher with the reason instead of dying. */
+        if (!open_launcher(app, app->last_error[0] ? app->last_error
+                                                  : "could not start the game")) {
+            return SDL_APP_FAILURE;
+        }
+        return SDL_APP_CONTINUE;
+    }
+#endif
 #if PORT_PLATFORM_WASM
     if (!app->host_initialized) {
         int storage_result = SDL_GetAtomicInt(&app->storage_result);
@@ -718,6 +785,12 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
 
     (void)result;
     app = appstate;
+#if !PORT_PLATFORM_WASM
+    if (app != NULL && app->launcher_active) {
+        c2_setup_close();
+        app->launcher_active = 0;
+    }
+#endif
 #if PORT_PLATFORM_WASM
     if (app != NULL && app->pointer_watch_installed) {
         SDL_RemoveEventWatch(push_pointer_event, app);

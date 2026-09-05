@@ -351,6 +351,7 @@ add_executable(caesar2
     src/platform/sdl3/c2_sdl_audio.c
     src/platform/sdl3/c2_sdl_main.c
     src/platform/sdl3/c2_sdl_host.c
+    src/platform/sdl3/c2_setup_ui.c
 )
 
 target_sources(caesar2 PRIVATE
@@ -570,6 +571,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/platform/sdl3/c2_sdl_main.c
         src/platform/sdl3/c2_sdl_audio.c
         src/platform/sdl3/c2_sdl_host.c
+        src/platform/sdl3/c2_setup_ui.c
         src/platform/sdl3/c2_sdl_smoke.c
         src/platform/common/c2_port_app.c
         src/platform/common/c2_port_audio.c
