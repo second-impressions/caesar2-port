@@ -113,9 +113,12 @@ For an optimized build, use `cmake --preset linux-release` followed by
 Every interactive start opens a small **launcher window** first, the native
 counterpart of the browser landing page. It shows what game data is active
 (kind plus the version line from its own `C2.ENG`) and offers just *Play*,
-*Choose game data…*, a *Language* row when the data is a multi-profile pack,
-one *Use the disc in …* row per optical drive that currently holds a disc,
-and *Quit*. The chooser is a single file dialog: pick any file inside an
+a *Language* row when the data is a multi-profile pack, *Display*
+(windowed/fullscreen; F11 toggles in game) and *Scaling* (integer square
+pixels or fractional fill), *Choose/Replace game data…*, one *Use the disc
+in …* row per optical drive that currently holds a disc, and *Quit*. Display
+choices persist in `launcher.ini` beside the saves; `--fullscreen` and
+`--fractional-scaling` override them for one run. The chooser is a single file dialog: pick any file inside an
 installation (e.g. `C2.ENG`), an ISO or BIN image, a ZIP, or a `.c2assets`
 pack — or drop it onto the window — and the importer classifies it by
 content. Imports show a progress bar and a rejected selection comes back

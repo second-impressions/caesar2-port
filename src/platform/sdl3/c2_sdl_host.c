@@ -66,6 +66,7 @@ static int c2_mouse_relative;
 static int c2_mouse_lock_pending;
 static int c2_mouse_warp_pending;
 static int c2_pointer_inside;
+static int c2_os_cursor_shown;
 #if PORT_FEAT_DEBUG_OBSERVATION
 static int c2_observation_enabled;
 #endif
@@ -90,6 +91,21 @@ static void sync_mouse_input(void)
     c2_input.mouse_x = c2_mouse.x;
     c2_input.mouse_y = c2_mouse.y;
     c2_input.mouse_inside = c2_pointer_inside;
+}
+
+/* The game draws its own pointer inside the 640x480 frame. Over the
+ * letterbox border around it (integer scaling, or a window with another
+ * aspect ratio) hand the pointer back to the OS so it stays visible. */
+static void sync_os_cursor(void)
+{
+    int show;
+
+    if (c2_window == NULL || c2_mouse_relative) return;
+    show = !c2_mouse.inside;
+    if (show == c2_os_cursor_shown) return;
+    c2_os_cursor_shown = show;
+    if (show) SDL_ShowCursor();
+    else SDL_HideCursor();
 }
 
 static void queue_input_sample(void)
@@ -785,14 +801,16 @@ int c2_host_init(const struct c2_host_config *config)
         return 1;
     }
     window_flags = SDL_WINDOW_RESIZABLE;
-    presentation = SDL_LOGICAL_PRESENTATION_LETTERBOX;
+    if (config->fullscreen) window_flags |= SDL_WINDOW_FULLSCREEN;
 #if PORT_PLATFORM_WASM
     window_flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
+#endif
+    /* Integer scaling keeps square pixels; fractional fills the window and
+     * letterboxes the short axis. Both targets honour the same choice. */
     c2_fractional_scaling = config->fractional_scaling != 0;
     presentation = c2_fractional_scaling
         ? SDL_LOGICAL_PRESENTATION_LETTERBOX
         : SDL_LOGICAL_PRESENTATION_INTEGER_SCALE;
-#endif
     if (!SDL_CreateWindowAndRenderer(config->title,
                                      c2_frame_width * config->window_scale,
                                      c2_frame_height * config->window_scale,
@@ -807,6 +825,7 @@ int c2_host_init(const struct c2_host_config *config)
         c2_host_shutdown();
         return 0;
     }
+    c2_os_cursor_shown = 0;
     if (!SDL_StartTextInput(c2_window)) {
         fprintf(stderr, "could not start text input: %s\n", SDL_GetError());
         c2_host_shutdown();
@@ -1347,6 +1366,21 @@ void c2_host_set_fractional_scaling(int enabled)
     }
 }
 
+void c2_host_set_fullscreen(int enabled)
+{
+    if (c2_window == NULL) return;
+    if (!SDL_SetWindowFullscreen(c2_window, enabled != 0)) {
+        fprintf(stderr, "could not change fullscreen state: %s\n",
+                SDL_GetError());
+    }
+}
+
+int c2_host_is_fullscreen(void)
+{
+    if (c2_window == NULL) return 0;
+    return (SDL_GetWindowFlags(c2_window) & SDL_WINDOW_FULLSCREEN) != 0;
+}
+
 void c2_host_request_pause(int paused)
 {
     if (c2_event_mutex == NULL) {
@@ -1529,6 +1563,15 @@ void c2_sdl_host_handle_event(SDL_Event *event)
     if (c2_renderer != NULL) {
         SDL_ConvertEventToRenderCoordinates(c2_renderer, event);
     }
+#if !PORT_PLATFORM_WASM
+    /* F11 toggles fullscreen without reaching the game; the browser shell
+     * owns fullscreen on its own chrome. */
+    if (event->type == SDL_EVENT_KEY_DOWN && event->key.key == SDLK_F11 &&
+        !event->key.repeat) {
+        c2_host_set_fullscreen(!c2_host_is_fullscreen());
+        return;
+    }
+#endif
 
     SDL_LockMutex(c2_event_mutex);
     if (event->type == SDL_EVENT_QUIT) {
@@ -1579,6 +1622,7 @@ void c2_sdl_host_handle_event(SDL_Event *event)
         }
         c2_pointer_inside = c2_mouse.inside;
         sync_mouse_input();
+        sync_os_cursor();
         c2_input.generation++;
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
                event->type == SDL_EVENT_MOUSE_BUTTON_UP) {
@@ -1590,6 +1634,7 @@ void c2_sdl_host_handle_event(SDL_Event *event)
                                        event->button.y);
             c2_pointer_inside = c2_mouse.inside;
             sync_mouse_input();
+            sync_os_cursor();
         }
         mask = translate_mouse_button(event->button.button);
         if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN &&

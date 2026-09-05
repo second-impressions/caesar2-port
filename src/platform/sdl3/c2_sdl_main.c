@@ -85,6 +85,7 @@ struct c2_sdl_app {
     int headless;
     int mouse_lock;
     int fractional_scaling;
+    int fullscreen;
     int smoke_kind;
     int prepare_only;
     int skip_launcher;
@@ -126,7 +127,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                            int *headless, int *mouse_lock,
                            int *fractional_scaling, int *smoke_kind,
                            int *prepare_only, int *skip_launcher,
-                           int *explicit_source)
+                           int *explicit_source, int *fullscreen)
 {
     int i;
 
@@ -143,7 +144,8 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
     *default_user_data_root = NULL;
     *headless = 0;
     *mouse_lock = 0;
-    *fractional_scaling = 0;
+    *fractional_scaling = -1; /* -1: use the saved launcher setting */
+    *fullscreen = -1;
     *smoke_kind = 0;
     *prepare_only = 0;
     *screenshot_filename = NULL;
@@ -162,6 +164,8 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
             *skip_launcher = 1;
         } else if (strcmp(argv[i], "--fractional-scaling") == 0) {
             *fractional_scaling = 1;
+        } else if (strcmp(argv[i], "--fullscreen") == 0) {
+            *fullscreen = 1;
 #if PORT_FEAT_DEBUG_OBSERVATION
         } else if (strcmp(argv[i], "--smoke-test") == 0) {
             *headless = 1;
@@ -202,7 +206,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                     "usage: %s [--headless] [--game-data SOURCE] "
                     "[--user-data-dir PATH] [--screenshot FILE] "
                     "[--mouse-lock|--no-mouse-lock] [--prepare-assets] "
-                    "[--skip-launcher] [--fractional-scaling] "
+                    "[--skip-launcher] [--fullscreen] [--fractional-scaling] "
                     "[--smoke-test|--city-smoke-test|"
                     "--tutorial-smoke-test|--save-load-smoke-test|"
                     "--music-buffer-smoke-test|"
@@ -213,7 +217,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                     "usage: %s [--headless] [--game-data SOURCE] "
                     "[--user-data-dir PATH] [--screenshot FILE] "
                     "[--mouse-lock|--no-mouse-lock] [--prepare-assets] "
-                    "[--skip-launcher] [--fractional-scaling]\n",
+                    "[--skip-launcher] [--fullscreen] [--fractional-scaling]\n",
                     argv[0]);
 #endif
             return 0;
@@ -298,6 +302,40 @@ static int load_saved_asset_source(const char *user_root, char *source, size_t c
     }
     fclose(file);
     return source[0] != '\0';
+}
+
+/* launcher.ini: the display choices the launcher offers. Missing keys keep
+ * the defaults (windowed, integer scaling). */
+static void load_display_settings(const char *user_root, int *fullscreen,
+                                  int *fractional_scaling)
+{
+    char path[4096];
+    char line[256];
+    FILE *file;
+    if (snprintf(path, sizeof(path), "%s/launcher.ini", user_root) >= (int)sizeof(path)) return;
+    file = fopen(path, "rb");
+    if (!file) return;
+    while (fgets(line, sizeof(line), file)) {
+        chomp(line);
+        if (strcmp(line, "fullscreen=1") == 0) *fullscreen = 1;
+        else if (strcmp(line, "fullscreen=0") == 0) *fullscreen = 0;
+        else if (strcmp(line, "scaling=fractional") == 0) *fractional_scaling = 1;
+        else if (strcmp(line, "scaling=integer") == 0) *fractional_scaling = 0;
+    }
+    fclose(file);
+}
+
+static void save_display_settings(const struct c2_sdl_app *app)
+{
+    char path[4096];
+    FILE *file;
+    if (snprintf(path, sizeof(path), "%s/launcher.ini", app->user_data_root) >= (int)sizeof(path)) return;
+    SDL_CreateDirectory(app->user_data_root);
+    file = fopen(path, "wb");
+    if (!file) return;
+    fprintf(file, "fullscreen=%d\nscaling=%s\n", app->fullscreen ? 1 : 0,
+            app->fractional_scaling ? "fractional" : "integer");
+    fclose(file);
 }
 
 static void save_asset_source(const struct c2_sdl_app *app)
@@ -424,7 +462,8 @@ static int start_runtime(struct c2_sdl_app *app)
     host_config.window_scale = 2;
     host_config.headless = app->headless;
     host_config.mouse_lock = app->mouse_lock;
-    host_config.fractional_scaling = app->fractional_scaling;
+    host_config.fractional_scaling = app->fractional_scaling > 0;
+    host_config.fullscreen = app->fullscreen > 0;
 #if PORT_FEAT_DEBUG_OBSERVATION
     host_config.enable_observation = app->smoke_kind != C2_SDL_SMOKE_NONE;
 #endif
@@ -485,6 +524,8 @@ static int open_launcher(struct c2_sdl_app *app, const char *error)
     config.cache_root = app->user_data_root;
     config.asset_profile = app->asset_profile[0] ? app->asset_profile : NULL;
     config.error = error;
+    config.fullscreen = app->fullscreen > 0;
+    config.fractional_scaling = app->fractional_scaling > 0;
     if (!c2_setup_open(&config)) return 0;
     app->launcher_active = 1;
     return 1;
@@ -556,6 +597,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     int headless;
     int mouse_lock;
     int fractional_scaling;
+    int fullscreen;
     int smoke_kind;
     int prepare_only;
     int skip_launcher;
@@ -589,7 +631,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
                          &screenshot_filename, &asset_profile,
                          &headless, &mouse_lock, &fractional_scaling,
                          &smoke_kind, &prepare_only, &skip_launcher,
-                         &explicit_source)) {
+                         &explicit_source, &fullscreen)) {
         return SDL_APP_FAILURE;
     }
 
@@ -618,7 +660,19 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     }
     c2_app.headless = headless;
     c2_app.mouse_lock = mouse_lock;
+#if !PORT_PLATFORM_WASM
+    {
+        int saved_fullscreen = 0;
+        int saved_fractional = 0;
+        load_display_settings(user_data_root, &saved_fullscreen, &saved_fractional);
+        if (fullscreen < 0) fullscreen = saved_fullscreen;
+        if (fractional_scaling < 0) fractional_scaling = saved_fractional;
+    }
+#endif
+    if (fullscreen < 0) fullscreen = 0;
+    if (fractional_scaling < 0) fractional_scaling = 0;
     c2_app.fractional_scaling = fractional_scaling;
+    c2_app.fullscreen = fullscreen;
     c2_app.smoke_kind = smoke_kind;
     c2_app.prepare_only = prepare_only;
     c2_app.skip_launcher = skip_launcher;
@@ -709,7 +763,10 @@ SDL_AppResult SDL_AppIterate(void *appstate)
                  c2_setup_selected_source());
         snprintf(app->asset_profile, sizeof(app->asset_profile), "%s",
                  c2_setup_selected_profile());
+        app->fullscreen = c2_setup_selected_fullscreen();
+        app->fractional_scaling = c2_setup_selected_fractional_scaling();
         c2_setup_close();
+        if (setup == C2_SETUP_PLAY) save_display_settings(app);
         app->launcher_active = 0;
         if (setup == C2_SETUP_QUIT) return SDL_APP_SUCCESS;
         SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, C2_HOST_ACTIVE_CALLBACK_RATE);

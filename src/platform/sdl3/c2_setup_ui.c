@@ -12,7 +12,7 @@
 #include "font8x8/font8x8_basic.h"
 
 #define UI_WIDTH 480
-#define UI_HEIGHT 300
+#define UI_HEIGHT 356
 #define UI_SCALE 2
 #define UI_MARGIN 16
 #define UI_GLYPH 8
@@ -32,6 +32,8 @@ enum setup_state {
 enum button_kind {
     BUTTON_PLAY = 0,
     BUTTON_LANGUAGE,
+    BUTTON_DISPLAY,
+    BUTTON_SCALING,
     BUTTON_CHOOSE,
     BUTTON_DRIVE,
     BUTTON_QUIT
@@ -87,6 +89,8 @@ static struct {
     char asset_profile[128];
     char profiles[8][32];     /* from C2PACK.IDX when the data is a pack */
     int profile_count;
+    int fullscreen;
+    int fractional_scaling;
     char status[256];
     const struct rgb *status_color;
     int source_ready;
@@ -321,6 +325,13 @@ static void rebuild_buttons(void)
         snprintf(label, sizeof(label), "Language: %s", profile_label(ui.asset_profile));
         add_button(BUTTON_LANGUAGE, label, "Enter to change", NULL, 1);
     }
+    add_button(BUTTON_DISPLAY,
+               ui.fullscreen ? "Display: Fullscreen" : "Display: Windowed",
+               "F11 in game", NULL, 1);
+    add_button(BUTTON_SCALING,
+               ui.fractional_scaling ? "Scaling: Fractional (fills the window)"
+                                     : "Scaling: Integer (square pixels)",
+               "", NULL, 1);
     add_button(BUTTON_CHOOSE, ui.source_ready ? "Replace game data..."
                                               : "Choose game data...",
                "", NULL, 1);
@@ -765,6 +776,14 @@ static void activate(int index)
     case BUTTON_PLAY:
         start_import(1);
         break;
+    case BUTTON_DISPLAY:
+        ui.fullscreen = !ui.fullscreen;
+        rebuild_buttons();
+        break;
+    case BUTTON_SCALING:
+        ui.fractional_scaling = !ui.fractional_scaling;
+        rebuild_buttons();
+        break;
     case BUTTON_CHOOSE:
         open_dialog();
         break;
@@ -1038,6 +1057,8 @@ int c2_setup_open(const struct c2_setup_config *config)
              config->cache_root ? config->cache_root : ".");
     snprintf(ui.asset_profile, sizeof(ui.asset_profile), "%s",
              config->asset_profile ? config->asset_profile : "");
+    ui.fullscreen = config->fullscreen != 0;
+    ui.fractional_scaling = config->fractional_scaling != 0;
 
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
         fprintf(stderr, "launcher: SDL video initialization failed: %s\n",
@@ -1125,6 +1146,16 @@ const char *c2_setup_selected_profile(void)
     return ui.asset_profile;
 }
 
+int c2_setup_selected_fullscreen(void)
+{
+    return ui.fullscreen;
+}
+
+int c2_setup_selected_fractional_scaling(void)
+{
+    return ui.fractional_scaling;
+}
+
 void c2_setup_close(void)
 {
     if (!ui.open) return;
@@ -1139,8 +1170,11 @@ void c2_setup_close(void)
     ui.renderer = NULL;
     ui.window = NULL;
     ui.open = 0;
-    /* Balance c2_setup_open's SDL_Init; the host performs its own. */
-    SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+    /* The video subsystem stays up on purpose: the host's SDL_Init only
+     * bumps the reference and SDL_Quit at exit tears everything down.
+     * Re-initialising video in between would reload libdecor on Wayland,
+     * whose GTK plugin then complains that GTK was already initialised
+     * ("gtk_disable_setlocale() must be called before gtk_init()"). */
 }
 
 #else /* PORT_PLATFORM_WASM */
@@ -1150,6 +1184,8 @@ void c2_setup_handle_event(const SDL_Event *event) { (void)event; }
 enum c2_setup_result c2_setup_iterate(void) { return C2_SETUP_QUIT; }
 const char *c2_setup_selected_source(void) { return ""; }
 const char *c2_setup_selected_profile(void) { return ""; }
+int c2_setup_selected_fullscreen(void) { return 0; }
+int c2_setup_selected_fractional_scaling(void) { return 0; }
 void c2_setup_close(void) {}
 int c2_setup_source_looks_valid(const char *path) { (void)path; return 0; }
 
