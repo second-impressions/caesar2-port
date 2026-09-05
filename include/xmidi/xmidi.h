@@ -18,10 +18,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define XMI_SERVICE_RATE 120       /* MDI_SERVICE_RATE preference */
 #define XMI_DEFAULT_VOLUME 127     /* MDI_DEFAULT_VOLUME preference */
 #define XMI_DEFAULT_BEND_RANGE 2   /* MDI_DEFAULT_BEND_RANGE preference */
@@ -162,9 +158,5 @@ int xmi_player_load_bank(struct xmi_player *player, const void *data,
 /* Render interleaved stereo frames, serving the sequencer at 120 Hz. */
 void xmi_player_render(struct xmi_player *player, int16_t *stereo,
                        size_t frames);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

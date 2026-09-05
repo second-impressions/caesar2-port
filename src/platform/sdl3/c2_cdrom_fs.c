@@ -184,7 +184,7 @@ int c2_cdrom_find_drives(char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max)
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#ifdef __linux__
+#if PORT_PLATFORM_LINUX
 #include <limits.h>
 #include <linux/cdrom.h>
 #include <sys/ioctl.h>
@@ -192,7 +192,7 @@ int c2_cdrom_find_drives(char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max)
 
 int c2_cdrom_drive_has_disc(const char *path)
 {
-#ifdef __linux__
+#if PORT_PLATFORM_LINUX
     int fd = open(path, O_RDONLY | O_NONBLOCK);
     int status;
     if (fd < 0) return 0;

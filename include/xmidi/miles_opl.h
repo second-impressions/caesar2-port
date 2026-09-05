@@ -18,10 +18,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define MILES_OPL_VIRTUAL_VOICES 20
 #define MILES_OPL_PHYSICAL_VOICES 18
 #define MILES_OPL_MAX_TIMBRES 192
@@ -84,9 +80,5 @@ extern const uint8_t miles_opl_4op_channels[6];
 extern const uint8_t miles_opl_4op_volume_ops_a[4];
 extern const uint8_t miles_opl_4op_volume_ops_b[4];
 extern const uint8_t miles_opl_init_registers[2][0xf5];
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
