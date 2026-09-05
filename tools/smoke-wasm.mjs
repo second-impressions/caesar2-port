@@ -17,6 +17,7 @@ const smokeResults = {
   canvas: "canvas focus styling suppressed",
   city: "recovered city-loop smoke completed",
   campania: "Campania speech transition smoke completed",
+  build: "province build smoke completed",
   contextmenu: "browser context menu suppressed",
   music: "music buffer smoke completed",
   restart: "restart after exit completed",
@@ -116,6 +117,10 @@ function smokeWait(socket, navigate, getEntry) {
       }
       if (smokeKind === "campania" &&
           entry.text.includes("Campania confirmation clicked")) {
+        console.log(entry.text);
+      }
+      if (smokeKind === "build" &&
+          /dismissed|province entered/.test(entry.text)) {
         console.log(entry.text);
       }
       if (entry.text.includes(smokeResults[smokeKind])) {

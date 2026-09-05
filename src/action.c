@@ -5427,7 +5427,11 @@ void this_region(void)
         gloop_end();
         control_buttons(0x170, 0x110, confirming_buttons, 2);
         if (out1 > 0xa) { out1 = 0xa; }
+#if PORT_FIX_MODAL_BUTTON_LATENCY
+        if (out1 > 1 && mouse_left_button == 0) out1 -= 1;
+#else
         if (out1 > 1) out1 -= 1;
+#endif
     }
     if (decision == 0) { out2 = 0; }
     else if (decision == 1) { out2 = 1; }

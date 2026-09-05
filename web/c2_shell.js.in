@@ -697,6 +697,7 @@
       if (smoke === "province" || smoke === "restart") args.push("--smoke-test");
       if (smoke === "city") args.push("--city-smoke-test");
       if (smoke === "campania") args.push("--campania-transition-smoke-test");
+      if (smoke === "build") args.push("--province-build-smoke-test");
       if (smoke === "music") args.push("--music-buffer-smoke-test");
       if (smoke === "save") args.push("--save-load-smoke-test");
       return args;

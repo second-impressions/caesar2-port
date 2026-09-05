@@ -1047,9 +1047,17 @@ void confirm(int message_idx, int x, int y)
         show_buttons(x, y, confirming_buttons, 2);
         gloop_end();
         control_buttons(x, y, confirming_buttons, 2);
+#if PORT_FIX_MODAL_BUTTON_LATENCY
+        /* Finish the acknowledgement only once the button is released, so
+         * the release cannot land in the next loop as a fresh click. */
+        if (out1 > 1 && mouse_left_button == 0) {
+            out1 = out1 - 1;
+        }
+#else
         if (out1 > 1) {
             out1 = out1 - 1;
         }
+#endif
     }
     setup_whole_screen_refresh();
     update_map = 1;
@@ -1090,9 +1098,17 @@ void extended_confirm(int message_idx, int x, int y)
         show_buttons(x, y, confirming_buttons, 2);
         gloop_end();
         control_buttons(x, y, confirming_buttons, 2);
+#if PORT_FIX_MODAL_BUTTON_LATENCY
+        /* Finish the acknowledgement only once the button is released, so
+         * the release cannot land in the next loop as a fresh click. */
+        if (out1 > 1 && mouse_left_button == 0) {
+            out1 = out1 - 1;
+        }
+#else
         if (out1 > 1) {
             out1 = out1 - 1;
         }
+#endif
     }
     setup_whole_screen_refresh();
     update_map = 1;
@@ -1128,7 +1144,11 @@ void adjust(int message_idx, int *value_ptr, int step_value, int max_value, int 
         control_buttons(x, y, adjusting_buttons, 2);
         if (mouse_right_click != 0) out1 = 4;
         if (exit_screen() != 0) out1 = 1;
+#if PORT_FIX_MODAL_BUTTON_LATENCY
+        if (out1 > 1 && mouse_left_button == 0) out1--;
+#else
         if (out1 > 1) out1--;
+#endif
     }
     setup_whole_screen_refresh();
 }

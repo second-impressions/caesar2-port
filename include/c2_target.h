@@ -257,7 +257,9 @@
  * port paces every frame at 60 Hz, which turns it into a 1.65 s freeze that
  * each further click restarts. The recovered this_region() already clamps
  * its own countdown to 10 frames; portable builds apply that clamp to the
- * other modal countdowns. */
+ * other modal countdowns and let the count run only while the button is
+ * released, so a slow click cannot leave its release for the next loop to
+ * read as a fresh click (which reopened the province question). */
 #define PORT_FIX_MODAL_BUTTON_LATENCY PORT_PLATFORM
 #define PORT_MODAL_BUTTON_FRAMES 10
 

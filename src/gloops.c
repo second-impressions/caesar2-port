@@ -1156,8 +1156,14 @@ void initreg_game_loop(void)
     }
     gloop_end();
 
+#if PORT_FIX_MODAL_BUTTON_LATENCY
+    if (out2 > 1) { if (mouse_left_button == 0) out2 = out2 - 1;
+        goto end; }
+#else
     if (out2 > 1) { out2 = out2 - 1;
-        goto end; } if (mouse_left_click) {
+        goto end; }
+#endif
+    if (mouse_left_click) {
         if (INITREG_REGION_READY) {
             this_region();
             if (decision == 1) {
