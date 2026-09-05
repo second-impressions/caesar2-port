@@ -84,6 +84,7 @@ static struct {
     char source[UI_PATH_CAPACITY];
     char source_kind[64];     /* "Installation folder", "CD-ROM drive /dev/sr0" */
     char detected[128];       /* c2.eng version + release date, once imported */
+    char media_note[96];      /* "no music or speech files", when so */
     int startup_check;        /* silent validation of the preselected source */
     char cache_root[UI_PATH_CAPACITY];
     char asset_profile[128];
@@ -574,10 +575,54 @@ static void detect_version(const char *root)
     free(buf);
 }
 
+/* Any file with the extension directly in dir or in its sub-directory. */
+static int has_media(const char *root, const char *subdir, const char *pattern)
+{
+    char dir[UI_PATH_CAPACITY];
+    char **entries;
+    int count;
+    int found;
+    int pass;
+
+    for (pass = 0; pass < 2; pass++) {
+        if (pass == 0) {
+            snprintf(dir, sizeof(dir), "%s", root);
+        } else if (!child_path(dir, sizeof(dir), root, subdir, SDL_PATHTYPE_DIRECTORY)) {
+            break;
+        }
+        entries = SDL_GlobDirectory(dir, pattern, SDL_GLOB_CASEINSENSITIVE, &count);
+        found = entries != NULL && count > 0;
+        SDL_free(entries);
+        if (found) return 1;
+    }
+    return 0;
+}
+
+/* The original installer copied only the HD tree; XMI music and RAW speech
+ * stayed on the CD. Say so instead of leaving the silence unexplained. */
+static void detect_media(const char *root)
+{
+    char map[UI_PATH_CAPACITY];
+    int music;
+    int speech;
+
+    ui.media_note[0] = '\0';
+    if (child_path(map, sizeof(map), root, ".c2-object-map", SDL_PATHTYPE_FILE) ||
+        child_path(map, sizeof(map), root, "C2PACK.IDX", SDL_PATHTYPE_FILE)) {
+        return; /* packs and object-mapped caches carry what they list */
+    }
+    music = has_media(root, "XMI", "*.xmi");
+    speech = has_media(root, "RAW", "*.raw");
+    if (music && speech) return;
+    snprintf(ui.media_note, sizeof(ui.media_note), "No %s files: they stayed on the CD",
+             !music && !speech ? "music or speech" : !music ? "music" : "speech");
+}
+
 static void refresh_source(void)
 {
     ui.source_ready = c2_setup_source_looks_valid(ui.source);
     ui.detected[0] = '\0';
+    ui.media_note[0] = '\0';
     ui.profile_count = 0;
     describe_source_kind();
     if (ui.source[0] && !ui.source_ready) {
@@ -674,6 +719,7 @@ static void finish_import(void)
             return;
         }
         detect_version(ui.resolved);
+        detect_media(ui.resolved);
         detect_profiles(ui.resolved);
         if (ui.startup_check) {
             ui.startup_check = 0;
@@ -1005,6 +1051,10 @@ static void render(void)
         if (ui.detected[0]) {
             fit_path(shown, sizeof(shown), ui.detected, max_chars);
             draw_text(UI_MARGIN, 84, 1, &COLOR_TEXT, shown);
+            if (ui.media_note[0]) {
+                fit_path(shown, sizeof(shown), ui.media_note, max_chars);
+                draw_text(UI_MARGIN, 96, 1, &COLOR_ERROR, shown);
+            }
         } else if (ui.source_ready) {
             draw_text(UI_MARGIN, 84, 1, &COLOR_MUTED,
                       ui.state == SETUP_IMPORT ? "Checking..." : "Not imported yet");
@@ -1103,6 +1153,7 @@ int c2_setup_open(const struct c2_setup_config *config)
         if (SDL_GetPathInfo(ui.source, &info) &&
             info.type == SDL_PATHTYPE_DIRECTORY) {
             detect_version(ui.source);
+            detect_media(ui.source);
         }
     } else if (ui.source_ready) {
         /* Validate the remembered/preselected source right away so the

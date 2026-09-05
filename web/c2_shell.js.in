@@ -128,6 +128,26 @@
       }
       return dir;
     }
+    async function hasFileWithExtension(dir, extension) {
+      if (!dir) return false;
+      for await (const [name, handle] of dir.entries()) {
+        if (handle.kind === "file" && name.toLowerCase().endsWith(extension)) return true;
+      }
+      return false;
+    }
+    /*
+     * The original installer copied only the HD tree; XMI music, RAW speech
+     * and the movies stayed on the CD. Report what a source lacks so silence
+     * is explained rather than mysterious.
+     */
+    async function missingMedia(root, base) {
+      const missing = [];
+      const music = await descendCaseInsensitive(root, ["XMI"]);
+      const speech = await descendCaseInsensitive(root, ["RAW"]);
+      if (!(await hasFileWithExtension(music, ".xmi")) && !(await hasFileWithExtension(base, ".xmi"))) missing.push("music");
+      if (!(await hasFileWithExtension(speech, ".raw")) && !(await hasFileWithExtension(base, ".raw"))) missing.push("speech");
+      return missing;
+    }
     async function hashFile(file) {
       const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
       return [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, "0")).join("");
@@ -198,7 +218,8 @@
               profiles: [],
               language: known?.language || "Unrecognised text data",
               edition: known?.edition || "Unrecognised release",
-              layout
+              layout,
+              missing: await missingMedia(root, base)
             };
           }
         }
@@ -774,7 +795,13 @@
       else if (info.language) parts.push(info.language);
       if (info.edition) parts.push(info.edition);
       else if (info.layout) parts.push(info.layout);
+      if (info.missing?.length) parts.push(`no ${info.missing.join(" or ")} files`);
       return parts.join(" · ");
+    }
+    function missingMediaMessage(info) {
+      if (!info.missing?.length) return "";
+      return `This installation has no ${info.missing.join(" or ")} files: the original ` +
+        "installer left them on the CD. Load the disc image or the whole disc folder for sound.";
     }
     function showMainWindow(info, message) {
       configureAssetChoices(info);
@@ -783,7 +810,8 @@
       const detected = info.available ? describeInfo(info) : "";
       detectedRow.textContent = detected;
       detectedRow.hidden = !detected;
-      showMessage(message || (info.available ? "" : "Load your Caesar II game data to play, or drop it here."));
+      showMessage(message || (info.available ? missingMediaMessage(info)
+        : "Load your Caesar II game data to play, or drop it here."));
       panel.hidden = false;
     }
     async function showReady(source, message) {
