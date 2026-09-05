@@ -29,10 +29,11 @@
     <article id="card" class="c2-surface c2-splash c2-stack">
       <h1>Caesar II</h1>
       <p id="status" class="c2-hint" role="status">Load your Caesar II game data to play.</p>
+      <p id="detected-row" class="c2-hint" hidden></p>
       <p id="profile-row" hidden><label>Language<select id="profile-select"></select></label></p>
       <div class="c2-action-grid">
         <button id="play-button" type="button" aria-disabled="true" data-tooltip="Load assets first" data-placement="bottom">Play</button>
-        <button id="assets-button" class="secondary outline" type="button">Load assets</button>
+        <button id="assets-button" class="secondary outline" type="button">Load game data</button>
       </div>
     </article>
   </section>
@@ -85,18 +86,18 @@
                 <button id="forget-button" class="c2-compact-action outline" type="button">Remove</button>
               </div>
             </div>
-            <p id="assets-empty" class="c2-hint">No assets have been loaded yet. Add your Caesar II data to play.</p>
-            <div class="c2-choice-grid" id="source-buttons">
-              <button id="folder-button" class="c2-source-choice secondary outline" type="button">Installation folder<small>Installed game directory</small></button>
-              <button id="file-button" class="c2-source-choice secondary outline" type="button">Asset ZIP<small>ZIP or C2ASSETS pack</small></button>
-              <button id="iso-button" class="c2-source-choice secondary outline" type="button">ISO image<small>Single CD image file</small></button>
-              <button id="cue-button" class="c2-source-choice secondary outline" type="button">BIN + CUE<small>CD image and sheet</small></button>
-              <button id="bundled-button" class="c2-source-choice secondary outline" type="button" hidden>Bundled data<small>Included with this build</small></button>
+            <p id="assets-empty" class="c2-hint">No game data has been loaded yet.</p>
+            <div id="source-drop" class="c2-drop-zone c2-stack">
+              <strong id="source-drop-title">Drop your Caesar II folder, disc image or ZIP here</strong>
+              <small>Installed folder &middot; ISO or BIN disc image &middot; ZIP &middot; .c2assets pack</small>
+              <div class="c2-inline-actions">
+                <button id="folder-button" class="c2-compact-action secondary outline" type="button">Browse folder</button>
+                <button id="file-button" class="c2-compact-action secondary outline" type="button">Browse file</button>
+                <button id="bundled-button" class="c2-compact-action secondary outline" type="button" hidden>Use bundled data</button>
+              </div>
             </div>
             <input id="folder-input" type="file" webkitdirectory multiple>
-            <input id="file-input" type="file" accept=".zip,.c2assets">
-            <input id="iso-input" type="file" accept=".iso">
-            <input id="cue-input" type="file" accept=".bin,.cue" multiple>
+            <input id="file-input" type="file" accept=".zip,.c2assets,.iso,.bin,.cue,.img" multiple>
           </section>
           <section id="pane-userdata" class="c2-settings-pane c2-stack" role="tabpanel" aria-labelledby="tab-userdata" hidden>
             <div class="c2-settings-row">
@@ -104,16 +105,15 @@
               <button id="userdata-export" class="c2-compact-action" type="button">Export</button>
             </div>
             <p class="c2-hint">Export downloads all saves, history, and settings as one ZIP that can be imported again.</p>
-            <div class="c2-settings-row">
-              <span class="c2-settings-label">Import</span>
-              <span class="c2-inline-actions">
-                <button id="userdata-import-files" class="c2-compact-action secondary outline" type="button">Files</button>
-                <button id="userdata-import-zip" class="c2-compact-action secondary outline" type="button">ZIP</button>
-              </span>
+            <div id="userdata-drop" class="c2-drop-zone c2-stack">
+              <strong>Drop saves, history or an exported ZIP here</strong>
+              <small>*.sav &middot; history.dat &middot; caesar2.inf &middot; caesar2-user-data.zip</small>
+              <div class="c2-inline-actions">
+                <button id="userdata-import" class="c2-compact-action secondary outline" type="button">Browse</button>
+              </div>
             </div>
             <p id="userdata-status" class="c2-hint" role="status"></p>
-            <input id="userdata-files-input" type="file" accept=".sav,.dat,.inf" multiple>
-            <input id="userdata-zip-input" type="file" accept=".zip">
+            <input id="userdata-input" type="file" accept=".sav,.dat,.inf,.zip" multiple>
           </section>
         </div>
       </div>

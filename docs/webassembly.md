@@ -53,9 +53,12 @@ emcmake cmake --preset wasm-release -B build/port/wasm-release
 cmake --build build/port/wasm-release
 ```
 
-On first visit the page accepts an installation folder, ZIP, optimized
-`.c2assets` pack, ISO, or BIN/CUE pair. It imports and validates data into
-OPFS before starting the game. `C2_WASM_ASSET_ROOT` remains available for
+On first visit the page offers **Load game data**: one drop zone (also the
+splash card itself) plus *Browse folder* / *Browse file*. Anything goes in —
+an installation folder, ZIP, optimized `.c2assets` pack, ISO, or a BIN with
+or without its CUE — and the importer classifies it by content. It imports and
+validates data into OPFS before starting the game; afterwards the same button
+reads **Replace game data**. `C2_WASM_ASSET_ROOT` remains available for
 self-hosted/demo bundles; the Assets settings page offers **Bundled data** for
 those builds. A multi-profile `.c2assets` pack can carry all text/speech languages
 and DOS, Win95, Mac, or custom video sets in one deduplicated container.

@@ -25,7 +25,7 @@ can disappear while the title-to-action gap remains stable.
 - `.c2-surface`: shared border, background, padding, radius, shadow, and blur.
 - `.c2-stack`: reusable vertical flow.
 - `.c2-action-grid`: primary splash actions.
-- `.c2-choice-grid` / `.c2-source-choice`: asset-source choices.
+- `.c2-drop-zone`: the single game-data entry point (drop target plus browse actions); `.is-over` marks an active drag.
 - `.c2-modal-header`: dialog title and close action.
 - `.c2-settings-layout`: tab rail plus fixed content pane.
 - `.c2-settings-row`: label/control alignment.

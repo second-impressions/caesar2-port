@@ -12,8 +12,8 @@
     const forgetButton = document.getElementById("forget-button");
     const folderInput = document.getElementById("folder-input");
     const fileInput = document.getElementById("file-input");
-    const isoInput = document.getElementById("iso-input");
-    const cueInput = document.getElementById("cue-input");
+    const card = document.getElementById("card");
+    const detectedRow = document.getElementById("detected-row");
     const playButton = document.getElementById("play-button");
     const profileRow = document.getElementById("profile-row");
     const profileSelect = document.getElementById("profile-select");
@@ -22,11 +22,12 @@
     const assetsLoaded = document.getElementById("assets-loaded");
     const assetsStatus = document.getElementById("assets-status");
     const assetsEmpty = document.getElementById("assets-empty");
-    const sourceButtons = document.getElementById("source-buttons");
+    const sourceDrop = document.getElementById("source-drop");
+    const sourceDropTitle = document.getElementById("source-drop-title");
     const aboutDialog = document.getElementById("about-dialog");
     const userDataStatus = document.getElementById("userdata-status");
-    const userDataFilesInput = document.getElementById("userdata-files-input");
-    const userDataZipInput = document.getElementById("userdata-zip-input");
+    const userDataInput = document.getElementById("userdata-input");
+    const userDataDrop = document.getElementById("userdata-drop");
     const query = new URLSearchParams(location.search);
     const smokeOutput = query.has("smoke-test") ? [] : null;
     const BUILD_VERSION = "@C2_VERSION_STRING@";
@@ -265,79 +266,127 @@
       if (await navigator.storage.persisted()) return true;
       return navigator.storage.persist();
     }
-    function folderName(files) {
-      const path = files[0]?.webkitRelativePath || "";
-      return path.split("/")[0] || "";
+    function folderName(entries) {
+      return entries[0]?.path.split("/")[0] || "";
     }
     /* The origin is the label of the choice the user pressed, nothing invented. */
     function rememberOrigin(name) {
       localStorage.setItem(PENDING_ORIGIN, JSON.stringify({kind: chosenSourceLabel, name}));
     }
-    async function importFolder(files) {
-      const total = [...files].reduce((sum, file) => sum + file.size, 0);
+    function inputEntries(files) {
+      return [...files].map(file => ({file, path: file.webkitRelativePath || file.name}));
+    }
+    /*
+     * The importer classifies content itself (ZIP, ISO or raw-sector
+     * signatures, installation layouts), so the page only has to get the
+     * bytes into OPFS: a folder is copied whole, files are copied as-is.
+     */
+    async function importFolder(entries) {
+      if (!entries.length) throw new Error("The folder is empty");
+      const total = entries.reduce((sum, entry) => sum + entry.file.size, 0);
       let loaded = 0;
       let done = 0;
       showMessage("Importing installation folder…");
       beginOperation("Copying installation folder", total);
       const generation = `folder-${Date.now()}`;
       const incoming = await directoryAt(`incoming/${generation}`);
-      for (const file of files) {
-        const path = file.webkitRelativePath || file.name;
+      for (const {file, path} of entries) {
         const slash = path.indexOf("/");
         await writeBrowserFile(incoming,
           slash >= 0 ? path.slice(slash + 1) : path, file,
           bytes => { loaded += bytes; updateOperation(loaded, total,
-            ` · ${done}/${files.length} files`); });
+            ` · ${done}/${entries.length} files`); });
         done++;
-        updateOperation(loaded, total, ` · ${done}/${files.length} files`);
+        updateOperation(loaded, total, ` · ${done}/${entries.length} files`);
       }
       localStorage.setItem(PENDING_SOURCE, `/persistent/incoming/${generation}`);
-      rememberOrigin(folderName(files));
+      rememberOrigin(folderName(entries));
       requestPersistence().catch(() => {});
       location.href = location.pathname;
     }
+    /* Same signatures the native importer sniffs: ZIP, raw CD sector, ISO-9660. */
+    async function fileLooksImportable(file) {
+      const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+      if (head[0] === 0x50 && head[1] === 0x4b && head[2] === 3 && head[3] === 4) return "zip";
+      const sync = [0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0];
+      if (head.length === 16 && sync.every((b, i) => head[i] === b) && (head[15] === 1 || head[15] === 2)) return "bin";
+      const pvd = new Uint8Array(await file.slice(16 * 2048, 16 * 2048 + 6).arrayBuffer());
+      if (String.fromCharCode(...pvd.slice(1, 6)) === "CD001") return "iso";
+      if (/\.cue$/i.test(file.name)) return "cue";
+      return null;
+    }
     async function importFiles(files) {
       const selected = [...files];
-      const allowed = selected.filter(f => /\.(zip|c2assets|iso|bin|cue)$/i.test(f.name));
-      if (!allowed.length) throw new Error("No supported file selected");
-      if (allowed.length !== selected.length) throw new Error("The selection contains unsupported files");
-      const cues = allowed.filter(file => /\.cue$/i.test(file.name));
-      const bins = allowed.filter(file => /\.bin$/i.test(file.name));
-      let primary;
-      if (cues.length || bins.length) {
-        if (cues.length !== 1 || bins.length !== 1 || allowed.length !== 2) {
-          throw new Error("Select exactly one CUE file together with its BIN file");
+      if (!selected.length) throw new Error("No file selected");
+      const kinds = await Promise.all(selected.map(fileLooksImportable));
+      const unknown = selected.filter((_, i) => !kinds[i]);
+      if (unknown.length) {
+        const name = unknown[0].name;
+        if (/\.(eng|exe|dat|pl8|raw|xmi|smk)$/i.test(name) || unknown.length > 1) {
+          throw new Error(`${name} is part of an installation; use Browse folder or drop the whole folder`);
         }
-        const cueText = await cues[0].text();
-        const match = cueText.match(/^\s*FILE\s+"([^"]+)"\s+BINARY/im);
-        if (!match) throw new Error("The CUE file does not name a binary data track");
-        const referenced = match[1].replaceAll("\\", "/").split("/").at(-1);
-        if (referenced.toLowerCase() !== bins[0].name.toLowerCase()) {
-          throw new Error(`The CUE references ${referenced}; select that BIN file`);
-        }
-        primary = cues[0];
-      } else {
-        if (allowed.length !== 1) throw new Error("Select one archive or ISO at a time");
-        primary = allowed[0];
+        throw new Error(`${name} is not a Caesar II disc image, ZIP or asset pack`);
       }
-      const total = allowed.reduce((sum, file) => sum + file.size, 0);
+      // A BIN is enough on its own; a CUE beside it is copied but not required.
+      let primary = selected.find((_, i) => kinds[i] === "bin")
+                 || selected.find((_, i) => kinds[i] !== "cue");
+      if (!primary) throw new Error("A CUE sheet needs its BIN image; select the BIN file");
+      if (selected.filter((_, i) => kinds[i] !== "cue").length > 1) {
+        throw new Error("Select one disc image, ZIP or pack at a time");
+      }
+      const total = selected.reduce((sum, file) => sum + file.size, 0);
       let loaded = 0;
       let done = 0;
       beginOperation("Copying game data", total);
       const generation = `files-${Date.now()}`;
       const incoming = await directoryAt(`incoming/${generation}`);
-      for (const file of allowed) {
-        showMessage(`Importing source… ${done + 1}/${allowed.length}`);
+      for (const file of selected) {
+        showMessage(`Importing source… ${done + 1}/${selected.length}`);
         await writeBrowserFile(incoming, file.name, file,
           bytes => { loaded += bytes; updateOperation(loaded, total,
-            ` · ${done}/${allowed.length} files`); });
+            ` · ${done}/${selected.length} files`); });
         done++;
-        updateOperation(loaded, total, ` · ${done}/${allowed.length} files`);
+        updateOperation(loaded, total, ` · ${done}/${selected.length} files`);
       }
       localStorage.setItem(PENDING_SOURCE, `/persistent/incoming/${generation}/${primary.name}`);
-      rememberOrigin(allowed.map(f => f.name).join(", "));
+      rememberOrigin(selected.map(f => f.name).join(", "));
       requestPersistence().catch(() => {});
       location.href = location.pathname;
+    }
+    /* Dropped folders arrive as directory entries; flatten them to files. */
+    function readEntries(reader) {
+      return new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+    }
+    function entryFile(entry) {
+      return new Promise((resolve, reject) => entry.file(resolve, reject));
+    }
+    async function collectEntry(entry, prefix, out) {
+      if (entry.isFile) {
+        out.push({file: await entryFile(entry), path: prefix + entry.name});
+        return;
+      }
+      const reader = entry.createReader();
+      for (;;) {
+        const batch = await readEntries(reader);
+        if (!batch.length) break;
+        for (const child of batch) await collectEntry(child, `${prefix}${entry.name}/`, out);
+      }
+    }
+    async function importDrop(dataTransfer) {
+      const items = [...dataTransfer.items || []];
+      const entries = items.map(item => item.webkitGetAsEntry?.()).filter(Boolean);
+      const directories = entries.filter(entry => entry.isDirectory);
+      if (directories.length > 1) throw new Error("Drop one folder at a time");
+      if (directories.length === 1) {
+        if (entries.length > 1) throw new Error("Drop either a folder or files, not both");
+        chosenSourceLabel = "Dropped folder";
+        const collected = [];
+        await collectEntry(directories[0], "", collected);
+        await importFolder(collected);
+        return;
+      }
+      chosenSourceLabel = "Dropped file";
+      await importFiles(dataTransfer.files);
     }
     function zipStore(files) {
       const encoder = new TextEncoder();
@@ -434,8 +483,6 @@
         await writeUserData(file.name, new Uint8Array(await file.arrayBuffer()));
         userDataStatus.textContent = `Imported ${++count}/${files.length} user-data files…`;
       }
-      requestPersistence().catch(() => {});
-      userDataStatus.textContent = `Imported ${count} user-data file${count === 1 ? "" : "s"}.`;
     }
     function findZipEnd(data) {
       const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
@@ -506,8 +553,28 @@
         await writeUserData(name, content);
         imported++;
       }
+      return imported;
+    }
+    /* One entry point: exported ZIPs (by signature, not name) are unpacked,
+     * everything else is written as a user-data file. */
+    async function importUserData(files) {
+      const selected = [...files];
+      if (!selected.length) throw new Error("No file selected");
+      const zips = [];
+      const plain = [];
+      for (const file of selected) {
+        const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+        (head[0] === 0x50 && head[1] === 0x4b && head[2] === 3 && head[3] === 4 ? zips : plain).push(file);
+      }
+      for (const file of plain) canonicalUserDataName(file.name);
+      let count = 0;
+      if (plain.length) {
+        await importUserFiles(plain);
+        count += plain.length;
+      }
+      for (const zip of zips) count += await importUserZip(zip);
       requestPersistence().catch(() => {});
-      userDataStatus.textContent = `Imported ${imported} user-data file${imported === 1 ? "" : "s"} from ZIP.`;
+      userDataStatus.textContent = `Imported ${count} user-data file${count === 1 ? "" : "s"}.`;
     }
     function originLabel() {
       try {
@@ -524,7 +591,9 @@
       // Loading a second set only makes sense once the current one is removed.
       assetsLoaded.hidden = !info.available;
       assetsEmpty.hidden = info.available;
-      sourceButtons.hidden = info.available;
+      sourceDropTitle.textContent = info.available
+        ? "Drop new game data here to replace the current set"
+        : "Drop your Caesar II folder, disc image or ZIP here";
       if (!info.available) return;
       const rows = [];
       const origin = originLabel();
@@ -698,11 +767,22 @@
     function showMessage(text) {
       status.textContent = text || "";
     }
+    function describeInfo(info) {
+      const parts = [];
+      if (info.profiles?.length > 1) parts.push(`${info.profiles.length} languages`);
+      else if (info.language) parts.push(info.language);
+      if (info.edition) parts.push(info.edition);
+      else if (info.layout) parts.push(info.layout);
+      return parts.join(" · ");
+    }
     function showMainWindow(info, message) {
       configureAssetChoices(info);
       setPlayEnabled(info.available);
-      assetsButton.hidden = info.available;
-      showMessage(message || (info.available ? "" : "Load your Caesar II game data to play."));
+      assetsButton.textContent = info.available ? "Replace game data" : "Load game data";
+      const detected = info.available ? describeInfo(info) : "";
+      detectedRow.textContent = detected;
+      detectedRow.hidden = !detected;
+      showMessage(message || (info.available ? "" : "Load your Caesar II game data to play, or drop it here."));
       panel.hidden = false;
     }
     async function showReady(source, message) {
@@ -839,10 +919,26 @@
     function choiceLabel(button) {
       return button.childNodes[0].textContent.trim();
     }
-    for (const [id, input] of [["folder-button", folderInput], ["file-button", fileInput],
-                              ["iso-button", isoInput], ["cue-button", cueInput]]) {
-      const button = document.getElementById(id);
-      button.onclick = () => { chosenSourceLabel = choiceLabel(button); input.click(); };
+    for (const [id, input, label] of [["folder-button", folderInput, "Folder"],
+                                     ["file-button", fileInput, "File"]]) {
+      document.getElementById(id).onclick = () => { chosenSourceLabel = label; input.click(); };
+    }
+    /* Anything can be dropped on the splash card or the settings drop zone. */
+    for (const target of [card, sourceDrop]) {
+      target.addEventListener("dragover", event => {
+        if (gameRunning) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
+        target.classList.add("is-over");
+      });
+      target.addEventListener("dragleave", () => target.classList.remove("is-over"));
+      target.addEventListener("drop", event => {
+        target.classList.remove("is-over");
+        if (gameRunning) return;
+        event.preventDefault();
+        settingsDialog.close();
+        importDrop(event.dataTransfer).catch(importFailed);
+      });
     }
     bundledButton.onclick = async () => {
       if (!HAS_BUNDLED_ASSETS) return;
@@ -874,20 +970,32 @@
       });
     }
     document.getElementById("userdata-export").onclick = exportUserData;
-    document.getElementById("userdata-import-files").onclick = () => userDataFilesInput.click();
-    document.getElementById("userdata-import-zip").onclick = () => userDataZipInput.click();
+    document.getElementById("userdata-import").onclick = () => userDataInput.click();
+    userDataDrop.addEventListener("dragover", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = "copy";
+      userDataDrop.classList.add("is-over");
+    });
+    userDataDrop.addEventListener("dragleave", () => userDataDrop.classList.remove("is-over"));
+    userDataDrop.addEventListener("drop", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      userDataDrop.classList.remove("is-over");
+      importUserData(event.dataTransfer.files).catch(e => userDataStatus.textContent = `Import failed: ${e.message}`);
+    });
     forgetButton.onclick = forgetAssets;
     const importFailed = e => {
       settingsDialog.close();
       showOperationError(e.message);
       showMessage(`Import failed: ${e.message}`);
     };
-    folderInput.onchange = () => { settingsDialog.close(); importFolder(folderInput.files).catch(importFailed); };
+    folderInput.onchange = () => { settingsDialog.close(); importFolder(inputEntries(folderInput.files)).catch(importFailed); };
     fileInput.onchange = () => { settingsDialog.close(); importFiles(fileInput.files).catch(importFailed); };
-    isoInput.onchange = () => { settingsDialog.close(); importFiles(isoInput.files).catch(importFailed); };
-    cueInput.onchange = () => { settingsDialog.close(); importFiles(cueInput.files).catch(importFailed); };
-    userDataFilesInput.onchange = () => importUserFiles(userDataFilesInput.files).catch(e => userDataStatus.textContent = `Import failed: ${e.message}`);
-    userDataZipInput.onchange = () => importUserZip(userDataZipInput.files[0]).catch(e => userDataStatus.textContent = `Import failed: ${e.message}`);
+    userDataInput.onchange = () => {
+      importUserData(userDataInput.files).catch(e => userDataStatus.textContent = `Import failed: ${e.message}`);
+      userDataInput.value = "";
+    };
     for (const link of document.querySelectorAll(".nav-action")) {
       link.addEventListener("click", event => event.preventDefault());
     }

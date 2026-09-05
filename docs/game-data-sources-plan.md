@@ -232,19 +232,20 @@ Support, in order:
 3. file input/drag-drop for ZIP, ISO, BIN, and CUE; and
 4. optimized `.c2assets` packs.
 
-For BIN/CUE, require both files in one selection/drop unless a browser directory handle supplies them. Parse one data track only and reject unsupported multisession/audio layouts explicitly.
+A bare BIN is sufficient: the sector-0 mode byte selects MODE1/MODE2 and every supported disc is a single data track at 00:00:00, so a CUE is accepted but not required. Parse one data track only and reject unsupported multisession/audio layouts explicitly.
 
 ### Page controls
 
+The user never has to name the format. Implemented on both targets:
+
 When no source exists:
 
-- **Choose installation folder**
-- **Choose ZIP / ISO / BIN+CUE / asset pack**
+- **Load game data** — one drop zone plus *Browse folder* / *Browse file*; the importer sniffs ZIP, ISO and raw-sector signatures and resolves any file inside an installation to its root.
 
 When a valid source exists:
 
 - **Play**
-- **Change game data**
+- **Replace game data** (same control)
 - **Choose language / speech / video profile** when available
 - **Export saves**
 - **Delete cached game data**

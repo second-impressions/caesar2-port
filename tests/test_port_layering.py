@@ -132,28 +132,33 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "navigator.storage.getDirectory" in shell
     assert "navigator.storage.persist" in shell
     assert 'id="folder-input"' in shell
-    assert 'id="file-input" type="file" accept=".zip,.c2assets"' in shell
-    assert 'id="iso-input" type="file" accept=".iso"' in shell
-    assert 'id="cue-input" type="file" accept=".bin,.cue" multiple' in shell
+    assert 'id="file-input" type="file" accept=".zip,.c2assets,.iso,.bin,.cue,.img" multiple' in shell
     assert "webkitdirectory" in shell
+    # One drop zone and two browse actions replace the per-format buttons;
+    # the importer classifies content itself.
+    assert 'id="source-drop" class="c2-drop-zone' in shell
+    assert "async function fileLooksImportable" in shell
+    assert "async function importDrop" in shell
+    assert "webkitGetAsEntry" in shell
     assert 'id="operation-dialog"' in shell
     assert 'id="operation-progress"' in shell
     assert "beginOperation(\"Checking game data\", 0, \"Reading source catalog…\")" in shell
     assert "elapsed" not in shell
     assert "onImportProgress(phase, completedKiB, totalKiB" in shell
     assert "onImportError(message)" in shell
-    assert "Select exactly one CUE file together with its BIN file" in shell
-    assert "The CUE references ${referenced}; select that BIN file" in shell
+    assert "A CUE sheet needs its BIN image; select the BIN file" in shell
+    assert "use Browse folder or drop the whole folder" in shell
     assert "beginOperation(\"Removing cached assets\"" in shell
     assert "writeBrowserFile(root, relative, file, onBytes)" in shell
-    assert "Installation folder" in shell
-    assert "Asset ZIP" in shell
-    assert "ISO image" in shell
-    assert "BIN + CUE" in shell
+    assert "Browse folder" in shell
+    assert "Browse file" in shell
+    assert "ISO image" not in shell
+    assert "BIN + CUE" not in shell
     assert 'id="pane-assets"' in shell
     assert "Load your Caesar II game data to play." in shell
     assert "Preparing…" not in shell
-    assert "Load assets" in shell
+    assert "Load game data" in shell
+    assert "Replace game data" in shell
     assert "Change assets" not in shell
     # Play stays disabled and explains itself until validated data exists.
     assert 'data-tooltip="Load assets first"' in shell
@@ -176,9 +181,10 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "C2_HAS_BUNDLED_ASSETS" in cmake
     assert "HAS_BUNDLED_ASSETS" in shell
     assert 'id="pane-userdata"' in shell
-    assert 'id="userdata-files-input"' in shell
-    assert 'id="userdata-zip-input"' in shell
-    assert 'id="userdata-import-files"' in shell
+    assert 'id="userdata-input" type="file" accept=".sav,.dat,.inf,.zip" multiple' in shell
+    assert 'id="userdata-drop" class="c2-drop-zone' in shell
+    assert 'id="userdata-import"' in shell
+    assert "async function importUserData" in shell
     # The user-data pane uses the same reusable setting components.
     assert 'class="c2-settings-row"' in shell
     assert 'class="c2-compact-action' in shell
@@ -251,7 +257,6 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     pm_map2 = (SRC / "pm_map2.c").read_text()
     assert pm_map2.count("#if C2_FEAT_REGION_SIDED_DRAW") == 6
     assert '<div class="actions">\n              <button id="userdata-export"' not in shell
-    assert 'id="userdata-import-zip"' in shell
     assert "importUserZip" in shell
     assert "User-data ZIP exceeds the 8 MiB limit" in shell
     assert "await reader.cancel()" in shell
@@ -278,7 +283,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert '["Edition", info.edition]' in shell
     assert 'rows.push(["Layout", info.layout])' in shell
     assert "DOS/Win95 hybrid · DOS assets" in shell
-    assert "assetsButton.hidden = info.available" in shell
+    assert 'assetsButton.textContent = info.available ? "Replace game data" : "Load game data"' in shell
     assert "Change assets" not in shell
     assert "sourceInfo" in shell
     assert '<title>Caesar II — @C2_VERSION_STRING@</title>' in shell
@@ -368,8 +373,8 @@ def test_wasm_shell_owns_import_switching_and_save_export():
         assert slogan not in shell
     # The assets modal owns its own state: summary plus removal, or choices.
     assert 'id="assets-loaded"' in shell
-    assert "No assets have been loaded yet" in shell
-    assert "sourceButtons.hidden = info.available" in shell
+    assert "No game data has been loaded yet" in shell
+    assert "Drop new game data here to replace the current set" in shell
     assert 'if (pane === "assets") {' in shell
     assert "updateAssetsSummary().catch(error =>" in shell
     assert 'beginOperation("Removing cached assets", targets.length)' in shell
@@ -383,7 +388,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "body.playing::before" in shell
     # Provenance is the label of the choice the user pressed, never invented.
     assert "Previously imported game data" not in shell
-    assert "chosenSourceLabel = choiceLabel(button)" in shell
+    assert "chosenSourceLabel = label; input.click()" in shell
     assert "Module.callMain" in shell
     assert "noInitialRun: true" in shell
     # A stopped SDL/engine instance is not reinitialized in-place.
