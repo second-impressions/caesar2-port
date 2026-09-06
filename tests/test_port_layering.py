@@ -328,7 +328,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "configure_file(web/favicon.svg" in cmake
     workflow_text = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
     assert "build/ci-wasm/favicon.svg" in workflow_text
-    assert "cp build/ci-wasm/favicon.svg _site/" in workflow_text
+    assert "favicon.svg; do" in workflow_text  # copied into the published site
     assert not (ROOT / "web" / "favicon-gallery.html").exists()
     assert not (ROOT / "web" / "favicon-candidates").exists()
     assert (ROOT / "web" / "vendor" / "pico.min.css").stat().st_size > 10_000
@@ -373,7 +373,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert 'configure_file(LICENSE "${CMAKE_CURRENT_BINARY_DIR}/LICENSE" COPYONLY)' in cmake
     workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
     assert "build/ci-wasm/LICENSE" in workflow
-    assert "cp build/ci-wasm/LICENSE _site/" in workflow
+    assert "version.txt LICENSE favicon.svg; do" in workflow  # published with the site
     assert (shell.index('id="pane-general"') <
             shell.index('id="confirm-close-toggle"') <
             shell.index('id="pane-rendering"'))

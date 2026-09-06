@@ -107,6 +107,12 @@ published build registers `coi-serviceworker.js`; the first visit reloads once
 under that worker and subsequent responses are cross-origin isolated. Opening
 the HTML directly from disk cannot satisfy this contract.
 
+CI publishes to the `gh-pages` branch, which Pages serves: every push to
+`main` lands at the site root, and every pull request from this repository
+gets its own build at `/pr/N/` (linked from a comment on the pull request,
+removed when it closes). The service worker registers relative to its
+directory, so each preview is isolated on its own scope.
+
 A storage pthread mounts one WasmFS OPFS backend before SDL host startup.
 Imported assets/cache live below `/persistent/game-data`; mutable files live
 below `/persistent/user-data`. Saves, `history.dat`, `caesar2.inf`, and
