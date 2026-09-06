@@ -127,7 +127,7 @@ endif()
 # addr2line on the crash handler's +0x offsets, browser DevTools). Release
 # code generation is unchanged; only the debug sections grow.
 if(MSVC)
-    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<COMPILE_LANGUAGE:C>:ProgramDatabase>")
+    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT ProgramDatabase)
     add_link_options(/DEBUG)
 else()
     add_compile_options(-g)
