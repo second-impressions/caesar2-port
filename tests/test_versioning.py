@@ -31,8 +31,12 @@ def test_pages_deploys_the_single_main_wasm_build():
     assert workflow.count("cmake --build build/ci-wasm") == 1
     assert "--clean-first" not in workflow
     assert "needs: wasm" in workflow
-    assert "actions/upload-pages-artifact@v3" in workflow
-    assert "actions/deploy-pages@v4" in workflow
+    # One site on the gh-pages branch: main at /, each pull request from
+    # this repository at /pr/N/, removed when it closes.
+    assert 'group: gh-pages' in workflow
+    assert 'target="pr/$PR_NUMBER"' in workflow
+    assert "github.event.pull_request.head.repo.full_name == github.repository" in workflow
+    assert "preview-cleanup:" in workflow
     assert "coi-serviceworker.js" in workflow
     assert "c2-shell.js" in workflow
     assert "c2-shell.css" in workflow

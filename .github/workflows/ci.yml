@@ -4,8 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
-    types: [opened, synchronize]
-    paths-ignore: ['**.md']
+    # closed only removes the pull request's preview site.
+    types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
 
 concurrency:
@@ -28,6 +28,7 @@ jobs:
   linux:
     name: Linux ${{ matrix.cc }}
     runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
     strategy:
       fail-fast: false
       matrix:
@@ -68,6 +69,7 @@ jobs:
   package:
     name: Linux package (release tarball)
     runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-nix
@@ -96,6 +98,7 @@ jobs:
   wasm:
     name: WebAssembly
     runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
     env:
       EM_CACHE: ${{ github.workspace }}/.cache/emscripten
     steps:
@@ -153,39 +156,29 @@ jobs:
             build/ci-wasm/version.txt
             build/ci-wasm/LICENSE
             build/ci-wasm/favicon.svg
-      - name: Assemble Pages artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Assemble the site
         run: |
           mkdir -p _site
-          cp build/ci-wasm/index.html _site/
-          cp build/ci-wasm/index.js _site/
-          cp build/ci-wasm/index.wasm _site/
-          cp build/ci-wasm/index.wasm.map _site/
-          cp build/ci-wasm/coi-serviceworker.js _site/
-          cp build/ci-wasm/c2-shell.js _site/
-          cp build/ci-wasm/c2-shell.css _site/
-          cp build/ci-wasm/pico.min.css _site/
-          cp build/ci-wasm/caesar2-background.jpg _site/
-          cp build/ci-wasm/caesar2-background-light.jpg _site/
-          cp build/ci-wasm/version.txt _site/
-          cp build/ci-wasm/LICENSE _site/
-          cp build/ci-wasm/favicon.svg _site/
-          touch _site/.nojekyll
-      - name: Upload Pages artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-pages-artifact@v3
+          for f in index.html index.js index.wasm index.wasm.map coi-serviceworker.js \
+                   c2-shell.js c2-shell.css pico.min.css caesar2-background.jpg \
+                   caesar2-background-light.jpg version.txt LICENSE favicon.svg; do
+            cp "build/ci-wasm/$f" _site/
+          done
+      - uses: actions/upload-artifact@v4
         with:
+          name: site
           path: _site
 
   # ── Windows, native ──────────────────────────────────────────────────
-  # The authoritative Windows build: the shipping compiler, its own CRT,
-  # and its own diagnostic set.  Dependencies come from the vcpkg manifest
-  # (vcpkg.json), the package manager the runner already carries.
+  # The Windows build: the shipping compiler, its own CRT, and its own
+  # diagnostic set.  Dependencies come from the vcpkg manifest (vcpkg.json)
+  # through the vcpkg that Visual Studio ships (msvc-dev-cmd exports its
+  # VCPKG_ROOT); built packages are cached in the Actions cache.
   windows-msvc:
     name: Windows MSVC x64
     runs-on: windows-latest
+    if: github.event.action != 'closed'
     env:
-      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
       - uses: actions/checkout@v5
@@ -193,10 +186,6 @@ jobs:
         with:
           arch: x64
       - uses: lukka/get-cmake@latest
-      - name: Install vcpkg
-        run: |
-          git clone --depth 1 https://github.com/microsoft/vcpkg "$env:VCPKG_ROOT"
-          & "$env:VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics
       - uses: actions/github-script@v7
         with:
           script: |
@@ -215,24 +204,99 @@ jobs:
             build/port/windows-msvc-release/stage/bin/
             build/port/windows-msvc-release/caesar2.pdb
 
-  # ── GitHub Pages deployment ──────────────────────────────────────────
-  # Deployment is deliberately downstream of the single Wasm build above.
-  pages:
-    name: Deploy GitHub Pages
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  # ── GitHub Pages: main and pull-request previews ─────────────────────
+  # Pages serves one site per repository, from the gh-pages branch: main
+  # publishes to /, every pull request from this repository to /pr/N/
+  # (forks get artifacts only: their token cannot write), and a closed
+  # pull request removes its directory. Pushes to gh-pages are serialized.
+  publish:
+    name: Publish web build
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' &&
+       github.event.action != 'closed' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
     needs: wasm
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: gh-pages
+      cancel-in-progress: false
     steps:
-      - uses: actions/configure-pages@v5
+      - uses: actions/download-artifact@v4
         with:
-          enablement: true
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v4
+          name: site
+          path: _site
+      - name: Publish to gh-pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git clone --quiet --depth 1 --branch gh-pages "$remote" pages 2>/dev/null; then
+            cd pages
+          else
+            mkdir pages && cd pages && git init --quiet -b gh-pages && git remote add origin "$remote"
+          fi
+          if [ -n "$PR_NUMBER" ]; then
+            target="pr/$PR_NUMBER"
+          else
+            target="."
+            find . -mindepth 1 -maxdepth 1 ! -name .git ! -name pr -exec rm -rf {} +
+          fi
+          rm -rf "$target"; mkdir -p "$target"
+          cp -R ../_site/. "$target/"
+          touch .nojekyll
+          git add -A
+          git commit --quiet -m "Publish ${target} from ${GITHUB_SHA}" || { echo "nothing changed"; exit 0; }
+          for attempt in 1 2 3; do
+            git push --quiet origin gh-pages && exit 0
+            git fetch --quiet origin gh-pages && git rebase --quiet origin/gh-pages
+          done
+          exit 1
+      - name: Point the pull request at its preview
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/pr/${PR_NUMBER}/"
+          body="<!-- preview --> Web build of this pull request: ${url} (updated for ${GITHUB_SHA})"
+          existing=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+                     --jq '.[] | select(.body | startswith("<!-- preview -->")) | .id' | head -1)
+          if [ -n "$existing" ]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${existing}" -f body="$body" >/dev/null
+          else
+            gh pr comment "$PR_NUMBER" --body "$body"
+          fi
+
+  preview-cleanup:
+    name: Remove pull-request preview
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: gh-pages
+      cancel-in-progress: false
+    steps:
+      - name: Remove pr/N from gh-pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git clone --quiet --depth 1 --branch gh-pages "$remote" pages || exit 0
+          cd pages
+          [ -d "pr/$PR_NUMBER" ] || exit 0
+          git rm -rq "pr/$PR_NUMBER"
+          git commit --quiet -m "Remove preview of pull request #${PR_NUMBER}"
+          git push --quiet origin gh-pages
