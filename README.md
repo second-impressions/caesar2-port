@@ -96,12 +96,42 @@ Original game data is required and is never committed.  From the Nix
 development shell:
 
 ```bash
-git submodule update --init
 nix develop
 cmake --preset linux-debug
 cmake --build --preset linux-debug
 ./build/port/linux-debug/caesar2 --asset-root /path/to/CAESAR2
 ```
+
+### Dependencies and packaging
+
+Every library comes from the build host; CMake locates them and nothing is
+fetched or bundled at build time. There are no git submodules, so a release
+tarball (`git archive`) builds as-is:
+
+| Library | Needed for | Required |
+|---|---|---|
+| SDL3 ≥ 3.4 | window, input, audio, filesystem | yes |
+| zlib | Deflate in the ZIP importer | yes |
+| libbacktrace | source lines in crash reports (`-DPORT_WITH_LIBBACKTRACE=AUTO\|ON\|OFF`) | no |
+| Unity | the C test suite (`BUILD_TESTING`) | tests only |
+
+Two decoders that no distribution packages are carried as plain files with
+their provenance in [third_party/README.md](third_party/README.md):
+libsmacker (Smacker video) and Nuked OPL3 (the FM chip). Packagers should
+declare them as bundled.
+
+`cmake --install` lays out the binary, desktop entry, AppStream metainfo,
+icon and licenses under the usual `GNUInstallDirs` (`DESTDIR` honoured):
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DPORT_WITH_LIBBACKTRACE=ON
+cmake --build build
+DESTDIR=/tmp/stage cmake --install build --prefix /usr
+```
+
+The Windows builds take the same libraries from the MinGW cross sysroot or
+the vcpkg manifest (`vcpkg.json`); the web build uses Emscripten's own SDL3
+and zlib ports.
 
 English is the default distribution tag. Pass `-DC2_LANGUAGE=de`, `fr`, or
 another two-letter tag at configure time and use the matching complete
