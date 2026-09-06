@@ -9,7 +9,9 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # By pull-request number, not ref: a closed pull request reports the base
+  # branch as its ref and would cancel the push run that its merge started.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
