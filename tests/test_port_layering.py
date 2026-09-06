@@ -67,18 +67,23 @@ def test_observation_sources_are_debug_only():
     assert "$<$<CONFIG:Debug>:src/platform/sdl3/c2_sdl_smoke.c>" in cmake
 
 
-def test_posix_crash_handler_is_debug_only_and_sanitizer_safe():
+def test_posix_crash_handler_ships_in_every_configuration_and_is_sanitizer_safe():
     cmake = (ROOT / "CMakeLists.txt").read_text()
     presets = (ROOT / "CMakePresets.json").read_text()
     assert "if(UNIX AND NOT EMSCRIPTEN AND PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER)" in cmake
-    assert "$<$<CONFIG:Debug>:src/platform/posix/c2_posix_debug.c>" in cmake
+    assert "target_sources(caesar2 PRIVATE src/platform/posix/c2_posix_debug.c)" in cmake
+    # Crash logs must be readable as pasted into an issue: every build carries
+    # debug information, exports its symbols, and symbolizes through the
+    # distribution's libbacktrace when present.
+    assert "add_compile_options(-g)" in cmake
+    assert "set_target_properties(caesar2 PROPERTIES ENABLE_EXPORTS ON)" in cmake
+    assert "find_package(LibBacktrace)" in cmake
     assert presets.count('"PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER": "OFF"') == 2
 
 
 def test_wasm_reuses_the_sdl_host_and_recovered_engine_worker():
     cmake = (ROOT / "CMakeLists.txt").read_text()
     main = (SDL_BACKEND / "c2_sdl_main.c").read_text()
-    assert 'SDL_EMSCRIPTEN_PERSISTENT_PATH ""' in cmake
     assert "-sPTHREAD_POOL_SIZE=2" in cmake
     assert "-sINITIAL_MEMORY=100663296" in cmake
     assert "-sALLOW_MEMORY_GROWTH=0" in cmake
@@ -96,13 +101,31 @@ def test_wasm_reuses_the_sdl_host_and_recovered_engine_worker():
     assert "c2_host_sleep_ms(8)" not in main
 
 
+def test_dependencies_come_from_the_build_host():
+    """Packagers need every library to be found, never bundled: no submodules,
+    no FetchContent, only the unpackaged decoders as plain files with
+    provenance."""
+    cmake = (ROOT / "CMakeLists.txt").read_text()
+    assert not (ROOT / ".gitmodules").exists()
+    assert "FetchContent" not in cmake
+    assert "ExternalProject" not in cmake
+    assert "find_package(SDL3" in cmake
+    assert "find_package(ZLIB REQUIRED)" in cmake
+    assert "add_subdirectory(third_party" not in cmake
+    bundled = sorted(p.name for p in (ROOT / "third_party").iterdir() if p.is_dir())
+    assert bundled == ["font8x8", "libsmacker", "nuked-opl3"]
+    provenance = (ROOT / "third_party/README.md").read_text()
+    for name in bundled:
+        assert f"`{name}/`" in provenance
+
+
 def test_language_builds_split_artifacts_without_branching_the_engine():
     cmake = (ROOT / "CMakeLists.txt").read_text()
     assert 'set(C2_LANGUAGE "en" CACHE STRING' in cmake
     assert 'OUTPUT_NAME "index"' in cmake
     assert "target_compile_definitions(c2_import_core PRIVATE" in cmake
     assert "${C2_PLATFORM_LEAF}=1" in cmake
-    assert "target_compile_definitions(c2_import_core PRIVATE LIBARCHIVE_STATIC)" in cmake
+    assert "target_link_libraries(c2_import_core PUBLIC ZLIB::ZLIB SDL3::SDL3)" in cmake
     assert 'c2_require_language_asset("c2.eng")' in cmake
     assert 'c2_require_language_asset("help.eng")' in cmake
 
@@ -463,12 +486,10 @@ def test_asan_backend_options_are_compile_only():
 
 def test_music_library_is_plain_c_without_a_midi_dependency():
     cmake = (ROOT / "CMakeLists.txt").read_text()
-    modules = (ROOT / ".gitmodules").read_text()
     audio = (ROOT / "src/platform/common/c2_port_audio.c").read_text()
     assert "LANGUAGES C)" in cmake
     assert "CXX" not in cmake
     assert "ADLMIDI" not in cmake
-    assert "ADLMIDI" not in modules
     assert "add_library(c2_xmidi STATIC" in cmake
     assert "third_party/nuked-opl3/opl3.c" in cmake
     assert '#include "xmidi/xmidi.h"' in audio

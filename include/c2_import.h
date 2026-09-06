@@ -116,14 +116,13 @@ int c2_zip_read_entry(const char *zip_path, const char *entry,
                       void *buffer, size_t capacity, size_t *size_out,
                       char *error, size_t error_capacity);
 
-/* A c2_source_reader over one ZIP entry without extracting it. Deflate is
- * sequential, so forward reads decompress-and-skip and a backward read
- * reopens the entry; ISO extraction is ordered by extent to keep rewinds
- * rare. Entry names match case-insensitively with either slash. */
+/* A c2_source_reader over one ZIP entry without extracting it. Stored
+ * entries seek freely. Deflate is sequential, so forward reads
+ * decompress-and-skip and a backward read rewinds the inflater; ISO
+ * extraction is ordered by extent to keep rewinds rare. Entry names match
+ * case-insensitively with either slash. */
 struct c2_zip_stream {
-    void *archive;
-    char *zip_path;
-    char *entry;
+    void *state;
     unsigned char *scratch;
     uint64_t size;
     uint64_t position;

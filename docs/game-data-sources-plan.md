@@ -27,7 +27,10 @@ Measured feasibility and corpus results are in `game-data-feasibility-results.md
 
 - Keep recovered engine file calls unchanged behind `c2_host_asset_read`.
 - Migrate the browser from IDBFS to WasmFS OPFS for both assets and mutable data.
-- Use reduced libarchive for ZIP only.
+- Read ZIP in-tree over zlib (central directory, stored and Deflate, ZIP64
+  sizes). The feasibility work used a reduced libarchive; it was replaced so
+  every dependency is one the build host packages, and because the
+  central-directory reader gives stored entries random access.
 - Implement the ISO-9660 reader in-tree over a 2048-byte sector callback.
 - Feed BIN/CUE through the already-proven 2352-to-2048-byte MODE1/MODE2 adapter.
 - Stage and validate imports transactionally before changing the active generation.
