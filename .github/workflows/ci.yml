@@ -266,7 +266,9 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/pr/${PR_NUMBER}/"
-          body="<!-- preview --> Web build of this pull request: ${url} (updated for ${GITHUB_SHA})"
+          # The marker on its own line: a line that starts with an HTML
+          # comment is an HTML block, and Markdown would not link inside it.
+          body="$(printf '<!-- preview -->\n**Web build of this pull request:** [%s](%s)\n\nUpdated for %s.' "$url" "$url" "$GITHUB_SHA")"
           existing=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
                      --jq '.[] | select(.body | startswith("<!-- preview -->")) | .id' | head -1)
           if [ -n "$existing" ]; then
