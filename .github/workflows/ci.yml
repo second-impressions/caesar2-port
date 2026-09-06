@@ -177,30 +177,6 @@ jobs:
         with:
           path: _site
 
-  # ── Windows, cross-compiled ──────────────────────────────────────────
-  # The cheap canary: LLP64 and the Win32 headers on a Linux runner.  It
-  # does NOT replace the MSVC job — MinGW ships POSIX-ish headers that
-  # would mask exactly the CRT breakage MSVC catches.
-  windows-mingw:
-    name: Windows MinGW-w64 x64
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup-nix
-        with:
-          scope: mingw
-      - name: Build
-        run: |
-          nix develop .#mingw --command bash -c '
-            cmake --preset windows-mingw-release \
-              -DCMAKE_C_COMPILER_LAUNCHER=ccache &&
-            cmake --build --preset windows-mingw-release --parallel &&
-            cmake --install build/port/windows-mingw-release --prefix "$PWD/build/port/windows-mingw-release/stage"'
-      - uses: actions/upload-artifact@v4
-        with:
-          name: caesar2-windows-mingw-x64
-          path: build/port/windows-mingw-release/stage/bin/
-
   # ── Windows, native ──────────────────────────────────────────────────
   # The authoritative Windows build: the shipping compiler, its own CRT,
   # and its own diagnostic set.  Dependencies come from the vcpkg manifest

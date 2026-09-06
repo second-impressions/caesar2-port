@@ -8,9 +8,8 @@ sees a normalized asset root. The Linux and Windows targets share the same
 importer but almost none of that experience. This document fixes the
 filesystem schema and the first-run flow for the native targets.
 
-Both native targets already build. `windows-mingw-release` and
-`windows-msvc-release` are green in CI, and `build/port/linux-release/caesar2`
-runs. The gap is onboarding, not compilation.
+Both native targets already build: `windows-msvc-release` is green in CI,
+and `build/port/linux-release/caesar2` runs. The gap is onboarding, not compilation.
 
 ## Measured current behavior
 

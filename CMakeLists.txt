@@ -88,8 +88,8 @@ message(STATUS "Caesar II language build: ${C2_LANGUAGE}")
 
 # ---- Dependencies ----------------------------------------------------------
 # Every library comes from the build host and is located here, in one place:
-# the distribution package on Linux and the MinGW cross sysroot, the vcpkg
-# manifest (vcpkg.json) on MSVC, Emscripten's own ports for the web build.
+# the distribution package on Linux, the vcpkg manifest (vcpkg.json) on
+# Windows, Emscripten's own ports for the web build.
 # Nothing is fetched or bundled; the only third_party/ code is the two
 # decoders no distribution packages (see third_party/README.md).
 #
@@ -370,8 +370,7 @@ target_compile_definitions(caesar2 PRIVATE
     $<$<CONFIG:Debug>:PORT_DEBUG_BUILD=1>
 )
 # Import readers are a separate target and need the same host leaf; otherwise
-# Windows silently takes the POSIX fseeko path (MinGW happens to provide it,
-# MSVC does not).
+# Windows silently takes the POSIX fseeko path, which MSVC does not provide.
 target_compile_definitions(c2_import_core PRIVATE
     PORT_PLATFORM=1
     ${C2_PLATFORM_LEAF}=1
@@ -642,19 +641,9 @@ if(NOT EMSCRIPTEN)
         DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/licenses/caesar2"
         RENAME LICENSE.nuked-opl3)
     if(WIN32)
+        # vcpkg installs the DLLs it built (X_VCPKG_APPLOCAL_DEPS_INSTALL).
         install(FILES $<TARGET_RUNTIME_DLLS:caesar2>
             DESTINATION "${CMAKE_INSTALL_BINDIR}")
-        # FindZLIB imports an UNKNOWN target, which TARGET_RUNTIME_DLLS
-        # cannot see; the MinGW sysroot keeps the DLL beside the import lib.
-        # vcpkg installs its own DLLs (X_VCPKG_APPLOCAL_DEPS_INSTALL).
-        if(NOT MSVC)
-            get_filename_component(C2_ZLIB_LIBDIR "${ZLIB_LIBRARY}" DIRECTORY)
-            find_file(C2_ZLIB_DLL NAMES zlib1.dll libz.dll
-                HINTS "${C2_ZLIB_LIBDIR}/../bin" "${C2_ZLIB_LIBDIR}")
-            if(C2_ZLIB_DLL)
-                install(FILES "${C2_ZLIB_DLL}" DESTINATION "${CMAKE_INSTALL_BINDIR}")
-            endif()
-        endif()
     else()
         install(FILES packaging/io.github.second_impressions.caesar2.desktop
             DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications")

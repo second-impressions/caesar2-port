@@ -53,30 +53,6 @@
             # ghcr.io/second-impressions/watcom-10.0a-wibo image (public;
             # override with C2_WATCOM_IMAGE).
           };
-
-          # Windows cross target.  This is the cheap LLP64/Win32 canary that
-          # CI also runs on its Linux runner; the authoritative Windows build
-          # is MSVC on a Windows runner.  The cross stdenv is needed rather
-          # than a bare compiler package so the mcfgthreads runtime and the
-          # target sysroot land in the wrapper's search paths.
-          #
-          #   nix develop .#mingw
-          #   cmake --preset windows-mingw-debug
-          #   cmake --build --preset windows-mingw-debug
-          mingw = pkgs.pkgsCross.mingwW64.mkShell {
-            depsBuildBuild = [ pkgs.pkgsCross.mingwW64.buildPackages.pkg-config ];
-            nativeBuildInputs = [
-              pkgs.ccache
-              pkgs.cmake
-              pkgs.ninja
-            ];
-            buildInputs = [
-              pkgs.pkgsCross.mingwW64.windows.mcfgthreads
-              pkgs.pkgsCross.mingwW64.sdl3
-              pkgs.pkgsCross.mingwW64.zlib
-              pkgs.pkgsCross.mingwW64.libarchive
-            ];
-          };
         }
       );
     };
