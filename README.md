@@ -307,8 +307,10 @@ available if the global redzones ever get in the way.
 
 Native POSIX builds also install fatal-signal handlers for `SIGSEGV`,
 `SIGABRT`, `SIGBUS`, `SIGILL`, and `SIGFPE`. A crash on either the SDL or engine
-thread prints the signal, fault address, and native backtrace to standard error,
-then re-raises the signal so normal debugger and core-dump behavior is retained.
+thread prints the build version, the signal, fault address, and native
+backtrace to standard error, followed by a request to file the output as an
+issue, then re-raises the signal so normal debugger and core-dump behavior is
+retained.
 ASan and TSan presets leave it off so the sanitizer runtimes retain their own
 signal diagnostics. When the build found libbacktrace (`PORT_WITH_LIBBACKTRACE`,
 default `AUTO`), each frame is printed with function, source file and line
