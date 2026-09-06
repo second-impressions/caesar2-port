@@ -4,6 +4,8 @@
 #include "c2_data.h"
 #include "c2_host.h"
 #include "c2_port.h"
+#include <stdio.h>
+
 #include "c2_port_save.h"
 #include "c2_version.h"
 
@@ -51,8 +53,10 @@ static void publish_frame(void)
 
 int c2_port_compat_init(void)
 {
-    if (!c2_port_save_registry_valid(savegame_entries, 500,
+    if (!c2_port_save_registry_valid(savegame_entries, C2_SAVE_REGISTRY_CAPACITY,
                                      figure_list, arrow_list)) {
+        fprintf(stderr, "caesar2: the save-game registry does not describe "
+                        "%d bytes of state; refusing to start\n", C2_SAVE_STATE_SIZE);
         return 0;
     }
     lang_file = c2_language_filename;

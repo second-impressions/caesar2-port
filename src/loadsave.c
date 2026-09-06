@@ -96,7 +96,7 @@ struct save_entry model_entries[40] = {
     { 0, 0 }
 };
 
-struct save_entry savegame_entries[500] = {
+struct save_entry savegame_entries[C2_SAVE_REGISTRY_CAPACITY] = {
     { &map_mode, 1 },
     { &ov_map_mode, 1 },
     { &zoom_level, 1 },
@@ -288,8 +288,15 @@ struct save_entry savegame_entries[500] = {
     { &stolen_denarii, 4 },
     { &reg_city_x, 4 },
     { &reg_city_y, 4 },
+#if PORT_FIX_DATA_LAYOUT_READS
+    { &our_battle_army, 2 },
+    { &enemy_army, 2 },
+    { &their_battle_army, 2 },
+    { &our_battle_army, 2 },
+#else
     { &our_battle_army, 4 },
     { &their_battle_army, 4 },
+#endif
     { &forum_viewed_army, 4 },
     { &army_wage_level, 4 },
     { &conscription_rate, 4 },
@@ -915,11 +922,11 @@ int savegame(char *save_filename)
 #endif
 
 #if PORT_PLATFORM
-    if (!c2_port_save_game_state(save_filename, savegame_entries, 500,
+    if (!c2_port_save_game_state(save_filename, savegame_entries, C2_SAVE_REGISTRY_CAPACITY,
                                  figure_list, arrow_list)) return 0;
 #if PORT_FEAT_DEBUG_OBSERVATION
     save_state_verified = c2_port_save_state_file_matches(
-        save_filename, savegame_entries, 500, figure_list, arrow_list,
+        save_filename, savegame_entries, C2_SAVE_REGISTRY_CAPACITY, figure_list, arrow_list,
         &save_mismatch_offset);
     if (!save_state_verified) {
         fprintf(stderr, "save readback differs at offset %zu\n",
@@ -936,7 +943,7 @@ int savegame(char *save_filename)
         return 0;
     }
 
-    for (i = 0; i < 500; i++) {
+    for (i = 0; i < C2_SAVE_REGISTRY_CAPACITY; i++) {
         if (savegame_entries[i].size == 0) break;
         write(save_fd, savegame_entries[i].buf, savegame_entries[i].size);
     }
@@ -977,11 +984,11 @@ int loadgame(char *save_filename)
     clear_messages();
 
 #if PORT_PLATFORM
-    if (!c2_port_load_game_state(save_filename, savegame_entries, 500,
+    if (!c2_port_load_game_state(save_filename, savegame_entries, C2_SAVE_REGISTRY_CAPACITY,
                                  figure_list, arrow_list)) return 0;
 #if PORT_FEAT_DEBUG_OBSERVATION
     load_state_verified = c2_port_save_state_file_matches(
-        save_filename, savegame_entries, 500, figure_list, arrow_list,
+        save_filename, savegame_entries, C2_SAVE_REGISTRY_CAPACITY, figure_list, arrow_list,
         &load_mismatch_offset);
     if (!load_state_verified) {
         fprintf(stderr, "loaded state differs at offset %zu\n",
@@ -998,7 +1005,7 @@ int loadgame(char *save_filename)
         return 0;
     }
 
-    for (i = 0; i < 500; i++) {
+    for (i = 0; i < C2_SAVE_REGISTRY_CAPACITY; i++) {
         if (savegame_entries[i].size == 0) break;
         read(save_fd, savegame_entries[i].buf, savegame_entries[i].size);
     }
@@ -1037,7 +1044,7 @@ int loadgame(char *save_filename)
 #if PORT_FEAT_DEBUG_OBSERVATION
     if (load_state_verified) {
         load_state_verified = c2_port_save_state_file_matches(
-            save_filename, savegame_entries, 500, figure_list, arrow_list,
+            save_filename, savegame_entries, C2_SAVE_REGISTRY_CAPACITY, figure_list, arrow_list,
             &load_mismatch_offset);
         if (!load_state_verified) {
             fprintf(stderr, "post-load state differs at offset %zu\n",
@@ -1091,7 +1098,11 @@ void load_inf(void)
     if (no_of_entries != 0) {
         my_strcpy(directory, filename, 0xd);
     } else {
+#if PORT_FIX_DATA_LAYOUT_READS
+        my_strcpy("caesar2.sav", filename, 0xc);
+#else
         my_strcpy("caesar2.sav", filename, 0xd);
+#endif
     }
     first_entry = 0;
     file_no = 0;

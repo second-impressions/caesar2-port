@@ -825,7 +825,11 @@ void cap_land_value(int rows)
         for (x = 0; x < 80; x++, cm_sptr += 20)
         {
             building_number = ((unsigned char *)city_map)[cm_sptr];
+#if PORT_FIX_DATA_LAYOUT_READS
+            if (building_number >= 0x82) size = (unsigned char)size2_from_type[building_number - 0x82];
+#else
             if (building_number >= 0x82) size = (unsigned char)reg_aquaduct_gfxdat[building_number + 8];
+#endif
             else size = 1;
 
             activity = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).activity_a & 0xf;
