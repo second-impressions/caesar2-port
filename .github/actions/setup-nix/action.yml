@@ -2,7 +2,7 @@ name: Set up cached Nix toolchain
 description: Install Nix and restore the pinned flake closure and compiler cache
 inputs:
   scope:
-    description: Cache scope (dev or mingw)
+    description: Cache scope
     required: false
     default: dev
 runs:

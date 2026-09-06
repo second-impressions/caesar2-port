@@ -129,9 +129,8 @@ cmake --build build
 DESTDIR=/tmp/stage cmake --install build --prefix /usr
 ```
 
-The Windows builds take the same libraries from the MinGW cross sysroot or
-the vcpkg manifest (`vcpkg.json`); the web build uses Emscripten's own SDL3
-and zlib ports.
+The Windows build takes the same libraries from the vcpkg manifest
+(`vcpkg.json`); the web build uses Emscripten's own SDL3 and zlib ports.
 
 English is the default distribution tag. Pass `-DC2_LANGUAGE=de`, `fr`, or
 another two-letter tag at configure time and use the matching complete
