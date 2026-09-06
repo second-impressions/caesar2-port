@@ -429,9 +429,9 @@ void evolve_water_table(int row_count)
                 if (has_water_flag)
                 {
                     flag_range(0, col_no, map_row + evolve_row, 6, 0xd, 1);
-                    (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).extra_edge = house_gfxdat[building_type + 0x2d] + 1;
+                    (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).extra_edge = fountain_gfxdat[building_type - 0xdb] + 1;
                 }
-                else (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).extra_edge = house_gfxdat[building_type + 0x2d];
+                else (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).extra_edge = fountain_gfxdat[building_type - 0xdb];
                 (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).edge_bits |= 1;
             }
             else if ((building_type >= 0xdf) && (building_type <= 0xe2))
@@ -825,11 +825,7 @@ void cap_land_value(int rows)
         for (x = 0; x < 80; x++, cm_sptr += 20)
         {
             building_number = ((unsigned char *)city_map)[cm_sptr];
-#if PORT_FIX_DATA_LAYOUT_READS
             if (building_number >= 0x82) size = (unsigned char)size2_from_type[building_number - 0x82];
-#else
-            if (building_number >= 0x82) size = (unsigned char)reg_aquaduct_gfxdat[building_number + 8];
-#endif
             else size = 1;
 
             activity = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).activity_a & 0xf;
