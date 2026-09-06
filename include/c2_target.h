@@ -233,11 +233,15 @@
  * chrome, so the hook is compiled out of them entirely. */
 #define PORT_FEAT_HOST_PAUSE PORT_PLATFORM
 
-/* The DOS province construction lists use press-drag-release interaction.
- * Keep their initial release from dismissing the list in portable builds so
- * an ordinary click behaves like the city construction lists; dragging to an
- * entry and releasing remains available. */
-#define PORT_FEAT_STICKY_REGION_DROPDOWNS PORT_PLATFORM
+/* The DOS construction lists open on the icon press and treat the release as
+ * the choice: a release over an entry selects it, one off the icon dismisses.
+ * Each list is placed relative to the mouse, so whether the opening click's
+ * own release already lies on a row depends on the widest entry in the
+ * current language (the German water list lands on "Brunnen"). Portable
+ * builds consume an unmoved opening release for every command-strip list, so
+ * a click opens it and the next click chooses; dragging to an entry and
+ * releasing remains available. */
+#define PORT_FEAT_STICKY_DROPDOWNS PORT_PLATFORM
 
 /* The shipped city/province score chooses its next XMI branch from the
  * simulation RNG. That RNG correctly stops while paused, but the MIDI branch

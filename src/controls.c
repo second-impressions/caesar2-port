@@ -1,6 +1,6 @@
 #include "c2_data.h"
 #include "c2_types.h"
-#if PORT_FEAT_STICKY_REGION_DROPDOWNS
+#if PORT_FEAT_STICKY_DROPDOWNS
 #include "c2_port.h"
 #endif
 
@@ -919,12 +919,11 @@ int control_selection(struct selection_rec *selection_list, int selection_count,
         gloop_end();
         selection_is = over_selection(select_count, x, y);
         if (mouse_left_click != 0) {
-#if PORT_FEAT_STICKY_REGION_DROPDOWNS
-            /* The province lists overlap their source icons, so the opening
-             * release can already be over a row. Consume an unmoved opening
-             * click before considering that row; moved drag releases remain
-             * selections. */
-            if (c2_port_region_selection_consume_release(mouse_x, mouse_y)) {
+#if PORT_FEAT_STICKY_DROPDOWNS
+            /* A list can overlap its source icon, so the opening release can
+             * already be over a row. Consume an unmoved opening click before
+             * considering that row; moved drag releases remain selections. */
+            if (c2_port_selection_consume_release(mouse_x, mouse_y)) {
                 continue;
             }
 #endif
