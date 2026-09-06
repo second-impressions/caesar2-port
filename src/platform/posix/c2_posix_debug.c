@@ -10,6 +10,9 @@
 
 #include "c2_debug_crash.h"
 #include "c2_target.h"
+#include "c2_version.h"
+
+#define C2_ISSUE_URL "https://github.com/second-impressions/caesar2-port/issues"
 
 #if PORT_FEAT_CRASH_SOURCE_LINES
 #include <backtrace.h>
@@ -259,7 +262,8 @@ static void fatal_signal_handler(int signal_number, siginfo_t *info,
     c2_handling_fatal_signal = 1;
 
     name = signal_name(signal_number, &name_length);
-    write_literal("\ncaesar2 debug: fatal ", 22);
+    write_literal("\nCaesar II " C2_VERSION_STRING " crashed: fatal ",
+                  sizeof("\nCaesar II " C2_VERSION_STRING " crashed: fatal ") - 1);
     write_all(name, name_length);
     write_literal(" (", 2);
     write_decimal((unsigned int)signal_number);
@@ -288,6 +292,10 @@ static void fatal_signal_handler(int signal_number, siginfo_t *info,
 #if PORT_FEAT_CRASH_SOURCE_LINES
 reraise:
 #endif
+    write_literal("\nThis is a bug in the port. Please open an issue at\n  " C2_ISSUE_URL
+                  "\nand paste everything above, with what you were doing in the game.\n",
+                  sizeof("\nThis is a bug in the port. Please open an issue at\n  " C2_ISSUE_URL
+                         "\nand paste everything above, with what you were doing in the game.\n") - 1);
 
     default_action.sa_handler = SIG_DFL;
     sigemptyset(&default_action.sa_mask);
