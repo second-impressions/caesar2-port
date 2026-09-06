@@ -245,11 +245,12 @@ jobs:
           fi
           if [ -n "$PR_NUMBER" ]; then
             target="pr/$PR_NUMBER"
+            rm -rf "$target"; mkdir -p "$target"
           else
+            # main owns everything at the root except the previews.
             target="."
             find . -mindepth 1 -maxdepth 1 ! -name .git ! -name pr -exec rm -rf {} +
           fi
-          rm -rf "$target"; mkdir -p "$target"
           cp -R ../_site/. "$target/"
           touch .nojekyll
           git add -A
