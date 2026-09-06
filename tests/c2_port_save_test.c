@@ -11,9 +11,9 @@
 #define TEST_USER_ROOT "c2-port-save-test-data"
 #define ORDINARY_STATE_SIZE \
     (C2_SAVE_STATE_SIZE - C2_SAVE_FIGURES_SIZE - C2_SAVE_ARROWS_SIZE)
-#define TRAILING_BLOCK_COUNT 497
+#define TRAILING_BLOCK_COUNT (C2_SAVE_REGISTRY_CAPACITY - 3)
 
-static struct save_entry entries[500];
+static struct save_entry entries[C2_SAVE_REGISTRY_CAPACITY];
 static struct figure_rec figures[C2_SAVE_FIGURE_COUNT];
 static struct arrow_rec arrows[C2_SAVE_ARROW_COUNT];
 static unsigned char ordinary_state[ORDINARY_STATE_SIZE];
@@ -48,7 +48,7 @@ static void setup_full_registry(void)
     entries[1].size = C2_SAVE_FIGURES_SIZE;
     entries[2].buf = arrows;
     entries[2].size = C2_SAVE_ARROWS_SIZE;
-    for (i = 3; i < 500; i++) {
+    for (i = 3; i < C2_SAVE_REGISTRY_CAPACITY; i++) {
         entries[i].buf = ordinary_state + prefix_size + i - 3;
         entries[i].size = 1;
     }
@@ -92,17 +92,17 @@ static void test_portable_save_and_load_round_trip(void)
     TEST_ASSERT_TRUE(c2_host_user_file_write("history.dat", history,
                                              sizeof(history)));
 
-    TEST_ASSERT_TRUE(c2_port_save_game_state("roundtrip.sav", entries, 500,
+    TEST_ASSERT_TRUE(c2_port_save_game_state("roundtrip.sav", entries, C2_SAVE_REGISTRY_CAPACITY,
                                              figures, arrows));
     bytes_read = c2_host_user_file_read("roundtrip.sav", saved_file,
                                         sizeof(saved_file), 0);
     TEST_ASSERT_EQUAL_size_t(C2_SAVE_FILE_SIZE, bytes_read);
     TEST_ASSERT_TRUE(c2_port_save_state_file_matches(
-        "roundtrip.sav", entries, 500, figures, arrows, &mismatch_offset));
+        "roundtrip.sav", entries, C2_SAVE_REGISTRY_CAPACITY, figures, arrows, &mismatch_offset));
 
     ordinary_state[42] ^= 0xff;
     TEST_ASSERT_FALSE(c2_port_save_state_file_matches(
-        "roundtrip.sav", entries, 500, figures, arrows, &mismatch_offset));
+        "roundtrip.sav", entries, C2_SAVE_REGISTRY_CAPACITY, figures, arrows, &mismatch_offset));
     TEST_ASSERT_EQUAL_size_t(42, mismatch_offset);
     ordinary_state[42] ^= 0xff;
 
@@ -110,7 +110,7 @@ static void test_portable_save_and_load_round_trip(void)
     TEST_ASSERT_TRUE(c2_host_user_file_write("roundtrip.sav", saved_file,
                                              C2_SAVE_FILE_SIZE));
     TEST_ASSERT_FALSE(c2_port_save_state_file_matches(
-        "roundtrip.sav", entries, 500, figures, arrows, &mismatch_offset));
+        "roundtrip.sav", entries, C2_SAVE_REGISTRY_CAPACITY, figures, arrows, &mismatch_offset));
     TEST_ASSERT_EQUAL_size_t(123, mismatch_offset);
     saved_file[123] ^= 0xff;
     TEST_ASSERT_TRUE(c2_host_user_file_write("roundtrip.sav", saved_file,
@@ -122,7 +122,7 @@ static void test_portable_save_and_load_round_trip(void)
     memset(history, 0, sizeof(history));
     TEST_ASSERT_TRUE(c2_host_user_file_write("history.dat", history,
                                              sizeof(history)));
-    TEST_ASSERT_TRUE(c2_port_load_game_state("roundtrip.sav", entries, 500,
+    TEST_ASSERT_TRUE(c2_port_load_game_state("roundtrip.sav", entries, C2_SAVE_REGISTRY_CAPACITY,
                                              figures, arrows));
     TEST_ASSERT_EQUAL_MEMORY(expected_ordinary_state, ordinary_state,
                              sizeof(ordinary_state));
@@ -136,13 +136,13 @@ static void test_portable_save_and_load_round_trip(void)
         c2_host_user_file_read("history.dat", history, sizeof(history), 0));
     TEST_ASSERT_EQUAL_MEMORY(expected_history, history, sizeof(history));
     TEST_ASSERT_TRUE(c2_port_save_state_file_matches(
-        "roundtrip.sav", entries, 500, figures, arrows, &mismatch_offset));
+        "roundtrip.sav", entries, C2_SAVE_REGISTRY_CAPACITY, figures, arrows, &mismatch_offset));
 
     history[17] ^= 0xff;
     TEST_ASSERT_TRUE(c2_host_user_file_write("history.dat", history,
                                              sizeof(history)));
     TEST_ASSERT_FALSE(c2_port_save_state_file_matches(
-        "roundtrip.sav", entries, 500, figures, arrows, &mismatch_offset));
+        "roundtrip.sav", entries, C2_SAVE_REGISTRY_CAPACITY, figures, arrows, &mismatch_offset));
     TEST_ASSERT_EQUAL_size_t(C2_SAVE_STATE_SIZE + 17, mismatch_offset);
     history[17] ^= 0xff;
     TEST_ASSERT_TRUE(c2_host_user_file_write("history.dat", history,
@@ -151,13 +151,13 @@ static void test_portable_save_and_load_round_trip(void)
     TEST_ASSERT_TRUE(c2_host_user_file_write("truncated.sav", saved_file,
                                              C2_SAVE_FILE_SIZE - 1));
     ordinary_state[0] = 0x7b;
-    TEST_ASSERT_FALSE(c2_port_load_game_state("truncated.sav", entries, 500,
+    TEST_ASSERT_FALSE(c2_port_load_game_state("truncated.sav", entries, C2_SAVE_REGISTRY_CAPACITY,
                                               figures, arrows));
     TEST_ASSERT_EQUAL_HEX8(0x7b, ordinary_state[0]);
     saved_file[C2_SAVE_FILE_SIZE] = 0xa5;
     TEST_ASSERT_TRUE(c2_host_user_file_write("oversized.sav", saved_file,
                                              sizeof(saved_file)));
-    TEST_ASSERT_FALSE(c2_port_load_game_state("oversized.sav", entries, 500,
+    TEST_ASSERT_FALSE(c2_port_load_game_state("oversized.sav", entries, C2_SAVE_REGISTRY_CAPACITY,
                                               figures, arrows));
     TEST_ASSERT_EQUAL_HEX8(0x7b, ordinary_state[0]);
 

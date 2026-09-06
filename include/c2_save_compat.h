@@ -13,6 +13,13 @@
 #define C2_SAVE_ARROW_SIZE 45
 #define C2_SAVE_ARROWS_SIZE (C2_SAVE_ARROW_COUNT * C2_SAVE_ARROW_SIZE)
 
+/* The save table is a 500-entry array in the original with no terminator;
+ * PORT_FIX_DATA_LAYOUT_READS splits two entries in four (same bytes). */
+#if PORT_FIX_DATA_LAYOUT_READS
+#  define C2_SAVE_REGISTRY_CAPACITY 502
+#else
+#  define C2_SAVE_REGISTRY_CAPACITY 500
+#endif
 #define C2_SAVE_STATE_SIZE 221745
 #define C2_SAVE_HISTORY_SIZE 4000
 #define C2_SAVE_FILE_SIZE (C2_SAVE_STATE_SIZE + C2_SAVE_HISTORY_SIZE)

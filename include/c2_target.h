@@ -263,6 +263,24 @@
 #define PORT_FIX_MODAL_BUTTON_LATENCY PORT_PLATFORM
 #define PORT_MODAL_BUTTON_FRAMES 10
 
+/* Reads that only worked because of where the original linker placed the
+ * neighbouring variable. The port's globals are separate C objects laid out
+ * by a different compiler, so each is redirected to the object the original
+ * bytes actually came from (verified against the PS.EXE data segment):
+ *
+ * - cap_land_value() and get_query_info() take a building's footprint side
+ *   from reg_aquaduct_gfxdat[type + 8]; that 12-byte table is followed by
+ *   size_from_type[126], so index 0x8a + n is size2_from_type[n]. Reading
+ *   the port's unrelated neighbour yielded 0 and divided by it (SIGFPE when
+ *   a bath was placed).
+ * - The save table stores 4 bytes at &our_battle_army and 4 at
+ *   &their_battle_army, each a 2-byte short: the original file holds
+ *   [our, enemy_army][their, our]. The port writes the same bytes from the
+ *   named shorts, so the file format is unchanged.
+ * - my_strcpy("caesar2.sav", filename, 0xd) copied one byte past the
+ *   12-byte literal; the 13th byte is beyond the terminator. */
+#define PORT_FIX_DATA_LAYOUT_READS PORT_PLATFORM
+
 /* Read-only engine observations and their smoke driver are development
  * instrumentation. CMake selects them only for portable Debug builds. */
 #if defined(PORT_DEBUG_BUILD)

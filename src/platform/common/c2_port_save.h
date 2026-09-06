@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 
+#include "c2_save_compat.h"
 #include "c2_types.h"
 
 int c2_port_save_registry_valid(const struct save_entry *entries,

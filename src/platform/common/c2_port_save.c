@@ -5,7 +5,6 @@
 #include "c2_port_save.h"
 #include "c2_save_compat.h"
 
-#define C2_SAVE_REGISTRY_CAPACITY 500
 #define C2_HISTORY_FILENAME "history.dat"
 
 static size_t pack_registered_state(
