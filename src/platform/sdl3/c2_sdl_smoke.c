@@ -78,6 +78,15 @@ enum {
     BUILD_SMOKE_WAIT_DONE
 };
 
+enum city_build_smoke_phase {
+    CITY_BUILD_WAIT_FOR_CITY,
+    CITY_BUILD_SETTLE,
+    CITY_BUILD_PICK_BATHS,
+    CITY_BUILD_PLACE_BATHS,
+    CITY_BUILD_WAIT_PLACED,
+    CITY_BUILD_DONE
+};
+
 enum {
     CITY_FORUM_ICON_X = 560,
     CITY_FORUM_ICON_Y = 251,
@@ -118,6 +127,13 @@ enum {
     CONFIRM_WORK_CAMP = 0x0c,
     SELECTION_INDUSTRY = 0x37,
     SELECTION_FARM_GOODS = 0x11,
+    /* City command strip (int_city_header rects): the health icon opens the
+     * baths/hospital list; baths are a 2x2 footprint. */
+    CITY_HEALTH_ICON_X = 623,
+    CITY_HEALTH_ICON_Y = 327,
+    SELECTION_HEALTH = 0x0f,
+    CITY_TOOL_BATHS = 0x0a,
+    CITY_BUILD_ATTEMPTS = 6,
     SMOKE_TIMEOUT_MS = 45000,
     SAVE_LOAD_SMOKE_TIMEOUT_MS = 90000
 };
@@ -1040,6 +1056,109 @@ static enum c2_sdl_smoke_result drive_province_build(
     return C2_SDL_SMOKE_RUNNING;
 }
 
+/* Candidate spots for a 2x2 building in the initial city view, tried in
+ * order until one costs money (terrain decides). */
+static const int city_build_spots[CITY_BUILD_ATTEMPTS][2] = {
+    { 320, 240 }, { 280, 220 }, { 360, 260 }, { 240, 280 }, { 300, 300 }, { 200, 240 }
+};
+
+/*
+ * Placing any multi-tile building re-evolves the whole city map at once
+ * (get_landfill(1) -> cap_land_value), which reads each footprint's side
+ * from a table the original addressed past its end. Baths are what players
+ * hit first. The bath goes down through the real command strip, selection
+ * list and map click; the smoke passes when the placement cost money and
+ * the city loop is still alive afterwards.
+ */
+static enum c2_sdl_smoke_result drive_city_build(
+    struct c2_sdl_smoke *smoke, Uint64 now,
+    const struct c2_observation *observation)
+{
+    int in_city_loop;
+
+    if (observation_is(observation, PORT_OBSERVATION_MESSAGE)) {
+        smoke->city_quiet_since = now;
+        click_mouse(smoke, now, 0, 479, C2_HOST_MOUSE_RIGHT);
+        return C2_SDL_SMOKE_RUNNING;
+    }
+    in_city_loop = observation_is(observation, PORT_OBSERVATION_CITY_LOOP);
+
+    switch (smoke->phase) {
+    case CITY_BUILD_WAIT_FOR_CITY:
+        if (in_city_loop) {
+            smoke->city_quiet_since = now;
+            smoke->phase = CITY_BUILD_SETTLE;
+        }
+        break;
+    case CITY_BUILD_SETTLE:
+        if (in_city_loop && observation->map_mode == 0 &&
+            now - smoke->city_quiet_since >= 300 &&
+            click_mouse(smoke, now, CITY_HEALTH_ICON_X, CITY_HEALTH_ICON_Y,
+                        C2_HOST_MOUSE_LEFT)) {
+            smoke->phase = CITY_BUILD_PICK_BATHS;
+        }
+        break;
+    case CITY_BUILD_PICK_BATHS:
+        if (observation_is(observation, PORT_OBSERVATION_SELECTION) &&
+            observation->detail == SELECTION_HEALTH) {
+            smoke->build_selection_x = observation->selection_x;
+            smoke->build_selection_y = observation->selection_y;
+            if (click_selection_row(smoke, now, 0)) {
+                smoke->build_attempt = 0;
+                smoke->phase = CITY_BUILD_PLACE_BATHS;
+            }
+        } else if (in_city_loop && now - smoke->last_input >= 500) {
+            click_mouse(smoke, now, CITY_HEALTH_ICON_X, CITY_HEALTH_ICON_Y,
+                        C2_HOST_MOUSE_LEFT);
+        }
+        break;
+    case CITY_BUILD_PLACE_BATHS:
+        if (in_city_loop && observation->city_tool == CITY_TOOL_BATHS &&
+            now - smoke->last_input >= 250) {
+            if (smoke->build_attempt >= CITY_BUILD_ATTEMPTS) {
+                fprintf(stderr, "no spot in the initial view took the baths\n");
+                return C2_SDL_SMOKE_FAILURE;
+            }
+            smoke->build_denarii = observation->denarii;
+            if (click_mouse(smoke, now,
+                            city_build_spots[smoke->build_attempt][0],
+                            city_build_spots[smoke->build_attempt][1],
+                            C2_HOST_MOUSE_LEFT)) {
+                smoke->build_attempt++;
+                smoke->modal_clicked_at = now;
+                smoke->phase = CITY_BUILD_WAIT_PLACED;
+            }
+        } else if (in_city_loop && observation->city_tool != CITY_TOOL_BATHS &&
+                   now - smoke->last_input >= 1500) {
+            fprintf(stderr, "the baths row did not select the baths tool "
+                            "(tool %d)\n", observation->city_tool);
+            return C2_SDL_SMOKE_FAILURE;
+        }
+        break;
+    case CITY_BUILD_WAIT_PLACED:
+        if (in_city_loop && observation->denarii < smoke->build_denarii) {
+            printf("baths placed at attempt %d for %d denarii\n",
+                   smoke->build_attempt,
+                   smoke->build_denarii - observation->denarii);
+            smoke->city_quiet_since = now;
+            smoke->phase = CITY_BUILD_DONE;
+        } else if (in_city_loop && now - smoke->modal_clicked_at >= 700) {
+            smoke->phase = CITY_BUILD_PLACE_BATHS;
+        }
+        break;
+    case CITY_BUILD_DONE:
+        /* The placement re-evolved the map synchronously; a few more frames
+         * of the live loop prove nothing died in its wake. */
+        if (in_city_loop && now - smoke->city_quiet_since >= 1000) {
+            printf("city build smoke completed: baths placed, %d denarii left\n",
+                   observation->denarii);
+            return C2_SDL_SMOKE_SUCCESS;
+        }
+        break;
+    }
+    return C2_SDL_SMOKE_RUNNING;
+}
+
 static enum c2_sdl_smoke_result drive_music_buffer(
     struct c2_sdl_smoke *smoke, Uint64 now,
     const struct c2_observation *observation)
@@ -1264,6 +1383,20 @@ enum c2_sdl_smoke_result c2_sdl_smoke_iterate(
                    (unsigned long long)(now - smoke->started),
                    observation.point, observation.detail,
                    observation.region_tool);
+        }
+        return r;
+    }
+    if (smoke->kind == C2_SDL_SMOKE_CITY_BUILD) {
+        int phase = smoke->phase;
+        enum c2_sdl_smoke_result r =
+            drive_city_build(smoke, now, &observation);
+        if (phase != smoke->phase) {
+            printf("city build smoke phase %d -> %d at %llu ms "
+                   "(observation %d/%d, tool %d, denarii %d)\n",
+                   phase, smoke->phase,
+                   (unsigned long long)(now - smoke->started),
+                   observation.point, observation.detail,
+                   observation.city_tool, observation.denarii);
         }
         return r;
     }

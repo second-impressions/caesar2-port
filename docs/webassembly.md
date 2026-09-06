@@ -77,6 +77,7 @@ node tools/smoke-wasm.mjs build/port/wasm-debug city
 node tools/smoke-wasm.mjs build/port/wasm-debug music
 node tools/smoke-wasm.mjs build/port/wasm-debug campania firefox
 node tools/smoke-wasm.mjs build/port/wasm-debug build firefox
+node tools/smoke-wasm.mjs build/port/wasm-debug citybuild chromium
 node tools/smoke-wasm.mjs build/port/wasm-debug contextmenu firefox
 node tools/smoke-wasm.mjs build/port/wasm-debug canvas firefox
 ```

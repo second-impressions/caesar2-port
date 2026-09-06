@@ -11,7 +11,8 @@ enum c2_sdl_smoke_kind {
     C2_SDL_SMOKE_SAVE_LOAD,
     C2_SDL_SMOKE_MUSIC_BUFFER,
     C2_SDL_SMOKE_CAMPANIA_TRANSITION,
-    C2_SDL_SMOKE_PROVINCE_BUILD
+    C2_SDL_SMOKE_PROVINCE_BUILD,
+    C2_SDL_SMOKE_CITY_BUILD
 };
 
 enum c2_sdl_smoke_result {
@@ -52,6 +53,7 @@ struct c2_sdl_smoke {
     int build_denarii;
     int build_selection_x;
     int build_selection_y;
+    int build_attempt;
     Uint64 music_started;
     Uint64 music_last_sample;
     Uint64 music_initial_produced_bytes;

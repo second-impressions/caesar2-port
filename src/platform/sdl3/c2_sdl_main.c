@@ -189,6 +189,9 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
         } else if (strcmp(argv[i], "--province-build-smoke-test") == 0) {
             *headless = 1;
             *smoke_kind = C2_SDL_SMOKE_PROVINCE_BUILD;
+        } else if (strcmp(argv[i], "--city-build-smoke-test") == 0) {
+            *headless = 1;
+            *smoke_kind = C2_SDL_SMOKE_CITY_BUILD;
 #endif
         } else if ((strcmp(argv[i], "--asset-root") == 0 ||
                     strcmp(argv[i], "--game-data") == 0) && i + 1 < argc) {
@@ -213,7 +216,8 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                     "[--smoke-test|--city-smoke-test|"
                     "--tutorial-smoke-test|--save-load-smoke-test|"
                     "--music-buffer-smoke-test|"
-                    "--campania-transition-smoke-test|--province-build-smoke-test]\n",
+                    "--campania-transition-smoke-test|--province-build-smoke-test|"
+                    "--city-build-smoke-test]\n",
                     argv[0]);
 #else
             fprintf(stderr,
