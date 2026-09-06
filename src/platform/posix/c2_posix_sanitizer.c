@@ -138,5 +138,9 @@ const char *__lsan_default_suppressions(void)
         "leak:libEGL\n"
         "leak:libvulkan\n"
         "leak:_dri.so\n"
-        "leak:libudev\n";
+        "leak:libudev\n"
+        /* Vulkan ICDs are dlclose()d before exit, so their frames show as
+         * <unknown module>; what they leave behind are pthread_once
+         * initializations, process-lifetime singletons by definition. */
+        "leak:__pthread_once\n";
 }
