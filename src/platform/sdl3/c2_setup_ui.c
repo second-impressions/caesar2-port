@@ -1,4 +1,5 @@
 #include "c2_setup_ui.h"
+#include "c2_port_text.h"
 
 #if !PORT_PLATFORM_WASM
 
@@ -12,7 +13,7 @@
 #include "font8x8/font8x8_basic.h"
 
 #define UI_WIDTH 480
-#define UI_HEIGHT 392
+#define UI_HEIGHT 420
 #define UI_SCALE 2
 #define UI_MARGIN 16
 #define UI_GLYPH 8
@@ -31,6 +32,7 @@ enum setup_state {
 
 enum button_kind {
     BUTTON_PLAY = 0,
+    BUTTON_TEXT,
     BUTTON_LANGUAGE,
     BUTTON_DISPLAY,
     BUTTON_SCALING,
@@ -49,6 +51,46 @@ struct button {
 };
 
 static const char *profile_label(const char *tag);
+
+/* The launcher font is ASCII: fold the po's native name ("Fran\u00e7ais"). */
+static const char *language_label(const char *tag, char *out, size_t capacity)
+{
+    static const struct { const char *utf8; char ascii; } folds[] = {
+        { "\xc3\xa7", 'c' }, { "\xc3\xa9", 'e' }, { "\xc3\xa8", 'e' }, { "\xc3\xaa", 'e' },
+        { "\xc3\xa0", 'a' }, { "\xc3\xa1", 'a' }, { "\xc3\xa4", 'a' }, { "\xc3\xb6", 'o' },
+        { "\xc3\xbc", 'u' }, { "\xc3\xb1", 'n' }, { "\xc3\xad", 'i' }, { "\xc3\xb3", 'o' },
+        { "\xc3\xba", 'u' }, { "\xc3\x9f", 's' }
+    };
+    const char *name = tag;
+    size_t used = 0;
+    int i;
+
+    for (i = 0; i < c2_port_text_language_count(); i++) {
+        const struct c2_port_language *l = c2_port_text_language(i);
+        if (strcmp(l->tag, tag) == 0) { name = l->name; break; }
+    }
+    while (*name && used + 1 < capacity) {
+        size_t f;
+        int folded = 0;
+        for (f = 0; f < sizeof(folds) / sizeof(folds[0]); f++) {
+            if (strncmp(name, folds[f].utf8, 2) == 0) {
+                out[used++] = folds[f].ascii;
+                name += 2;
+                folded = 1;
+                break;
+            }
+        }
+        if (folded) continue;
+        if ((unsigned char)*name >= 0x80) {
+            while ((unsigned char)*name >= 0x80) name++;
+            out[used++] = '?';
+            continue;
+        }
+        out[used++] = *name++;
+    }
+    out[used] = '\0';
+    return out;
+}
 
 /* Optical drives come and go (USB readers); poll while the menu is idle. */
 #define UI_DRIVE_RESCAN_MS 2000
@@ -90,6 +132,8 @@ static struct {
     char asset_profile[128];
     char profiles[8][32];     /* from C2PACK.IDX when the data is a pack */
     int profile_count;
+    char text_language[16];   /* compiled-in text; "" follows the game data */
+    char detected_language[16];
     int fullscreen;
     int fractional_scaling;
     char status[256];
@@ -321,9 +365,23 @@ static void rebuild_buttons(void)
     }
     ui.button_count = 0;
     add_button(BUTTON_PLAY, "Play", "Enter", NULL, ui.source_ready);
+    {
+        char label[64];
+        char name[48];
+        if (ui.text_language[0]) {
+            snprintf(label, sizeof(label), "Text: %s",
+                     language_label(ui.text_language, name, sizeof(name)));
+        } else if (ui.detected_language[0]) {
+            snprintf(label, sizeof(label), "Text: Automatic (%s)",
+                     language_label(ui.detected_language, name, sizeof(name)));
+        } else {
+            snprintf(label, sizeof(label), "Text: Automatic");
+        }
+        add_button(BUTTON_TEXT, label, "Enter to change", NULL, 1);
+    }
     if (ui.profile_count > 1) {
         char label[64];
-        snprintf(label, sizeof(label), "Language: %s", profile_label(ui.asset_profile));
+        snprintf(label, sizeof(label), "Speech: %s", profile_label(ui.asset_profile));
         add_button(BUTTON_LANGUAGE, label, "Enter to change", NULL, 1);
     }
     add_button(BUTTON_DISPLAY,
@@ -563,6 +621,10 @@ static void detect_version(const char *root)
     if (!buf) { fclose(file); return; }
     size = fread(buf, 1, 65536, file);
     fclose(file);
+    {
+        const char *tag = c2_port_text_detect(buf, size);
+        snprintf(ui.detected_language, sizeof(ui.detected_language), "%s", tag ? tag : "");
+    }
     if (eng_string(buf, size, 0x0b, 0, version, sizeof(version))) {
         if (eng_string(buf, size, 0x0b, 1, date, sizeof(date))) {
             snprintf(ui.detected, sizeof(ui.detected), "%.60s, %.60s",
@@ -832,6 +894,23 @@ static void activate(int index)
     case BUTTON_CHOOSE:
         open_dialog();
         break;
+    case BUTTON_TEXT: {
+        /* Automatic, then each compiled-in language, then Automatic again. */
+        int i;
+        int current = -1;
+        int count = c2_port_text_language_count();
+        for (i = 0; i < count; i++) {
+            if (strcmp(c2_port_text_language(i)->tag, ui.text_language) == 0) current = i;
+        }
+        if (current + 1 < count) {
+            snprintf(ui.text_language, sizeof(ui.text_language), "%s",
+                     c2_port_text_language(current + 1)->tag);
+        } else {
+            ui.text_language[0] = '\0';
+        }
+        rebuild_buttons();
+        break;
+    }
     case BUTTON_LANGUAGE: {
         int i;
         int current = -1;
@@ -1158,6 +1237,9 @@ int c2_setup_open(const struct c2_setup_config *config)
              config->cache_root ? config->cache_root : ".");
     snprintf(ui.asset_profile, sizeof(ui.asset_profile), "%s",
              config->asset_profile ? config->asset_profile : "");
+    snprintf(ui.text_language, sizeof(ui.text_language), "%s",
+             config->text_language ? config->text_language : "");
+    ui.detected_language[0] = '\0';
     ui.fullscreen = config->fullscreen != 0;
     ui.fractional_scaling = config->fractional_scaling != 0;
 
@@ -1250,6 +1332,11 @@ const char *c2_setup_selected_profile(void)
     return ui.asset_profile;
 }
 
+const char *c2_setup_selected_text_language(void)
+{
+    return ui.text_language;
+}
+
 int c2_setup_selected_fullscreen(void)
 {
     return ui.fullscreen;
@@ -1288,6 +1375,7 @@ void c2_setup_handle_event(const SDL_Event *event) { (void)event; }
 enum c2_setup_result c2_setup_iterate(void) { return C2_SETUP_QUIT; }
 const char *c2_setup_selected_source(void) { return ""; }
 const char *c2_setup_selected_profile(void) { return ""; }
+const char *c2_setup_selected_text_language(void) { return ""; }
 int c2_setup_selected_fullscreen(void) { return 0; }
 int c2_setup_selected_fractional_scaling(void) { return 0; }
 void c2_setup_close(void) {}

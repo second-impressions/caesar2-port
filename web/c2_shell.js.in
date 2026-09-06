@@ -17,6 +17,8 @@
     const playButton = document.getElementById("play-button");
     const profileRow = document.getElementById("profile-row");
     const profileSelect = document.getElementById("profile-select");
+    const languageRow = document.getElementById("language-row");
+    const languageSelect = document.getElementById("language-select");
     const settingsDialog = document.getElementById("settings-dialog");
     const assetsSummary = document.getElementById("assets-summary");
     const assetsLoaded = document.getElementById("assets-loaded");
@@ -38,6 +40,7 @@
     const ACTIVE_ORIGIN = "c2.active-origin.v1";
     const THEME_CHOICE = "c2.theme.v1";
     const SCALING_MODE = "c2.scaling.v1";
+    const TEXT_LANGUAGE = "c2.text-language.v1";
     const CONFIRM_CLOSE = "c2.confirm-close.v1";
     const AUTOSTART_SOURCE = "c2.autostart.v1";
     const PENDING_ORIGIN = "c2.pending-origin.v1";
@@ -712,6 +715,8 @@
       const args = ["--game-data", source];
       const profile = localStorage.getItem(ACTIVE_PROFILE);
       if (profile) args.push("--asset-profile", profile);
+      const language = localStorage.getItem(TEXT_LANGUAGE);
+      if (language) args.push("--language", language);
       if (scalingMode === "fractional") args.push("--fractional-scaling");
       if (query.get("mouse-lock") === "1") args.push("--mouse-lock");
       const smoke = query.get("smoke-test");
@@ -760,6 +765,34 @@
       const profile = localStorage.getItem(ACTIVE_PROFILE);
       if (profile) args.push("--asset-profile", profile);
       Module.callMain(args);
+    }
+    /*
+     * The game text is compiled into the runtime in every language it
+     * knows; the engine detects the game data's own language unless one is
+     * chosen here. Speech stays whatever the game data provides.
+     */
+    function configureTextLanguages() {
+      let listing = "";
+      try { listing = Module.UTF8ToString(Module._c2_browser_text_languages()); }
+      catch { return; }
+      const languages = listing.split("\n").filter(Boolean).map(row => row.split("\t"));
+      if (!languages.length) return;
+      languageSelect.replaceChildren();
+      const automatic = document.createElement("option");
+      automatic.value = ""; automatic.textContent = "Automatic (from the game data)";
+      languageSelect.append(automatic);
+      for (const [tag, name] of languages) {
+        const option = document.createElement("option");
+        option.value = tag; option.textContent = name;
+        languageSelect.append(option);
+      }
+      const stored = localStorage.getItem(TEXT_LANGUAGE) || "";
+      languageSelect.value = languages.some(([tag]) => tag === stored) ? stored : "";
+      languageSelect.onchange = () => {
+        if (languageSelect.value) localStorage.setItem(TEXT_LANGUAGE, languageSelect.value);
+        else localStorage.removeItem(TEXT_LANGUAGE);
+      };
+      languageRow.hidden = false;
     }
     function configureAssetChoices(info) {
       profileSelect.replaceChildren();
@@ -1043,6 +1076,7 @@
       monitorRunDependencies() {},
       onRuntimeInitialized() {
         runtimeReady = true;
+        configureTextLanguages();
         console.log(`cross-origin isolated ${globalThis.crossOriginIsolated}`);
         if (!globalThis.crossOriginIsolated) {
           showMessage("Cross-origin isolation is unavailable; threaded WebAssembly cannot start.");
