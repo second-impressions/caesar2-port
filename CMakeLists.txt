@@ -515,7 +515,7 @@ if(EMSCRIPTEN)
         -sFORCE_FILESYSTEM
         -sUSE_ZLIB=1
         -sINVOKE_RUN=0
-        -sEXPORTED_RUNTIME_METHODS=callMain
+        -sEXPORTED_RUNTIME_METHODS=callMain,UTF8ToString
         -sEXIT_RUNTIME=0
         "--shell-file=${C2_WASM_SHELL}"
         "--js-library=${CMAKE_CURRENT_SOURCE_DIR}/web/c2_browser.js"

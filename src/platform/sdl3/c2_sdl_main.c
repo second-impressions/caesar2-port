@@ -21,6 +21,7 @@
 #endif
 #include "c2_sdl_host.h"
 #include "c2_setup_ui.h"
+#include "c2_port_text.h"
 #include "c2_version.h"
 #if PORT_FEAT_DEBUG_OBSERVATION
 #include "c2_sdl_smoke.h"
@@ -47,6 +48,22 @@ EMSCRIPTEN_KEEPALIVE void c2_browser_set_fractional_scaling(int enabled)
 EMSCRIPTEN_KEEPALIVE void c2_browser_set_canvas_size(int width, int height)
 {
     c2_host_set_canvas_size(width, height);
+}
+
+/* "tag\tname\n" per compiled-in text language, for the page's selector. */
+EMSCRIPTEN_KEEPALIVE const char *c2_browser_text_languages(void)
+{
+    static char list[512];
+    size_t used = 0;
+    int i;
+
+    for (i = 0; i < c2_port_text_language_count(); i++) {
+        const struct c2_port_language *l = c2_port_text_language(i);
+        int n = snprintf(list + used, sizeof(list) - used, "%s\t%s\n", l->tag, l->name);
+        if (n < 0 || used + (size_t)n >= sizeof(list)) break;
+        used += (size_t)n;
+    }
+    return list;
 }
 
 extern void c2_browser_source_ready(const char *resolved,
@@ -82,6 +99,7 @@ struct c2_sdl_app {
     char user_data_root[4096];
     char screenshot_filename[4096];
     char asset_profile[128];
+    char text_language[16];   /* "" = detect from the game data */
     int headless;
     int mouse_lock;
     int fractional_scaling;
@@ -124,6 +142,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                            char **default_user_data_root,
                            const char **screenshot_filename,
                            const char **asset_profile,
+                           const char **text_language,
                            int *headless, int *mouse_lock,
                            int *fractional_scaling, int *smoke_kind,
                            int *prepare_only, int *skip_launcher,
@@ -150,6 +169,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
     *prepare_only = 0;
     *screenshot_filename = NULL;
     *asset_profile = getenv("C2_ASSET_PROFILE");
+    *text_language = NULL;
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--headless") == 0) {
@@ -201,6 +221,8 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
             *user_data_root = argv[++i];
         } else if (strcmp(argv[i], "--asset-profile") == 0 && i + 1 < argc) {
             *asset_profile = argv[++i];
+        } else if (strcmp(argv[i], "--language") == 0 && i + 1 < argc) {
+            *text_language = argv[++i];
         } else if (strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
             *screenshot_filename = argv[++i];
         } else if (argv[i][0] != '-') {
@@ -213,6 +235,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                     "[--user-data-dir PATH] [--screenshot FILE] "
                     "[--mouse-lock|--no-mouse-lock] [--prepare-assets] "
                     "[--skip-launcher] [--fullscreen] [--fractional-scaling] "
+                    "[--language TAG] "
                     "[--smoke-test|--city-smoke-test|"
                     "--tutorial-smoke-test|--save-load-smoke-test|"
                     "--music-buffer-smoke-test|"
@@ -224,7 +247,8 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                     "usage: %s [--headless] [--game-data SOURCE] "
                     "[--user-data-dir PATH] [--screenshot FILE] "
                     "[--mouse-lock|--no-mouse-lock] [--prepare-assets] "
-                    "[--skip-launcher] [--fullscreen] [--fractional-scaling]\n",
+                    "[--skip-launcher] [--fullscreen] [--fractional-scaling] "
+                    "[--language TAG]\n",
                     argv[0]);
 #endif
             return 0;
@@ -314,7 +338,8 @@ static int load_saved_asset_source(const char *user_root, char *source, size_t c
 /* launcher.ini: the display choices the launcher offers. Missing keys keep
  * the defaults (windowed, integer scaling). */
 static void load_display_settings(const char *user_root, int *fullscreen,
-                                  int *fractional_scaling)
+                                  int *fractional_scaling,
+                                  char *text_language, size_t language_capacity)
 {
     char path[4096];
     char line[256];
@@ -328,6 +353,11 @@ static void load_display_settings(const char *user_root, int *fullscreen,
         else if (strcmp(line, "fullscreen=0") == 0) *fullscreen = 0;
         else if (strcmp(line, "scaling=fractional") == 0) *fractional_scaling = 1;
         else if (strcmp(line, "scaling=integer") == 0) *fractional_scaling = 0;
+        else if (strncmp(line, "language=", 9) == 0 && text_language) {
+            const char *tag = line + 9;
+            if (strcmp(tag, "auto") == 0 || strlen(tag) >= language_capacity) tag = "";
+            strcpy(text_language, tag);
+        }
     }
     fclose(file);
 }
@@ -340,8 +370,9 @@ static void save_display_settings(const struct c2_sdl_app *app)
     SDL_CreateDirectory(app->user_data_root);
     file = fopen(path, "wb");
     if (!file) return;
-    fprintf(file, "fullscreen=%d\nscaling=%s\n", app->fullscreen ? 1 : 0,
-            app->fractional_scaling ? "fractional" : "integer");
+    fprintf(file, "fullscreen=%d\nscaling=%s\nlanguage=%s\n", app->fullscreen ? 1 : 0,
+            app->fractional_scaling ? "fractional" : "integer",
+            app->text_language[0] ? app->text_language : "auto");
     fclose(file);
 }
 
@@ -530,6 +561,7 @@ static int open_launcher(struct c2_sdl_app *app, const char *error)
     config.source = app->asset_source;
     config.cache_root = app->user_data_root;
     config.asset_profile = app->asset_profile[0] ? app->asset_profile : NULL;
+    config.text_language = app->text_language;
     config.error = error;
     config.fullscreen = app->fullscreen > 0;
     config.fractional_scaling = app->fractional_scaling > 0;
@@ -601,6 +633,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     const char *user_data_root;
     const char *screenshot_filename;
     const char *asset_profile;
+    const char *text_language;
     int headless;
     int mouse_lock;
     int fractional_scaling;
@@ -636,6 +669,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     if (!parse_arguments(argc, argv, &asset_root, &user_data_root,
                          &c2_app.default_user_data_root,
                          &screenshot_filename, &asset_profile,
+                         &text_language,
                          &headless, &mouse_lock, &fractional_scaling,
                          &smoke_kind, &prepare_only, &skip_launcher,
                          &explicit_source, &fullscreen)) {
@@ -671,7 +705,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     {
         int saved_fullscreen = 0;
         int saved_fractional = 0;
-        load_display_settings(user_data_root, &saved_fullscreen, &saved_fractional);
+        load_display_settings(user_data_root, &saved_fullscreen, &saved_fractional,
+                              c2_app.text_language, sizeof(c2_app.text_language));
         if (fullscreen < 0) fullscreen = saved_fullscreen;
         if (fractional_scaling < 0) fractional_scaling = saved_fractional;
     }
@@ -680,6 +715,19 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     if (fractional_scaling < 0) fractional_scaling = 0;
     c2_app.fractional_scaling = fractional_scaling;
     c2_app.fullscreen = fullscreen;
+    if (text_language) {
+        if (!c2_port_text_select(text_language)) {
+            int i;
+            fprintf(stderr, "unknown --language '%s'; compiled in:", text_language);
+            for (i = 0; i < c2_port_text_language_count(); i++)
+                fprintf(stderr, " %s", c2_port_text_language(i)->tag);
+            fprintf(stderr, "\n");
+            return SDL_APP_FAILURE;
+        }
+        snprintf(c2_app.text_language, sizeof(c2_app.text_language), "%s", text_language);
+    } else if (c2_app.text_language[0] && !c2_port_text_select(c2_app.text_language)) {
+        c2_app.text_language[0] = '\0';  /* a language no longer compiled in */
+    }
     c2_app.smoke_kind = smoke_kind;
     c2_app.prepare_only = prepare_only;
     c2_app.skip_launcher = skip_launcher;
@@ -790,6 +838,9 @@ SDL_AppResult SDL_AppIterate(void *appstate)
                  c2_setup_selected_profile());
         app->fullscreen = c2_setup_selected_fullscreen();
         app->fractional_scaling = c2_setup_selected_fractional_scaling();
+        snprintf(app->text_language, sizeof(app->text_language), "%s",
+                 c2_setup_selected_text_language());
+        c2_port_text_select(app->text_language[0] ? app->text_language : NULL);
         c2_setup_close();
         if (setup == C2_SETUP_PLAY) save_display_settings(app);
         app->launcher_active = 0;
