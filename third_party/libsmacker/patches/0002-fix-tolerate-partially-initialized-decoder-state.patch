@@ -1,0 +1,75 @@
+From 154e00dcbfda1c7d48aab8534f2c9f9a8b675904 Mon Sep 17 00:00:00 2001
+From: Simon Brakhane <simon@brakhane.net>
+Date: Tue, 21 Jul 2026 14:38:01 +0200
+Subject: [PATCH 2/3] fix: tolerate partially initialized decoder state
+
+---
+ smacker.c | 24 ++++++++++++++++--------
+ 1 file changed, 16 insertions(+), 8 deletions(-)
+
+diff --git a/smacker.c b/smacker.c
+index a7d59f5..9e9f34b 100644
+--- a/smacker.c
++++ b/smacker.c
+@@ -857,7 +857,8 @@ static smk smk_open_generic(const unsigned char m, union smk_read_t fp, unsigned
+ 
+ 	return s;
+ error:
+-	smk_free(hufftree_chunk);
++	if (hufftree_chunk)
++		smk_free(hufftree_chunk);
+ 	smk_close(s);
+ 	return NULL;
+ }
+@@ -950,7 +951,8 @@ void smk_close(smk s)
+ 		if (s->video.tree[u].tree) free(s->video.tree[u].tree);
+ 	}
+ 
+-	smk_free(s->video.frame);
++	if (s->video.frame)
++		smk_free(s->video.frame);
+ 
+ 	/* free audio sub-components */
+ 	for (u = 0; u < 7; u++) {
+@@ -958,26 +960,32 @@ void smk_close(smk s)
+ 			smk_free(s->audio[u].buffer);
+ 	}
+ 
+-	smk_free(s->keyframe);
+-	smk_free(s->frame_type);
++	if (s->keyframe)
++		smk_free(s->keyframe);
++	if (s->frame_type)
++		smk_free(s->frame_type);
+ 
+ 	if (s->mode == SMK_MODE_DISK) {
+ 		/* disk-mode */
+ 		if (s->source.file.fp)
+ 			fclose(s->source.file.fp);
+ 
+-		smk_free(s->source.file.chunk_offset);
++		if (s->source.file.chunk_offset)
++			smk_free(s->source.file.chunk_offset);
+ 	} else {
+ 		/* mem-mode */
+ 		if (s->source.chunk_data != NULL) {
+-			for (u = 0; u < (s->f + s->ring_frame); u++)
+-				smk_free(s->source.chunk_data[u]);
++			for (u = 0; u < (s->f + s->ring_frame); u++) {
++				if (s->source.chunk_data[u])
++					smk_free(s->source.chunk_data[u]);
++			}
+ 
+ 			smk_free(s->source.chunk_data);
+ 		}
+ 	}
+ 
+-	smk_free(s->chunk_size);
++	if (s->chunk_size)
++		smk_free(s->chunk_size);
+ 	smk_free(s);
+ }
+ 
+-- 
+2.55.0
+

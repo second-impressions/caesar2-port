@@ -1,0 +1,201 @@
+From 24531a7189a0ff91e4393a4aa9e6c52fa823b4df Mon Sep 17 00:00:00 2001
+From: Simon Brakhane <simon@brakhane.net>
+Date: Tue, 21 Jul 2026 14:45:26 +0200
+Subject: [PATCH 3/3] fix: make decoder error results explicitly signed
+
+---
+ smacker.c | 32 ++++++++++++++++----------------
+ smacker.h | 18 +++++++++---------
+ 2 files changed, 25 insertions(+), 25 deletions(-)
+
+diff --git a/smacker.c b/smacker.c
+index 9e9f34b..98d7dc7 100644
+--- a/smacker.c
++++ b/smacker.c
+@@ -601,7 +601,7 @@ union smk_read_t {
+ /* ************************************************************************* */
+ /* An fread wrapper: consumes N bytes, or returns -1
+ 	on failure (when size doesn't match expected) */
+-static char smk_read_file(void * buf, const size_t size, FILE * fp)
++static signed char smk_read_file(void * buf, const size_t size, FILE * fp)
+ {
+ 	/* don't bother checking buf or fp, fread does it for us */
+ 	size_t bytesRead = fread(buf, 1, size, fp);
+@@ -617,7 +617,7 @@ static char smk_read_file(void * buf, const size_t size, FILE * fp)
+ 
+ /* A memcpy wrapper: consumes N bytes, or returns -1
+ 	on failure (when size too low) */
+-static char smk_read_memory(void * buf, const unsigned long size, unsigned char ** p, unsigned long * p_size)
++static signed char smk_read_memory(void * buf, const unsigned long size, unsigned char ** p, unsigned long * p_size)
+ {
+ 	if (size > *p_size) {
+ 		fprintf(stderr, "libsmacker::smk_read_memory(buf,%lu,p,%lu) - ERROR: Short read\n", (unsigned long)size, (unsigned long)*p_size);
+@@ -670,7 +670,7 @@ static smk smk_open_generic(const unsigned char m, union smk_read_t fp, unsigned
+ 	long temp_l;
+ 	unsigned long temp_u;
+ 	/* r is used by macros above for return code */
+-	char r;
++	signed char r;
+ 	unsigned char buf[4] = {'\0'};
+ 	/* video hufftrees are stored as a large chunk (bitstream)
+ 		these vars are used to load, then decode them */
+@@ -990,7 +990,7 @@ void smk_close(smk s)
+ }
+ 
+ /* tell some info about the file */
+-char smk_info_all(const smk object, unsigned long * frame, unsigned long * frame_count, double * usf)
++signed char smk_info_all(const smk object, unsigned long * frame, unsigned long * frame_count, double * usf)
+ {
+ 	/* null check */
+ 	if (object == NULL) {
+@@ -1017,7 +1017,7 @@ error:
+ 	return -1;
+ }
+ 
+-char smk_info_video(const smk object, unsigned long * w, unsigned long * h, unsigned char * y_scale_mode)
++signed char smk_info_video(const smk object, unsigned long * w, unsigned long * h, unsigned char * y_scale_mode)
+ {
+ 	/* null check */
+ 	if (object == NULL) {
+@@ -1042,7 +1042,7 @@ char smk_info_video(const smk object, unsigned long * w, unsigned long * h, unsi
+ 	return 0;
+ }
+ 
+-char smk_info_audio(const smk object, unsigned char * track_mask, unsigned char channels[7], unsigned char bitdepth[7], unsigned long audio_rate[7])
++signed char smk_info_audio(const smk object, unsigned char * track_mask, unsigned char channels[7], unsigned char bitdepth[7], unsigned long audio_rate[7])
+ {
+ 	unsigned char i;
+ 
+@@ -1086,7 +1086,7 @@ char smk_info_audio(const smk object, unsigned char * track_mask, unsigned char
+ }
+ 
+ /* Enable-disable switches */
+-char smk_enable_all(smk object, const unsigned char mask)
++signed char smk_enable_all(smk object, const unsigned char mask)
+ {
+ 	unsigned char i;
+ 
+@@ -1107,7 +1107,7 @@ char smk_enable_all(smk object, const unsigned char mask)
+ 	return 0;
+ }
+ 
+-char smk_enable_video(smk object, const unsigned char enable)
++signed char smk_enable_video(smk object, const unsigned char enable)
+ {
+ 	/* null check */
+ 	if (object == NULL) {
+@@ -1119,7 +1119,7 @@ char smk_enable_video(smk object, const unsigned char enable)
+ 	return 0;
+ }
+ 
+-char smk_enable_audio(smk object, const unsigned char track, const unsigned char enable)
++signed char smk_enable_audio(smk object, const unsigned char track, const unsigned char enable)
+ {
+ 	/* null check */
+ 	if (object == NULL) {
+@@ -1173,7 +1173,7 @@ unsigned long smk_get_audio_size(const smk object, const unsigned char t)
+ }
+ 
+ /* Decompresses a palette-frame. */
+-static char smk_render_palette(struct smk_video_t * s, unsigned char * p, unsigned long size)
++static signed char smk_render_palette(struct smk_video_t * s, unsigned char * p, unsigned long size)
+ {
+ 	/* Index into palette */
+ 	unsigned short i = 0;
+@@ -1277,7 +1277,7 @@ error:
+ 	return -1;
+ }
+ 
+-static char smk_render_video(struct smk_video_t * s, unsigned char * p, unsigned int size)
++static signed char smk_render_video(struct smk_video_t * s, unsigned char * p, unsigned int size)
+ {
+ 	unsigned char * t = s->frame;
+ 	unsigned char s1, s2;
+@@ -1475,7 +1475,7 @@ static char smk_render_video(struct smk_video_t * s, unsigned char * p, unsigned
+ }
+ 
+ /* Decompress audio track i. */
+-static char smk_render_audio(struct smk_audio_t * s, unsigned char * p, unsigned long size)
++static signed char smk_render_audio(struct smk_audio_t * s, unsigned char * p, unsigned long size)
+ {
+ 	unsigned int j, k;
+ 	unsigned char * t = s->buffer;
+@@ -1606,7 +1606,7 @@ error:
+ 
+ /* "Renders" (unpacks) the frame at cur_frame
+ 	Preps all the image and audio pointers */
+-static char smk_render(smk s)
++static signed char smk_render(smk s)
+ {
+ 	unsigned long i, size;
+ 	unsigned char * buffer = NULL, * p, track;
+@@ -1721,7 +1721,7 @@ error:
+ }
+ 
+ /* rewind to first frame and unpack */
+-char smk_first(smk s)
++signed char smk_first(smk s)
+ {
+ 	/* null check */
+ 	if (s == NULL) {
+@@ -1742,7 +1742,7 @@ char smk_first(smk s)
+ }
+ 
+ /* advance to next frame */
+-char smk_next(smk s)
++signed char smk_next(smk s)
+ {
+ 	/* null check */
+ 	if (s == NULL) {
+@@ -1780,7 +1780,7 @@ char smk_next(smk s)
+ }
+ 
+ /* seek to a keyframe in an smk */
+-char smk_seek_keyframe(smk s, unsigned long f)
++signed char smk_seek_keyframe(smk s, unsigned long f)
+ {
+ 	/* null check */
+ 	if (s == NULL) {
+diff --git a/smacker.h b/smacker.h
+index e797004..3c578fa 100644
+--- a/smacker.h
++++ b/smacker.h
+@@ -71,14 +71,14 @@ smk smk_open_memory(const unsigned char * buffer, unsigned long size);
+ void smk_close(smk object);
+ 
+ /* GET FILE INFO OPERATIONS */
+-char smk_info_all(const smk object, unsigned long * frame, unsigned long * frame_count, double * usf);
+-char smk_info_video(const smk object, unsigned long * w, unsigned long * h, unsigned char * y_scale_mode);
+-char smk_info_audio(const smk object, unsigned char * track_mask, unsigned char channels[7], unsigned char bitdepth[7], unsigned long audio_rate[7]);
++signed char smk_info_all(const smk object, unsigned long * frame, unsigned long * frame_count, double * usf);
++signed char smk_info_video(const smk object, unsigned long * w, unsigned long * h, unsigned char * y_scale_mode);
++signed char smk_info_audio(const smk object, unsigned char * track_mask, unsigned char channels[7], unsigned char bitdepth[7], unsigned long audio_rate[7]);
+ 
+ /* ENABLE/DISABLE Switches */
+-char smk_enable_all(smk object, unsigned char mask);
+-char smk_enable_video(smk object, unsigned char enable);
+-char smk_enable_audio(smk object, unsigned char track, unsigned char enable);
++signed char smk_enable_all(smk object, unsigned char mask);
++signed char smk_enable_video(smk object, unsigned char enable);
++signed char smk_enable_audio(smk object, unsigned char track, unsigned char enable);
+ 
+ /** Retrieve palette */
+ const unsigned char * smk_get_palette(const smk object);
+@@ -90,11 +90,11 @@ const unsigned char * smk_get_audio(const smk object, unsigned char track);
+ unsigned long smk_get_audio_size(const smk object, unsigned char track);
+ 
+ /** rewind to first frame and unpack */
+-char smk_first(smk object);
++signed char smk_first(smk object);
+ /** advance to next frame and unpack */
+-char smk_next(smk object);
++signed char smk_next(smk object);
+ /** seek to first keyframe before/at N in an smk */
+-char smk_seek_keyframe(smk object, unsigned long frame);
++signed char smk_seek_keyframe(smk object, unsigned long frame);
+ 
+ #ifdef __cplusplus
+ }
+-- 
+2.55.0
+
