@@ -19,6 +19,7 @@ struct c2_setup_config {
     const char *source;         /* current source, may be "" */
     const char *cache_root;     /* user-data directory for imports */
     const char *asset_profile;  /* may be NULL */
+    const char *text_language;  /* compiled-in text language tag; "" or NULL = detect */
     const char *error;          /* initial error line, may be NULL */
     int fullscreen;             /* initial display settings */
     int fractional_scaling;
@@ -35,6 +36,7 @@ void c2_setup_handle_event(const SDL_Event *event);
 enum c2_setup_result c2_setup_iterate(void);
 const char *c2_setup_selected_source(void);
 const char *c2_setup_selected_profile(void);
+const char *c2_setup_selected_text_language(void);
 int c2_setup_selected_fullscreen(void);
 int c2_setup_selected_fractional_scaling(void);
 void c2_setup_close(void);

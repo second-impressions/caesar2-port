@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 #include "c2_port_save.h"
+#include "c2_port_text.h"
 #include "c2_version.h"
 
 static char c2_port_version_text[] = "Version: " C2_VERSION_STRING;
@@ -70,8 +71,16 @@ void c2_port_compat_shutdown(void)
 
 int readfile(const char *filename, void *buffer, int size, int offset)
 {
+    size_t bytes_read;
+
     if (size < 0 || offset < 0) {
         return 0;
+    }
+    /* The game text is compiled in; the C2.ENG and HELP.ENG on the disc
+     * only tell us the language. */
+    if (c2_port_text_read(filename, buffer, (size_t)size, (size_t)offset,
+                          &bytes_read)) {
+        return (int)bytes_read;
     }
     return (int)c2_host_asset_read(filename, buffer,
                                    (size_t)size, (size_t)offset);

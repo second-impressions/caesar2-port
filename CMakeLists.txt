@@ -185,16 +185,12 @@ option(PORT_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR
     "Suppress the stray seam pair in the large right half-roof" ON)
 option(PORT_FIX_GFX_BUFFER_DOUBLE_FREE
     "Clear released graphics pointers to prevent repeated frees" ON)
-option(PORT_FIX_HELP_SMART_PUNCTUATION
-    "Repair Windows smart punctuation embedded in help text" ON)
 option(PORT_FIX_PLAYER_NAME_PADDING
     "Trim fixed-width trailing spaces before editing player names" ON)
 option(PORT_FIX_LARGE_XMI_ASSETS
     "Accept official XMIDI assets larger than the legacy tune buffer" ON)
 option(C2_FIX_MOSAIC_RANDOM_SENTINEL
     "Define the mosaic walk's accidental byte-64 sentinel explicitly" ON)
-option(PORT_ENABLE_TEXT_ASSET_COMPAT
-    "Adapt versioned engine UI to the structure of the loaded text asset" ON)
 option(PORT_ENABLE_ARROW_KEY_SCROLL
     "Use held arrow keys to pan the active map instead of moving the cursor" ON)
 option(PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER
@@ -235,11 +231,6 @@ if(PORT_FIX_GFX_BUFFER_DOUBLE_FREE)
 else()
     add_compile_definitions(PORT_FIX_GFX_BUFFER_DOUBLE_FREE=0)
 endif()
-if(PORT_FIX_HELP_SMART_PUNCTUATION)
-    add_compile_definitions(PORT_FIX_HELP_SMART_PUNCTUATION=1)
-else()
-    add_compile_definitions(PORT_FIX_HELP_SMART_PUNCTUATION=0)
-endif()
 if(PORT_FIX_PLAYER_NAME_PADDING)
     add_compile_definitions(PORT_FIX_PLAYER_NAME_PADDING=1)
 else()
@@ -254,11 +245,6 @@ if(C2_FIX_MOSAIC_RANDOM_SENTINEL)
     add_compile_definitions(C2_FIX_MOSAIC_RANDOM_SENTINEL=1)
 else()
     add_compile_definitions(C2_FIX_MOSAIC_RANDOM_SENTINEL=0)
-endif()
-if(PORT_ENABLE_TEXT_ASSET_COMPAT)
-    add_compile_definitions(PORT_FEAT_TEXT_ASSET_COMPAT=1)
-else()
-    add_compile_definitions(PORT_FEAT_TEXT_ASSET_COMPAT=0)
 endif()
 if(PORT_ENABLE_ARROW_KEY_SCROLL)
     add_compile_definitions(PORT_FEAT_ARROW_KEY_SCROLL=1)
@@ -280,6 +266,27 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         -Wno-unused-parameter
     )
 endif()
+
+# ---- Game text -------------------------------------------------------------
+# Every language in po/ is compiled into the executable; the engine's
+# C2.ENG and HELP.ENG are rebuilt from the selected one at startup
+# (src/platform/common/c2_port_text.c). The template is English.
+file(GLOB C2_TEXT_PO_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/po/*.po")
+list(SORT C2_TEXT_PO_FILES)
+set(C2_TEXT_INPUTS "${CMAKE_CURRENT_SOURCE_DIR}/po/c2.pot" ${C2_TEXT_PO_FILES})
+set(C2_TEXT_BUNDLE_C "${CMAKE_CURRENT_BINARY_DIR}/generated/c2_text_bundle.c")
+add_custom_command(
+    OUTPUT "${C2_TEXT_BUNDLE_C}"
+    COMMAND "${CMAKE_COMMAND}"
+        "-DOUTPUT=${C2_TEXT_BUNDLE_C}"
+        "-DINPUTS=${C2_TEXT_INPUTS}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedText.cmake"
+    DEPENDS ${C2_TEXT_INPUTS} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedText.cmake"
+    COMMENT "Embedding game text from po/"
+    VERBATIM
+)
+add_library(c2_text_bundle STATIC "${C2_TEXT_BUNDLE_C}")
+target_include_directories(c2_text_bundle PRIVATE src/platform/common include)
 
 add_executable(caesar2
     src/action.c
@@ -332,7 +339,7 @@ add_executable(caesar2
     src/platform/common/c2_port_pause.c
     src/platform/common/c2_port_selection.c
     src/platform/common/c2_port_save_registry.c
-    src/platform/common/c2_port_text_compat.c
+    src/platform/common/c2_port_text.c
     src/platform/common/c2_port_timing.c
     src/platform/common/c2_port_video.c
     src/platform/sdl3/c2_sdl_audio.c
@@ -440,6 +447,7 @@ endforeach()
 target_link_libraries(caesar2 PRIVATE
     c2_asm_portable
     c2_import_core
+    c2_text_bundle
     c2_libsmacker
     c2_xmidi
     SDL3::SDL3)
@@ -492,7 +500,7 @@ if(EMSCRIPTEN)
         -sFORCE_FILESYSTEM
         -sUSE_ZLIB=1
         -sINVOKE_RUN=0
-        -sEXPORTED_RUNTIME_METHODS=callMain
+        -sEXPORTED_RUNTIME_METHODS=callMain,UTF8ToString
         -sEXIT_RUNTIME=0
         "--shell-file=${C2_WASM_SHELL}"
         "--js-library=${CMAKE_CURRENT_SOURCE_DIR}/web/c2_browser.js"
@@ -592,7 +600,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/platform/common/c2_port_save.c
         src/platform/common/c2_port_save_compat.c
         src/platform/common/c2_port_save_registry.c
-        src/platform/common/c2_port_text_compat.c
+        src/platform/common/c2_port_text.c
         src/platform/common/c2_port_timing.c
         src/platform/common/c2_port_video.c
         PROPERTIES COMPILE_OPTIONS -Wpedantic
@@ -706,12 +714,15 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME bugfixes COMMAND c2-bugfixes-test)
 
-    add_executable(c2-text-compat-test
-        tests/c2_text_compat_test.c
-        src/platform/common/c2_port_text_compat.c)
-    target_compile_features(c2-text-compat-test PRIVATE c_std_11)
-    target_include_directories(c2-text-compat-test PRIVATE include)
-    add_test(NAME text-compat COMMAND c2-text-compat-test)
+    add_executable(c2-port-text-test
+        tests/c2_port_text_test.c
+        src/platform/common/c2_port_text.c)
+    target_compile_features(c2-port-text-test PRIVATE c_std_11)
+    target_include_directories(c2-port-text-test PRIVATE
+        include
+        src/platform/common)
+    target_link_libraries(c2-port-text-test PRIVATE c2_text_bundle c2_unity_framework)
+    add_test(NAME port-text COMMAND c2-port-text-test)
 
     add_executable(c2-port-timing-test
         tests/c2_port_timing_test.c
@@ -893,7 +904,6 @@ if(BUILD_TESTING)
 
     set(C2_UNITY_TEST_TARGETS
         c2-bugfixes-test
-        c2-text-compat-test
         c2-port-timing-test
         c2-port-keymap-test
         c2-save-compat-test

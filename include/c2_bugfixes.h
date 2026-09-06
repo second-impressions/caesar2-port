@@ -21,10 +21,6 @@
 #define PORT_FIX_GFX_BUFFER_DOUBLE_FREE PORT_PLATFORM
 #endif
 
-#ifndef PORT_FIX_HELP_SMART_PUNCTUATION
-#define PORT_FIX_HELP_SMART_PUNCTUATION PORT_PLATFORM
-#endif
-
 #ifndef PORT_FIX_PLAYER_NAME_PADDING
 #define PORT_FIX_PLAYER_NAME_PADDING PORT_PLATFORM
 #endif
@@ -52,10 +48,6 @@
 #error "PORT_FIX_GFX_BUFFER_DOUBLE_FREE must be 0 or 1"
 #endif
 
-#if PORT_FIX_HELP_SMART_PUNCTUATION != 0 && \
-    PORT_FIX_HELP_SMART_PUNCTUATION != 1
-#error "PORT_FIX_HELP_SMART_PUNCTUATION must be 0 or 1"
-#endif
 
 #if PORT_FIX_PLAYER_NAME_PADDING != 0 && \
     PORT_FIX_PLAYER_NAME_PADDING != 1
@@ -71,7 +63,6 @@
 #error "C2_FIX_MOSAIC_RANDOM_SENTINEL must be 0 or 1"
 #endif
 
-void c2_fix_help_text(char *text, int length);
 void c2_fix_player_name_padding(char *name, int capacity);
 
 #endif

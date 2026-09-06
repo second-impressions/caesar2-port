@@ -570,13 +570,13 @@ def test_portable_helpers_do_not_pose_as_recovered_translation_units():
     misplaced = [
         SRC / "c2_bugfixes.c",
         SRC / "c2_save_compat.c",
-        SRC / "c2_text_compat.c",
+        SRC / "c2_text.c",
     ]
     assert not [path for path in misplaced if path.exists()]
     expected = [
         PLATFORM_COMMON / "c2_port_bugfixes.c",
         PLATFORM_COMMON / "c2_port_save_compat.c",
-        PLATFORM_COMMON / "c2_port_text_compat.c",
+        PLATFORM_COMMON / "c2_port_text.c",
     ]
     assert all(path.is_file() for path in expected)
 

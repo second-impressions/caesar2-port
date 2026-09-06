@@ -28,8 +28,17 @@ it is by content:
 - an **installed game folder** (GOG, or an old DOS/Windows installation —
   pick any file inside it, e.g. `C2.ENG`),
 - a `.zip` of such a folder,
-- a `.c2assets` pack, which can carry several languages in one file
-  (`tools/c2-assets.py build`, see [docs/localization.md](docs/localization.md)).
+- a `.c2assets` pack, which can carry several languages of speech in one
+  file (`tools/c2-assets.py build`, see
+  [docs/localization.md](docs/localization.md)).
+
+### Language
+
+The game's text is built into the port in English, German and French; the
+launcher and the web page have a *Text* selector, which defaults to the
+language of your game data. Speech and illustrations remain those of your
+game data. Translations are ordinary gettext files under `po/` — see
+[docs/game-text.md](docs/game-text.md) to contribute one.
 
 Note that the original installer copied only part of the game to the hard
 disk: an installation folder without `XMI/` and `RAW/` has no music or
@@ -64,7 +73,8 @@ screen holds.
 Command line: `caesar2 [SOURCE]` starts with a given game-data source;
 `--fullscreen`, `--fractional-scaling`, `--skip-launcher`, `--mouse-lock`
 (confine the pointer to the game area), `--user-data-dir PATH`,
-`--asset-profile NAME` (language in a multi-profile pack), `--version`.
+`--language TAG` (text language: `en`, `de`, `fr`), `--asset-profile NAME`
+(speech in a multi-profile pack), `--version`.
 
 ### Crashes
 
@@ -134,7 +144,9 @@ and every deviation is a named, documented flag.
 - [docs/game-data-sources-plan.md](docs/game-data-sources-plan.md),
   [docs/native-data-paths.md](docs/native-data-paths.md),
   [docs/user-data.md](docs/user-data.md) — data import, caching, user files
-- [docs/localization.md](docs/localization.md) — languages, speech, packs
+- [docs/game-text.md](docs/game-text.md) — the compiled-in text and its
+  gettext files; [docs/localization.md](docs/localization.md) — speech and
+  packs
 - [docs/legacy-abi.md](docs/legacy-abi.md),
   [docs/recovered-source-delta-audit.md](docs/recovered-source-delta-audit.md)
   — compiler semantics the recovered code relies on, and every port edit to a
