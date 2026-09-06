@@ -2170,7 +2170,15 @@ int perform_city_strip_action(void)
     selected_icon_text = selected_icon_no;
     icon_strip_toggle  = 0x1f;
 
+#if PORT_FEAT_STICKY_DROPDOWNS
+    /* The press that reaches here opens any list the action pops; its
+     * release belongs to that list. */
+    c2_port_selection_begin(mouse_x, mouse_y);
+#endif
     city_actions[last_icon_over - 4]();
+#if PORT_FEAT_STICKY_DROPDOWNS
+    c2_port_selection_end();
+#endif
 
     if (last_icon_over < 0xe || last_icon_over == 0x12) {
     } else {
@@ -2196,7 +2204,13 @@ int perform_region_strip_action(void)
     selected_icon_text = selected_icon_no;
     icon_strip_toggle  = 0x1f;
 
+#if PORT_FEAT_STICKY_DROPDOWNS
+    c2_port_selection_begin(mouse_x, mouse_y);
+#endif
     region_actions[last_icon_over - 4]();
+#if PORT_FEAT_STICKY_DROPDOWNS
+    c2_port_selection_end();
+#endif
 
     if (last_icon_over < 0xe || last_icon_over == 0x12) {
     } else {
@@ -3436,14 +3450,8 @@ void act_rm_security(void)
     selection_menu = 0xD;
     control_selection(rm_security_selection, 3, 0x14, 0xFA, 0x36);
 #else
-#if PORT_FEAT_STICKY_REGION_DROPDOWNS
-    c2_port_region_selection_begin(mouse_x, mouse_y);
-#endif
     control_selection(rm_security_selection, 3,
                       mouse_x - 0x90, mouse_y - 0x20, 0x36);
-#if PORT_FEAT_STICKY_REGION_DROPDOWNS
-    c2_port_region_selection_end();
-#endif
 #endif
     selected_icon_text = 0x36;
     selected_icon_no = selection_is;
@@ -3461,14 +3469,8 @@ void act_rm_industry(void)
     selection_menu = 0xE;
     control_selection(rm_industry_selection, 7, 0x14, 0xE6, 0x37);
 #else
-#if PORT_FEAT_STICKY_REGION_DROPDOWNS
-    c2_port_region_selection_begin(mouse_x, mouse_y);
-#endif
     control_selection(rm_industry_selection, 7,
                       mouse_x - 0x90, mouse_y - 0x30, 0x37);
-#if PORT_FEAT_STICKY_REGION_DROPDOWNS
-    c2_port_region_selection_end();
-#endif
 #endif
     selected_icon_text = 0x37;
     selected_icon_no = selection_is;

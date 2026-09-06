@@ -32,10 +32,10 @@ unsigned int c2_port_scroll_keys(void);
 int c2_port_paused_music_branch(int base, int count,
                                 int current_branch, int branch_count);
 #endif
-#if PORT_FEAT_STICKY_REGION_DROPDOWNS
-void c2_port_region_selection_begin(int mouse_x, int mouse_y);
-void c2_port_region_selection_end(void);
-int c2_port_region_selection_consume_release(int mouse_x, int mouse_y);
+#if PORT_FEAT_STICKY_DROPDOWNS
+void c2_port_selection_begin(int mouse_x, int mouse_y);
+void c2_port_selection_end(void);
+int c2_port_selection_consume_release(int mouse_x, int mouse_y);
 #endif
 void mouserange(int xmin, int ymin, int xmax, int ymax);
 

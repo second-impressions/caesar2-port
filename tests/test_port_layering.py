@@ -258,7 +258,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     ):
         assert f"#  define {feature}" in target_header
     assert "PORT_FEAT_REGION_SIDED_DRAW" not in target_header
-    assert "#define PORT_FEAT_STICKY_REGION_DROPDOWNS PORT_PLATFORM" in target_header
+    assert "#define PORT_FEAT_STICKY_DROPDOWNS PORT_PLATFORM" in target_header
     assert "#define PORT_FIX_PAUSED_MUSIC_VARIETY PORT_PLATFORM" in target_header
     assert "#define PORT_FIX_REGION_IDLE_CLICK_FUNDS PORT_PLATFORM" in target_header
     action_source = (SRC / "action.c").read_text()
@@ -271,11 +271,19 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "c2_port_paused_music_branch" in music
     action = (SRC / "action.c").read_text()
     controls = (SRC / "controls.c").read_text()
-    assert action.count("c2_port_region_selection_begin(mouse_x, mouse_y);") == 2
-    assert action.count("c2_port_region_selection_end();") == 2
-    assert "c2_port_region_selection_consume_release(mouse_x, mouse_y)" in controls
+    # Armed once per command strip dispatcher (city and province), not per
+    # list: every icon-opened list gets the same click-to-open behaviour.
+    assert action.count("c2_port_selection_begin(mouse_x, mouse_y);") == 2
+    assert action.count("c2_port_selection_end();") == 2
+    for dispatcher in ("city_actions[last_icon_over - 4]();",
+                       "region_actions[last_icon_over - 4]();"):
+        armed = action.index(dispatcher)
+        assert action.rfind("c2_port_selection_begin(mouse_x, mouse_y);",
+                            0, armed) > armed - 300
+        assert action.find("c2_port_selection_end();", armed) < armed + 200
+    assert "c2_port_selection_consume_release(mouse_x, mouse_y)" in controls
     selection = (SRC / "platform/common/c2_port_selection.c").read_text()
-    assert "PORT_REGION_CLICK_SLOP 4" in selection
+    assert "PORT_SELECTION_CLICK_SLOP 4" in selection
     assert "initial_release_pending = 0;" in selection
     pm_map2 = (SRC / "pm_map2.c").read_text()
     assert pm_map2.count("#if C2_FEAT_REGION_SIDED_DRAW") == 6
