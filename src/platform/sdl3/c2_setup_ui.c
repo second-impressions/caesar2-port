@@ -328,11 +328,11 @@ static void rebuild_buttons(void)
     }
     add_button(BUTTON_DISPLAY,
                ui.fullscreen ? "Display: Fullscreen" : "Display: Windowed",
-               "F11, Ctrl+1..5 in game", NULL, 1);
+               "F11 to toggle", NULL, 1);
     add_button(BUTTON_SCALING,
-               ui.fractional_scaling ? "Scaling: Fractional (fills the window)"
-                                     : "Scaling: Integer (square pixels)",
-               "", NULL, 1);
+               ui.fractional_scaling ? "Scaling: Fractional" : "Scaling: Integer",
+               ui.fractional_scaling ? "fills the window"
+                                     : "Ctrl+1..5 pick the size", NULL, 1);
     add_button(BUTTON_CHOOSE, ui.source_ready ? "Replace game data..."
                                               : "Choose game data...",
                "", NULL, 1);
