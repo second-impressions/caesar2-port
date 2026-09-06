@@ -266,10 +266,10 @@ Native POSIX builds also install fatal-signal handlers for `SIGSEGV`,
 thread prints the signal, fault address, and native backtrace to standard error,
 then re-raises the signal so normal debugger and core-dump behavior is retained.
 ASan and TSan presets leave it off so the sanitizer runtimes retain their own
-signal diagnostics. Executable frames are printed with load-independent
-`+0x...` offsets, followed by the `addr2line` command that resolves them
-against the crashed binary; when `addr2line` (binutils) is installed, the
-handler runs it and prints function names and source lines directly.
+signal diagnostics. The executable exports its symbols, so engine frames are
+printed by name (`caesar2(get_ptr_to_corner+0x38)`) in the log itself; the
+report ends with the `addr2line` command that adds source lines against the
+crashed binary, and runs it when `addr2line` (binutils) is installed.
 
 The recovered fixed-width default player name contains sixteen trailing
 spaces. The portable build trims trailing spaces before entering the recovered

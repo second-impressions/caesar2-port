@@ -420,6 +420,10 @@ if(UNIX AND NOT EMSCRIPTEN AND PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER)
     target_sources(caesar2 PRIVATE src/platform/posix/c2_posix_debug.c)
     target_compile_definitions(caesar2 PRIVATE PORT_ENABLE_POSIX_CRASH_HANDLER=1)
     target_link_libraries(caesar2 PRIVATE ${CMAKE_DL_LIBS})
+    # backtrace_symbols_fd() names frames from the dynamic symbol table only.
+    # Export the executable's symbols so a crash log names the engine
+    # functions as printed, without addr2line or the matching binary.
+    set_target_properties(caesar2 PROPERTIES ENABLE_EXPORTS ON)
 endif()
 
 target_include_directories(caesar2 PRIVATE
