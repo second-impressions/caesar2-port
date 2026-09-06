@@ -331,8 +331,7 @@ static void rebuild_buttons(void)
                "F11 to toggle", NULL, 1);
     add_button(BUTTON_SCALING,
                ui.fractional_scaling ? "Scaling: Fractional" : "Scaling: Integer",
-               ui.fractional_scaling ? "fills the window"
-                                     : "Ctrl+1..5 pick the size", NULL, 1);
+               "F10 to toggle", NULL, 1);
     add_button(BUTTON_CHOOSE, ui.source_ready ? "Replace game data..."
                                               : "Choose game data...",
                "", NULL, 1);
@@ -1080,6 +1079,8 @@ static void render(void)
               "pack - pick a file inside it, or drop it on this window.");
     draw_text(UI_MARGIN, UI_HEIGHT - 16, 1, &COLOR_MUTED,
               "Arrows/Tab move, Enter selects, Esc quits.");
+    draw_text(UI_MARGIN, UI_HEIGHT - 56, 1, &COLOR_MUTED,
+              "In game: Ctrl+1..5 window size, Ctrl+0 largest that fits.");
     SDL_RenderPresent(ui.renderer);
 }
 

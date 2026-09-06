@@ -46,11 +46,12 @@ The game is 640x480. The window opens at the largest whole multiple that
 fits your desktop and can be resized freely; with *integer scaling* (the
 default) the game is shown at the largest whole multiple that fits the
 window, in real pixels, letterboxed until the next multiple fits. With
-*fractional scaling* it fills the window.
+*fractional scaling* it fills the window. Both toggles are remembered.
 
 | Key | Action |
 |---|---|
 | **F11** | toggle fullscreen |
+| **F10** | toggle integer / fractional scaling |
 | **Ctrl+1** … **Ctrl+5** | window at exactly 1x … 5x |
 | **Ctrl+0** | window at the largest multiple that fits the screen |
 | Mouse wheel | zoom (the game's own `+`/`-`) |

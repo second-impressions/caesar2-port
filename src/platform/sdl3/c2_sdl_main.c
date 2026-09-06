@@ -745,6 +745,24 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event)
     }
 #endif
     if (!app->host_initialized) return SDL_APP_CONTINUE;
+#if !PORT_PLATFORM_WASM
+    /* Display toggles never reach the game and are remembered like the
+     * launcher's choices; the browser shell owns both on its own chrome. */
+    if (event->type == SDL_EVENT_KEY_DOWN && !event->key.repeat) {
+        if (event->key.key == SDLK_F11) {
+            app->fullscreen = !c2_host_is_fullscreen();
+            c2_host_set_fullscreen(app->fullscreen);
+            save_display_settings(app);
+            return SDL_APP_CONTINUE;
+        }
+        if (event->key.key == SDLK_F10) {
+            app->fractional_scaling = !c2_host_is_fractional_scaling();
+            c2_host_set_fractional_scaling(app->fractional_scaling);
+            save_display_settings(app);
+            return SDL_APP_CONTINUE;
+        }
+    }
+#endif
 #if PORT_PLATFORM_WASM
     if (app->pointer_watch_installed && is_pointer_event(event->type)) {
         update_host_callback_rate(app);

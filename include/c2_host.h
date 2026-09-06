@@ -195,6 +195,7 @@ void c2_host_request_shutdown(void);
 void c2_host_request_pause(int paused);
 int c2_host_take_pause_request(void);
 void c2_host_set_fractional_scaling(int enabled);
+int c2_host_is_fractional_scaling(void);
 void c2_host_set_fullscreen(int enabled);
 int c2_host_is_fullscreen(void);
 void c2_host_set_canvas_size(int width, int height);

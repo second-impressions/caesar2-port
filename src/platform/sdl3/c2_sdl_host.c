@@ -1430,6 +1430,11 @@ void c2_host_set_canvas_size(int width, int height)
     }
 }
 
+int c2_host_is_fractional_scaling(void)
+{
+    return c2_fractional_scaling;
+}
+
 void c2_host_set_fractional_scaling(int enabled)
 {
     SDL_RendererLogicalPresentation presentation;
@@ -1651,13 +1656,6 @@ void c2_sdl_host_handle_event(SDL_Event *event)
         SDL_ConvertEventToRenderCoordinates(c2_renderer, event);
     }
 #if !PORT_PLATFORM_WASM
-    /* F11 toggles fullscreen without reaching the game; the browser shell
-     * owns fullscreen on its own chrome. */
-    if (event->type == SDL_EVENT_KEY_DOWN && event->key.key == SDLK_F11 &&
-        !event->key.repeat) {
-        c2_host_set_fullscreen(!c2_host_is_fullscreen());
-        return;
-    }
     /* Ctrl+1..5 size the window to exactly that multiple of the game in
      * physical pixels, Ctrl+0 to the largest that fits the desktop: the
      * emulator convention, since nobody finds 1280x960 by dragging. */
