@@ -26,7 +26,7 @@ def test_version_scheme_starts_at_one_and_has_build_metadata():
 def test_pages_deploys_the_single_main_wasm_build():
     workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
     assert re.search(r"push:\s*\n\s*branches: \[main\]", workflow)
-    assert "submodules: recursive" in workflow
+    assert "submodules: recursive" not in workflow  # nothing left to fetch
     assert workflow.count("emcmake cmake --preset wasm-release") == 1
     assert workflow.count("cmake --build build/ci-wasm") == 1
     assert "--clean-first" not in workflow
@@ -69,9 +69,8 @@ def test_nix_and_wasm_configuration_are_cached():
     assert "pkgs.ccache" in flake
     assert "build/ci-wasm" in workflow
     assert ".cache/emscripten" in workflow
-    assert "embuilder build zlib" in workflow
+    assert "embuilder build sdl3-mt zlib" in workflow
     assert "CMAKE_C_COMPILER_LAUNCHER=ccache" in workflow
-    assert "Reusing CMakeCache.txt retains libarchive's feature probes" in workflow
 
 
 def test_import_tests_split_synthetic_and_opt_in_corpora():
