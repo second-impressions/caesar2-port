@@ -152,6 +152,28 @@ set(ENABLE_PCRE2POSIX OFF CACHE BOOL "" FORCE)
 set(ENABLE_ICONV OFF CACHE BOOL "" FORCE)
 set(ENABLE_ACL OFF CACHE BOOL "" FORCE)
 set(ENABLE_XATTR OFF CACHE BOOL "" FORCE)
+
+# Every configuration carries debug information, so a crash in a release
+# binary can be symbolized the same way as one in a Debug build (gdb, lldb,
+# addr2line on the crash handler's +0x offsets, browser DevTools). Release
+# code generation is unchanged; only the debug sections grow.
+if(MSVC)
+    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<COMPILE_LANGUAGE:C>:ProgramDatabase>")
+    add_link_options(/DEBUG)
+else()
+    add_compile_options(-g)
+    if(EMSCRIPTEN)
+        # Optimized links keep the wasm name section (function names in
+        # browser stack traces) and write index.wasm.map beside the module so
+        # DevTools shows source lines; the module itself stays free of DWARF.
+        # Debug links keep the DWARF inline.
+        add_link_options(
+            $<$<CONFIG:Debug>:-g>
+            $<$<NOT:$<CONFIG:Debug>>:-gsource-map>
+            $<$<NOT:$<CONFIG:Debug>>:--profiling-funcs>)
+    endif()
+endif()
+
 add_subdirectory(third_party/libarchive EXCLUDE_FROM_ALL)
 
 # Nuked OPL3 (LGPL-2.1-or-later): the FM chip behind the port's Miles
@@ -214,7 +236,7 @@ option(PORT_ENABLE_TEXT_ASSET_COMPAT
 option(PORT_ENABLE_ARROW_KEY_SCROLL
     "Use held arrow keys to pan the active map instead of moving the cursor" ON)
 option(PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER
-    "Install native fatal-signal diagnostics in POSIX Debug builds" ON)
+    "Install native fatal-signal diagnostics in POSIX builds" ON)
 option(PORT_ASAN_DISABLE_GLOBALS
     "Disable ASan global instrumentation for the recovered global data image" OFF)
 if(PORT_ASAN_DISABLE_GLOBALS)
@@ -395,12 +417,8 @@ target_compile_definitions(c2_import_core PRIVATE
 )
 
 if(UNIX AND NOT EMSCRIPTEN AND PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER)
-    target_sources(caesar2 PRIVATE
-        $<$<CONFIG:Debug>:src/platform/posix/c2_posix_debug.c>
-    )
-    target_compile_definitions(caesar2 PRIVATE
-        $<$<CONFIG:Debug>:PORT_ENABLE_POSIX_CRASH_HANDLER=1>
-    )
+    target_sources(caesar2 PRIVATE src/platform/posix/c2_posix_debug.c)
+    target_compile_definitions(caesar2 PRIVATE PORT_ENABLE_POSIX_CRASH_HANDLER=1)
 endif()
 
 target_include_directories(caesar2 PRIVATE

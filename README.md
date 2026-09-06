@@ -111,6 +111,9 @@ is documented in
 For an optimized build, use `cmake --preset linux-release` followed by
 `cmake --build --preset linux-release`. Its native Unity suite is available as
 `ctest --preset linux-release`; Debug-only semantic smoke tests are omitted.
+Every configuration, release included, is compiled with debug information
+(`-g`, or a `.pdb` with MSVC; the optimized web build writes `index.wasm.map`),
+so a crash in any binary can be symbolized without rebuilding.
 
 Every interactive start opens a small **launcher window** first, the native
 counterpart of the browser landing page. It shows what game data is active
@@ -258,14 +261,15 @@ and UndefinedBehaviorSanitizer. It disables ASan global instrumentation because
 the recovered program has a very large legacy global data segment; heap,
 stack, and the live engine path remain instrumented.
 
-Native POSIX Debug builds also install fatal-signal handlers for `SIGSEGV`,
+Native POSIX builds also install fatal-signal handlers for `SIGSEGV`,
 `SIGABRT`, `SIGBUS`, `SIGILL`, and `SIGFPE`. A crash on either the SDL or engine
 thread prints the signal, fault address, and native backtrace to standard error,
 then re-raises the signal so normal debugger and core-dump behavior is retained.
-The handler is absent from release builds. ASan and TSan presets leave it off
-so the sanitizer runtimes retain their own signal diagnostics.
-Executable frames are printed with load-independent `+0x...` offsets; resolve
-one with `addr2line -e build/port/linux-debug/caesar2 -f -C 0xOFFSET`.
+ASan and TSan presets leave it off so the sanitizer runtimes retain their own
+signal diagnostics. Executable frames are printed with load-independent
+`+0x...` offsets; resolve one with
+`addr2line -e build/port/linux-release/caesar2 -f -C -i 0xOFFSET` (the binary
+that crashed, whichever configuration built it).
 
 The recovered fixed-width default player name contains sixteen trailing
 spaces. The portable build trims trailing spaces before entering the recovered

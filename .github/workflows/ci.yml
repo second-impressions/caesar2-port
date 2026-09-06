@@ -119,6 +119,7 @@ jobs:
             build/ci-wasm/index.html
             build/ci-wasm/index.js
             build/ci-wasm/index.wasm
+            build/ci-wasm/index.wasm.map
             build/ci-wasm/coi-serviceworker.js
             build/ci-wasm/c2-shell.js
             build/ci-wasm/c2-shell.css
@@ -135,6 +136,7 @@ jobs:
           cp build/ci-wasm/index.html _site/
           cp build/ci-wasm/index.js _site/
           cp build/ci-wasm/index.wasm _site/
+          cp build/ci-wasm/index.wasm.map _site/
           cp build/ci-wasm/coi-serviceworker.js _site/
           cp build/ci-wasm/c2-shell.js _site/
           cp build/ci-wasm/c2-shell.css _site/
@@ -198,7 +200,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: caesar2-windows-msvc-x64
-          path: build/port/windows-msvc-release/caesar2.exe
+          path: |
+            build/port/windows-msvc-release/caesar2.exe
+            build/port/windows-msvc-release/caesar2.pdb
 
   # ── GitHub Pages deployment ──────────────────────────────────────────
   # Deployment is deliberately downstream of the single Wasm build above.
