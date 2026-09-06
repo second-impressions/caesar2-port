@@ -1,0 +1,225 @@
+    /* Dark is the default palette. */
+    :root, [data-theme="dark"] {
+      --c2-accent: #d7a84d;
+      --c2-accent-strong: #b8863a;
+      --c2-accent-hover: #cf9c47;
+      --c2-accent-hover-text: #e8bd68;
+      --c2-accent-inverse: #17110a;
+      --c2-text: #f2ede3;
+      --c2-muted: #b8b0a1;
+      --c2-title: #fff;
+      --c2-page: #090807;
+      --c2-surface: rgba(18,15,12,.9);
+      --c2-edge: rgba(232,205,148,.22);
+      --c2-field: rgba(255,255,255,.05);
+      --c2-field-strong: rgba(255,255,255,.08);
+      --c2-secondary: #cfc6b4;
+      --c2-secondary-bg: #3a352c;
+      --c2-secondary-hover: #4a4337;
+      --c2-secondary-hover-text: #efe7d7;
+      --c2-danger: #e9a99e;
+      --c2-danger-border: rgba(223,112,95,.35);
+      --c2-overlay: rgba(6,5,4,.45);
+      --c2-veil: linear-gradient(180deg, rgba(8,7,5,.58), rgba(8,7,5,.24) 45%, rgba(8,7,5,.74));
+      --c2-backdrop: url("caesar2-background.jpg");
+    }
+    /* Light keeps the promotional art on its original white surround. */
+    [data-theme="light"] {
+      --c2-accent: #6d4d17;
+      --c2-accent-strong: #7f5c1e;
+      --c2-accent-hover: #664815;
+      --c2-accent-hover-text: #4f3810;
+      --c2-accent-inverse: #fff;
+      --c2-text: #29231a;
+      --c2-muted: #6f6656;
+      --c2-title: #241d13;
+      --c2-page: #fff;
+      --c2-surface: rgba(255,255,255,.9);
+      --c2-edge: rgba(70,58,34,.22);
+      --c2-field: rgba(255,255,255,.75);
+      --c2-field-strong: #fff;
+      --c2-secondary: #6a5f4c;
+      --c2-secondary-bg: #ded6c5;
+      --c2-secondary-hover: #cabfa8;
+      --c2-secondary-hover-text: #453d2f;
+      --c2-danger: #a3372a;
+      --c2-danger-border: rgba(163,55,42,.35);
+      --c2-overlay: rgba(250,248,243,.55);
+      --c2-veil: linear-gradient(180deg, rgba(255,255,255,.62), rgba(255,255,255,.3) 45%, rgba(255,255,255,.72));
+      --c2-backdrop: url("caesar2-background-light.jpg");
+    }
+    @media (prefers-color-scheme: light) {
+      :root:not([data-theme]) {
+        --c2-accent: #6d4d17;
+        --c2-accent-strong: #7f5c1e;
+        --c2-accent-hover: #664815;
+        --c2-accent-hover-text: #4f3810;
+        --c2-accent-inverse: #fff;
+        --c2-text: #29231a;
+        --c2-muted: #6f6656;
+        --c2-title: #241d13;
+        --c2-page: #fff;
+        --c2-surface: rgba(255,255,255,.9);
+        --c2-edge: rgba(70,58,34,.22);
+        --c2-field: rgba(255,255,255,.75);
+        --c2-field-strong: #fff;
+        --c2-secondary: #6a5f4c;
+        --c2-secondary-bg: #ded6c5;
+        --c2-secondary-hover: #cabfa8;
+        --c2-secondary-hover-text: #453d2f;
+        --c2-danger: #a3372a;
+        --c2-danger-border: rgba(163,55,42,.35);
+        --c2-overlay: rgba(250,248,243,.55);
+        --c2-veil: linear-gradient(180deg, rgba(255,255,255,.62), rgba(255,255,255,.3) 45%, rgba(255,255,255,.72));
+        --c2-backdrop: url("caesar2-background-light.jpg");
+      }
+    }
+    /* Pico is driven entirely by the semantic values above. */
+    :root {
+      --pico-font-family: system-ui, sans-serif;
+      --pico-font-size: 87.5%;
+      --pico-line-height: 1.4;
+      --pico-spacing: .75rem;
+      --pico-typography-spacing-vertical: .6rem;
+      --pico-block-spacing-vertical: .8rem;
+      --pico-block-spacing-horizontal: 1rem;
+      --pico-form-element-spacing-vertical: .45rem;
+      --pico-form-element-spacing-horizontal: .7rem;
+      --pico-border-radius: .4rem;
+      --pico-card-background-color: transparent;
+      --pico-card-sectioning-background-color: transparent;
+      --pico-modal-overlay-backdrop-filter: none;
+      --c2-backdrop-blur: 5px;
+      --c2-backdrop-playing: .25;
+      /* Shared spacing scale for layout components. */
+      --c2-space-1: .15rem;
+      --c2-space-2: .25rem;
+      --c2-space-3: .4rem;
+      --c2-space-4: .7rem;
+      --c2-space-5: 1rem;
+      --c2-space-6: 1.5rem;
+    }
+    :root:root:root {
+      --pico-primary: var(--c2-accent);
+      --pico-primary-background: var(--c2-accent-strong);
+      --pico-primary-border: var(--c2-accent-strong);
+      --pico-primary-hover: var(--c2-accent-hover-text);
+      --pico-primary-hover-background: var(--c2-accent-hover);
+      --pico-primary-hover-border: var(--c2-accent-hover);
+      --pico-primary-underline: var(--c2-edge);
+      --pico-primary-focus: var(--c2-edge);
+      --pico-primary-inverse: var(--c2-accent-inverse);
+      --pico-secondary: var(--c2-secondary);
+      --pico-secondary-background: var(--c2-secondary-bg);
+      --pico-secondary-border: var(--c2-secondary-bg);
+      --pico-secondary-hover: var(--c2-secondary-hover-text);
+      --pico-secondary-hover-background: var(--c2-secondary-hover);
+      --pico-secondary-hover-border: var(--c2-secondary-hover);
+      --pico-secondary-focus: var(--c2-edge);
+      --pico-secondary-inverse: var(--c2-accent-inverse);
+      --pico-color: var(--c2-text);
+      --pico-muted-color: var(--c2-muted);
+      --pico-muted-border-color: var(--c2-edge);
+      --pico-form-element-background-color: var(--c2-field);
+      --pico-form-element-active-background-color: var(--c2-field-strong);
+      --pico-form-element-border-color: var(--c2-edge);
+      --pico-form-element-active-border-color: var(--c2-accent-strong);
+      --pico-form-element-color: var(--c2-text);
+      --pico-form-element-placeholder-color: var(--c2-muted);
+      --pico-switch-background-color: var(--c2-secondary-bg);
+      --pico-modal-overlay-background-color: var(--c2-overlay);
+      --pico-dropdown-background-color: var(--c2-surface);
+      --pico-dropdown-border-color: var(--c2-edge);
+      --pico-dropdown-color: var(--c2-text);
+      --pico-dropdown-hover-background-color: var(--c2-secondary-bg);
+    }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+    html { background: var(--c2-page); }
+    body { background: transparent; color: var(--pico-color); }
+    /* Reusable layout and surface primitives. Components set --c2-stack-gap. */
+    .c2-stack { display: flex; flex-direction: column; gap: var(--c2-stack-gap, var(--c2-space-4)); }
+    .c2-stack > * { margin-block: 0; }
+    .c2-surface { margin: 0; padding: var(--c2-space-5); border: 1px solid var(--c2-edge); border-radius: .6rem; background: var(--c2-surface); box-shadow: 0 .75rem 3rem rgba(0,0,0,.35); backdrop-filter: blur(12px); }
+    .c2-splash, .c2-dialog-panel { width: min(27rem, 100%); max-width: min(27rem, 100%); }
+    .c2-splash { --c2-stack-gap: var(--c2-space-4); text-align: center; }
+    .c2-settings { --c2-stack-gap: var(--c2-space-5); width: min(36rem, 100%); max-width: min(36rem, 100%); }
+    .c2-operation-panel { --c2-stack-gap: var(--c2-space-4); width: min(23rem, calc(100% - 2rem)); text-align: center; }
+    /* Decorative backdrop: always softly blurred, and dimmed while playing. */
+    body::before, body::after { content: ""; position: fixed; inset: -3%; pointer-events: none; }
+    body::before { z-index: -2; background: var(--c2-backdrop) center / cover no-repeat; filter: blur(var(--c2-backdrop-blur)); transition: opacity 1.6s ease, filter 1.6s ease; }
+    body::after { z-index: -1; background: var(--c2-veil); transition: opacity 1.6s ease; }
+    body.playing::before { opacity: var(--c2-backdrop-playing); filter: blur(calc(var(--c2-backdrop-blur) * 1.6)); }
+    body.playing::after { opacity: .5; }
+    .game-stage { position: relative; z-index: 1; display: grid; place-items: center; width: 100%; height: 100%; padding: 0; }
+    canvas { opacity: 0; pointer-events: none; width: var(--c2-canvas-width, 640px) !important; height: var(--c2-canvas-height, 480px) !important; image-rendering: pixelated; image-rendering: crisp-edges; outline: none; user-select: none; box-shadow: 0 .75rem 3rem rgba(0,0,0,.55); }
+    body.playing canvas { opacity: 1; pointer-events: auto; }
+    .topbar { position: fixed; z-index: 8; top: 0; left: 0; right: 0; padding: .35rem .7rem; }
+    .topbar li { padding: 0 .5rem; }
+    .brand { display: flex; gap: .5rem; align-items: baseline; font-size: .85rem; letter-spacing: .09em; }
+    .version { color: var(--c2-muted); font-size: .7rem; letter-spacing: 0; }
+    /* Top-bar links share the brand colour, not the accent. */
+    .topbar .nav-action, .topbar .nav-action:is(:hover, :focus-visible, :active) { color: var(--c2-title); }
+    .nav-action { font-size: .75rem; text-decoration: none; opacity: .8; }
+    .nav-action:hover, .nav-action:focus-visible { opacity: 1; text-decoration: underline; }
+    .c2-settings-layout { display: grid; grid-template-columns: 8.5rem 1fr; gap: var(--c2-space-5); }
+    .c2-settings-tabs { display: flex; flex-direction: column; gap: var(--c2-space-1); padding-right: var(--c2-space-5); border-right: 1px solid var(--c2-edge); }
+    .c2-settings-tab { width: 100%; margin: 0; padding: var(--c2-space-3) var(--c2-space-4); border: 0; border-radius: var(--pico-border-radius); background: transparent; color: var(--c2-muted); font-size: .8rem; text-align: left; }
+    .c2-settings-tab:hover { background: var(--c2-field); color: var(--pico-color); }
+    .c2-settings-tab[aria-selected="true"] { background: var(--pico-primary-background); color: var(--pico-primary-inverse); }
+    /* One fixed pane box: component gaps stay stable when controls are hidden. */
+    .c2-settings-panes { height: 15rem; overflow: visible; }
+    .c2-settings-pane { --c2-stack-gap: var(--c2-space-4); }
+    .c2-settings-row { display: flex; align-items: center; justify-content: space-between; gap: var(--c2-space-4); }
+    .c2-settings-label { font-size: .82rem; }
+    .c2-inline-actions { display: inline-flex; gap: var(--c2-space-3); }
+    .c2-compact-action { width: auto; margin: 0; padding: var(--c2-space-2) var(--c2-space-4); font-size: .76rem; }
+    .c2-settings-row input[type=checkbox] { margin: 0; }
+    /* Segmented selector is a reusable mutually-exclusive control. */
+    .c2-segmented { display: inline-flex; padding: .12rem; border: 1px solid var(--c2-edge); border-radius: var(--pico-border-radius); background: var(--c2-field); }
+    .c2-segmented label { margin: 0; }
+    .c2-segmented input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
+    .c2-segmented span { display: block; padding: var(--c2-space-2) .6rem; border-radius: calc(var(--pico-border-radius) - .1rem); color: var(--c2-muted); font-size: .76rem; cursor: pointer; }
+    .c2-segmented label:hover span { color: var(--pico-color); }
+    .c2-segmented input:checked + span { background: var(--pico-primary-background); color: var(--pico-primary-inverse); }
+    .c2-segmented input:focus-visible + span { outline: 2px solid var(--pico-primary); outline-offset: 1px; }
+    #panel { position: fixed; z-index: 5; inset: 0; display: grid; place-items: center; padding: 3.25rem var(--c2-space-5) var(--c2-space-5); overflow: auto; }
+    #panel[hidden] { display: none; }
+    #card h1 { margin: 0; color: var(--c2-title); font-family: Georgia, serif; font-size: 1.6rem; font-weight: 500; letter-spacing: .03em; }
+    .c2-modal-header { display: flex; align-items: center; justify-content: space-between; gap: var(--c2-space-4); padding-bottom: var(--c2-space-4); border-bottom: 1px solid var(--c2-edge); }
+    .c2-modal-header h2, .c2-operation-panel h2 { margin: 0; color: var(--c2-title); font-family: Georgia, serif; font-size: 1.05rem; font-weight: 500; }
+    .c2-modal-header .close { margin: 0; }
+    .c2-hint { color: var(--c2-muted); font-size: .8rem; }
+    #status:not(:empty) { min-height: 1.1rem; }
+    .c2-hint:empty { display: none; }
+    .c2-operation-panel progress { height: .55rem; margin: 0; }
+    .c2-operation-panel .c2-hint { text-align: center; }
+    .c2-operation-panel button { width: auto; margin-inline: auto; padding: var(--c2-space-3) var(--c2-space-5); }
+    #assets-summary { display: grid; grid-template-columns: auto 1fr; gap: var(--c2-space-2) var(--c2-space-4); margin: 0; font-size: .82rem; }
+    #assets-summary dt { color: var(--c2-muted); }
+    #assets-summary dd { margin: 0; color: var(--pico-color); text-align: right; }
+    .c2-action-grid button { margin: 0; }
+    .c2-drop-zone { --c2-stack-gap: var(--c2-space-2); align-items: center; text-align: center; padding: var(--c2-space-4); border: 2px dashed var(--c2-edge); border-radius: var(--c2-radius, .5rem); transition: border-color .15s, background-color .15s; }
+    .c2-drop-zone strong { font-size: .9rem; }
+    .c2-drop-zone small { color: var(--c2-muted); font-size: .72rem; }
+    .c2-drop-zone .c2-inline-actions { justify-content: center; margin-top: var(--c2-space-2); }
+    .c2-drop-zone.is-over, #card.is-over { border-color: var(--c2-accent); background: color-mix(in srgb, var(--c2-accent) 14%, var(--c2-surface)); }
+    .c2-action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr)); gap: var(--c2-space-3); }
+    #play-button[aria-disabled="true"] { border-color: var(--pico-muted-border-color); background: transparent; color: var(--c2-muted); cursor: not-allowed; }
+    #forget-button { width: auto; margin: 0; padding: var(--c2-space-2) var(--c2-space-3); color: var(--c2-danger); border-color: var(--c2-danger-border); font-size: .72rem; }
+    #profile-row { color: var(--c2-muted); font-size: .86rem; }
+    #profile-row select { margin: var(--c2-space-3) 0 0; padding-block: .45rem; text-align: left; }
+    #profile-row[hidden] { display: none; }
+    label { display: flex; align-items: center; gap: var(--c2-space-3); margin: 0; font-size: .8rem; }
+    label input[type=checkbox] { margin: 0; }
+    #profile-row label { display: block; }
+    .about-version { display: inline-block; align-self: flex-start; padding: var(--c2-space-1) var(--c2-space-3); border-radius: 99px; background: var(--pico-primary-focus); color: var(--pico-primary); font-size: .72rem; }
+    .c2-about-links { display: flex; flex-wrap: wrap; gap: var(--c2-space-3) var(--c2-space-5); }
+    .c2-about-links a { font-size: .82rem; }
+    .c2-disclaimer, .c2-license { color: var(--c2-muted); font-size: .76rem; }
+    dialog p { font-size: .82rem; }
+    dialog::backdrop { background: transparent; }
+    /* Author display rules must not defeat the hidden attribute. */
+    [hidden] { display: none !important; }
+    input[type=file] { display: none; }
+    @media (max-width: 560px) { .version { display: none; } #panel { padding-top: 4rem; } .c2-action-grid { grid-template-columns: 1fr; } .c2-settings-layout { grid-template-columns: 1fr; gap: var(--c2-space-4); } .c2-settings-tabs { flex-direction: row; padding: 0 0 var(--c2-space-3); border-right: 0; border-bottom: 1px solid var(--c2-edge); } }
+    @media (prefers-reduced-motion: reduce) { body::before, body::after { transition: none; } }
