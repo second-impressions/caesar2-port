@@ -111,9 +111,9 @@ const char *__asan_default_options(void)
 /*
  * Exit-time leaks inside system libraries are theirs to fix and only bury
  * the port's own. Matching is by module or function name anywhere in the
- * allocation stack; SDL is deliberately not listed as a module, since most
- * of the port's allocations go through SDL_malloc, only its ALSA device
- * enumeration is.
+ * allocation stack. The media library is deliberately not listed as a
+ * module, since most of the port's allocations pass through its allocator;
+ * only its ALSA device enumeration is.
  */
 const char *__lsan_default_suppressions(void)
 {
