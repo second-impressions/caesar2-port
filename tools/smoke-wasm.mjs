@@ -18,6 +18,7 @@ const smokeResults = {
   city: "recovered city-loop smoke completed",
   campania: "Campania speech transition smoke completed",
   build: "province build smoke completed",
+  citybuild: "city build smoke completed",
   contextmenu: "browser context menu suppressed",
   music: "music buffer smoke completed",
   restart: "restart after exit completed",

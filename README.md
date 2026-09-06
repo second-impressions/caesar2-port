@@ -256,6 +256,17 @@ shutdown:
 ./build/port/linux-debug/caesar2 --city-smoke-test --asset-root /path/to/CAESAR2
 ```
 
+The build scenarios place things through the real command strip, selection
+lists and map clicks. The province build puts down a farm and answers its
+warehouse and work-camp questions; the city build opens the health list,
+places baths (a 2x2 footprint, which re-evolves the whole city map at once
+and used to divide by zero in the port) and checks the city loop survives:
+
+```bash
+./build/port/linux-debug/caesar2 --province-build-smoke-test --asset-root /path/to/CAESAR2
+./build/port/linux-debug/caesar2 --city-build-smoke-test --asset-root /path/to/CAESAR2
+```
+
 The tutorial scenario selects the recovered Tutorial action, advances through
 every available page, exits interactive stages through normal input, declines
 the final continue prompt, and verifies return to the original menu:
@@ -287,9 +298,12 @@ CTest remains the suite runner. Pytest covers repository tooling and static
 layering checks; the Debug-only smoke drivers cover recovered engine flows.
 The `linux-tsan` configure/build/test preset runs the same worker-thread slice
 under Clang ThreadSanitizer. The `linux-asan` preset combines AddressSanitizer
-and UndefinedBehaviorSanitizer. It disables ASan global instrumentation because
-the recovered program has a very large legacy global data segment; heap,
-stack, and the live engine path remain instrumented.
+and UndefinedBehaviorSanitizer with globals instrumented: the recovered code
+occasionally reads past one global into its neighbour because the original
+linker happened to place them together, and those reads (which crash or
+corrupt saves in the port) only show up with redzones between globals. Build
+and play the ASan binary when developing; `PORT_ASAN_DISABLE_GLOBALS=ON` is
+available if the global redzones ever get in the way.
 
 Native POSIX builds also install fatal-signal handlers for `SIGSEGV`,
 `SIGABRT`, `SIGBUS`, `SIGILL`, and `SIGFPE`. A crash on either the SDL or engine

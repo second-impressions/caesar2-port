@@ -476,11 +476,14 @@ def test_browser_smokes_use_managed_playwright_chromium():
     assert "await chromium.launch" in smoke
 
 
-def test_asan_backend_options_are_compile_only():
+def test_asan_preset_instruments_globals():
+    """Layout-dependent reads past a global (the bath SIGFPE, the
+    our_battle_army save entry) are only visible with global redzones."""
     presets = (ROOT / "CMakePresets.json").read_text()
     cmake = (ROOT / "CMakeLists.txt").read_text()
-    assert '"PORT_ASAN_DISABLE_GLOBALS": "ON"' in presets
+    assert '"PORT_ASAN_DISABLE_GLOBALS": "ON"' not in presets
     assert '"CMAKE_C_FLAGS": "-fsanitize=address,undefined"' in presets
+    # The opt-out stays compile-only so it never reaches feature-check links.
     assert "add_compile_options(-mllvm -asan-globals=0)" in cmake
 
 

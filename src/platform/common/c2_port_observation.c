@@ -26,6 +26,7 @@ static void fill_observation(struct c2_observation *observation)
     observation->speech_playing = db_playing;
     observation->query_type = q_type;
     observation->region_tool = reg_placing_type;
+    observation->city_tool = placing_type;
     observation->out1 = out1;
     observation->out2 = out2;
     observation->out3 = out3;

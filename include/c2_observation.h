@@ -53,6 +53,7 @@ struct c2_observation {
     int speech_playing;
     int query_type;
     int region_tool;
+    int city_tool;
     int selection_x;
     int selection_y;
     int selection_rows;
