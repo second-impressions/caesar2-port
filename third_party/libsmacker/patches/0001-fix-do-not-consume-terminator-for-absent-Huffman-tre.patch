@@ -1,0 +1,24 @@
+From 9789b7b6b68bedc33ebea088c682462b34f7ec57 Mon Sep 17 00:00:00 2001
+From: Simon Brakhane <simon@brakhane.net>
+Date: Tue, 21 Jul 2026 14:33:09 +0200
+Subject: [PATCH 1/3] fix: do not consume terminator for absent Huffman trees
+
+---
+ smacker.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/smacker.c b/smacker.c
+index 724b0fe..a7d59f5 100644
+--- a/smacker.c
++++ b/smacker.c
+@@ -421,6 +421,7 @@ static int smk_huff16_build(struct smk_huff16_t * const t, struct smk_bit_t * co
+ 
+ 		t->tree[0] = 0;
+ 		//t->cache[0] = t->cache[1] = t->cache[2] = 0;
++		return 1;
+ 	}
+ 
+ 	/* Check final end tag. */
+-- 
+2.55.0
+

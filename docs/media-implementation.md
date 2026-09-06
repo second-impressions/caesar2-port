@@ -98,8 +98,9 @@ must be driven from the official Caesar II movie corpus and libsmacker itself.
 If libsmacker does not handle an official asset variant, fix the decoder or
 the narrow adapter and add that asset shape to the libsmacker-facing tests.
 
-The port consumes the Second Impressions libsmacker fork as an SSH git
-submodule. The fork currently carries three narrow portability fixes: an
+libsmacker is bundled in `third_party/libsmacker/` (see
+`third_party/README.md` for provenance); its `patches/` carry three narrow
+fixes over upstream: an
 absent Huffman tree no longer consumes a nonexistent terminator bit, failed
 opens can release partially initialized decoder state, and public/internal
 error results are explicitly signed for unsigned-`char` consumers. The first
