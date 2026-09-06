@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.25)
 
 project(caesar2-port VERSION 1.0.0 LANGUAGES C)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 set(C2_BUILD_NUMBER "" CACHE STRING
     "Monotonic build number appended to the semantic version")
 set(C2_GIT_HASH "" CACHE STRING
@@ -237,6 +239,9 @@ option(PORT_ENABLE_ARROW_KEY_SCROLL
     "Use held arrow keys to pan the active map instead of moving the cursor" ON)
 option(PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER
     "Install native fatal-signal diagnostics in POSIX builds" ON)
+set(PORT_WITH_LIBBACKTRACE AUTO CACHE STRING
+    "Symbolize crash reports with source lines through the system libbacktrace: AUTO, ON (required), OFF")
+set_property(CACHE PORT_WITH_LIBBACKTRACE PROPERTY STRINGS AUTO ON OFF)
 option(PORT_ASAN_DISABLE_GLOBALS
     "Disable ASan global instrumentation for the recovered global data image" OFF)
 if(PORT_ASAN_DISABLE_GLOBALS)
@@ -424,6 +429,24 @@ if(UNIX AND NOT EMSCRIPTEN AND PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER)
     # Export the executable's symbols so a crash log names the engine
     # functions as printed, without addr2line or the matching binary.
     set_target_properties(caesar2 PROPERTIES ENABLE_EXPORTS ON)
+    # With the distribution's libbacktrace (GCC's DWARF symbolizer) the
+    # report also shows source file and line per frame.
+    if(NOT PORT_WITH_LIBBACKTRACE STREQUAL "OFF")
+        if(PORT_WITH_LIBBACKTRACE STREQUAL "ON")
+            find_package(LibBacktrace REQUIRED)
+        else()
+            find_package(LibBacktrace)
+        endif()
+    endif()
+    if(LibBacktrace_FOUND)
+        message(STATUS "Crash reports: libbacktrace source lines (${LibBacktrace_LIBRARIES})")
+        target_link_libraries(caesar2 PRIVATE LibBacktrace::LibBacktrace)
+        target_compile_definitions(caesar2 PRIVATE
+            PORT_CRASH_HANDLER_LIBBACKTRACE=1
+            "PORT_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/\"")
+    else()
+        message(STATUS "Crash reports: function names only (libbacktrace not found)")
+    endif()
 endif()
 
 target_include_directories(caesar2 PRIVATE

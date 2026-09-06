@@ -33,6 +33,7 @@
               pkgs.clang
               pkgs.gdb
               pkgs.imagemagick
+              pkgs.libbacktrace
               pkgs.python313
               pkgs.uv
               pkgs.unity-test
