@@ -328,7 +328,7 @@ static void rebuild_buttons(void)
     }
     add_button(BUTTON_DISPLAY,
                ui.fullscreen ? "Display: Fullscreen" : "Display: Windowed",
-               "F11 in game", NULL, 1);
+               "F11, Ctrl+1..5 in game", NULL, 1);
     add_button(BUTTON_SCALING,
                ui.fractional_scaling ? "Scaling: Fractional (fills the window)"
                                      : "Scaling: Integer (square pixels)",
