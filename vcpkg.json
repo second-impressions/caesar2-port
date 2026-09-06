@@ -1,0 +1,9 @@
+{
+  "name": "caesar2-port",
+  "version-string": "1.0.0",
+  "description": "Caesar II port dependencies for the MSVC build; every other host takes them from its distribution",
+  "dependencies": [
+    "sdl3",
+    "zlib"
+  ]
+}

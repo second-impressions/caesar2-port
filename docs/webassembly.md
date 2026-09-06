@@ -38,12 +38,12 @@ target ABI adapter, not a duplicate engine API.
 
 ## Building
 
-Initialize the pinned SDL, libarchive, and libsmacker submodules and enter the
-development shell:
+Enter the development shell and let Emscripten build its own SDL3 and zlib
+ports once (they live in the Emscripten cache, not in this tree):
 
 ```bash
-git submodule update --init --recursive
 nix develop
+embuilder build sdl3-mt zlib
 ```
 
 Build a release runtime without bundled copyrighted data:
@@ -158,7 +158,7 @@ border over the game.
 ### Browser diagnostics
 
 Current SDL 3 uses `ScriptProcessorNode` in its Emscripten audio backend
-(`third_party/SDL/src/audio/emscripten/SDL_emscriptenaudio.c`), so Chromium logs
+(`src/audio/emscripten/SDL_emscriptenaudio.c` in SDL), so Chromium logs
 the Web Audio deprecation notice on first audio initialization. Moving to
 `AudioWorkletNode` belongs in SDL's audio driver and is not papered over in the
 game shell. Firefox can likewise issue one-time WebGL notices when SDL lazily

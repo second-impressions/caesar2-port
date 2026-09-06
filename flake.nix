@@ -72,6 +72,9 @@
             ];
             buildInputs = [
               pkgs.pkgsCross.mingwW64.windows.mcfgthreads
+              pkgs.pkgsCross.mingwW64.sdl3
+              pkgs.pkgsCross.mingwW64.zlib
+              pkgs.pkgsCross.mingwW64.libarchive
             ];
           };
         }
