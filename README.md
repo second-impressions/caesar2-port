@@ -267,9 +267,9 @@ thread prints the signal, fault address, and native backtrace to standard error,
 then re-raises the signal so normal debugger and core-dump behavior is retained.
 ASan and TSan presets leave it off so the sanitizer runtimes retain their own
 signal diagnostics. Executable frames are printed with load-independent
-`+0x...` offsets; resolve one with
-`addr2line -e build/port/linux-release/caesar2 -f -C -i 0xOFFSET` (the binary
-that crashed, whichever configuration built it).
+`+0x...` offsets, followed by the `addr2line` command that resolves them
+against the crashed binary; when `addr2line` (binutils) is installed, the
+handler runs it and prints function names and source lines directly.
 
 The recovered fixed-width default player name contains sixteen trailing
 spaces. The portable build trims trailing spaces before entering the recovered

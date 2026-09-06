@@ -1,16 +1,23 @@
-#define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE
 
+#include <dlfcn.h>
 #include <execinfo.h>
 #include <signal.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "c2_debug_crash.h"
 
 #define PORT_DEBUG_BACKTRACE_DEPTH 64
+#define PORT_DEBUG_EXE_PATH_CAPACITY 1024
 
 static volatile sig_atomic_t c2_handling_fatal_signal;
+/* Resolved at install time: readlink is signal-safe but a fault may have
+ * left the process unable to afford anything more than the write below. */
+static char c2_executable_path[PORT_DEBUG_EXE_PATH_CAPACITY];
+static const void *c2_executable_base;
 
 static void write_all(const char *text, size_t length)
 {
@@ -65,6 +72,82 @@ static void write_pointer(const void *pointer)
     }
 }
 
+static void format_hex(uintptr_t value, char *out)
+{
+    static const char hex[] = "0123456789abcdef";
+    char digits[sizeof(uintptr_t) * 2];
+    size_t length;
+
+    length = 0;
+    do {
+        digits[length++] = hex[value & 15];
+        value >>= 4;
+    } while (value != 0);
+    *out++ = '0';
+    *out++ = 'x';
+    while (length != 0) *out++ = digits[--length];
+    *out = '\0';
+}
+
+/*
+ * backtrace_symbols_fd() names only dynamic symbols, and the engine exports
+ * none, so it prints bare +0x offsets for every game frame. Every build
+ * carries DWARF, so hand those offsets to addr2line when it is installed and
+ * print the command otherwise, ready to paste. Frames past the faulting one
+ * are return addresses; addr2line wants the call instruction, one byte back.
+ */
+static void symbolize_frames(void *const *frames, int frame_count, int first)
+{
+    static char offsets[PORT_DEBUG_BACKTRACE_DEPTH][2 + sizeof(uintptr_t) * 2 + 1];
+    static char *argv[PORT_DEBUG_BACKTRACE_DEPTH + 8];
+    size_t argc;
+    int i;
+    int status;
+    pid_t child;
+
+    if (c2_executable_base == NULL || c2_executable_path[0] == '\0') return;
+    argc = 0;
+    argv[argc++] = "addr2line";
+    argv[argc++] = "-e";
+    argv[argc++] = c2_executable_path;
+    argv[argc++] = "-f";
+    argv[argc++] = "-C";
+    argv[argc++] = "-i";
+    argv[argc++] = "-p";
+    for (i = first; i < frame_count; i++) {
+        Dl_info info;
+        uintptr_t address;
+
+        if (dladdr(frames[i], &info) == 0 || info.dli_fbase != c2_executable_base) continue;
+        address = (uintptr_t)frames[i] - (uintptr_t)c2_executable_base;
+        if (i > first) address--;
+        format_hex(address, offsets[i]);
+        argv[argc++] = offsets[i];
+    }
+    argv[argc] = NULL;
+    if (argc == 7) return;
+
+    write_literal("\nresolve with:", 14);
+    for (i = 0; argv[i] != NULL; i++) {
+        size_t length = 0;
+        while (argv[i][length] != '\0') length++;
+        write_literal(" ", 1);
+        write_all(argv[i], length);
+    }
+    write_literal("\n\n", 2);
+
+    child = fork();
+    if (child == 0) {
+        execvp(argv[0], argv);
+        _exit(127);
+    }
+    if (child < 0) return;
+    while (waitpid(child, &status, 0) < 0) {}
+    if (WIFEXITED(status) && WEXITSTATUS(status) == 127) {
+        write_literal("(addr2line is not installed; run the command above where it is)\n", 65);
+    }
+}
+
 static const char *signal_name(int signal_number, size_t *length)
 {
     switch (signal_number) {
@@ -106,6 +189,9 @@ static void fatal_signal_handler(int signal_number, siginfo_t *info,
 
     frame_count = backtrace(frames, PORT_DEBUG_BACKTRACE_DEPTH);
     backtrace_symbols_fd(frames, frame_count, STDERR_FILENO);
+    /* Frame 0 is this handler and frame 1 the kernel's signal trampoline;
+     * frame 2 is the faulting instruction itself, not a return address. */
+    symbolize_frames(frames, frame_count, frame_count > 2 ? 2 : 0);
 
     default_action.sa_handler = SIG_DFL;
     sigemptyset(&default_action.sa_mask);
@@ -129,6 +215,18 @@ int c2_debug_install_crash_handlers(void)
 
     /* Load the unwinder before a fault, where lazy loading could be unsafe. */
     (void)backtrace(&warmup_frame, 1);
+    {
+        Dl_info info;
+        ssize_t length;
+
+        if (dladdr((const void *)&c2_debug_install_crash_handlers, &info) != 0) {
+            c2_executable_base = info.dli_fbase;
+        }
+        length = readlink("/proc/self/exe", c2_executable_path,
+                          sizeof(c2_executable_path) - 1);
+        if (length > 0) c2_executable_path[length] = '\0';
+        else c2_executable_path[0] = '\0';
+    }
     action.sa_sigaction = fatal_signal_handler;
     sigemptyset(&action.sa_mask);
     action.sa_flags = SA_SIGINFO | SA_RESETHAND;

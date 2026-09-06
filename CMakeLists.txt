@@ -419,6 +419,7 @@ target_compile_definitions(c2_import_core PRIVATE
 if(UNIX AND NOT EMSCRIPTEN AND PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER)
     target_sources(caesar2 PRIVATE src/platform/posix/c2_posix_debug.c)
     target_compile_definitions(caesar2 PRIVATE PORT_ENABLE_POSIX_CRASH_HANDLER=1)
+    target_link_libraries(caesar2 PRIVATE ${CMAKE_DL_LIBS})
 endif()
 
 target_include_directories(caesar2 PRIVATE
