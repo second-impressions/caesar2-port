@@ -1033,15 +1033,10 @@ int loadgame(char *save_filename)
     refresh_zoom_mode(zoom_level);
     load_map_graphics(map_mode, zoom_level);
     setup_map_screen_refresh();
-    unflag_all_cm(3, 0xfd);
-    pm_build_shape = 0;
-    placing_type = 0;
-    placing_flags = 0;
-    if (city_rotation >= 8 || city_rotation < 0) city_rotation = 0;
-    if (prov_rotation >= 8 || prov_rotation < 0) prov_rotation = 0;
-    get_old_mood();
-    if (no_of_warehouses != 0) c2inf.peace_mode = 0;
 #if PORT_FEAT_DEBUG_OBSERVATION
+    /* Verified before the recovered code clears the renderer's transient
+     * edge bits: the file carries whatever the last frame before saving
+     * left in them, which is not a load defect. */
     if (load_state_verified) {
         load_state_verified = c2_port_save_state_file_matches(
             save_filename, savegame_entries, C2_SAVE_REGISTRY_CAPACITY, figure_list, arrow_list,
@@ -1051,6 +1046,16 @@ int loadgame(char *save_filename)
                     load_mismatch_offset);
         }
     }
+#endif
+    unflag_all_cm(3, 0xfd);
+    pm_build_shape = 0;
+    placing_type = 0;
+    placing_flags = 0;
+    if (city_rotation >= 8 || city_rotation < 0) city_rotation = 0;
+    if (prov_rotation >= 8 || prov_rotation < 0) prov_rotation = 0;
+    get_old_mood();
+    if (no_of_warehouses != 0) c2inf.peace_mode = 0;
+#if PORT_FEAT_DEBUG_OBSERVATION
     c2_observe(PORT_OBSERVATION_LOAD_COMPLETE,
                load_state_verified ? 0 : 1);
 #endif
