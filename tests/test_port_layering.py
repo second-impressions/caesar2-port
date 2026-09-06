@@ -595,6 +595,8 @@ def test_mouse_lock_is_cli_policy_above_a_backend_neutral_cursor():
 def test_sdl_uses_exact_nearest_neighbor_scaling():
     host = (SDL_BACKEND / "c2_sdl_host.c").read_text()
     assert "SDL_SetTextureScaleMode(c2_texture, SDL_SCALEMODE_NEAREST)" in host
-    assert "window_flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY" in host
+    # Physical pixels on every target, so integer multiples are real ones.
+    assert "SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY" in host
+    assert "SDL_GetWindowPixelDensity(c2_window)" in host
     assert "? SDL_LOGICAL_PRESENTATION_LETTERBOX" in host
     assert ": SDL_LOGICAL_PRESENTATION_INTEGER_SCALE" in host

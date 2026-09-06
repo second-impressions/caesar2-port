@@ -159,7 +159,10 @@ does not fit a HiDPI laptop at 200%, and compositors maximize what does not
 fit) and can be resized freely down to 640x480 physical pixels. With integer scaling the
 renderer letterboxes the largest whole multiple that fits, counted in
 physical pixels, so borders grow until the next multiple fits and the game
-then jumps to it (3x in a 960x720-point window on a 200% desktop). The chooser is a single file dialog: pick any file inside an
+then jumps to it (3x in a 960x720-point window on a 200% desktop);
+maximizing gives the largest multiple the screen holds, and Ctrl+1 to
+Ctrl+5 size the window to exactly that multiple (Ctrl+0: the largest that
+fits). The chooser is a single file dialog: pick any file inside an
 installation (e.g. `C2.ENG`), an ISO or BIN image, a ZIP, or a `.c2assets`
 pack — or drop it onto the window — and the importer classifies it by
 content. Imports show a progress bar and a rejected selection comes back

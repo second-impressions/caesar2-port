@@ -746,6 +746,35 @@ static void apply_minimum_window_size(void)
     SDL_SetWindowMinimumSize(c2_window, width, height);
 }
 
+#if !PORT_PLATFORM_WASM
+/* Window size for `scale` times the game in physical pixels; 0 = largest
+ * whole multiple the desktop holds. Leaves fullscreen alone. */
+static void set_window_scale(int scale)
+{
+    float density;
+    SDL_Rect usable;
+    SDL_DisplayID display;
+    int width;
+    int height;
+
+    if (c2_window == NULL || c2_host_is_fullscreen()) return;
+    density = SDL_GetWindowPixelDensity(c2_window);
+    if (density <= 0.0f) density = 1.0f;
+    if (scale < 1) {
+        display = SDL_GetDisplayForWindow(c2_window);
+        if (display == 0 || !SDL_GetDisplayUsableBounds(display, &usable)) return;
+        for (scale = 8; scale > 1; scale--) {
+            if ((float)c2_frame_width * (float)scale / density <= (float)(usable.w - 16) &&
+                (float)c2_frame_height * (float)scale / density <= (float)(usable.h - 48)) break;
+        }
+    }
+    width = (int)((float)c2_frame_width * (float)scale / density + 0.5f);
+    height = (int)((float)c2_frame_height * (float)scale / density + 0.5f);
+    if (SDL_GetWindowFlags(c2_window) & SDL_WINDOW_MAXIMIZED) SDL_RestoreWindow(c2_window);
+    SDL_SetWindowSize(c2_window, width, height);
+}
+#endif
+
 int c2_host_init(const struct c2_host_config *config)
 {
     int window_scale;
@@ -1627,6 +1656,15 @@ void c2_sdl_host_handle_event(SDL_Event *event)
     if (event->type == SDL_EVENT_KEY_DOWN && event->key.key == SDLK_F11 &&
         !event->key.repeat) {
         c2_host_set_fullscreen(!c2_host_is_fullscreen());
+        return;
+    }
+    /* Ctrl+1..5 size the window to exactly that multiple of the game in
+     * physical pixels, Ctrl+0 to the largest that fits the desktop: the
+     * emulator convention, since nobody finds 1280x960 by dragging. */
+    if (event->type == SDL_EVENT_KEY_DOWN && !event->key.repeat &&
+        (event->key.mod & SDL_KMOD_CTRL) != 0 &&
+        event->key.key >= SDLK_0 && event->key.key <= SDLK_5) {
+        set_window_scale((int)(event->key.key - SDLK_0));
         return;
     }
 #endif
