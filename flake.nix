@@ -31,6 +31,7 @@
               pkgs.pkg-config
               pkgs.sdl3
               pkgs.clang
+              pkgs.llvmPackages.llvm   # llvm-symbolizer for sanitizer reports
               pkgs.gdb
               pkgs.imagemagick
               pkgs.libbacktrace

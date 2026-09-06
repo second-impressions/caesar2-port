@@ -482,7 +482,8 @@ def test_asan_preset_instruments_globals():
     presets = (ROOT / "CMakePresets.json").read_text()
     cmake = (ROOT / "CMakeLists.txt").read_text()
     assert '"PORT_ASAN_DISABLE_GLOBALS": "ON"' not in presets
-    assert '"CMAKE_C_FLAGS": "-fsanitize=address,undefined"' in presets
+    assert '"CMAKE_C_FLAGS": "-fsanitize=address,undefined -fno-omit-frame-pointer"' in presets
+    assert "src/platform/posix/c2_posix_sanitizer.c" in cmake
     # The opt-out stays compile-only so it never reaches feature-check links.
     assert "add_compile_options(-mllvm -asan-globals=0)" in cmake
 

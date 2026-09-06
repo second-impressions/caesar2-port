@@ -376,6 +376,16 @@ target_compile_definitions(c2_import_core PRIVATE
     ${C2_PLATFORM_LEAF}=1
 )
 
+# Sanitizer builds carry their own runtime defaults so a report from a
+# copied developer binary is symbolized wherever binutils exists.
+if(UNIX AND NOT EMSCRIPTEN AND CMAKE_C_FLAGS MATCHES "sanitize=[a-z,]*address")
+    target_sources(caesar2 PRIVATE src/platform/posix/c2_posix_sanitizer.c)
+    # Runs before the runtime is initialized: no instrumentation, and no
+    # loop-to-memcpy rewriting that would call an interceptor.
+    set_source_files_properties(src/platform/posix/c2_posix_sanitizer.c
+        PROPERTIES COMPILE_OPTIONS "-fno-sanitize=all;-fno-builtin")
+endif()
+
 if(UNIX AND NOT EMSCRIPTEN AND PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER)
     target_sources(caesar2 PRIVATE src/platform/posix/c2_posix_debug.c)
     target_compile_definitions(caesar2 PRIVATE PORT_ENABLE_POSIX_CRASH_HANDLER=1)
