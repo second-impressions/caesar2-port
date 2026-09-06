@@ -281,6 +281,27 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
     )
 endif()
 
+# ---- Game text -------------------------------------------------------------
+# Every language in po/ is compiled into the executable; the engine's
+# C2.ENG and HELP.ENG are rebuilt from the selected one at startup
+# (src/platform/common/c2_port_text.c). The template is English.
+file(GLOB C2_TEXT_PO_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/po/*.po")
+list(SORT C2_TEXT_PO_FILES)
+set(C2_TEXT_INPUTS "${CMAKE_CURRENT_SOURCE_DIR}/po/c2.pot" ${C2_TEXT_PO_FILES})
+set(C2_TEXT_BUNDLE_C "${CMAKE_CURRENT_BINARY_DIR}/generated/c2_text_bundle.c")
+add_custom_command(
+    OUTPUT "${C2_TEXT_BUNDLE_C}"
+    COMMAND "${CMAKE_COMMAND}"
+        "-DOUTPUT=${C2_TEXT_BUNDLE_C}"
+        "-DINPUTS=${C2_TEXT_INPUTS}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedText.cmake"
+    DEPENDS ${C2_TEXT_INPUTS} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedText.cmake"
+    COMMENT "Embedding game text from po/"
+    VERBATIM
+)
+add_library(c2_text_bundle STATIC "${C2_TEXT_BUNDLE_C}")
+target_include_directories(c2_text_bundle PRIVATE src/platform/common include)
+
 add_executable(caesar2
     src/action.c
     src/battle.c
@@ -332,6 +353,7 @@ add_executable(caesar2
     src/platform/common/c2_port_pause.c
     src/platform/common/c2_port_selection.c
     src/platform/common/c2_port_save_registry.c
+    src/platform/common/c2_port_text.c
     src/platform/common/c2_port_text_compat.c
     src/platform/common/c2_port_timing.c
     src/platform/common/c2_port_video.c
@@ -440,6 +462,7 @@ endforeach()
 target_link_libraries(caesar2 PRIVATE
     c2_asm_portable
     c2_import_core
+    c2_text_bundle
     c2_libsmacker
     c2_xmidi
     SDL3::SDL3)
@@ -592,6 +615,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/platform/common/c2_port_save.c
         src/platform/common/c2_port_save_compat.c
         src/platform/common/c2_port_save_registry.c
+        src/platform/common/c2_port_text.c
         src/platform/common/c2_port_text_compat.c
         src/platform/common/c2_port_timing.c
         src/platform/common/c2_port_video.c
@@ -712,6 +736,16 @@ if(BUILD_TESTING)
     target_compile_features(c2-text-compat-test PRIVATE c_std_11)
     target_include_directories(c2-text-compat-test PRIVATE include)
     add_test(NAME text-compat COMMAND c2-text-compat-test)
+
+    add_executable(c2-port-text-test
+        tests/c2_port_text_test.c
+        src/platform/common/c2_port_text.c)
+    target_compile_features(c2-port-text-test PRIVATE c_std_11)
+    target_include_directories(c2-port-text-test PRIVATE
+        include
+        src/platform/common)
+    target_link_libraries(c2-port-text-test PRIVATE c2_text_bundle c2_unity_framework)
+    add_test(NAME port-text COMMAND c2-port-text-test)
 
     add_executable(c2-port-timing-test
         tests/c2_port_timing_test.c

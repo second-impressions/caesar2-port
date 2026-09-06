@@ -70,9 +70,11 @@ msgctxt "0x3/3"
 msgid "Pause"
 msgstr "Pause"
 
+# The menu bar has no room: "Hilfe" (1996 rerelease) runs into the date.
+# The 1995 release used "?", as the French one does.
 msgctxt "0x4/0"
 msgid "Help"
-msgstr "Hilfe"
+msgstr "?"
 
 msgctxt "0x4/1"
 msgid "Hints and Tips"
