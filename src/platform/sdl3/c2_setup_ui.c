@@ -12,7 +12,7 @@
 #include "font8x8/font8x8_basic.h"
 
 #define UI_WIDTH 480
-#define UI_HEIGHT 356
+#define UI_HEIGHT 392
 #define UI_SCALE 2
 #define UI_MARGIN 16
 #define UI_GLYPH 8
@@ -334,7 +334,7 @@ static void rebuild_buttons(void)
                "F10 to toggle", NULL, 1);
     add_button(BUTTON_CHOOSE, ui.source_ready ? "Replace game data..."
                                               : "Choose game data...",
-               "", NULL, 1);
+               "or drop a file here", NULL, 1);
     for (i = 0; i < ui.drive_count; i++) {
         char label[64];
         snprintf(label, sizeof(label), "Use the disc in %.*s",
@@ -974,6 +974,42 @@ static void render_menu(void)
     }
 }
 
+/*
+ * Two key tables under a rule: what the game answers to, and how this
+ * window is driven. Keys in text colour, meanings muted, one per line.
+ */
+static void render_key_reference(void)
+{
+    static const char *const game_keys[][2] = {
+        { "F11",       "Fullscreen" },
+        { "F10",       "Scaling mode" },
+        { "Ctrl+1..5", "Window size 1x..5x" },
+        { "Ctrl+0",    "Largest that fits" },
+    };
+    static const char *const launcher_keys[][2] = {
+        { "Arrows, Tab", "Move" },
+        { "Enter",       "Select" },
+        { "Esc",         "Quit" },
+    };
+    const int top = UI_HEIGHT - 80;
+    const int right = UI_WIDTH / 2 + 24;
+    size_t i;
+
+    fill_rect(UI_MARGIN, top, UI_WIDTH - 2 * UI_MARGIN, 1, &COLOR_RULE);
+    draw_text(UI_MARGIN, top + 8, 1, &COLOR_MUTED, "In game");
+    draw_text(right, top + 8, 1, &COLOR_MUTED, "This window");
+    for (i = 0; i < sizeof(game_keys) / sizeof(game_keys[0]); i++) {
+        int y = top + 22 + (int)i * 12;
+        draw_text(UI_MARGIN, y, 1, &COLOR_TEXT, game_keys[i][0]);
+        draw_text(UI_MARGIN + 11 * UI_GLYPH, y, 1, &COLOR_MUTED, game_keys[i][1]);
+    }
+    for (i = 0; i < sizeof(launcher_keys) / sizeof(launcher_keys[0]); i++) {
+        int y = top + 22 + (int)i * 12;
+        draw_text(right, y, 1, &COLOR_TEXT, launcher_keys[i][0]);
+        draw_text(right + 13 * UI_GLYPH, y, 1, &COLOR_MUTED, launcher_keys[i][1]);
+    }
+}
+
 static void render_import(void)
 {
     char phase[64];
@@ -1060,7 +1096,9 @@ static void render(void)
         }
     } else {
         draw_text(UI_MARGIN, 72, 1, &COLOR_MUTED,
-                  "None selected. Choose a folder, image, or disc below.");
+                  "None selected. Choose below, or drop it on this window:");
+        draw_text(UI_MARGIN, 84, 1, &COLOR_MUTED,
+                  "installed folder, ISO/BIN image, ZIP or .c2assets pack.");
     }
     if (ui.status[0]) {
         fit_path(shown, sizeof(shown), ui.status, max_chars);
@@ -1073,14 +1111,7 @@ static void render(void)
         render_menu();
     }
 
-    draw_text(UI_MARGIN, UI_HEIGHT - 40, 1, &COLOR_MUTED,
-              "Installed folder, ISO/BIN disc image, ZIP or .c2assets");
-    draw_text(UI_MARGIN, UI_HEIGHT - 28, 1, &COLOR_MUTED,
-              "pack - pick a file inside it, or drop it on this window.");
-    draw_text(UI_MARGIN, UI_HEIGHT - 16, 1, &COLOR_MUTED,
-              "Arrows/Tab move, Enter selects, Esc quits.");
-    draw_text(UI_MARGIN, UI_HEIGHT - 56, 1, &COLOR_MUTED,
-              "In game: Ctrl+1..5 window size, Ctrl+0 largest that fits.");
+    if (ui.state != SETUP_IMPORT) render_key_reference();
     SDL_RenderPresent(ui.renderer);
 }
 
