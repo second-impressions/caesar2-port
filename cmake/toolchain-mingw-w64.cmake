@@ -25,9 +25,5 @@ set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
-# SDL3 comes from the pinned submodule on this target, so no SDL sysroot
-# package needs to be discoverable.
-set(C2_VENDORED_SDL ON CACHE BOOL "" FORCE)
-
 # The Unity host test suite is not cross-executable; CI runs it on Linux.
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)

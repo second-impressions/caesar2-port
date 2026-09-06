@@ -75,10 +75,11 @@
       "displayName": "Windows MSVC release",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/port/windows-msvc-release",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BUILD_TESTING": "OFF",
-        "C2_VENDORED_SDL": "ON"
+        "VCPKG_TARGET_TRIPLET": "x64-windows"
       }
     },
     {

@@ -86,40 +86,11 @@ set(C2_LANGUAGE "${C2_LANGUAGE}" CACHE STRING
     "Two-letter language tag for this distribution artifact" FORCE)
 message(STATUS "Caesar II language build: ${C2_LANGUAGE}")
 
-# SDL3 is taken from the pinned submodule on targets where no dependable
-# system package exists: Emscripten, and Windows for both the MinGW cross
-# build and the MSVC CI build.  Linux keeps using the distribution or
-# development-shell package.  One vendoring mechanism serves every such
-# target, so CI needs neither vcpkg nor prebuilt SDL archives.
-if(EMSCRIPTEN OR WIN32)
-    set(c2_vendored_sdl_default ON)
-else()
-    set(c2_vendored_sdl_default OFF)
-endif()
-option(C2_VENDORED_SDL
-    "Build SDL3 from the pinned third_party/SDL submodule"
-    ${c2_vendored_sdl_default})
-
-if(C2_VENDORED_SDL)
-    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL/CMakeLists.txt")
-        message(FATAL_ERROR
-            "C2_VENDORED_SDL requires the SDL submodule; run "
-            "'git submodule update --init --recursive'")
-    endif()
-    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
-    set(SDL_STATIC ON CACHE BOOL "" FORCE)
-    set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
-    set(SDL_TESTS OFF CACHE BOOL "" FORCE)
-    set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
-    set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
-    if(EMSCRIPTEN)
-        set(SDL_PTHREADS ON CACHE BOOL "" FORCE)
-        # User data and imported assets share one storage-backed WasmFS OPFS
-        # mount. IDBFS cannot coexist with WasmFS and would mirror the full
-        # asset tree into the fixed game heap.
-        set(SDL_EMSCRIPTEN_PERSISTENT_PATH "" CACHE STRING "" FORCE)
-    endif()
-    add_subdirectory(third_party/SDL EXCLUDE_FROM_ALL)
+# SDL3 comes from the build host: the distribution package, the vcpkg
+# manifest on MSVC, or Emscripten's own sdl3 port (`embuilder build sdl3-mt`),
+# whose config file carries no version.
+if(EMSCRIPTEN)
+    find_package(SDL3 CONFIG REQUIRED)
 else()
     find_package(SDL3 3.4 CONFIG REQUIRED)
 endif()
