@@ -70,9 +70,9 @@ The native port now follows that dependency direction:
 - `src/platform/common/c2_port_video.c` implements the recovered Smacker
   surface with libsmacker and delegates only indexed-frame publication and
   PCM queuing to the host;
-- `src/platform/common/c2_port_bugfixes.c`,
-  `c2_port_save_compat.c`, and `c2_port_text_compat.c` contain portable-only
-  compatibility policy; they deliberately do not live beside recovered
+- `src/platform/common/c2_port_bugfixes.c` and `c2_port_save_compat.c`
+  contain portable-only compatibility policy, and `c2_port_text.c` the
+  compiled-in game text; they deliberately do not live beside recovered
   translation units at the `src/` root;
 - `src/platform/common/c2_port_timing.c` reproduces the recovered Watcom/DOS
   clock's 18.2 Hz, 50-to-60-ms increments while replacing VGA blank waits and
@@ -408,12 +408,10 @@ per-user location on Windows and macOS. Save games, `caesar2.inf`,
 `history.dat`, and screenshots all belong to this mutable namespace; asset
 fallback into it is forbidden.
 
-Resource-version compatibility is not a filesystem responsibility. The host
-returns the selected asset unchanged. Engine/UI revisions that require
-different string indices or control counts are selected from the read-only
-`Textfile` structure behind `PORT_FEAT_TEXT_ASSET_COMPAT`; see
-[text-asset-versions.md](text-asset-versions.md). The original recovered path
-must remain present when that feature is disabled.
+The host returns every asset unchanged, with one exception above it:
+`readfile()` in `c2_port_compat.c` answers `c2.eng` and `help.eng` from the
+text compiled into the port, so the engine always sees the 1996 layout it
+was recovered against; see [game-text.md](game-text.md).
 
 These functions mix serialization or game fixups with raw file descriptors:
 
