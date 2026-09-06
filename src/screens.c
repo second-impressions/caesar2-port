@@ -4180,13 +4180,8 @@ void get_query_info(void)
     q_type = ((unsigned char *)city_map)[pm_over_cm_ptr];
     if (q_type < 0x82)
         size = 1;
-#if PORT_FIX_DATA_LAYOUT_READS
     else
         size = size2_from_type[q_type - 0x82];
-#else
-    else
-        size = reg_aquaduct_gfxdat[q_type + 8];
-#endif
 
     subx = suby = 0;
     if (size > 1) {
