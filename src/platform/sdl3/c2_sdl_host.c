@@ -127,20 +127,25 @@ static int update_mouse_confinement_rect(void)
 {
     SDL_FRect content;
     SDL_Rect barrier;
-    int right;
-    int bottom;
+    float left;
+    float top;
+    float right;
+    float bottom;
 
-    if (!SDL_GetRenderLogicalPresentationRect(c2_renderer, &content)) {
+    /* The presentation rect is in output pixels; the mouse rect wants
+     * window coordinates, which differ on a high-pixel-density window. */
+    if (!SDL_GetRenderLogicalPresentationRect(c2_renderer, &content) ||
+        !SDL_RenderCoordinatesToWindow(c2_renderer, content.x, content.y, &left, &top) ||
+        !SDL_RenderCoordinatesToWindow(c2_renderer, content.x + content.w,
+                                       content.y + content.h, &right, &bottom)) {
         return 0;
     }
-    barrier.x = (int)content.x;
-    barrier.y = (int)content.y;
-    if (barrier.x < content.x) barrier.x++;
-    if (barrier.y < content.y) barrier.y++;
-    right = (int)(content.x + content.w);
-    bottom = (int)(content.y + content.h);
-    barrier.w = right - barrier.x;
-    barrier.h = bottom - barrier.y;
+    barrier.x = (int)left;
+    barrier.y = (int)top;
+    if (barrier.x < left) barrier.x++;
+    if (barrier.y < top) barrier.y++;
+    barrier.w = (int)right - barrier.x;
+    barrier.h = (int)bottom - barrier.y;
     if (barrier.w <= 0 || barrier.h <= 0) return 0;
     return SDL_SetWindowMouseRect(c2_window, &barrier);
 }
@@ -720,8 +725,30 @@ static void queue_event(const struct c2_host_event *event)
     SDL_UnlockMutex(c2_event_mutex);
 }
 
+/*
+ * Never smaller than the game itself: 640x480 physical pixels, in either
+ * scaling mode. The limit is set in window points, so on a scaled desktop
+ * it is 640/density; a points-based 640x480 minimum at, say, 175% would
+ * be 1120x840 pixels, which integer scaling floors to 1x with borders on
+ * every side. Re-applied when the density changes (another monitor).
+ */
+static void apply_minimum_window_size(void)
+{
+    float density;
+    int width;
+    int height;
+
+    if (c2_window == NULL) return;
+    density = SDL_GetWindowPixelDensity(c2_window);
+    if (density <= 0.0f) density = 1.0f;
+    width = (int)((float)c2_frame_width / density + 0.999f);
+    height = (int)((float)c2_frame_height / density + 0.999f);
+    SDL_SetWindowMinimumSize(c2_window, width, height);
+}
+
 int c2_host_init(const struct c2_host_config *config)
 {
+    int window_scale;
     SDL_InitFlags flags;
     SDL_WindowFlags window_flags;
     SDL_RendererLogicalPresentation presentation;
@@ -800,11 +827,13 @@ int c2_host_init(const struct c2_host_config *config)
     if (config->headless) {
         return 1;
     }
-    window_flags = SDL_WINDOW_RESIZABLE;
+    window_scale = c2_sdl_host_window_scale(c2_frame_width, c2_frame_height,
+                                            config->window_scale);
+    /* The renderer works in physical pixels, so integer scaling counts real
+     * pixels: on a 200% desktop a 960x720-point window shows the game at
+     * 3x, not the 1x that logical points would allow. */
+    window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
     if (config->fullscreen) window_flags |= SDL_WINDOW_FULLSCREEN;
-#if PORT_PLATFORM_WASM
-    window_flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
-#endif
     /* Integer scaling keeps square pixels; fractional fills the window and
      * letterboxes the short axis. Both targets honour the same choice. */
     c2_fractional_scaling = config->fractional_scaling != 0;
@@ -812,14 +841,15 @@ int c2_host_init(const struct c2_host_config *config)
         ? SDL_LOGICAL_PRESENTATION_LETTERBOX
         : SDL_LOGICAL_PRESENTATION_INTEGER_SCALE;
     if (!SDL_CreateWindowAndRenderer(config->title,
-                                     c2_frame_width * config->window_scale,
-                                     c2_frame_height * config->window_scale,
+                                     c2_frame_width * window_scale,
+                                     c2_frame_height * window_scale,
                                      window_flags,
                                      &c2_window, &c2_renderer)) {
         fprintf(stderr, "SDL window creation failed: %s\n", SDL_GetError());
         c2_host_shutdown();
         return 0;
     }
+    apply_minimum_window_size();
     if (!SDL_HideCursor()) {
         fprintf(stderr, "could not hide the host cursor: %s\n", SDL_GetError());
         c2_host_shutdown();
@@ -1335,6 +1365,29 @@ void c2_host_set_mouse_bounds(int min_x, int min_y, int max_x, int max_y)
 }
 
 /*
+ * A 2x window (1280x960) is larger than the logical desktop of a HiDPI
+ * laptop such as a 2256x1504 panel at 200%, and compositors answer an
+ * oversized request by maximizing the window. Ask the display first.
+ */
+int c2_sdl_host_window_scale(int width, int height, int preferred)
+{
+    SDL_Rect usable;
+    SDL_DisplayID display;
+    int scale;
+
+    if (preferred < 1) preferred = 1;
+    display = SDL_GetPrimaryDisplay();
+    if (display == 0 || !SDL_GetDisplayUsableBounds(display, &usable)) {
+        return preferred;
+    }
+    for (scale = preferred; scale > 1; scale--) {
+        /* Leave room for the frame and title bar. */
+        if (width * scale <= usable.w - 16 && height * scale <= usable.h - 48) break;
+    }
+    return scale;
+}
+
+/*
  * Pause requests cross from the host's own UI thread to the engine thread, so
  * they travel through the same mutex as the rest of the input state.
  */
@@ -1611,10 +1664,15 @@ void c2_sdl_host_handle_event(SDL_Event *event)
         c2_port_mouse_leave(&c2_mouse);
         sync_mouse_input();
         c2_input.generation++;
-    } else if ((event->type == SDL_EVENT_WINDOW_RESIZED ||
-                event->type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) &&
-               c2_mouse_lock_requested && !c2_mouse_relative) {
-        refresh_mouse_rect = 1;
+    } else if (event->type == SDL_EVENT_WINDOW_RESIZED ||
+               event->type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED ||
+               event->type == SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED) {
+        if (c2_mouse_lock_requested && !c2_mouse_relative) {
+            refresh_mouse_rect = 1;
+        }
+        if (event->type != SDL_EVENT_WINDOW_RESIZED) {
+            apply_minimum_window_size();
+        }
     } else if (event->type == SDL_EVENT_MOUSE_MOTION) {
         if (c2_mouse_relative) {
             c2_port_mouse_add_relative(&c2_mouse,
