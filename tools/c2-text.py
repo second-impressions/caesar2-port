@@ -163,23 +163,25 @@ def resolve_help_page(hf: HelpFile, page: int) -> list[bytes] | None:
 
 
 def write_helpfile(hf: HelpFile) -> bytes:
-    """Rebuild a Helpfile; identical page texts share one copy."""
+    """Rebuild a Helpfile the way the C runtime does: every page with its
+    own text gets one copy, in page order; references share the target's."""
     text = bytearray()
     table_end = 8 + HELP_PAGES * HELP_RECORD
-    by_content: dict[bytes, int] = {}
+    offsets: dict[int, int] = {}
+    for page in range(1, HELP_PAGES):
+        entry = hf.pages.get(page)
+        if isinstance(entry, list):
+            offsets[page] = table_end + len(text)
+            text += b"\0".join(entry) + b"\0"
     out = bytearray(b"Helpfile")
     for page in range(HELP_PAGES):
         rec = hf.records[page] if page < len(hf.records) else HelpRecord()
-        strings = resolve_help_page(hf, page)
-        if strings is None:
-            offset = 0
-        else:
-            blob = b"\0".join(strings) + b"\0"
-            offset = by_content.get(blob)
-            if offset is None:
-                offset = table_end + len(text)
-                by_content[blob] = offset
-                text += blob
+        target = page
+        seen = set()
+        while isinstance(hf.pages.get(target), int) and target not in seen:
+            seen.add(target)
+            target = hf.pages[target]
+        offset = offsets.get(target, 0) if page else 0
         out += struct.pack("<Ihhh", offset, rec.left_sprite, rec.right_sprite, rec.width)
         out += rec.left.ljust(16, b"\0")[:16]
         out += rec.right.ljust(16, b"\0")[:16]
@@ -749,6 +751,22 @@ def cmd_check(args) -> int:
     return status
 
 
+RECORDS_INC = ROOT / "src" / "platform" / "common" / "c2_port_help_records.inc"
+
+
+def read_records_inc(path: Path = RECORDS_INC) -> list[HelpRecord]:
+    """The page records the runtime compiles in (see cmd_records)."""
+    records = []
+    for line in path.read_text().splitlines():
+        m = re.match(r'\{ (-?\d+), (-?\d+), (-?\d+), "([^"]*)", "([^"]*)", "([^"]*)" \},', line)
+        if m:
+            records.append(HelpRecord(int(m.group(1)), int(m.group(2)), int(m.group(3)),
+                                      m.group(4).encode(), m.group(5).encode(), m.group(6).encode()))
+    if len(records) != HELP_PAGES:
+        raise ValueError(f"{path}: {len(records)} records, expected {HELP_PAGES}")
+    return records
+
+
 def cmd_compile(args) -> int:
     po = po_parse(Path(args.po).read_text(encoding="utf-8"))
     groups, pages, problems = po_to_model(po)
@@ -759,7 +777,10 @@ def cmd_compile(args) -> int:
     if args.c2:
         Path(args.c2).write_bytes(write_textfile(groups))
     if args.help_out:
-        records = read_helpfile(Path(args.records).read_bytes()).records
+        if args.records:
+            records = read_helpfile(Path(args.records).read_bytes()).records
+        else:
+            records = read_records_inc()
         Path(args.help_out).write_bytes(write_helpfile(HelpFile(records, pages)))
     return 0
 
@@ -834,7 +855,8 @@ def main() -> int:
     p.add_argument("po")
     p.add_argument("--c2")
     p.add_argument("--help-out")
-    p.add_argument("--records", help="HELP.ENG whose page records to reuse")
+    p.add_argument("--records", help="HELP.ENG whose page records to use "
+                   "(default: the compiled-in table)")
     p.set_defaults(func=cmd_compile)
 
     p = sub.add_parser("compare", help="compare two C2.ENG or HELP.ENG files semantically")
