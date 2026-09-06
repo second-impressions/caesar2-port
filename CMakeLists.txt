@@ -86,24 +86,41 @@ set(C2_LANGUAGE "${C2_LANGUAGE}" CACHE STRING
     "Two-letter language tag for this distribution artifact" FORCE)
 message(STATUS "Caesar II language build: ${C2_LANGUAGE}")
 
-# SDL3 comes from the build host: the distribution package, the vcpkg
-# manifest on MSVC, or Emscripten's own sdl3 port (`embuilder build sdl3-mt`),
-# whose config file carries no version.
+# ---- Dependencies ----------------------------------------------------------
+# Every library comes from the build host and is located here, in one place:
+# the distribution package on Linux and the MinGW cross sysroot, the vcpkg
+# manifest (vcpkg.json) on MSVC, Emscripten's own ports for the web build.
+# Nothing is fetched or bundled; the only third_party/ code is the two
+# decoders no distribution packages (see third_party/README.md).
+#
+#   SDL3 >= 3.4        required   window, input, audio, filesystem
+#   zlib               required   Deflate for the ZIP importer
+#   libbacktrace       optional   source lines in native crash reports
+#                                 (PORT_WITH_LIBBACKTRACE=AUTO|ON|OFF)
+#   Unity              tests      only with BUILD_TESTING
 if(EMSCRIPTEN)
+    # `embuilder build sdl3-mt zlib` populates the ports; the SDL3 port's
+    # config file carries no version to check against.
     find_package(SDL3 CONFIG REQUIRED)
-else()
-    find_package(SDL3 3.4 CONFIG REQUIRED)
-endif()
-
-# zlib: Deflate for the ZIP importer. Emscripten supplies its own port.
-if(EMSCRIPTEN)
     execute_process(COMMAND em-config CACHE
         OUTPUT_VARIABLE C2_EMSCRIPTEN_CACHE
         OUTPUT_STRIP_TRAILING_WHITESPACE)
     set(ZLIB_INCLUDE_DIR "${C2_EMSCRIPTEN_CACHE}/sysroot/include" CACHE PATH "" FORCE)
     set(ZLIB_LIBRARY "${C2_EMSCRIPTEN_CACHE}/sysroot/lib/wasm32-emscripten/libz.a" CACHE FILEPATH "" FORCE)
+else()
+    find_package(SDL3 3.4 CONFIG REQUIRED)
 endif()
 find_package(ZLIB REQUIRED)
+set(PORT_WITH_LIBBACKTRACE AUTO CACHE STRING
+    "Symbolize crash reports with source lines through the system libbacktrace: AUTO, ON (required), OFF")
+set_property(CACHE PORT_WITH_LIBBACKTRACE PROPERTY STRINGS AUTO ON OFF)
+if(UNIX AND NOT EMSCRIPTEN AND NOT PORT_WITH_LIBBACKTRACE STREQUAL "OFF")
+    if(PORT_WITH_LIBBACKTRACE STREQUAL "ON")
+        find_package(LibBacktrace REQUIRED)
+    else()
+        find_package(LibBacktrace)
+    endif()
+endif()
 
 # Every configuration carries debug information, so a crash in a release
 # binary can be symbolized the same way as one in a Debug build (gdb, lldb,
@@ -182,9 +199,6 @@ option(PORT_ENABLE_ARROW_KEY_SCROLL
     "Use held arrow keys to pan the active map instead of moving the cursor" ON)
 option(PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER
     "Install native fatal-signal diagnostics in POSIX builds" ON)
-set(PORT_WITH_LIBBACKTRACE AUTO CACHE STRING
-    "Symbolize crash reports with source lines through the system libbacktrace: AUTO, ON (required), OFF")
-set_property(CACHE PORT_WITH_LIBBACKTRACE PROPERTY STRINGS AUTO ON OFF)
 option(PORT_ASAN_DISABLE_GLOBALS
     "Disable ASan global instrumentation for the recovered global data image" OFF)
 if(PORT_ASAN_DISABLE_GLOBALS)
@@ -373,13 +387,6 @@ if(UNIX AND NOT EMSCRIPTEN AND PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER)
     set_target_properties(caesar2 PROPERTIES ENABLE_EXPORTS ON)
     # With the distribution's libbacktrace (GCC's DWARF symbolizer) the
     # report also shows source file and line per frame.
-    if(NOT PORT_WITH_LIBBACKTRACE STREQUAL "OFF")
-        if(PORT_WITH_LIBBACKTRACE STREQUAL "ON")
-            find_package(LibBacktrace REQUIRED)
-        else()
-            find_package(LibBacktrace)
-        endif()
-    endif()
     if(LibBacktrace_FOUND)
         message(STATUS "Crash reports: libbacktrace source lines (${LibBacktrace_LIBRARIES})")
         target_link_libraries(caesar2 PRIVATE LibBacktrace::LibBacktrace)
@@ -614,6 +621,49 @@ elseif(MSVC)
         NOMINMAX
     )
     target_link_options(caesar2 PRIVATE /OPT:REF)
+endif()
+
+# ---- Installation ----------------------------------------------------------
+# `cmake --install` lays the game out for a package: the binary, a desktop
+# entry, an AppStream description and the icon on freedesktop hosts; the
+# binary with the DLLs it needs on Windows. Game data is never installed;
+# the launcher imports the player's own copy.
+if(NOT EMSCRIPTEN)
+    include(GNUInstallDirs)
+    install(TARGETS caesar2 RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+    install(FILES LICENSE DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/licenses/caesar2")
+    install(FILES third_party/README.md
+        DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/licenses/caesar2"
+        RENAME THIRD_PARTY.md)
+    install(FILES third_party/libsmacker/COPYING
+        DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/licenses/caesar2"
+        RENAME LICENSE.libsmacker)
+    install(FILES third_party/nuked-opl3/LICENSE
+        DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/licenses/caesar2"
+        RENAME LICENSE.nuked-opl3)
+    if(WIN32)
+        install(FILES $<TARGET_RUNTIME_DLLS:caesar2>
+            DESTINATION "${CMAKE_INSTALL_BINDIR}")
+        # FindZLIB imports an UNKNOWN target, which TARGET_RUNTIME_DLLS
+        # cannot see; the MinGW sysroot keeps the DLL beside the import lib.
+        # vcpkg installs its own DLLs (X_VCPKG_APPLOCAL_DEPS_INSTALL).
+        if(NOT MSVC)
+            get_filename_component(C2_ZLIB_LIBDIR "${ZLIB_LIBRARY}" DIRECTORY)
+            find_file(C2_ZLIB_DLL NAMES zlib1.dll libz.dll
+                HINTS "${C2_ZLIB_LIBDIR}/../bin" "${C2_ZLIB_LIBDIR}")
+            if(C2_ZLIB_DLL)
+                install(FILES "${C2_ZLIB_DLL}" DESTINATION "${CMAKE_INSTALL_BINDIR}")
+            endif()
+        endif()
+    else()
+        install(FILES packaging/io.github.second_impressions.caesar2.desktop
+            DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications")
+        install(FILES packaging/io.github.second_impressions.caesar2.metainfo.xml
+            DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/metainfo")
+        install(FILES web/favicon.svg
+            DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps"
+            RENAME io.github.second_impressions.caesar2.svg)
+    endif()
 endif()
 
 include(CTest)

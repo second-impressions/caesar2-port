@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Caesar II
+Comment=Build and govern the cities of the Roman Empire
+Exec=caesar2
+Icon=io.github.second_impressions.caesar2
+Terminal=false
+Categories=Game;StrategyGame;
+Keywords=caesar;rome;city;builder;strategy;
+StartupNotify=true

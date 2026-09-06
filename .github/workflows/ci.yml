@@ -36,8 +36,6 @@ jobs:
           - cc: clang
     steps:
       - uses: actions/checkout@v5
-        with:
-          submodules: recursive
       - uses: ./.github/actions/setup-nix
         with:
           scope: dev
@@ -63,6 +61,35 @@ jobs:
           nix develop --command uv run pytest -q \
             --ignore=tests/test_function_annotations.py
 
+  # ── Package build ────────────────────────────────────────────────────
+  # What a distribution does: a release tarball (no .git, no submodules,
+  # nothing fetched), the host's libraries, an optimized build with the
+  # crash symbolizer required, then `cmake --install` into a staging root.
+  package:
+    name: Linux package (release tarball)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-nix
+        with:
+          scope: dev
+      - name: Build from a release tarball
+        run: |
+          git archive --format=tar --prefix=caesar2-port/ HEAD | tar -x -C "$RUNNER_TEMP"
+          cd "$RUNNER_TEMP/caesar2-port"
+          nix develop "$GITHUB_WORKSPACE" --command bash -c '
+            set -euo pipefail
+            cmake -S . -B build -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DPORT_WITH_LIBBACKTRACE=ON \
+              -DBUILD_TESTING=OFF
+            cmake --build build
+            DESTDIR="$RUNNER_TEMP/stage" cmake --install build --prefix /usr
+            find "$RUNNER_TEMP/stage" -type f | sort
+            test -x "$RUNNER_TEMP/stage/usr/bin/caesar2"
+            "$RUNNER_TEMP/stage/usr/bin/caesar2" --version
+          '
+
   # ── WebAssembly + Pages artifact ─────────────────────────────────────
   # This is the only Wasm compilation. The deploy job below consumes the
   # exact same files; it never configures or builds a second time.
@@ -73,8 +100,6 @@ jobs:
       EM_CACHE: ${{ github.workspace }}/.cache/emscripten
     steps:
       - uses: actions/checkout@v5
-        with:
-          submodules: recursive
       - uses: ./.github/actions/setup-nix
         with:
           scope: dev
@@ -161,8 +186,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          submodules: recursive
       - uses: ./.github/actions/setup-nix
         with:
           scope: mingw
@@ -171,11 +194,12 @@ jobs:
           nix develop .#mingw --command bash -c '
             cmake --preset windows-mingw-release \
               -DCMAKE_C_COMPILER_LAUNCHER=ccache &&
-            cmake --build --preset windows-mingw-release --parallel'
+            cmake --build --preset windows-mingw-release --parallel &&
+            cmake --install build/port/windows-mingw-release --prefix "$PWD/build/port/windows-mingw-release/stage"'
       - uses: actions/upload-artifact@v4
         with:
           name: caesar2-windows-mingw-x64
-          path: build/port/windows-mingw-release/caesar2.exe
+          path: build/port/windows-mingw-release/stage/bin/
 
   # ── Windows, native ──────────────────────────────────────────────────
   # The authoritative Windows build: the shipping compiler, its own CRT,
@@ -206,13 +230,14 @@ jobs:
         run: cmake --preset windows-msvc-release
       - name: Build
         run: cmake --build --preset windows-msvc-release
+      - name: Install
+        run: cmake --install build/port/windows-msvc-release --prefix build/port/windows-msvc-release/stage
       - uses: actions/upload-artifact@v4
         with:
           name: caesar2-windows-msvc-x64
           path: |
-            build/port/windows-msvc-release/caesar2.exe
+            build/port/windows-msvc-release/stage/bin/
             build/port/windows-msvc-release/caesar2.pdb
-            build/port/windows-msvc-release/*.dll
 
   # ── GitHub Pages deployment ──────────────────────────────────────────
   # Deployment is deliberately downstream of the single Wasm build above.
