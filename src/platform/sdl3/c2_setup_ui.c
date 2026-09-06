@@ -1086,9 +1086,28 @@ static void render(void)
 /* ------------------------------------------------------------------ */
 /* Lifecycle                                                           */
 
+static void fit_window(int logical_width, int logical_height, int preferred,
+                       int *width, int *height)
+{
+    SDL_Rect usable;
+    SDL_DisplayID display = SDL_GetPrimaryDisplay();
+    float scale = (float)preferred;
+    if (display != 0 && SDL_GetDisplayUsableBounds(display, &usable)) {
+        float fit_x = (float)(usable.w - 16) / (float)logical_width;
+        float fit_y = (float)(usable.h - 48) / (float)logical_height;
+        if (fit_x < scale) scale = fit_x;
+        if (fit_y < scale) scale = fit_y;
+        if (scale < 1.0f) scale = 1.0f;
+    }
+    *width = (int)((float)logical_width * scale);
+    *height = (int)((float)logical_height * scale);
+}
+
 int c2_setup_open(const struct c2_setup_config *config)
 {
     char title[128];
+    int width;
+    int height;
     SDL_Mutex *mutex;
     if (ui.open) return 1;
     /* The mutex outlives close(): a native file dialog that is still open
@@ -1116,9 +1135,11 @@ int c2_setup_open(const struct c2_setup_config *config)
         return 0;
     }
     snprintf(title, sizeof(title), "Caesar II %s", ui.version);
-    if (!SDL_CreateWindowAndRenderer(title, UI_WIDTH * UI_SCALE,
-                                     UI_HEIGHT * UI_SCALE,
-                                     SDL_WINDOW_RESIZABLE,
+    /* The launcher letterboxes, so it can shrink to whatever fits a small
+     * logical desktop (a HiDPI laptop at 200%) without integer steps. */
+    fit_window(UI_WIDTH, UI_HEIGHT, UI_SCALE, &width, &height);
+    if (!SDL_CreateWindowAndRenderer(title, width, height,
+                                     SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY,
                                      &ui.window, &ui.renderer)) {
         fprintf(stderr, "launcher: window creation failed: %s\n",
                 SDL_GetError());

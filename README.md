@@ -153,7 +153,13 @@ a *Language* row when the data is a multi-profile pack, *Display*
 pixels or fractional fill), *Choose/Replace game data…*, one *Use the disc
 in …* row per optical drive that currently holds a disc, and *Quit*. Display
 choices persist in `launcher.ini` beside the saves; `--fullscreen` and
-`--fractional-scaling` override them for one run. The chooser is a single file dialog: pick any file inside an
+`--fractional-scaling` override them for one run. The window opens at
+the largest whole multiple of 640x480 that fits the desktop (a 2x window
+does not fit a HiDPI laptop at 200%, and compositors maximize what does not
+fit) and can be resized freely down to 640x480 physical pixels. With integer scaling the
+renderer letterboxes the largest whole multiple that fits, counted in
+physical pixels, so borders grow until the next multiple fits and the game
+then jumps to it (3x in a 960x720-point window on a 200% desktop). The chooser is a single file dialog: pick any file inside an
 installation (e.g. `C2.ENG`), an ISO or BIN image, a ZIP, or a `.c2assets`
 pack — or drop it onto the window — and the importer classifies it by
 content. Imports show a progress bar and a rejected selection comes back
