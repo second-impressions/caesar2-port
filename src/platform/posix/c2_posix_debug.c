@@ -10,6 +10,11 @@
 
 #include "c2_debug_crash.h"
 
+#if defined(PORT_CRASH_HANDLER_LIBBACKTRACE)
+#include <backtrace.h>
+static struct backtrace_state *c2_backtrace_state;
+#endif
+
 #define PORT_DEBUG_BACKTRACE_DEPTH 64
 #define PORT_DEBUG_EXE_PATH_CAPACITY 1024
 
@@ -88,6 +93,84 @@ static void format_hex(uintptr_t value, char *out)
     while (length != 0) *out++ = digits[--length];
     *out = '\0';
 }
+
+#if defined(PORT_CRASH_HANDLER_LIBBACKTRACE)
+static void write_string(const char *text)
+{
+    size_t length = 0;
+    while (text[length] != '\0') length++;
+    write_all(text, length);
+}
+
+static void warmup_error(void *data, const char *message, int errnum)
+{
+    (void)data; (void)message; (void)errnum;
+}
+
+/* Compile-time paths are absolute; show them relative to the repository. */
+static const char *relative_source(const char *filename)
+{
+    const char *root = PORT_SOURCE_ROOT;
+    size_t i;
+    for (i = 0; root[i] != '\0'; i++) {
+        if (filename[i] != root[i]) return filename;
+    }
+    return filename + i;
+}
+
+/* Frames without DWARF (libc, SDL, _start) still have a symbol table. */
+static void print_symbol(void *data, uintptr_t pc, const char *symname,
+                         uintptr_t symval, uintptr_t symsize)
+{
+    (void)data; (void)symsize;
+    if (symname == NULL) { write_literal("??", 2); return; }
+    write_string(symname);
+    write_literal("+", 1);
+    write_pointer((const void *)(pc - symval));
+}
+
+/* One line per frame, inlined frames included, in the shape of a
+ * debugger's `bt`: "#3 0x... cap_land_value at src/evolver.c:834". */
+static int print_frame(void *data, uintptr_t pc, const char *filename,
+                       int lineno, const char *function)
+{
+    int *index = data;
+    write_literal("#", 1);
+    write_decimal((unsigned int)*index);
+    write_literal(" ", 1);
+    write_pointer((const void *)pc);
+    write_literal(" ", 1);
+    if (function != NULL) {
+        write_string(function);
+    } else {
+        backtrace_syminfo(c2_backtrace_state, pc, print_symbol, warmup_error, NULL);
+    }
+    if (filename != NULL) {
+        write_literal(" at ", 4);
+        write_string(relative_source(filename));
+        write_literal(":", 1);
+        write_decimal((unsigned int)lineno);
+    }
+    write_literal("\n", 1);
+    (*index)++;
+    return 0;
+}
+
+static void print_frame_error(void *data, const char *message, int errnum)
+{
+    (void)data; (void)errnum;
+    write_literal("(libbacktrace: ", 15);
+    write_string(message);
+    write_literal(")\n", 2);
+}
+
+static int warmup_frame_callback(void *data, uintptr_t pc, const char *filename,
+                                 int lineno, const char *function)
+{
+    (void)data; (void)pc; (void)filename; (void)lineno; (void)function;
+    return 0;
+}
+#endif
 
 /*
  * backtrace_symbols_fd() names only dynamic symbols, and the engine exports
@@ -187,11 +270,23 @@ static void fatal_signal_handler(int signal_number, siginfo_t *info,
     }
     write_literal("\n", 1);
 
+#if defined(PORT_CRASH_HANDLER_LIBBACKTRACE)
+    if (c2_backtrace_state != NULL) {
+        int index = 0;
+        /* Skip this handler and the kernel's signal trampoline. */
+        backtrace_full(c2_backtrace_state, 2, print_frame, print_frame_error, &index);
+        if (index > 0) goto reraise;
+    }
+#endif
     frame_count = backtrace(frames, PORT_DEBUG_BACKTRACE_DEPTH);
     backtrace_symbols_fd(frames, frame_count, STDERR_FILENO);
     /* Frame 0 is this handler and frame 1 the kernel's signal trampoline;
      * frame 2 is the faulting instruction itself, not a return address. */
     symbolize_frames(frames, frame_count, frame_count > 2 ? 2 : 0);
+
+#if defined(PORT_CRASH_HANDLER_LIBBACKTRACE)
+reraise:
+#endif
 
     default_action.sa_handler = SIG_DFL;
     sigemptyset(&default_action.sa_mask);
@@ -227,6 +322,16 @@ int c2_debug_install_crash_handlers(void)
         if (length > 0) c2_executable_path[length] = '\0';
         else c2_executable_path[0] = '\0';
     }
+#if defined(PORT_CRASH_HANDLER_LIBBACKTRACE)
+    /* Map and index the DWARF now: the handler must not do file I/O for the
+     * first time inside a fault. libbacktrace allocates with mmap, never
+     * malloc, which is what makes it usable from the handler at all. */
+    c2_backtrace_state = backtrace_create_state(
+        c2_executable_path[0] ? c2_executable_path : NULL, 1, warmup_error, NULL);
+    if (c2_backtrace_state != NULL) {
+        backtrace_full(c2_backtrace_state, 0, warmup_frame_callback, warmup_error, NULL);
+    }
+#endif
     action.sa_sigaction = fatal_signal_handler;
     sigemptyset(&action.sa_mask);
     action.sa_flags = SA_SIGINFO | SA_RESETHAND;

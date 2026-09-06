@@ -266,10 +266,13 @@ Native POSIX builds also install fatal-signal handlers for `SIGSEGV`,
 thread prints the signal, fault address, and native backtrace to standard error,
 then re-raises the signal so normal debugger and core-dump behavior is retained.
 ASan and TSan presets leave it off so the sanitizer runtimes retain their own
-signal diagnostics. The executable exports its symbols, so engine frames are
-printed by name (`caesar2(get_ptr_to_corner+0x38)`) in the log itself; the
-report ends with the `addr2line` command that adds source lines against the
-crashed binary, and runs it when `addr2line` (binutils) is installed.
+signal diagnostics. When the build found libbacktrace (`PORT_WITH_LIBBACKTRACE`,
+default `AUTO`), each frame is printed with function, source file and line
+(`#3 0x... cap_land_value at src/evolver.c:834`), so the log pasted into an
+issue is already resolved. Without it the executable's exported symbols still
+name engine frames (`caesar2(get_ptr_to_corner+0x38)`), and the report ends
+with the `addr2line` command that adds source lines against the crashed
+binary.
 
 The recovered fixed-width default player name contains sixteen trailing
 spaces. The portable build trims trailing spaces before entering the recovered
