@@ -3,6 +3,7 @@
 
 #include <unity/unity.h>
 #include <SDL3/SDL.h>
+#include <zlib.h>
 
 #include "c2_import.h"
 
@@ -354,33 +355,57 @@ static uint32_t crc32_of(const unsigned char *data, size_t size)
 static void put16(FILE *f, unsigned v) { fputc(v & 0xff, f); fputc((v >> 8) & 0xff, f); }
 static void put32(FILE *f, uint32_t v) { put16(f, v & 0xffff); put16(f, v >> 16); }
 
-/* Minimal stored (method 0) ZIP with the given entries. */
-static void write_stored_zip(const char *path, const char *const names[],
-                             const unsigned char *const datas[],
-                             const size_t sizes[], int count)
+/* Raw Deflate of a buffer, as a ZIP method-8 entry stores it. */
+static unsigned char *deflate_raw(const unsigned char *data, size_t size, size_t *out_size)
+{
+    z_stream z;
+    unsigned char *out;
+    memset(&z, 0, sizeof(z));
+    TEST_ASSERT_EQUAL_INT(Z_OK, deflateInit2(&z, Z_DEFAULT_COMPRESSION, Z_DEFLATED,
+                                             -MAX_WBITS, 8, Z_DEFAULT_STRATEGY));
+    *out_size = deflateBound(&z, (uLong)size);
+    out = malloc(*out_size);
+    z.next_in = (unsigned char *)data; z.avail_in = (uInt)size;
+    z.next_out = out; z.avail_out = (uInt)*out_size;
+    TEST_ASSERT_EQUAL_INT(Z_STREAM_END, deflate(&z, Z_FINISH));
+    *out_size = z.total_out;
+    deflateEnd(&z);
+    return out;
+}
+
+/* Minimal ZIP with the given entries, stored (method 0) or Deflate (8). */
+static void write_zip(const char *path, unsigned method, const char *const names[],
+                      const unsigned char *const datas[],
+                      const size_t sizes[], int count)
 {
     FILE *f = fopen(path, "wb");
     long offsets[4];
+    size_t stored_sizes[4];
     long central;
     long central_size;
     int i;
     TEST_ASSERT_NOT_NULL(f);
     for (i = 0; i < count; i++) {
         uint32_t crc = crc32_of(datas[i], sizes[i]);
+        unsigned char *packed = NULL;
+        const unsigned char *payload = datas[i];
+        stored_sizes[i] = sizes[i];
+        if (method == 8) payload = packed = deflate_raw(datas[i], sizes[i], &stored_sizes[i]);
         offsets[i] = ftell(f);
-        put32(f, 0x04034b50u); put16(f, 20); put16(f, 0); put16(f, 0);
+        put32(f, 0x04034b50u); put16(f, 20); put16(f, 0); put16(f, method);
         put16(f, 0); put16(f, 0); put32(f, crc);
-        put32(f, (uint32_t)sizes[i]); put32(f, (uint32_t)sizes[i]);
+        put32(f, (uint32_t)stored_sizes[i]); put32(f, (uint32_t)sizes[i]);
         put16(f, (unsigned)strlen(names[i])); put16(f, 0);
         fputs(names[i], f);
-        fwrite(datas[i], 1, sizes[i], f);
+        fwrite(payload, 1, stored_sizes[i], f);
+        free(packed);
     }
     central = ftell(f);
     for (i = 0; i < count; i++) {
         uint32_t crc = crc32_of(datas[i], sizes[i]);
         put32(f, 0x02014b50u); put16(f, 20); put16(f, 20); put16(f, 0);
-        put16(f, 0); put16(f, 0); put16(f, 0); put32(f, crc);
-        put32(f, (uint32_t)sizes[i]); put32(f, (uint32_t)sizes[i]);
+        put16(f, method); put16(f, 0); put16(f, 0); put32(f, crc);
+        put32(f, (uint32_t)stored_sizes[i]); put32(f, (uint32_t)sizes[i]);
         put16(f, (unsigned)strlen(names[i])); put16(f, 0); put16(f, 0);
         put16(f, 0); put16(f, 0); put32(f, 0); put32(f, (uint32_t)offsets[i]);
         fputs(names[i], f);
@@ -393,7 +418,7 @@ static void write_stored_zip(const char *path, const char *const names[],
     TEST_ASSERT_EQUAL_INT(0, fclose(f));
 }
 
-static void test_zip_streams_wrapped_cue_image(void)
+static void check_wrapped_cue_image(unsigned method, unsigned expected_rewinds)
 {
     static const unsigned char sync[12] = {
         0x00, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -430,7 +455,7 @@ static void test_zip_streams_wrapped_cue_image(void)
     names[0] = "Caesar II/DISC.CUE"; datas[0] = (const unsigned char *)cue_text; sizes[0] = sizeof(cue_text) - 1;
     names[1] = "Caesar II/disc.bin"; datas[1] = raw; sizes[1] = raw_size;
     remove("c2-wrapped.zip");
-    write_stored_zip("c2-wrapped.zip", names, datas, sizes, 2);
+    write_zip("c2-wrapped.zip", method, names, datas, sizes, 2);
 
     /* Probe classifies it as a wrapped CUE and names the CUE entry. */
     TEST_ASSERT_TRUE_MESSAGE(c2_zip_probe("c2-wrapped.zip", &content, entry,
@@ -438,8 +463,9 @@ static void test_zip_streams_wrapped_cue_image(void)
     TEST_ASSERT_EQUAL(C2_ZIP_CUE_IMAGE, content);
     TEST_ASSERT_EQUAL_STRING("Caesar II/DISC.CUE", entry);
 
-    /* Stream: forward read, then a backward read forces one rewind, and
-     * lookup is case-insensitive (CUE says Disc.bin, ZIP has disc.bin). */
+    /* Stream: forward read, then a backward read (one inflater rewind for
+     * Deflate, a plain seek for stored data), and lookup is
+     * case-insensitive (CUE says Disc.bin, ZIP has disc.bin). */
     TEST_ASSERT_TRUE(c2_zip_stream_open(&stream, "c2-wrapped.zip",
                                         "Caesar II/Disc.bin", error, sizeof(error)));
     c2_zip_stream_source(&stream, &source);
@@ -450,7 +476,7 @@ static void test_zip_streams_wrapped_cue_image(void)
     TEST_ASSERT_EQUAL_UINT(0, stream.rewinds);
     TEST_ASSERT_TRUE(source.read_at(source.userdata, 0, probe, 12, &got));
     TEST_ASSERT_EQUAL_MEMORY(sync, probe, 12);
-    TEST_ASSERT_EQUAL_UINT(1, stream.rewinds);
+    TEST_ASSERT_EQUAL_UINT(expected_rewinds, stream.rewinds);
     c2_zip_stream_close(&stream);
 
     /* End to end through the importer into a cache directory. */
@@ -478,6 +504,16 @@ static void test_zip_streams_wrapped_cue_image(void)
     free(iso_memory.data);
 }
 
+static void test_zip_streams_wrapped_cue_image(void)
+{
+    check_wrapped_cue_image(0, 0);
+}
+
+static void test_zip_streams_deflated_cue_image(void)
+{
+    check_wrapped_cue_image(8, 1);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -488,5 +524,6 @@ int main(void)
     RUN_TEST(test_raw_sector_adapter_feeds_iso_reader);
     RUN_TEST(test_cdrom_reader_serves_iso_sectors);
     RUN_TEST(test_zip_streams_wrapped_cue_image);
+    RUN_TEST(test_zip_streams_deflated_cue_image);
     return UNITY_END();
 }

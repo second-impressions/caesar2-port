@@ -84,13 +84,12 @@ jobs:
           path: |
             build/ci-wasm
             .cache/emscripten
-          key: wasm-cmake-${{ runner.os }}-${{ hashFiles('flake.lock', '.gitmodules', 'CMakeLists.txt', 'CMakePresets.json') }}
+          key: wasm-cmake-${{ runner.os }}-${{ hashFiles('flake.lock', 'CMakeLists.txt', 'CMakePresets.json') }}
           restore-keys: |
             wasm-cmake-${{ runner.os }}-
       - name: Configure and build once
-        # Reusing CMakeCache.txt retains libarchive's feature probes. ccache
-        # handles source mtimes from a fresh checkout, while EM_CACHE retains
-        # generated zlib/WasmFS system libraries.
+        # ccache handles source mtimes from a fresh checkout, while EM_CACHE
+        # retains the generated SDL3/zlib ports and WasmFS system libraries.
         run: |
           nix develop --command bash -c "
             set -euo pipefail

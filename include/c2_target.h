@@ -280,6 +280,15 @@
 #  define PORT_FEAT_DEBUG_CRASH_HANDLER 0
 #endif
 
+/* The handler resolves frames to source lines when CMake found the host's
+ * libbacktrace (PORT_WITH_LIBBACKTRACE); otherwise it prints exported
+ * symbol names and the addr2line command. */
+#if defined(PORT_ENABLE_LIBBACKTRACE)
+#  define PORT_FEAT_CRASH_SOURCE_LINES PORT_FEAT_DEBUG_CRASH_HANDLER
+#else
+#  define PORT_FEAT_CRASH_SOURCE_LINES 0
+#endif
+
 /* The later Windows map renderer rejects pseudo-map rows past the city-map
  * boundary before each scanline pass. */
 #if PLATFORM_WINDOWS

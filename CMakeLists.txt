@@ -95,8 +95,7 @@ else()
     find_package(SDL3 3.4 CONFIG REQUIRED)
 endif()
 
-# Reduced libarchive is used only by the user-supplied ZIP importer. ISO and
-# BIN/CUE are handled by the smaller project-owned sector reader.
+# zlib: Deflate for the ZIP importer. Emscripten supplies its own port.
 if(EMSCRIPTEN)
     execute_process(COMMAND em-config CACHE
         OUTPUT_VARIABLE C2_EMSCRIPTEN_CACHE
@@ -104,27 +103,7 @@ if(EMSCRIPTEN)
     set(ZLIB_INCLUDE_DIR "${C2_EMSCRIPTEN_CACHE}/sysroot/include" CACHE PATH "" FORCE)
     set(ZLIB_LIBRARY "${C2_EMSCRIPTEN_CACHE}/sysroot/lib/wasm32-emscripten/libz.a" CACHE FILEPATH "" FORCE)
 endif()
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-set(ENABLE_TEST OFF CACHE BOOL "" FORCE)
-set(ENABLE_TAR OFF CACHE BOOL "" FORCE)
-set(ENABLE_CPIO OFF CACHE BOOL "" FORCE)
-set(ENABLE_CAT OFF CACHE BOOL "" FORCE)
-set(ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-set(ENABLE_OPENSSL OFF CACHE BOOL "" FORCE)
-set(ENABLE_MBEDTLS OFF CACHE BOOL "" FORCE)
-set(ENABLE_NETTLE OFF CACHE BOOL "" FORCE)
-set(ENABLE_LIBB2 OFF CACHE BOOL "" FORCE)
-set(ENABLE_LZ4 OFF CACHE BOOL "" FORCE)
-set(ENABLE_LZMA OFF CACHE BOOL "" FORCE)
-set(ENABLE_ZSTD OFF CACHE BOOL "" FORCE)
-set(ENABLE_BZip2 OFF CACHE BOOL "" FORCE)
-set(ENABLE_LIBXML2 OFF CACHE BOOL "" FORCE)
-set(ENABLE_EXPAT OFF CACHE BOOL "" FORCE)
-set(ENABLE_PCREPOSIX OFF CACHE BOOL "" FORCE)
-set(ENABLE_PCRE2POSIX OFF CACHE BOOL "" FORCE)
-set(ENABLE_ICONV OFF CACHE BOOL "" FORCE)
-set(ENABLE_ACL OFF CACHE BOOL "" FORCE)
-set(ENABLE_XATTR OFF CACHE BOOL "" FORCE)
+find_package(ZLIB REQUIRED)
 
 # Every configuration carries debug information, so a crash in a release
 # binary can be symbolized the same way as one in a Debug build (gdb, lldb,
@@ -146,8 +125,6 @@ else()
             $<$<NOT:$<CONFIG:Debug>>:--profiling-funcs>)
     endif()
 endif()
-
-add_subdirectory(third_party/libarchive EXCLUDE_FROM_ALL)
 
 # Nuked OPL3 (LGPL-2.1-or-later): the FM chip behind the port's Miles
 # OPL3 music driver.
@@ -183,12 +160,7 @@ add_library(c2_import_core STATIC
     src/platform/sdl3/c2_pack.c)
 target_compile_features(c2_import_core PRIVATE c_std_11)
 target_include_directories(c2_import_core PUBLIC include)
-target_link_libraries(c2_import_core PUBLIC archive_static SDL3::SDL3)
-if(WIN32)
-    # archive.h otherwise decorates calls as dllimport even though this target
-    # deliberately links the reduced static libarchive build.
-    target_compile_definitions(c2_import_core PRIVATE LIBARCHIVE_STATIC)
-endif()
+target_link_libraries(c2_import_core PUBLIC ZLIB::ZLIB SDL3::SDL3)
 
 option(PORT_FIX_MEDIUM_RIGHT_HAT_OFFSET
     "Correct the misplaced pixel pair in the medium right diamond hat" ON)
@@ -220,8 +192,7 @@ if(PORT_ASAN_DISABLE_GLOBALS)
         message(FATAL_ERROR "PORT_ASAN_DISABLE_GLOBALS requires Clang")
     endif()
     # Compile-only options belong here, not in CMAKE_*_FLAGS: CMake also puts
-    # those flags on feature-check link commands, where Clang 21 warns (and
-    # libarchive promotes the warning to an error).
+    # those flags on feature-check link commands, where Clang 21 warns.
     add_compile_options(-mllvm -asan-globals=0)
 endif()
 set(C2_WASM_ASSET_ROOT "" CACHE PATH
@@ -413,7 +384,7 @@ if(UNIX AND NOT EMSCRIPTEN AND PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER)
         message(STATUS "Crash reports: libbacktrace source lines (${LibBacktrace_LIBRARIES})")
         target_link_libraries(caesar2 PRIVATE LibBacktrace::LibBacktrace)
         target_compile_definitions(caesar2 PRIVATE
-            PORT_CRASH_HANDLER_LIBBACKTRACE=1
+            PORT_ENABLE_LIBBACKTRACE=1
             "PORT_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/\"")
     else()
         message(STATUS "Crash reports: function names only (libbacktrace not found)")

@@ -9,8 +9,9 @@
 #include <unistd.h>
 
 #include "c2_debug_crash.h"
+#include "c2_target.h"
 
-#if defined(PORT_CRASH_HANDLER_LIBBACKTRACE)
+#if PORT_FEAT_CRASH_SOURCE_LINES
 #include <backtrace.h>
 static struct backtrace_state *c2_backtrace_state;
 #endif
@@ -94,7 +95,7 @@ static void format_hex(uintptr_t value, char *out)
     *out = '\0';
 }
 
-#if defined(PORT_CRASH_HANDLER_LIBBACKTRACE)
+#if PORT_FEAT_CRASH_SOURCE_LINES
 static void write_string(const char *text)
 {
     size_t length = 0;
@@ -270,7 +271,7 @@ static void fatal_signal_handler(int signal_number, siginfo_t *info,
     }
     write_literal("\n", 1);
 
-#if defined(PORT_CRASH_HANDLER_LIBBACKTRACE)
+#if PORT_FEAT_CRASH_SOURCE_LINES
     if (c2_backtrace_state != NULL) {
         int index = 0;
         /* Skip this handler and the kernel's signal trampoline. */
@@ -284,7 +285,7 @@ static void fatal_signal_handler(int signal_number, siginfo_t *info,
      * frame 2 is the faulting instruction itself, not a return address. */
     symbolize_frames(frames, frame_count, frame_count > 2 ? 2 : 0);
 
-#if defined(PORT_CRASH_HANDLER_LIBBACKTRACE)
+#if PORT_FEAT_CRASH_SOURCE_LINES
 reraise:
 #endif
 
@@ -322,7 +323,7 @@ int c2_debug_install_crash_handlers(void)
         if (length > 0) c2_executable_path[length] = '\0';
         else c2_executable_path[0] = '\0';
     }
-#if defined(PORT_CRASH_HANDLER_LIBBACKTRACE)
+#if PORT_FEAT_CRASH_SOURCE_LINES
     /* Map and index the DWARF now: the handler must not do file I/O for the
      * first time inside a fault. libbacktrace allocates with mmap, never
      * malloc, which is what makes it usable from the handler at all. */
