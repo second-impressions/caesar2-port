@@ -185,16 +185,12 @@ option(PORT_FIX_LARGE_RIGHT_HALFROOF_SEAM_PAIR
     "Suppress the stray seam pair in the large right half-roof" ON)
 option(PORT_FIX_GFX_BUFFER_DOUBLE_FREE
     "Clear released graphics pointers to prevent repeated frees" ON)
-option(PORT_FIX_HELP_SMART_PUNCTUATION
-    "Repair Windows smart punctuation embedded in help text" ON)
 option(PORT_FIX_PLAYER_NAME_PADDING
     "Trim fixed-width trailing spaces before editing player names" ON)
 option(PORT_FIX_LARGE_XMI_ASSETS
     "Accept official XMIDI assets larger than the legacy tune buffer" ON)
 option(C2_FIX_MOSAIC_RANDOM_SENTINEL
     "Define the mosaic walk's accidental byte-64 sentinel explicitly" ON)
-option(PORT_ENABLE_TEXT_ASSET_COMPAT
-    "Adapt versioned engine UI to the structure of the loaded text asset" ON)
 option(PORT_ENABLE_ARROW_KEY_SCROLL
     "Use held arrow keys to pan the active map instead of moving the cursor" ON)
 option(PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER
@@ -235,11 +231,6 @@ if(PORT_FIX_GFX_BUFFER_DOUBLE_FREE)
 else()
     add_compile_definitions(PORT_FIX_GFX_BUFFER_DOUBLE_FREE=0)
 endif()
-if(PORT_FIX_HELP_SMART_PUNCTUATION)
-    add_compile_definitions(PORT_FIX_HELP_SMART_PUNCTUATION=1)
-else()
-    add_compile_definitions(PORT_FIX_HELP_SMART_PUNCTUATION=0)
-endif()
 if(PORT_FIX_PLAYER_NAME_PADDING)
     add_compile_definitions(PORT_FIX_PLAYER_NAME_PADDING=1)
 else()
@@ -254,11 +245,6 @@ if(C2_FIX_MOSAIC_RANDOM_SENTINEL)
     add_compile_definitions(C2_FIX_MOSAIC_RANDOM_SENTINEL=1)
 else()
     add_compile_definitions(C2_FIX_MOSAIC_RANDOM_SENTINEL=0)
-endif()
-if(PORT_ENABLE_TEXT_ASSET_COMPAT)
-    add_compile_definitions(PORT_FEAT_TEXT_ASSET_COMPAT=1)
-else()
-    add_compile_definitions(PORT_FEAT_TEXT_ASSET_COMPAT=0)
 endif()
 if(PORT_ENABLE_ARROW_KEY_SCROLL)
     add_compile_definitions(PORT_FEAT_ARROW_KEY_SCROLL=1)
@@ -354,7 +340,6 @@ add_executable(caesar2
     src/platform/common/c2_port_selection.c
     src/platform/common/c2_port_save_registry.c
     src/platform/common/c2_port_text.c
-    src/platform/common/c2_port_text_compat.c
     src/platform/common/c2_port_timing.c
     src/platform/common/c2_port_video.c
     src/platform/sdl3/c2_sdl_audio.c
@@ -616,7 +601,6 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/platform/common/c2_port_save_compat.c
         src/platform/common/c2_port_save_registry.c
         src/platform/common/c2_port_text.c
-        src/platform/common/c2_port_text_compat.c
         src/platform/common/c2_port_timing.c
         src/platform/common/c2_port_video.c
         PROPERTIES COMPILE_OPTIONS -Wpedantic
@@ -729,13 +713,6 @@ if(BUILD_TESTING)
         target_compile_options(c2-bugfixes-test PRIVATE -fms-extensions)
     endif()
     add_test(NAME bugfixes COMMAND c2-bugfixes-test)
-
-    add_executable(c2-text-compat-test
-        tests/c2_text_compat_test.c
-        src/platform/common/c2_port_text_compat.c)
-    target_compile_features(c2-text-compat-test PRIVATE c_std_11)
-    target_include_directories(c2-text-compat-test PRIVATE include)
-    add_test(NAME text-compat COMMAND c2-text-compat-test)
 
     add_executable(c2-port-text-test
         tests/c2_port_text_test.c
@@ -927,7 +904,6 @@ if(BUILD_TESTING)
 
     set(C2_UNITY_TEST_TARGETS
         c2-bugfixes-test
-        c2-text-compat-test
         c2-port-timing-test
         c2-port-keymap-test
         c2-save-compat-test

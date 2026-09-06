@@ -5,9 +5,9 @@ indices, not characters passed to an operating-system text API. The portable
 backend must therefore preserve the original bytes and must not apply a global
 CP437, CP850, Windows-1252, or UTF-8 conversion.
 
-The main `C2.ENG` resources also changed alongside the engine. Their offset
-table revisions and the guarded runtime compatibility policy are documented in
-[text-asset-versions.md](text-asset-versions.md).
+The text itself is compiled into the port from UTF-8 gettext files and
+transcoded to the font's CP437 code points at startup; see
+[game-text.md](game-text.md).
 
 ## Help smart-punctuation defect
 
@@ -31,10 +31,6 @@ audited:
   four `0x92` apostrophes; its Win95 file has five `0x92` apostrophes and one
   space-delimited `0x97` dash.
 
-`PORT_FIX_HELP_SMART_PUNCTUATION` is enabled by default for the portable target
-and disabled by default for retained shipped-target builds. It repairs `0x91`
-and `0x92` only between ASCII letters, and `0x96` and `0x97` only between
-spaces, while rendering help text. This recognizes the evidenced Windows
-editor forms without changing legitimate French `ù`, French `û`, German
-umlauts, or any other extended glyph in ordinary game text. Set the CMake
-option to `OFF` to restore the shipped rendering in the port.
+With the text compiled in, the four apostrophes are corrected in the English
+template (`po/c2.pot`) rather than while rendering; the earlier
+`PORT_FIX_HELP_SMART_PUNCTUATION` render-time repair is gone.

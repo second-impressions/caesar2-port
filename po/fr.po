@@ -1950,9 +1950,10 @@ msgctxt "0x2b/17"
 msgid "Start this Game"
 msgstr "Commencer la partie"
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x2b/18"
 msgid "Cancel"
-msgstr ""
+msgstr "Annuler"
 
 msgctxt "0x2c/0"
 msgid "Novice"
@@ -4571,15 +4572,17 @@ msgid ""
 "flourish."
 msgstr "Cette colonie doit être raccordée à la Cité afin de prospérer."
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x45/29"
 msgid ""
 "A gate between the city and this industry has reduced business "
 "confidence in its future prospects!!. Output is suffering as a result."
-msgstr ""
+msgstr "Une porte entre la Cité et cette industrie a réduit la confiance des marchands en son avenir. Le rendement en souffre."
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x45/30"
 msgid "This warehouse contains no goods."
-msgstr ""
+msgstr "Cet entrepôt ne contient aucune marchandise."
 
 msgctxt "0x46/0"
 msgid "Promotion!!!"
@@ -5420,81 +5423,100 @@ msgstr ""
 "Le génie civil de votre Cité vous permet de construire cette nouvelle "
 "structure !"
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/0"
 msgid "Rotate the battle map"
-msgstr ""
+msgstr "Faire pivoter la carte de bataille"
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/1"
 msgid "Rotate the battle map"
-msgstr ""
+msgstr "Faire pivoter la carte de bataille"
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/2"
 msgid "Go to Main view of battle field."
-msgstr ""
+msgstr "Aller à la vue principale du champ de bataille."
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/3"
 msgid "Go to Overview of battle field."
-msgstr ""
+msgstr "Aller à la vue d'ensemble du champ de bataille."
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/4"
 msgid "Start and stop the battle."
-msgstr ""
+msgstr "Lancer et arrêter la bataille."
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/5"
 msgid "Fast forward the battle ."
-msgstr ""
+msgstr "Accélérer la bataille."
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/6"
 msgid "Move selected unit(s)"
-msgstr ""
+msgstr "Déplacer les unités sélectionnées"
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/7"
 msgid "Target selected unit(s) (Missile troops only)."
-msgstr ""
+msgstr "Viser avec les unités sélectionnées (troupes de jet uniquement)."
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/8"
 msgid "Put selected unit(s) into line formation."
-msgstr ""
+msgstr "Mettre les unités sélectionnées en ligne."
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/9"
 msgid "Put selected unit(s) into column formation."
-msgstr ""
+msgstr "Mettre les unités sélectionnées en colonne."
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/10"
 msgid "Put selected unit(s) into tortoise formation."
-msgstr ""
+msgstr "Mettre les unités sélectionnées en tortue."
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/11"
 msgid "Put selected unit(s) into 'Mop up' formation."
-msgstr ""
+msgstr "Mettre les unités sélectionnées en formation de nettoyage."
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/12"
 msgid "Retreat from the battle."
-msgstr ""
+msgstr "Battre en retraite."
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/13"
 msgid "Surrender to the Barbarians."
-msgstr ""
+msgstr "Se rendre aux Barbares."
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/14"
 msgid "Have the computer auto-calc the battle outcome."
-msgstr ""
+msgstr "Laisser l'ordinateur calculer l'issue de la bataille."
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/15"
 msgid "Select ALL your units"
-msgstr ""
+msgstr "Sélectionner TOUTES vos unités"
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/16"
 msgid "Recieve help on battles."
-msgstr ""
+msgstr "Obtenir de l'aide sur les batailles."
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/17"
 msgid "NOW SELECT A DESTINATION FOR THE HIGHLIGHTED TROOPS"
-msgstr ""
+msgstr "CHOISISSEZ MAINTENANT UNE DESTINATION POUR LES TROUPES SELECTIONNEES"
 
+# Added by the port: the French release (1995) predates this string. Please review.
 msgctxt "0x74/18"
 msgid "NOW SELECT A TARGET AREA FOR THE HIGHLIGHTED TROOPS"
-msgstr ""
+msgstr "CHOISISSEZ MAINTENANT UNE ZONE A VISER POUR LES TROUPES SELECTIONNEES"
 
 msgctxt "0x77/0"
 msgid "To"
@@ -6831,7 +6853,7 @@ msgctxt "help/27/1"
 msgid ""
 "If your gift is not high enough, the Emperor will be insulted, and the "
 "gesture will have a negative effect. How do you know how much to send? "
-"You really donÆt, but you can anticipate his reaction. In evaluating "
+"You really don't, but you can anticipate his reaction. In evaluating "
 "your gift, the Emperor will compare it to the amount of your Annual "
 "Tribute, your Annual Salary, and any gifts you may have sent in the "
 "past.\n"
@@ -9612,7 +9634,7 @@ msgid ""
 "have a value ranging from 0 to 64. There are many ever-changing "
 "influences which will overlap and work with or against each other to "
 "raise or limit the land value of any given square. In other words, it "
-"may not always be easy to figure out exactly why any given squareÆs "
+"may not always be easy to figure out exactly why any given square's "
 "value is higher or lower than another's.\n"
 "There are, however, some basic rules to keep in mind when trying to "
 "manage land values. \n"
@@ -9655,7 +9677,7 @@ msgid ""
 "Structures that limit land values are as follows: Barracks, "
 "Praefectures, Markets, Businesses, Walls, Gates, and Towers. While "
 "these structures are necessary and positive for your city, they just "
-"donÆt make good neighbors, so land values near them will always be "
+"don't make good neighbors, so land values near them will always be "
 "limited.\n"
 "The only influences that will actively reduce land values are rubble, "
 "fire, and plague. You would be wise to eliminate these as soon as "
@@ -10335,7 +10357,7 @@ msgid ""
 "to the Forum and consulting the Treasurer.\n"
 "\n"
 "Many of the structures you build on the City level will create "
-"employment for your populace. A cityÆs employment will increase "
+"employment for your populace. A city's employment will increase "
 "whenever any of the following structures are built: \n"
 "\n"
 "Any Forum, Any place of Worship,Bath House, Praefecture, Barracks, "

@@ -197,13 +197,6 @@
 #endif
 
 
-/* The portable target accepts the text resources shipped with both the
- * original 1995 engine and the expanded 1996/Windows UI.  The shipped DOS
- * and Windows targets retain their version-specific source paths. */
-#ifndef PORT_FEAT_TEXT_ASSET_COMPAT
-#  define PORT_FEAT_TEXT_ASSET_COMPAT PORT_PLATFORM
-#endif
-
 /* The shipped DOS hotkey path moves the mouse cursor by eight pixels for
  * each arrow-key event. Portable builds instead expose held arrow state to
  * the recovered map scroller, while retaining scan-code delivery to editors. */

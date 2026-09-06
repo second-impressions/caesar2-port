@@ -253,9 +253,6 @@ void load_media_entry(void)
              this_help_page * 0x3a + 8);
     readfile(media_file, format_buffer, 0x7d0,
              this_media_entry.text_offset);
-#if PORT_PLATFORM && PORT_FIX_HELP_SMART_PUNCTUATION
-    c2_fix_help_text(format_buffer, 0x7d0);
-#endif
 
     if (my_strcmp(this_media_entry.left_file, "null.pl8", 8) != 0) media_left_image = 1;
     if (my_strcmp(this_media_entry.right_file, "null.pl8", 8) != 0) media_right_image = 1;
