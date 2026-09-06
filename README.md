@@ -303,7 +303,12 @@ occasionally reads past one global into its neighbour because the original
 linker happened to place them together, and those reads (which crash or
 corrupt saves in the port) only show up with redzones between globals. Build
 and play the ASan binary when developing; `PORT_ASAN_DISABLE_GLOBALS=ON` is
-available if the global redzones ever get in the way.
+available if the global redzones ever get in the way. The sanitizer binary
+carries its own runtime defaults (`src/platform/posix/c2_posix_sanitizer.c`):
+reports are symbolized through `llvm-symbolizer` or, failing that, whatever
+`addr2line` is on `PATH`, so a copy on another machine still reports names and
+lines, and exit-time leaks inside system libraries (ALSA, PulseAudio, X11,
+Wayland, Mesa, GTK…) are suppressed so only the port's own remain.
 
 Native POSIX builds also install fatal-signal handlers for `SIGSEGV`,
 `SIGABRT`, `SIGBUS`, `SIGILL`, and `SIGFPE`. A crash on either the SDL or engine
