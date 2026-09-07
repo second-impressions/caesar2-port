@@ -18,8 +18,11 @@ permissions:
   contents: read
 
 env:
+  # main-<sha> or prN-<sha>: the pull request's own head commit, not the
+  # merge ref GitHub builds.
   C2_BUILD_NUMBER: ${{ github.run_number }}
-  C2_GIT_HASH: ${{ github.sha }}
+  C2_GIT_HASH: ${{ github.event.pull_request.head.sha || github.sha }}
+  C2_BUILD_LABEL: ${{ github.event_name == 'pull_request' && format('pr{0}', github.event.pull_request.number) || 'main' }}
   CCACHE_MAXSIZE: 750M
   CCACHE_COMPRESS: "true"
 
@@ -143,7 +146,7 @@ jobs:
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: caesar2-wasm-${{ env.C2_BUILD_NUMBER }}-${{ env.C2_GIT_HASH }}
+          name: caesar2-wasm-${{ env.C2_BUILD_LABEL }}
           path: |
             build/ci-wasm/index.html
             build/ci-wasm/index.js

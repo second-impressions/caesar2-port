@@ -63,6 +63,7 @@ modules:
       # tag reads them from its checkout.
       - -DC2_BUILD_NUMBER=@C2_BUILD_NUMBER@
       - -DC2_GIT_HASH=@C2_GIT_HASH@
+      - -DC2_BUILD_LABEL=@C2_BUILD_LABEL@
       - -DC2_RELEASE=@C2_RELEASE@
     sources:
       - type: dir
