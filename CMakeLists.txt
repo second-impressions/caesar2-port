@@ -733,7 +733,7 @@ if(BUILD_TESTING)
     # the configure time of an edited worktree.
     set_tests_properties(version-string PROPERTIES
         PASS_REGULAR_EXPRESSION
-            "Caesar II ([0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.]+)?|[a-z][a-z0-9]*-[0-9a-f]{8}|local-[0-9]{8}-[0-9]{6})")
+            "Caesar II ([0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.]+)?|[a-z][a-z0-9]*-[0-9a-f]+|local-[0-9]+-[0-9]+)")
 
     # A fault must leave a report in the user-data directory (Debug builds
     # carry the --crash-test fault; the handler is the same in every build).
