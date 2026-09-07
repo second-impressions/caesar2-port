@@ -1,0 +1,304 @@
+name: Release
+
+# Cutting a release (docs/releasing.md): tools/release.py prepare X.Y.Z
+# opens the pull request that sets the version and dates the changelog;
+# once it is merged, running this workflow with that version tags the
+# merged commit vX.Y.Z, builds every download, attests them and opens a
+# *draft* GitHub release with the changelog section as its notes.
+# Publishing is a human decision. Run without a version to try the
+# pipeline on any commit without tagging or releasing anything. A tag
+# pushed by hand starts the same builds.
+
+on:
+  push:
+    tags: ['v*']
+  # Changes to the pipeline itself get a dry run on their pull request.
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - 'packaging/**'
+      - 'cmake/VendorDependencies.cmake'
+      - 'tools/release.py'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version to tag (X.Y.Z or X.Y.Z-rc1); empty = build only"
+        required: false
+        default: ""
+      commit:
+        description: "Commit to tag and build (the merged 'release: X.Y.Z'); empty = the branch head"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  C2_BUILD_NUMBER: ${{ github.run_number }}
+
+jobs:
+  # ── The version is the tag ─────────────────────────────────────────
+  verify:
+    name: Verify version and notes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # to create the tag when dispatched with a version
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      suffix: ${{ steps.version.outputs.suffix }}
+      tag: ${{ steps.version.outputs.tag }}
+      commit: ${{ steps.version.outputs.commit }}
+      release: ${{ steps.version.outputs.release }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.commit || github.sha }}
+          fetch-depth: 0
+      - id: version
+        env:
+          REQUESTED: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          commit=$(git rev-parse HEAD)
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          cmake_version=$(sed -nE 's/^project\(caesar2-port VERSION ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' CMakeLists.txt)
+          test -n "$cmake_version"
+          tag=""
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            tag="${{ github.ref_name }}"
+          elif [[ -n "$REQUESTED" ]]; then
+            tag="v$REQUESTED"
+          fi
+          if [[ -n "$tag" ]]; then
+            [[ "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)(-[0-9A-Za-z.]+)?$ ]] || { echo "::error::'$tag' is not vX.Y.Z[-suffix]"; exit 1; }
+            if [[ "${BASH_REMATCH[1]}" != "$cmake_version" ]]; then
+              echo "::error::$tag but CMakeLists.txt says $cmake_version: merge the release pull request first (tools/release.py prepare)"; exit 1
+            fi
+            suffix="${BASH_REMATCH[2]}"
+            version="$cmake_version$suffix"
+            grep -q "^## $version " CHANGELOG.md || { echo "::error::CHANGELOG.md has no '## $version' section"; exit 1; }
+            if [[ "${{ github.ref_type }}" != "tag" ]]; then
+              if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+                echo "::error::$tag exists already"; exit 1
+              fi
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              awk -v v="$version" '/^## /{p = ($2 == v)} p && !/^## /' CHANGELOG.md > /tmp/tag-notes.md
+              git merge-base --is-ancestor "$commit" origin/main || { echo "::error::$commit is not on main"; exit 1; }
+              git tag -a "$tag" -F /tmp/tag-notes.md "$commit"
+              git push origin "refs/tags/$tag"
+              echo "tagged $commit as $tag"
+            fi
+            echo "release=ON" >> "$GITHUB_OUTPUT"
+            echo "prerelease=$([[ -n "$suffix" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          else
+            suffix=""
+            version="$cmake_version-${{ github.run_number }}-${commit::8}"
+            echo "release=OFF" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "suffix=$suffix" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Building $version"
+      - name: Extract the release notes
+        run: |
+          set -euo pipefail
+          v="${{ steps.version.outputs.version }}"
+          if grep -q "^## $v " CHANGELOG.md; then
+            awk -v v="$v" '/^## /{p = ($2 == v)} p && !/^## /' CHANGELOG.md > notes.md
+          else
+            echo "Build $v from ${GITHUB_SHA::8}; not a release." > notes.md
+          fi
+          cat notes.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notes
+          path: notes.md
+
+  # ── Windows: one zip, exe + DLLs + PDB ─────────────────────────────
+  windows:
+    name: Windows x64
+    needs: verify
+    runs-on: windows-latest
+    env:
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      C2_GIT_HASH: ${{ needs.verify.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.verify.outputs.commit }}
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - uses: lukka/get-cmake@latest
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - name: Configure
+        run: >
+          cmake --preset windows-msvc-release
+          -DC2_RELEASE=${{ needs.verify.outputs.release }}
+          -DC2_VERSION_SUFFIX=${{ needs.verify.outputs.suffix }}
+      - name: Build
+        run: cmake --build --preset windows-msvc-release
+      - name: Stage
+        shell: pwsh
+        run: |
+          $v = "${{ needs.verify.outputs.version }}"
+          $name = "caesar2-$v-windows-x64"
+          cmake --install build/port/windows-msvc-release --prefix build/stage
+          New-Item -ItemType Directory -Force dist/$name | Out-Null
+          Copy-Item build/stage/bin/* dist/$name/
+          Copy-Item build/port/windows-msvc-release/caesar2.pdb dist/$name/
+          Copy-Item build/stage/share/licenses/caesar2/* dist/$name/
+          Copy-Item README.md dist/$name/
+          & "dist/$name/caesar2.exe" --version
+          Compress-Archive -Path dist/$name -DestinationPath dist/$name.zip
+          Get-ChildItem dist/$name
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*.zip
+
+  # ── Linux: AppImage from the portable static build ─────────────────
+  appimage:
+    name: Linux AppImage
+    needs: verify
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:22.04
+    env:
+      C2_GIT_HASH: ${{ needs.verify.outputs.commit }}
+    steps:
+      - name: Git for the checkout
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git ca-certificates
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.verify.outputs.commit }}
+      - name: Build
+        run: |
+          packaging/appimage/build.sh \
+            -DC2_RELEASE=${{ needs.verify.outputs.release }} \
+            -DC2_VERSION_SUFFIX=${{ needs.verify.outputs.suffix }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: appimage
+          path: dist/*.AppImage
+
+  # ── Linux: Flatpak bundle from the manifest ────────────────────────
+  flatpak:
+    name: Linux Flatpak
+    needs: verify
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-24.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.verify.outputs.commit }}
+      - name: Fill in the build identity
+        run: |
+          commit="${{ needs.verify.outputs.commit }}"
+          sed -i \
+            -e "s/@C2_BUILD_NUMBER@/${{ github.run_number }}/" \
+            -e "s/@C2_GIT_HASH@/${commit::8}/" \
+            -e "s/@C2_RELEASE@/${{ needs.verify.outputs.release }}/" \
+            packaging/io.github.second_impressions.caesar2.yml
+          if [ -n "${{ needs.verify.outputs.suffix }}" ]; then
+            sed -i 's/      - -DC2_RELEASE=/      - -DC2_VERSION_SUFFIX=${{ needs.verify.outputs.suffix }}\n      - -DC2_RELEASE=/' \
+              packaging/io.github.second_impressions.caesar2.yml
+          fi
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: caesar2-${{ needs.verify.outputs.version }}.flatpak
+          manifest-path: packaging/io.github.second_impressions.caesar2.yml
+          cache-key: flatpak-builder-${{ github.sha }}
+          upload-artifact: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak
+          path: caesar2-*.flatpak
+
+  # ── Web: the same files GitHub Pages serves, for self-hosting ──────
+  web:
+    name: Web
+    needs: verify
+    runs-on: ubuntu-latest
+    env:
+      EM_CACHE: ${{ github.workspace }}/.cache/emscripten
+      C2_GIT_HASH: ${{ needs.verify.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.verify.outputs.commit }}
+      - uses: ./.github/actions/setup-nix
+        with:
+          scope: dev
+      - name: Build
+        run: |
+          nix develop --command bash -c "
+            set -euo pipefail
+            mkdir -p \"$EM_CACHE/sysroot/lib/pkgconfig\"
+            embuilder build sdl3-mt zlib
+            emcmake cmake --preset wasm-release -B build/web \
+              -DC2_RELEASE=${{ needs.verify.outputs.release }} \
+              -DC2_VERSION_SUFFIX=${{ needs.verify.outputs.suffix }}
+            cmake --build build/web --parallel
+          "
+          name="caesar2-${{ needs.verify.outputs.version }}-web"
+          mkdir -p "dist/$name"
+          for f in index.html index.js index.wasm index.wasm.map coi-serviceworker.js \
+                   c2-shell.js c2-shell.css pico.min.css caesar2-background.jpg \
+                   caesar2-background-light.jpg version.txt LICENSE favicon.svg; do
+            cp "build/web/$f" "dist/$name/"
+          done
+          (cd dist && zip -qr "$name.zip" "$name")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: dist/*.zip
+
+  # ── The draft release ──────────────────────────────────────────────
+  release:
+    name: Draft release
+    needs: [verify, windows, appimage, flatpak, web]
+    if: needs.verify.outputs.tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Collect
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          find artifacts -type f \( -name '*.zip' -o -name '*.AppImage' -o -name '*.flatpak' \) -exec mv {} dist/ \;
+          (cd dist && sha256sum * > SHA256SUMS)
+          cat dist/SHA256SUMS
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*.zip
+            dist/*.AppImage
+            dist/*.flatpak
+      - name: Create the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          v="${{ needs.verify.outputs.version }}"
+          flags=(--draft --title "Caesar II $v" --notes-file artifacts/notes/notes.md)
+          [[ "${{ needs.verify.outputs.prerelease }}" == "true" ]] && flags+=(--prerelease)
+          gh release create "${{ needs.verify.outputs.tag }}" "${flags[@]}" --repo "$GITHUB_REPOSITORY" dist/*
+          echo "Draft: https://github.com/$GITHUB_REPOSITORY/releases"

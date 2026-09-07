@@ -1,0 +1,76 @@
+# Flatpak manifest. The release workflow builds a bundle from the checkout;
+# a Flathub submission uses the same manifest with the caesar2 module's
+# source replaced by the release tag (see docs/releasing.md).
+app-id: io.github.second_impressions.caesar2
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+command: caesar2
+finish-args:
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  - --socket=pulseaudio
+  # Optical drives are read as raw devices (the launcher lists inserted
+  # discs); --device=all is what grants /dev/sr*. It covers dri.
+  - --device=all
+  # The launcher imports an installed folder, a disc image or an archive
+  # from wherever the player keeps it. Read-only; the game writes only
+  # to its own data directory.
+  - --filesystem=home:ro
+  - --filesystem=/media:ro
+  - --filesystem=/run/media:ro
+  - --filesystem=/mnt:ro
+cleanup:
+  - /include
+  - /lib/cmake
+  - /lib/pkgconfig
+  - /lib/*.a
+  - /lib/*.la
+  - /share/aclocal
+modules:
+  - name: libbacktrace
+    # Source lines in crash reports.
+    config-opts:
+      - --disable-shared
+      - --enable-static
+      - --with-pic
+    sources:
+      - type: git
+        url: https://github.com/ianlancetaylor/libbacktrace.git
+        commit: 0b9b49cf4a2c9229fc052d6716e1528b2f23e91a
+
+  - name: SDL3
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - -DSDL_TEST_LIBRARY=OFF
+      - -DSDL_TESTS=OFF
+      - -DSDL_EXAMPLES=OFF
+      - -DSDL_INSTALL_DOCS=OFF
+    sources:
+      - type: archive
+        url: https://github.com/libsdl-org/SDL/releases/download/release-3.4.16/SDL3-3.4.16.tar.gz
+        sha256: 7322236cd12090c3eb40b9728be4d49c76f66ad17d04369584d4ecad5cf77c68
+
+  - name: caesar2
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_TESTING=OFF
+      - -DPORT_WITH_LIBBACKTRACE=ON
+      # The release workflow substitutes these; a Flathub build from a git
+      # tag reads them from its checkout.
+      - -DC2_BUILD_NUMBER=@C2_BUILD_NUMBER@
+      - -DC2_GIT_HASH=@C2_GIT_HASH@
+      - -DC2_RELEASE=@C2_RELEASE@
+    sources:
+      - type: dir
+        path: ..
+        skip:
+          - .git
+          - build
+          - dist
+          - .c2-cache
+          - .direnv
+          - .venv

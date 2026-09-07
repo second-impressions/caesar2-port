@@ -62,7 +62,15 @@ endif()
 if(C2_SAVED_SOURCE_DATE_EPOCH)
     set(ENV{SOURCE_DATE_EPOCH} "${C2_SAVED_SOURCE_DATE_EPOCH}")
 endif()
-if(C2_LOCAL_BUILD_STAMP STREQUAL "")
+# A tagged release is just its version, with the revision as semver build
+# metadata so crash reports still say which commit; everything else names
+# the commit count and revision, or the configure time of an edited tree.
+option(C2_RELEASE "This is a tagged release build (version without build number)" OFF)
+set(C2_VERSION_SUFFIX "" CACHE STRING
+    "Pre-release suffix of a tagged release, e.g. -rc1")
+if(C2_RELEASE)
+    set(C2_VERSION_STRING "${PROJECT_VERSION}${C2_VERSION_SUFFIX}+${C2_GIT_HASH}")
+elseif(C2_LOCAL_BUILD_STAMP STREQUAL "")
     set(C2_VERSION_STRING "${PROJECT_VERSION}-${C2_BUILD_NUMBER}-${C2_GIT_HASH}")
 else()
     set(C2_VERSION_STRING "${PROJECT_VERSION}-${C2_LOCAL_BUILD_STAMP}")
@@ -98,6 +106,12 @@ message(STATUS "Caesar II language build: ${C2_LANGUAGE}")
 #   libbacktrace       optional   source lines in native crash reports
 #                                 (PORT_WITH_LIBBACKTRACE=AUTO|ON|OFF)
 #   Unity              tests      only with BUILD_TESTING
+#
+# PORT_VENDOR_DEPENDENCIES builds SDL3 and libbacktrace from pinned sources
+# and links them, and zlib, statically: the portable Linux binary the
+# AppImage carries (cmake/VendorDependencies.cmake).
+option(PORT_VENDOR_DEPENDENCIES
+    "Build SDL3 and libbacktrace from pinned sources and link them statically" OFF)
 if(EMSCRIPTEN)
     # `embuilder build sdl3-mt zlib` populates the ports; the SDL3 port's
     # config file carries no version to check against.
@@ -107,6 +121,8 @@ if(EMSCRIPTEN)
         OUTPUT_STRIP_TRAILING_WHITESPACE)
     set(ZLIB_INCLUDE_DIR "${C2_EMSCRIPTEN_CACHE}/sysroot/include" CACHE PATH "" FORCE)
     set(ZLIB_LIBRARY "${C2_EMSCRIPTEN_CACHE}/sysroot/lib/wasm32-emscripten/libz.a" CACHE FILEPATH "" FORCE)
+elseif(PORT_VENDOR_DEPENDENCIES)
+    include(VendorDependencies)
 else()
     find_package(SDL3 3.4 CONFIG REQUIRED)
 endif()
@@ -114,7 +130,7 @@ find_package(ZLIB REQUIRED)
 set(PORT_WITH_LIBBACKTRACE AUTO CACHE STRING
     "Symbolize crash reports with source lines through the system libbacktrace: AUTO, ON (required), OFF")
 set_property(CACHE PORT_WITH_LIBBACKTRACE PROPERTY STRINGS AUTO ON OFF)
-if(UNIX AND NOT EMSCRIPTEN AND NOT PORT_WITH_LIBBACKTRACE STREQUAL "OFF")
+if(UNIX AND NOT EMSCRIPTEN AND NOT PORT_WITH_LIBBACKTRACE STREQUAL "OFF" AND NOT PORT_VENDOR_DEPENDENCIES)
     if(PORT_WITH_LIBBACKTRACE STREQUAL "ON")
         find_package(LibBacktrace REQUIRED)
     else()
@@ -406,6 +422,9 @@ if(UNIX AND NOT EMSCRIPTEN AND PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER)
     if(LibBacktrace_FOUND)
         message(STATUS "Crash reports: libbacktrace source lines (${LibBacktrace_LIBRARIES})")
         target_link_libraries(caesar2 PRIVATE LibBacktrace::LibBacktrace)
+        if(TARGET libbacktrace_vendored)
+            add_dependencies(caesar2 libbacktrace_vendored)
+        endif()
         target_compile_definitions(caesar2 PRIVATE
             PORT_ENABLE_LIBBACKTRACE=1
             "PORT_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/\"")
@@ -627,6 +646,10 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         $<$<C_COMPILER_ID:Clang>:-Wno-microsoft-anon-tag>
     )
     target_link_options(caesar2 PRIVATE -Wl,--gc-sections)
+    if(PORT_VENDOR_DEPENDENCIES)
+        # Nothing but the C library is taken from the machine that runs it.
+        target_link_options(caesar2 PRIVATE -static-libgcc)
+    endif()
 elseif(MSVC)
     # The recovered engine relies on the same legacy semantics the GNU/Clang
     # branch selects above: plain char is unsigned, signed overflow wraps,
@@ -689,7 +712,7 @@ if(BUILD_TESTING)
     # edited worktree carry their configure time instead.
     set_tests_properties(version-string PROPERTIES
         PASS_REGULAR_EXPRESSION
-            "Caesar II 1\\.0\\.0-([0-9]+-[0-9A-Fa-f]+|[0-9]{8}-[0-9]{6})")
+            "Caesar II ${PROJECT_VERSION}(-([0-9]+-[0-9A-Fa-f]+|[0-9]{8}-[0-9]{6})|(-[0-9A-Za-z.]+)?\\+[0-9A-Fa-f]+)")
 
     # A fault must leave a report in the user-data directory (Debug builds
     # carry the --crash-test fault; the handler is the same in every build).
