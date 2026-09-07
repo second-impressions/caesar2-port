@@ -283,10 +283,11 @@
 #  define PORT_FEAT_DEBUG_OBSERVATION 0
 #endif
 
-/* Native fatal-signal diagnostics are compiled wherever the selected host
- * backend provides an implementation; every configuration carries debug
- * information, so the printed offsets resolve in release builds too. */
-#if defined(PORT_ENABLE_POSIX_CRASH_HANDLER)
+/* Native fatal-error diagnostics are compiled wherever the selected host
+ * backend provides an implementation (POSIX signals, Windows exceptions);
+ * every configuration carries debug information, so the printed offsets
+ * resolve in release builds too. */
+#if defined(PORT_ENABLE_CRASH_HANDLER)
 #  define PORT_FEAT_DEBUG_CRASH_HANDLER PORT_PLATFORM
 #else
 #  define PORT_FEAT_DEBUG_CRASH_HANDLER 0

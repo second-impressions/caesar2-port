@@ -395,7 +395,7 @@ endif()
 
 if(UNIX AND NOT EMSCRIPTEN AND PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER)
     target_sources(caesar2 PRIVATE src/platform/posix/c2_posix_debug.c)
-    target_compile_definitions(caesar2 PRIVATE PORT_ENABLE_POSIX_CRASH_HANDLER=1)
+    target_compile_definitions(caesar2 PRIVATE PORT_ENABLE_CRASH_HANDLER=1)
     target_link_libraries(caesar2 PRIVATE ${CMAKE_DL_LIBS})
     # backtrace_symbols_fd() names frames from the dynamic symbol table only.
     # Export the executable's symbols so a crash log names the engine
@@ -412,6 +412,14 @@ if(UNIX AND NOT EMSCRIPTEN AND PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER)
     else()
         message(STATUS "Crash reports: function names only (libbacktrace not found)")
     endif()
+elseif(WIN32)
+    # The unhandled-exception filter symbolizes through dbghelp from the
+    # caesar2.pdb shipped next to the executable and writes a minidump.
+    target_sources(caesar2 PRIVATE src/platform/win32/c2_win32_debug.c)
+    target_compile_definitions(caesar2 PRIVATE
+        PORT_ENABLE_CRASH_HANDLER=1
+        "PORT_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/\"")
+    target_link_libraries(caesar2 PRIVATE dbghelp)
 endif()
 
 target_include_directories(caesar2 PRIVATE
@@ -682,6 +690,18 @@ if(BUILD_TESTING)
     set_tests_properties(version-string PROPERTIES
         PASS_REGULAR_EXPRESSION
             "Caesar II 1\\.0\\.0-([0-9]+-[0-9A-Fa-f]+|[0-9]{8}-[0-9]{6})")
+
+    # A fault must leave a report in the user-data directory (Debug builds
+    # carry the --crash-test fault; the handler is the same in every build).
+    if(PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER AND UNIX AND NOT EMSCRIPTEN AND
+       CMAKE_BUILD_TYPE STREQUAL "Debug")
+        add_test(NAME crash-report
+            COMMAND "${CMAKE_COMMAND}"
+                "-DCAESAR2=$<TARGET_FILE:caesar2>"
+                "-DUSER_DATA=${CMAKE_CURRENT_BINARY_DIR}/crash-report-test"
+                "-DSOURCE_LINES=$<BOOL:${LibBacktrace_FOUND}>"
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/crash_report_test.cmake")
+    endif()
 
     # Importing game data must not start the engine, so the browser shell can
     # validate an upload and return to its main window.
