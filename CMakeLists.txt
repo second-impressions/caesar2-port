@@ -382,6 +382,8 @@ if(EMSCRIPTEN)
     set(C2_PLATFORM_LEAF PORT_PLATFORM_WASM)
 elseif(WIN32)
     set(C2_PLATFORM_LEAF PORT_PLATFORM_WIN32)
+elseif(APPLE)
+    set(C2_PLATFORM_LEAF PORT_PLATFORM_MACOS)
 else()
     set(C2_PLATFORM_LEAF PORT_PLATFORM_LINUX)
 endif()
@@ -645,10 +647,14 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         -fdata-sections
         $<$<C_COMPILER_ID:Clang>:-Wno-microsoft-anon-tag>
     )
-    target_link_options(caesar2 PRIVATE -Wl,--gc-sections)
-    if(PORT_VENDOR_DEPENDENCIES)
-        # Nothing but the C library is taken from the machine that runs it.
-        target_link_options(caesar2 PRIVATE -static-libgcc)
+    if(APPLE)
+        target_link_options(caesar2 PRIVATE -Wl,-dead_strip)
+    else()
+        target_link_options(caesar2 PRIVATE -Wl,--gc-sections)
+        if(PORT_VENDOR_DEPENDENCIES)
+            # Nothing but the C library is taken from the machine that runs it.
+            target_link_options(caesar2 PRIVATE -static-libgcc)
+        endif()
     endif()
 elseif(MSVC)
     # The recovered engine relies on the same legacy semantics the GNU/Clang
@@ -693,6 +699,17 @@ if(NOT EMSCRIPTEN)
         # vcpkg installs the DLLs it built (X_VCPKG_APPLOCAL_DEPS_INSTALL).
         install(FILES $<TARGET_RUNTIME_DLLS:caesar2>
             DESTINATION "${CMAKE_INSTALL_BINDIR}")
+    elseif(APPLE)
+        # The bundle is the whole install; packaging/macos/make-dmg.sh adds
+        # the icon and wraps it.
+        set_target_properties(caesar2 PROPERTIES
+            MACOSX_BUNDLE ON
+            OUTPUT_NAME "Caesar II"
+            MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/packaging/macos/Info.plist.in"
+            MACOSX_BUNDLE_EXECUTABLE_NAME "Caesar II"
+            MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+            MACOSX_BUNDLE_BUNDLE_VERSION "${C2_BUILD_NUMBER}")
+        install(TARGETS caesar2 BUNDLE DESTINATION .)
     else()
         install(FILES packaging/io.github.second_impressions.caesar2.desktop
             DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications")
@@ -887,6 +904,7 @@ if(BUILD_TESTING)
 
     add_executable(c2-import-test tests/c2_import_test.c)
     target_compile_features(c2-import-test PRIVATE c_std_11)
+    target_compile_definitions(c2-import-test PRIVATE PORT_PLATFORM=1 ${C2_PLATFORM_LEAF}=1)
     target_include_directories(c2-import-test PRIVATE include)
     target_link_libraries(c2-import-test PRIVATE c2_import_core)
     add_test(NAME import-readers COMMAND c2-import-test)

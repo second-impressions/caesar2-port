@@ -19,6 +19,8 @@ on:
       - 'packaging/**'
       - 'cmake/VendorDependencies.cmake'
       - 'tools/release.py'
+      - 'src/platform/posix/**'
+      - 'src/platform/sdl3/c2_cdrom_fs.c'
   workflow_dispatch:
     inputs:
       version:
@@ -226,6 +228,28 @@ jobs:
           name: flatpak
           path: caesar2-*.flatpak
 
+  # ── macOS: universal app bundle in a dmg ───────────────────────────
+  macos:
+    name: macOS
+    needs: verify
+    runs-on: macos-14
+    env:
+      C2_GIT_HASH: ${{ needs.verify.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.verify.outputs.commit }}
+      - run: brew install ninja
+      - name: Build
+        run: |
+          packaging/macos/make-dmg.sh \
+            -DC2_RELEASE=${{ needs.verify.outputs.release }} \
+            -DC2_VERSION_SUFFIX=${{ needs.verify.outputs.suffix }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/*.dmg
+
   # ── Web: the same files GitHub Pages serves, for self-hosting ──────
   web:
     name: Web
@@ -268,7 +292,7 @@ jobs:
   # ── The draft release ──────────────────────────────────────────────
   release:
     name: Draft release
-    needs: [verify, windows, appimage, flatpak, web]
+    needs: [verify, windows, appimage, flatpak, macos, web]
     if: needs.verify.outputs.tag != ''
     runs-on: ubuntu-latest
     permissions:
@@ -283,7 +307,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          find artifacts -type f \( -name '*.zip' -o -name '*.AppImage' -o -name '*.flatpak' \) -exec mv {} dist/ \;
+          find artifacts -type f \( -name '*.zip' -o -name '*.AppImage' -o -name '*.flatpak' -o -name '*.dmg' \) -exec mv {} dist/ \;
           (cd dist && sha256sum * > SHA256SUMS)
           cat dist/SHA256SUMS
       - uses: actions/attest-build-provenance@v2
@@ -292,6 +316,7 @@ jobs:
             dist/*.zip
             dist/*.AppImage
             dist/*.flatpak
+            dist/*.dmg
       - name: Create the draft
         env:
           GH_TOKEN: ${{ github.token }}

@@ -17,6 +17,10 @@
 #include "c2_target.h"
 #include "c2_version.h"
 
+#if PORT_PLATFORM_MACOS
+#include <mach-o/dyld.h>
+#endif
+
 #define C2_ISSUE_URL "https://github.com/second-impressions/caesar2-port/issues"
 
 #if PORT_FEAT_CRASH_SOURCE_LINES
@@ -368,8 +372,16 @@ int c2_debug_install_crash_handlers(void)
         if (dladdr((const void *)&c2_debug_install_crash_handlers, &info) != 0) {
             c2_executable_base = info.dli_fbase;
         }
+#if PORT_PLATFORM_MACOS
+        {
+            uint32_t capacity = sizeof(c2_executable_path);
+            length = _NSGetExecutablePath(c2_executable_path, &capacity) == 0
+                     ? (ssize_t)strlen(c2_executable_path) : -1;
+        }
+#else
         length = readlink("/proc/self/exe", c2_executable_path,
                           sizeof(c2_executable_path) - 1);
+#endif
         if (length > 0) c2_executable_path[length] = '\0';
         else c2_executable_path[0] = '\0';
     }

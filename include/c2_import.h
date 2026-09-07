@@ -81,16 +81,23 @@ int c2_raw_cd_reader_init(struct c2_raw_cd_reader *reader,
 void c2_raw_cd_source(struct c2_raw_cd_reader *reader,
                       struct c2_source_reader *source);
 
-#define C2_CDROM_DRIVE_PATH_CAPACITY 32
+#define C2_CDROM_DRIVE_PATH_CAPACITY 128
 
 int c2_cdrom_is_device_path(const char *path);
-/* Fill paths[0..max) with candidate optical drive device paths present on
- * this machine ("/dev/sr0", "D:", ...) and return how many were found.
+/* Fill paths[0..max) with the optical drives present on this machine and
+ * return how many: readable device paths ("/dev/sr0", "D:") and, on POSIX,
+ * the mount points of mounted optical volumes ("/Volumes/CAESAR2",
+ * "/run/media/me/CAESAR2"), which import like an installed folder.
  * Presence of a drive does not imply a readable disc is inserted. */
 int c2_cdrom_find_drives(char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max);
 /* Cheap media check for polling; does not spin the drive up where the OS
  * offers a status query. */
 int c2_cdrom_drive_has_disc(const char *path);
+/* Linux: the /proc/self/mounts reader behind c2_cdrom_find_drives, on any
+ * file in that format (tests). Appends after `count` entries and returns
+ * the new count. */
+int c2_cdrom_optical_mounts_in(const char *mounts_path,
+                               char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max, int count);
 int c2_cdrom_open(const char *path, struct c2_cdrom_reader *reader,
                   char *error, size_t error_capacity);
 void c2_cdrom_source(struct c2_cdrom_reader *reader,

@@ -206,6 +206,27 @@ jobs:
             build/port/windows-msvc-release/stage/bin/
             build/port/windows-msvc-release/caesar2.pdb
 
+  # ── macOS, native ────────────────────────────────────────────────────
+  # Compiles the macOS leaf with the vendored SDL3 and libbacktrace, as the
+  # release dmg is built (single architecture here, for speed). No game
+  # data in CI, so this proves the build and the version string only.
+  macos:
+    name: macOS arm64
+    runs-on: macos-14
+    if: github.event.action != 'closed'
+    steps:
+      - uses: actions/checkout@v5
+      - run: brew install ninja
+      - name: Configure and build
+        run: |
+          cmake -S . -B build/ci-macos -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPORT_VENDOR_DEPENDENCIES=ON \
+            -DPORT_WITH_LIBBACKTRACE=ON \
+            -DBUILD_TESTING=OFF
+          cmake --build build/ci-macos
+          "build/ci-macos/Caesar II.app/Contents/MacOS/Caesar II" --version
+
   # ── GitHub Pages: main and pull-request previews ─────────────────────
   # Pages serves one site per repository, from the gh-pages branch: main
   # publishes to /, every pull request from this repository to /pr/N/

@@ -15,7 +15,8 @@ data on first use and keeps it in the browser's storage.
 
 **Native:** download from the [releases page](https://github.com/second-impressions/caesar2-port/releases):
 the `.AppImage` or `.flatpak` on Linux, the `.zip` on Windows (unzip anywhere,
-run `caesar2.exe`). A small launcher window opens first: pick your game data
+run `caesar2.exe`), the `.dmg` on macOS (unsigned: allow it once under
+System Settings → Privacy & Security). A small launcher window opens first: pick your game data
 once, then *Play*. It remembers the source and your display choices.
 
 ### Game data

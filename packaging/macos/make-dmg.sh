@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Build the macOS app bundle and wrap it in a .dmg. Runs on a Mac (the
+# release workflow's macos runner), from the repository root:
+#
+#   packaging/macos/make-dmg.sh [extra cmake args]
+#
+# Output: dist/caesar2-<version>-macos.dmg with a universal (arm64 +
+# x86_64) "Caesar II.app", ad-hoc signed. Without a Developer ID and
+# notarization, Gatekeeper asks the user to allow it in System Settings.
+set -euo pipefail
+
+BUILD_DIR=${BUILD_DIR:-build/port/macos}
+DIST_DIR=${DIST_DIR:-dist}
+
+cmake -S . -B "$BUILD_DIR" -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+    -DPORT_VENDOR_DEPENDENCIES=ON \
+    -DPORT_WITH_LIBBACKTRACE=ON \
+    -DBUILD_TESTING=OFF \
+    "$@"
+cmake --build "$BUILD_DIR"
+
+APP="$BUILD_DIR/Caesar II.app"
+BIN="$APP/Contents/MacOS/Caesar II"
+test -x "$BIN"
+VERSION=$("$BIN" --version | sed 's/^Caesar II //')
+echo "built caesar2 $VERSION"
+lipo -info "$BIN"
+# Only system libraries may be dynamic.
+if otool -L "$BIN" | tail -n +2 | grep -vE '/usr/lib/|/System/Library/'; then
+    echo "unexpected dynamic dependency" >&2
+    exit 1
+fi
+
+# The icon set from the 1024 master, with iconutil.
+ICONSET="$BUILD_DIR/caesar2.iconset"
+rm -rf "$ICONSET"; mkdir -p "$ICONSET"
+for size in 16 32 128 256 512; do
+    sips -z $size $size packaging/macos/icon-1024.png --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+    double=$((size * 2))
+    sips -z $double $double packaging/macos/icon-1024.png --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+done
+iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/caesar2.icns"
+mkdir -p "$APP/Contents/Resources/licenses"
+cp LICENSE third_party/README.md third_party/libsmacker/COPYING third_party/nuked-opl3/LICENSE \
+    "$APP/Contents/Resources/licenses/"
+
+# Ad hoc: required for arm64 binaries to launch at all.
+codesign --force --deep --sign - "$APP"
+codesign --verify --verbose "$APP"
+
+STAGE="$BUILD_DIR/dmg"
+rm -rf "$STAGE"; mkdir -p "$STAGE"
+cp -R "$APP" "$STAGE/"
+ln -s /Applications "$STAGE/Applications"
+mkdir -p "$DIST_DIR"
+OUT="$DIST_DIR/caesar2-$VERSION-macos.dmg"
+rm -f "$OUT"
+hdiutil create -volname "Caesar II" -srcfolder "$STAGE" -ov -format UDZO "$OUT"
+ls -la "$OUT"
