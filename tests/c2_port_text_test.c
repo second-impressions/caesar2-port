@@ -167,6 +167,140 @@ static void test_readfile_hooks_serve_offsets(void)
     TEST_ASSERT_EQUAL_MEMORY("Textfile", buffer, 8);
 }
 
+/*
+ * A hand-written translation with everything a translator might type:
+ * every escape the po format allows, umlauts and ß, a character CP437
+ * has but the font cannot draw, one outside CP437, no-break space,
+ * fuzzy and empty msgstr (both fall back to English), a reference page,
+ * help line breaks, links, a literal $, Windows line endings, an entry
+ * without a blank line before its comment, and CRLF.
+ */
+static const char tricky_po[] =
+    "# comment\n"
+    "msgid \"\"\n"
+    "msgstr \"\"\n"
+    "\"Content-Type: text/plain; charset=UTF-8\\n\"\n"
+    "\"X-C2-Name: Pr\xc3\xbc" "fung\\n\"\n"
+    "\"X-C2-Detect: Datei\\n\"\n"
+    "\n"
+    "msgctxt \"0x1/0\"\n"
+    "msgid \"File\"\n"
+    "msgstr \"D\xc3\xa4tei \\\"quoted\\\" back\\\\slash tab\\tend\"\n"
+    "\n"
+    "#, fuzzy\n"
+    "msgctxt \"0x1/1\"\n"
+    "msgid \"New Game\"\n"
+    "msgstr \"Fuzzy must not be used\"\n"
+    "\n"
+    "msgctxt \"0x1/2\"\n"
+    "msgid \"Load\"\n"
+    "msgstr \"\"\n"
+    "#. no blank line before this comment\n"
+    "msgctxt \"0x1/3\"\n"
+    "msgid \"Save\"\n"
+    "msgstr \"\"\n"
+    "\"Gro\xc3\x9f\"\n"
+    "\"e \xc2\xab" "Anf\xc3\xbc" "hrung\xc2\xbb\"\n"
+    "\r\n"
+    "msgctxt \"0x1/4\"\r\n"
+    "msgid \"Quit\"\r\n"
+    "msgstr \"\xe2\x82\xac 1\xc2\xa0" "000 \xc5\x91\"\r\n"
+    "\n"
+    "msgctxt \"help/1/0\"\n"
+    "msgid \"Title\"\n"
+    "msgstr \"Titel\"\n"
+    "\n"
+    "msgctxt \"help/1/1\"\n"
+    "msgid \"Body\"\n"
+    "msgstr \"\"\n"
+    "\"Zeile 1\\n\"\n"
+    "\"\\n\"\n"
+    "\"#12Verweis# und $ Dollar\"\n"
+    "\n"
+    "msgctxt \"help/2/0\"\n"
+    "msgid \"@1\"\n"
+    "msgstr \"\"\n"
+    "\n"
+    "msgctxt \"help/2/1\"\n"
+    "msgid \"@1\"\n"
+    "msgstr \"\"\n"
+    "\n"
+    "msgctxt \"help/3/0\"\n"
+    "msgid \"@1\"\n"
+    "msgstr \"Eigener Titel\"\n"
+    "\n"
+    "msgctxt \"help/3/1\"\n"
+    "msgid \"@1\"\n"
+    "msgstr \"Eigener Text\"\n";
+
+static void test_translator_input_reaches_the_engine_as_intended(void)
+{
+    struct c2_text_bundle_entry entries[1];
+    size_t size;
+    const unsigned char *c2eng;
+    const unsigned char *help;
+    unsigned int page1;
+    unsigned int page2;
+    unsigned int page3;
+
+    entries[0].tag = "xx";
+    entries[0].data = (const unsigned char *)tricky_po;
+    entries[0].size = sizeof(tricky_po) - 1;
+    c2_port_text_use_bundle(entries, 1);
+    TEST_ASSERT_EQUAL_INT(1, c2_port_text_language_count());
+    TEST_ASSERT_EQUAL_STRING("Pr\xc3\xbc" "fung", c2_port_text_language(0)->name);
+    TEST_ASSERT_TRUE(c2_port_text_select("xx"));
+
+    c2eng = c2_port_text_c2eng(&size);
+    TEST_ASSERT_NOT_NULL(c2eng);
+    /* escapes and UTF-8 -> CP437: ä is 0x84 */
+    TEST_ASSERT_EQUAL_STRING("D\x84tei \"quoted\" back\\slash tab\tend", text_string(c2eng, 1, 0));
+    /* fuzzy and empty fall back to the English msgid */
+    TEST_ASSERT_EQUAL_STRING("New Game", text_string(c2eng, 1, 1));
+    TEST_ASSERT_EQUAL_STRING("Load", text_string(c2eng, 1, 2));
+    /* continuation lines join; ß is 0xe1, « » are 0xae 0xaf (in CP437, no glyph) */
+    TEST_ASSERT_EQUAL_STRING("Gro\xe1" "e \xae" "Anf\x81hrung\xaf", text_string(c2eng, 1, 3));
+    /* outside CP437 becomes '?'; no-break space is 0xff */
+    TEST_ASSERT_EQUAL_STRING("? 1\xff" "000 ?", text_string(c2eng, 1, 4));
+
+    help = c2_port_text_helpeng(&size);
+    TEST_ASSERT_NOT_NULL(help);
+    page1 = u32(help + 8 + 1 * 0x3a);
+    page2 = u32(help + 8 + 2 * 0x3a);
+    page3 = u32(help + 8 + 3 * 0x3a);
+    TEST_ASSERT_EQUAL_STRING("Titel", (const char *)help + page1);
+    /* \n becomes the engine's $ break; a literal $ stays a break; links intact */
+    TEST_ASSERT_EQUAL_STRING("Zeile 1$$#12Verweis# und $ Dollar",
+                             (const char *)help + page1 + strlen("Titel") + 1);
+    /* an untouched @1 reference shares page 1's text */
+    TEST_ASSERT_EQUAL_UINT32(page1, page2);
+    /* a reference replaced by text gets its own page */
+    TEST_ASSERT_NOT_EQUAL(page1, page3);
+    TEST_ASSERT_EQUAL_STRING("Eigener Titel", (const char *)help + page3);
+    TEST_ASSERT_EQUAL_STRING("Eigener Text", (const char *)help + page3 + strlen("Eigener Titel") + 1);
+    /* pages the translation does not mention have no text */
+    TEST_ASSERT_EQUAL_UINT32(0, u32(help + 8 + 4 * 0x3a));
+
+    c2_port_text_use_bundle(NULL, 0);
+}
+
+static void test_malformed_translation_fails_closed(void)
+{
+    static const char broken[] =
+        "msgid \"\"\nmsgstr \"\"\n\"X-C2-Name: Broken\\n\"\n\n"
+        "msgctxt \"0x1/0\"\nmsgid \"File\"\nmsgstr \"unterminated\n";
+    struct c2_text_bundle_entry entries[1];
+    size_t size;
+
+    entries[0].tag = "xx";
+    entries[0].data = (const unsigned char *)broken;
+    entries[0].size = sizeof(broken) - 1;
+    c2_port_text_use_bundle(entries, 1);
+    TEST_ASSERT_TRUE(c2_port_text_select("xx"));
+    TEST_ASSERT_NULL(c2_port_text_c2eng(&size));
+    c2_port_text_use_bundle(NULL, 0);
+}
+
 static void dump(const char *dir, const char *tag)
 {
     char path[1024];
@@ -206,6 +340,8 @@ int main(void)
     RUN_TEST(test_german_text_is_transcoded_to_the_font_encoding);
     RUN_TEST(test_help_pages_and_aliases);
     RUN_TEST(test_readfile_hooks_serve_offsets);
+    RUN_TEST(test_translator_input_reaches_the_engine_as_intended);
+    RUN_TEST(test_malformed_translation_fails_closed);
     RUN_TEST(test_dump_for_reference_comparison);
     return UNITY_END();
 }

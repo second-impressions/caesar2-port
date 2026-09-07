@@ -6554,6 +6554,7 @@ msgctxt "help/27/0"
 msgid "Advisor from Rome (page 5)"
 msgstr ""
 
+# The 1996 file has a Windows apostrophe byte (0x92) here, which the font draws as Æ; corrected.
 msgctxt "help/27/1"
 msgid ""
 "If your gift is not high enough, the Emperor will be insulted, and the "
@@ -8332,6 +8333,7 @@ msgctxt "help/105/0"
 msgid "Land Values"
 msgstr ""
 
+# The 1996 file has a Windows apostrophe byte (0x92) here, which the font draws as Æ; corrected.
 msgctxt "help/105/1"
 msgid ""
 "Land Values determine the extent to which buildings in your city "
@@ -8358,6 +8360,7 @@ msgctxt "help/106/0"
 msgid "Land Values (page 2)"
 msgstr ""
 
+# The 1996 file has a Windows apostrophe byte (0x92) here, which the font draws as Æ; corrected.
 msgctxt "help/106/1"
 msgid ""
 "Every structure that you place down will have a radius within which it "
@@ -8852,6 +8855,7 @@ msgctxt "help/136/0"
 msgid "Employment"
 msgstr ""
 
+# The 1996 file has a Windows apostrophe byte (0x92) here, which the font draws as Æ; corrected.
 msgctxt "help/136/1"
 msgid ""
 "The employment rate of your city will be an important factor in "

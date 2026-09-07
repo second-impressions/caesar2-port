@@ -107,6 +107,17 @@ every language byte for byte with the tool's. The English `C2.ENG` is
 also byte-identical to the 1996 original; the help files are identical in
 every page and record (the originals stored a few unreferenced bytes).
 
+With `C2_TEXT_CORPUS=/dir/of/imported/discs` the same file also checks
+every original against the bundle string by string: each `C2.ENG` and
+`HELP.ENG` found under that directory is assigned its language the way
+the port detects it, and every string the engine would have read from it
+must be what the engine now reads at the same address. A difference is
+allowed only where the entry in the po file carries a translator comment
+saying why (the German `?`, the French additions, the apostrophes) or
+where the tool's fixups move it; anything else fails and is listed. The
+1996 revision of each language is the one held to this, since the bundle
+carries the later text.
+
 ## Contributing a translation
 
 Any gettext editor or platform (Poedit, Weblate, Crowdin) works with these
