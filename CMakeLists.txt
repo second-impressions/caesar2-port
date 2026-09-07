@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.25)
 
+# Before project(): the recovered data tables keep pointers at unaligned
+# offsets, which ld64's chained fixups (the default from macOS 12 on) cannot
+# express; targeting 11.0 selects the classic fixups, and is the oldest
+# macOS SDL3 supports anyway.
+if(APPLE AND NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version")
+endif()
+
 project(caesar2-port VERSION 1.0.0 LANGUAGES C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
