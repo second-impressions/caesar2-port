@@ -35,15 +35,10 @@ if otool -L "$BIN" | grep '^	' | grep -vE '/usr/lib/|/System/Library/'; then
     exit 1
 fi
 
-# The icon set from the 1024 master, with iconutil.
-ICONSET="$BUILD_DIR/caesar2.iconset"
-rm -rf "$ICONSET"; mkdir -p "$ICONSET"
-for size in 16 32 128 256 512; do
-    sips -z $size $size packaging/macos/icon-1024.png --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
-    double=$((size * 2))
-    sips -z $double $double packaging/macos/icon-1024.png --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
-done
-iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/caesar2.icns"
+# caesar2.icns is generated from icon-1024.png (PNG payloads in the icp4,
+# icp5 and ic07..ic10 slots) by tools/make-icns.py; committed so the build
+# needs neither ImageMagick nor iconutil.
+cp packaging/macos/caesar2.icns "$APP/Contents/Resources/caesar2.icns"
 mkdir -p "$APP/Contents/Resources/licenses"
 cp LICENSE third_party/README.md third_party/libsmacker/COPYING third_party/nuked-opl3/LICENSE \
     "$APP/Contents/Resources/licenses/"
