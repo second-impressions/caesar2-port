@@ -143,6 +143,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                            const char **screenshot_filename,
                            const char **asset_profile,
                            const char **text_language,
+                           int *crash_test,
                            int *headless, int *mouse_lock,
                            int *fractional_scaling, int *smoke_kind,
                            int *prepare_only, int *skip_launcher,
@@ -170,6 +171,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
     *screenshot_filename = NULL;
     *asset_profile = getenv("C2_ASSET_PROFILE");
     *text_language = NULL;
+    *crash_test = 0;
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--headless") == 0) {
@@ -212,6 +214,8 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
         } else if (strcmp(argv[i], "--city-build-smoke-test") == 0) {
             *headless = 1;
             *smoke_kind = C2_SDL_SMOKE_CITY_BUILD;
+        } else if (strcmp(argv[i], "--crash-test") == 0) {
+            *crash_test = 1;
 #endif
         } else if ((strcmp(argv[i], "--asset-root") == 0 ||
                     strcmp(argv[i], "--game-data") == 0) && i + 1 < argc) {
@@ -553,10 +557,58 @@ static int start_runtime(struct c2_sdl_app *app)
  * source selection, import progress, and error retry; the engine only starts
  * once it reports C2_SETUP_PLAY.
  */
+/*
+ * A crash report newer than the launcher's last start (launcher.ini is
+ * rewritten on every Play) is from the last run; say so, with its path,
+ * since a player who started from a desktop icon saw nothing else.
+ */
+#if PORT_FEAT_DEBUG_CRASH_HANDLER
+static const char *last_crash_report(struct c2_sdl_app *app)
+{
+    static char notice[4096 + 96];
+    char ini[4096];
+    char path[4096];
+    SDL_PathInfo ini_info;
+    SDL_PathInfo report_info;
+    SDL_Time since = 0;
+    char **entries;
+    int count;
+    int i;
+    int best = -1;
+    SDL_Time best_time = 0;
+
+    if (snprintf(ini, sizeof(ini), "%s/launcher.ini", app->user_data_root) < (int)sizeof(ini) &&
+        SDL_GetPathInfo(ini, &ini_info)) {
+        since = ini_info.modify_time;
+    }
+    entries = SDL_GlobDirectory(app->user_data_root, C2_CRASH_REPORT_PREFIX "*" C2_CRASH_REPORT_SUFFIX,
+                                0, &count);
+    if (entries == NULL) return NULL;
+    for (i = 0; i < count; i++) {
+        if (snprintf(path, sizeof(path), "%s/%s", app->user_data_root, entries[i]) >= (int)sizeof(path)) continue;
+        if (!SDL_GetPathInfo(path, &report_info) || report_info.type != SDL_PATHTYPE_FILE) continue;
+        if (report_info.size == 0 || report_info.modify_time <= since) continue;
+        if (best < 0 || report_info.modify_time > best_time) {
+            best = i;
+            best_time = report_info.modify_time;
+        }
+    }
+    if (best >= 0) {
+        snprintf(notice, sizeof(notice), "The last run crashed. Report: %s/%s",
+                 app->user_data_root, entries[best]);
+    }
+    SDL_free(entries);
+    return best >= 0 ? notice : NULL;
+}
+#endif
+
 static int open_launcher(struct c2_sdl_app *app, const char *error)
 {
     struct c2_setup_config config;
     memset(&config, 0, sizeof(config));
+#if PORT_FEAT_DEBUG_CRASH_HANDLER
+    if (error == NULL) error = last_crash_report(app);
+#endif
     config.version = C2_VERSION_STRING;
     config.source = app->asset_source;
     config.cache_root = app->user_data_root;
@@ -634,6 +686,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     const char *screenshot_filename;
     const char *asset_profile;
     const char *text_language;
+    int crash_test;
     int headless;
     int mouse_lock;
     int fractional_scaling;
@@ -669,7 +722,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     if (!parse_arguments(argc, argv, &asset_root, &user_data_root,
                          &c2_app.default_user_data_root,
                          &screenshot_filename, &asset_profile,
-                         &text_language,
+                         &text_language, &crash_test,
                          &headless, &mouse_lock, &fractional_scaling,
                          &smoke_kind, &prepare_only, &skip_launcher,
                          &explicit_source, &fullscreen)) {
@@ -715,6 +768,15 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     if (fractional_scaling < 0) fractional_scaling = 0;
     c2_app.fractional_scaling = fractional_scaling;
     c2_app.fullscreen = fullscreen;
+#if PORT_FEAT_DEBUG_CRASH_HANDLER
+    c2_debug_set_crash_report_directory(c2_app.user_data_root);
+#endif
+    if (crash_test) {
+        /* Debug builds only: prove the report reaches the user-data directory. */
+        volatile int *nowhere = NULL;
+        fprintf(stderr, "crash test: faulting on purpose\n");
+        *nowhere = 1;
+    }
     if (text_language) {
         if (!c2_port_text_select(text_language)) {
             int i;

@@ -89,7 +89,15 @@ Native POSIX builds install fatal-signal handlers for `SIGSEGV`,
 thread prints the build version, the signal, fault address, and native
 backtrace to standard error, followed by a request to file the output as an
 issue, then re-raises the signal so normal debugger and core-dump behavior is
-retained.
+retained. The same report is written to `crash-<UTC date>-<time>.txt` in the
+user-data directory (the name is the run's start time: a signal handler
+cannot format the clock, and the launcher only needs "newer than my last
+start" to point at it). Windows builds do the equivalent through the
+unhandled-exception filter and the CRT's `abort()`: dbghelp symbolizes from
+the `caesar2.pdb` shipped next to the executable, a minidump goes next to
+the text report, and a message box names the file. Debug builds accept
+`--crash-test`, which faults on purpose; the `crash-report` CTest checks
+the file arrives with a source line.
 ASan and TSan presets leave it off so the sanitizer runtimes retain their own
 signal diagnostics. When the build found libbacktrace (`PORT_WITH_LIBBACKTRACE`,
 default `AUTO`), each frame is printed with function, source file and line

@@ -2,10 +2,15 @@
 
 #include <dlfcn.h>
 #include <execinfo.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "c2_debug_crash.h"
@@ -27,17 +32,28 @@ static volatile sig_atomic_t c2_handling_fatal_signal;
  * left the process unable to afford anything more than the write below. */
 static char c2_executable_path[PORT_DEBUG_EXE_PATH_CAPACITY];
 static const void *c2_executable_base;
+/* The report file: path decided when the user-data directory becomes
+ * known, opened only inside the handler (open(2) is signal-safe). -1 until
+ * then; every write goes to stderr and, when open, to this too. */
+static char c2_report_path[PORT_DEBUG_EXE_PATH_CAPACITY];
+static int c2_report_fd = -1;
 
-static void write_all(const char *text, size_t length)
+static void write_fd(int fd, const char *text, size_t length)
 {
     while (length != 0) {
         ssize_t written;
 
-        written = write(STDERR_FILENO, text, length);
+        written = write(fd, text, length);
         if (written <= 0) return;
         text += written;
         length -= (size_t)written;
     }
+}
+
+static void write_all(const char *text, size_t length)
+{
+    write_fd(STDERR_FILENO, text, length);
+    if (c2_report_fd >= 0) write_fd(c2_report_fd, text, length);
 }
 
 static void write_literal(const char *text, size_t length)
@@ -190,6 +206,7 @@ static void symbolize_frames(void *const *frames, int frame_count, int first)
     size_t argc;
     int i;
     int status;
+    int output[2];
     pid_t child;
 
     if (c2_executable_base == NULL || c2_executable_path[0] == '\0') return;
@@ -223,12 +240,24 @@ static void symbolize_frames(void *const *frames, int frame_count, int first)
     }
     write_literal("\n\n", 2);
 
+    /* Its output belongs in the report as much as on stderr: read it back
+     * through a pipe (all signal-safe calls) and write it to both. */
+    if (pipe(output) != 0) { output[0] = -1; output[1] = -1; }
     child = fork();
     if (child == 0) {
+        if (output[1] >= 0) dup2(output[1], STDOUT_FILENO);
+        else dup2(STDERR_FILENO, STDOUT_FILENO);
         execvp(argv[0], argv);
         _exit(127);
     }
-    if (child < 0) return;
+    if (output[1] >= 0) close(output[1]);
+    if (child < 0) { if (output[0] >= 0) close(output[0]); return; }
+    if (output[0] >= 0) {
+        char chunk[512];
+        ssize_t got;
+        while ((got = read(output[0], chunk, sizeof(chunk))) > 0) write_all(chunk, (size_t)got);
+        close(output[0]);
+    }
     while (waitpid(child, &status, 0) < 0) {}
     if (WIFEXITED(status) && WEXITSTATUS(status) == 127) {
         write_literal("(addr2line is not installed; run the command above where it is)\n", 65);
@@ -260,6 +289,9 @@ static void fatal_signal_handler(int signal_number, siginfo_t *info,
     (void)context;
     if (c2_handling_fatal_signal) _exit(128 + signal_number);
     c2_handling_fatal_signal = 1;
+    if (c2_report_path[0] != '\0') {
+        c2_report_fd = open(c2_report_path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+    }
 
     name = signal_name(signal_number, &name_length);
     write_literal("\nCaesar II " C2_VERSION_STRING " crashed: fatal ",
@@ -285,6 +317,7 @@ static void fatal_signal_handler(int signal_number, siginfo_t *info,
 #endif
     frame_count = backtrace(frames, PORT_DEBUG_BACKTRACE_DEPTH);
     backtrace_symbols_fd(frames, frame_count, STDERR_FILENO);
+    if (c2_report_fd >= 0) backtrace_symbols_fd(frames, frame_count, c2_report_fd);
     /* Frame 0 is this handler and frame 1 the kernel's signal trampoline;
      * frame 2 is the faulting instruction itself, not a return address. */
     symbolize_frames(frames, frame_count, frame_count > 2 ? 2 : 0);
@@ -296,6 +329,15 @@ reraise:
                   "\nand paste everything above, with what you were doing in the game.\n",
                   sizeof("\nThis is a bug in the port. Please open an issue at\n  " C2_ISSUE_URL
                          "\nand paste everything above, with what you were doing in the game.\n") - 1);
+    if (c2_report_fd >= 0) {
+        size_t path_length = 0;
+        while (c2_report_path[path_length] != '\0') path_length++;
+        close(c2_report_fd);
+        c2_report_fd = -1;
+        write_fd(STDERR_FILENO, "This report was also written to ", 32);
+        write_fd(STDERR_FILENO, c2_report_path, path_length);
+        write_fd(STDERR_FILENO, "\n", 1);
+    }
 
     default_action.sa_handler = SIG_DFL;
     sigemptyset(&default_action.sa_mask);
@@ -348,4 +390,29 @@ int c2_debug_install_crash_handlers(void)
         if (sigaction(fatal_signals[i], &action, NULL) != 0) return 0;
     }
     return 1;
+}
+
+/* Name the report after the run, not the crash: the handler cannot format
+ * a time safely, and the launcher only needs "newer than my last start". */
+void c2_debug_set_crash_report_directory(const char *directory)
+{
+    time_t now;
+    struct tm utc;
+    char stamp[32];
+    int length;
+
+    c2_report_path[0] = '\0';
+    if (directory == NULL || directory[0] == '\0') return;
+    now = time(NULL);
+    if (gmtime_r(&now, &utc) == NULL) return;
+    if (strftime(stamp, sizeof(stamp), "%Y%m%d-%H%M%S", &utc) == 0) return;
+    mkdir(directory, 0755);
+    length = snprintf(c2_report_path, sizeof(c2_report_path), "%s/%s%s%s",
+                      directory, C2_CRASH_REPORT_PREFIX, stamp, C2_CRASH_REPORT_SUFFIX);
+    if (length < 0 || (size_t)length >= sizeof(c2_report_path)) c2_report_path[0] = '\0';
+}
+
+const char *c2_debug_crash_report_path(void)
+{
+    return c2_report_path;
 }

@@ -78,8 +78,10 @@ Command line: `caesar2 [SOURCE]` starts with a given game-data source;
 
 ### Crashes
 
-If the game crashes, it prints a report ending with a request to open an
-issue. Please paste the whole report — it already contains the build version,
+If the game crashes, it writes a report to the user-data directory
+(`crash-<date>-<time>.txt`; on Windows also a `.dmp` minidump) and prints it
+to the terminal, and the launcher points at it the next time it opens. Please
+open an issue with the whole report — it already contains the build version,
 function names and source lines — and say what you were doing.
 
 ## Building
