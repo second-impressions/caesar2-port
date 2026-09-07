@@ -26,9 +26,19 @@ if(NOT TARGET SDL3::SDL3)
     message(FATAL_ERROR "vendored SDL3 did not provide SDL3::SDL3")
 endif()
 
-set(ZLIB_USE_STATIC_LIBS ON)
+if(NOT APPLE)
+    set(ZLIB_USE_STATIC_LIBS ON)   # macOS ships zlib as a system library
+endif()
 
-# libbacktrace is autotools; build it once into the build tree.
+# libbacktrace is autotools; build it once into the build tree. On macOS a
+# universal build passes every -arch through to its compiler.
+set(C2_LIBBACKTRACE_ARCH_FLAGS "")
+foreach(arch IN LISTS CMAKE_OSX_ARCHITECTURES)
+    string(APPEND C2_LIBBACKTRACE_ARCH_FLAGS " -arch ${arch}")
+endforeach()
+if(CMAKE_OSX_DEPLOYMENT_TARGET)
+    string(APPEND C2_LIBBACKTRACE_ARCH_FLAGS " -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+endif()
 set(C2_LIBBACKTRACE_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libbacktrace")
 ExternalProject_Add(libbacktrace_vendored
     GIT_REPOSITORY https://github.com/ianlancetaylor/libbacktrace.git
@@ -37,7 +47,7 @@ ExternalProject_Add(libbacktrace_vendored
     UPDATE_DISCONNECTED ON
     CONFIGURE_COMMAND <SOURCE_DIR>/configure --prefix=<INSTALL_DIR>
         --disable-shared --enable-static --with-pic
-        "CC=${CMAKE_C_COMPILER}" "CFLAGS=-O2 -g"
+        "CC=${CMAKE_C_COMPILER}" "CFLAGS=-O2 -g ${C2_LIBBACKTRACE_ARCH_FLAGS}"
     BUILD_COMMAND make -j
     INSTALL_COMMAND make install
     INSTALL_DIR "${C2_LIBBACKTRACE_PREFIX}"

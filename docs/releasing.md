@@ -43,6 +43,7 @@ releasing: a dry run of the pipeline.
 |---|---|
 | `caesar2-X.Y.Z-x86_64.AppImage` | Linux, one file. SDL3, zlib and libbacktrace linked in; only glibc (2.35 or newer, Ubuntu 22.04 on) from the machine. Every X11/Wayland/ALSA/PulseAudio/PipeWire backend is compiled in and loaded when present. Uses the current static AppImage runtime: no FUSE needed. Keeps its DWARF, so a crash report has file and line. |
 | `caesar2-X.Y.Z.flatpak` | The same game as a Flatpak bundle (`flatpak install caesar2-X.Y.Z.flatpak`), from `packaging/io.github.second_impressions.caesar2.yml`. |
+| `caesar2-X.Y.Z-macos.dmg` | `Caesar II.app`, universal (Apple silicon and Intel), macOS 11 or newer; SDL3 and libbacktrace linked in. Ad-hoc signed only: the first launch needs *Open Anyway* in System Settings → Privacy & Security (see below). |
 | `caesar2-X.Y.Z-windows-x64.zip` | `caesar2.exe` with `SDL3.dll`, `zlib1.dll`, `caesar2.pdb` and the licences. Unzip anywhere and run; the PDB next to the exe is what makes Windows crash reports readable. |
 | `caesar2-X.Y.Z-web.zip` | The browser build, the same files GitHub Pages serves, for self-hosting (needs the cross-origin isolation headers, see `docs/webassembly.md`). |
 | `SHA256SUMS` | Checksums of the above. Every file also carries a GitHub build-provenance attestation (`gh attestation verify <file> --repo second-impressions/caesar2-port`). |
@@ -95,6 +96,24 @@ needs: `--device=all` for reading a CD-ROM as a raw device, read-only
 access to the home directory and the usual mount points for importing
 game data from wherever it is kept.
 
+## macOS
+
+`packaging/macos/make-dmg.sh` builds the universal bundle with the same
+vendored SDL3 and libbacktrace as the AppImage (`CMAKE_OSX_ARCHITECTURES`
+arm64 and x86_64, deployment target 11.0), renders the icon set from
+`packaging/macos/icon-1024.png` with `sips`/`iconutil`, signs the bundle
+ad hoc (which arm64 requires to launch at all) and makes the dmg with
+`hdiutil`. It runs on the release workflow's `macos-14` runner.
+
+Without a Developer ID certificate and notarization, Gatekeeper reports the
+app as unverified and, since macOS 15, the way past it is System Settings →
+Privacy & Security → *Open Anyway* after the first refused launch. Both
+need the Apple Developer Program ($99 a year); the workflow has the hooks
+(`codesign` and a `notarytool` step) to add when a certificate exists.
+
+Discs on macOS are read from the volume the system mounts under
+`/Volumes`, which the launcher lists like a drive.
+
 ## Windows
 
 The zip is the MSVC build CI has always made, plus the PDB. There is no
@@ -104,7 +123,6 @@ an unsigned executable gets. Signing needs a certificate; not planned.
 
 ## Not yet
 
-- macOS (`.dmg`): planned; needs the platform leaf and a Mac to test on.
-  Gatekeeper wants Developer ID signing and notarization for a
-  warning-free install.
+- Developer ID signing and notarization for macOS; Authenticode for
+  Windows.
 - A rolling `nightly` pre-release from `main`.

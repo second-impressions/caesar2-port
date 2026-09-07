@@ -14,6 +14,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define C2_CDROM_SECTOR 2048u
 #define C2_CDROM_MAX_DESCRIPTORS 240u
@@ -181,6 +182,7 @@ int c2_cdrom_find_drives(char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max)
 #else /* POSIX */
 
 #include <fcntl.h>
+#include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -189,21 +191,42 @@ int c2_cdrom_find_drives(char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max)
 #include <linux/cdrom.h>
 #include <sys/ioctl.h>
 #endif
+#if PORT_PLATFORM_MACOS
+#include <sys/mount.h>
+#include <sys/param.h>
+#endif
+
+/*
+ * A disc is offered in one of two forms: the optical device itself, read
+ * sector by sector (Linux: /dev/sr*; exact regardless of how the disc is
+ * mounted, but needs read permission on the device, which a Flatpak or a
+ * user outside the cdrom group may not have), or the mounted volume the
+ * desktop put it at, which is then imported like an installed folder
+ * (macOS mounts every disc under /Volumes; Linux desktops under
+ * /run/media/<user> or /media). Both paths land in the same list.
+ */
 
 int c2_cdrom_drive_has_disc(const char *path)
 {
+    struct stat st;
+    if (path == NULL || stat(path, &st) != 0) return 0;
+    if (S_ISDIR(st.st_mode)) return 1;    /* a mounted volume is a disc */
 #if PORT_PLATFORM_LINUX
-    int fd = open(path, O_RDONLY | O_NONBLOCK);
-    int status;
-    if (fd < 0) return 0;
-    status = ioctl(fd, CDROM_DRIVE_STATUS, CDSL_CURRENT);
-    close(fd);
-    return status == CDS_DISC_OK;
+    {
+        int fd = open(path, O_RDONLY | O_NONBLOCK);
+        int status;
+        if (fd < 0) return 0;
+        status = ioctl(fd, CDROM_DRIVE_STATUS, CDSL_CURRENT);
+        close(fd);
+        return status == CDS_DISC_OK;
+    }
 #else
-    struct c2_cdrom_reader reader;
-    if (!c2_cdrom_open(path, &reader, NULL, 0)) return 0;
-    c2_cdrom_close(&reader);
-    return 1;
+    {
+        struct c2_cdrom_reader reader;
+        if (!c2_cdrom_open(path, &reader, NULL, 0)) return 0;
+        c2_cdrom_close(&reader);
+        return 1;
+    }
 #endif
 }
 
@@ -243,11 +266,87 @@ void c2_cdrom_close(struct c2_cdrom_reader *reader)
     reader->fd = -1;
 }
 
+static int add_path(char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max, int count,
+                    const char *path)
+{
+    int i;
+    if (count >= max) return count;
+    for (i = 0; i < count; i++) {
+        if (strcmp(paths[i], path) == 0) return count;
+    }
+    if (snprintf(paths[count], C2_CDROM_DRIVE_PATH_CAPACITY, "%s", path) >= C2_CDROM_DRIVE_PATH_CAPACITY)
+        return count;
+    return count + 1;
+}
+
+static int optical_filesystem(const char *type)
+{
+    return strcmp(type, "iso9660") == 0 || strcmp(type, "cd9660") == 0 ||
+           strcmp(type, "udf") == 0;
+}
+
+/* Mount points of optical volumes. */
+static int optical_mounts(char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max, int count)
+{
+#if PORT_PLATFORM_MACOS
+    struct statfs *mounts;
+    int n;
+    int i;
+    n = getfsstat(NULL, 0, MNT_NOWAIT);
+    if (n <= 0) return count;
+    mounts = calloc((size_t)n, sizeof(*mounts));
+    if (mounts == NULL) return count;
+    n = getfsstat(mounts, (int)((size_t)n * sizeof(*mounts)), MNT_NOWAIT);
+    for (i = 0; i < n; i++) {
+        if (optical_filesystem(mounts[i].f_fstypename))
+            count = add_path(paths, max, count, mounts[i].f_mntonname);
+    }
+    free(mounts);
+    return count;
+#else
+    return c2_cdrom_optical_mounts_in("/proc/self/mounts", paths, max, count);
+#endif
+}
+
+#if !PORT_PLATFORM_MACOS
+int c2_cdrom_optical_mounts_in(const char *mounts_path,
+                               char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max, int count)
+{
+    FILE *mounts = fopen(mounts_path, "r");
+    char line[1024];
+    if (mounts == NULL) return count;
+    while (fgets(line, sizeof(line), mounts)) {
+        /* "device mountpoint type options ..."; spaces are escaped as \040 */
+        char *fields[3];
+        char *p = line;
+        char decoded[C2_CDROM_DRIVE_PATH_CAPACITY];
+        size_t out = 0;
+        const char *in;
+        int f;
+        for (f = 0; f < 3; f++) {
+            while (*p == ' ') p++;
+            fields[f] = p;
+            while (*p && *p != ' ') p++;
+            if (*p) *p++ = '\0';
+        }
+        if (!optical_filesystem(fields[2])) continue;
+        for (in = fields[1]; *in && out + 1 < sizeof(decoded); in++) {
+            if (in[0] == '\\' && in[1] == '0' && in[2] == '4' && in[3] == '0') { decoded[out++] = ' '; in += 3; }
+            else decoded[out++] = *in;
+        }
+        decoded[out] = '\0';
+        count = add_path(paths, max, count, decoded);
+    }
+    fclose(mounts);
+    return count;
+}
+#endif
+
 int c2_cdrom_find_drives(char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max)
 {
-    /* Common optical device names across Linux and the BSDs.  macOS device
-     * numbering is dynamic, so a fixed candidate list is deliberately not
-     * attempted there; users can still pass /dev/diskN explicitly. */
+    /* Optical device names across Linux and the BSDs; readable ones only,
+     * since the reader needs to open them. macOS device numbering is
+     * dynamic, so there the mounted volume is the way in. */
     static const char *candidates[] = {
         "/dev/sr0", "/dev/sr1", "/dev/sr2", "/dev/sr3",
         "/dev/cd0", "/dev/cd1"
@@ -255,13 +354,11 @@ int c2_cdrom_find_drives(char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max)
     size_t i;
     int count = 0;
     for (i = 0; i < sizeof(candidates) / sizeof(candidates[0]); i++) {
-        if (count >= max) break;
         if (!c2_cdrom_is_device_path(candidates[i])) continue;
-        snprintf(paths[count], C2_CDROM_DRIVE_PATH_CAPACITY, "%s",
-                 candidates[i]);
-        count++;
+        if (access(candidates[i], R_OK) != 0) continue;
+        count = add_path(paths, max, count, candidates[i]);
     }
-    return count;
+    return optical_mounts(paths, max, count);
 }
 
 #endif /* POSIX */

@@ -347,6 +347,11 @@ static void scan_drives(void)
     for (i = 0; i < present_count; i++) {
         present[i][C2_CDROM_DRIVE_PATH_CAPACITY - 1] = '\0';
         if (!c2_cdrom_drive_has_disc(present[i])) continue;
+        /* A mounted volume is offered only when it holds the game: any
+         * disc is mounted, and the device path cannot say what is on it
+         * without spinning it up. */
+        if (!c2_cdrom_is_device_path(present[i]) &&
+            !c2_setup_source_looks_valid(present[i])) continue;
         memcpy(ui.drives[ui.drive_count++], present[i],
                C2_CDROM_DRIVE_PATH_CAPACITY);
     }
@@ -395,8 +400,8 @@ static void rebuild_buttons(void)
                "or drop a file here", NULL, 1);
     for (i = 0; i < ui.drive_count; i++) {
         char label[64];
-        snprintf(label, sizeof(label), "Use the disc in %.*s",
-                 C2_CDROM_DRIVE_PATH_CAPACITY - 1, ui.drives[i]);
+        snprintf(label, sizeof(label), "Use the disc at %.*s",
+                 (int)sizeof(label) - 18, ui.drives[i]);
         add_button(BUTTON_DRIVE, label, "", ui.drives[i], 1);
     }
     add_button(BUTTON_QUIT, "Quit", "Esc", NULL, 1);

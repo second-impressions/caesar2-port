@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>      <string>en</string>
+  <key>CFBundleExecutable</key>             <string>${MACOSX_BUNDLE_EXECUTABLE_NAME}</string>
+  <key>CFBundleIdentifier</key>             <string>io.github.second_impressions.caesar2</string>
+  <key>CFBundleInfoDictionaryVersion</key>  <string>6.0</string>
+  <key>CFBundleName</key>                   <string>Caesar II</string>
+  <key>CFBundleDisplayName</key>            <string>Caesar II</string>
+  <key>CFBundlePackageType</key>            <string>APPL</string>
+  <key>CFBundleIconFile</key>               <string>caesar2.icns</string>
+  <key>CFBundleShortVersionString</key>     <string>${MACOSX_BUNDLE_SHORT_VERSION_STRING}</string>
+  <key>CFBundleVersion</key>                <string>${MACOSX_BUNDLE_BUNDLE_VERSION}</string>
+  <key>LSMinimumSystemVersion</key>         <string>${CMAKE_OSX_DEPLOYMENT_TARGET}</string>
+  <key>LSApplicationCategoryType</key>      <string>public.app-category.strategy-games</string>
+  <key>NSHighResolutionCapable</key>        <true/>
+  <key>NSHumanReadableCopyright</key>       <string>Second Impressions. AGPL-3.0-or-later. Caesar II is a trademark of its owners; the game data is not included.</string>
+</dict>
+</plist>

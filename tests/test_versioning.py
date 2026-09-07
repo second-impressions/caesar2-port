@@ -32,11 +32,11 @@ def test_release_workflow_tags_builds_and_drafts():
     assert "workflow_dispatch:" in workflow
     # The tag goes on the verified commit, the builds check out the same one,
     # and nothing is published without a person pressing the button.
-    assert workflow.count("ref: ${{ needs.verify.outputs.commit }}") == 4
+    assert workflow.count("ref: ${{ needs.verify.outputs.commit }}") == 5
     assert 'git tag -a "$tag" -F /tmp/tag-notes.md "$commit"' in workflow
     assert "--draft" in workflow
     assert "actions/attest-build-provenance" in workflow
-    for artifact in ("windows-x64", "AppImage", ".flatpak", "-web"):
+    for artifact in ("windows-x64", "AppImage", ".flatpak", "-web", ".dmg"):
         assert artifact in workflow
     assert "packaging/appimage/build.sh" in workflow
     assert "flatpak/flatpak-github-actions/flatpak-builder" in workflow

@@ -514,6 +514,40 @@ static void test_zip_streams_deflated_cue_image(void)
     check_wrapped_cue_image(8, 1);
 }
 
+#if PORT_PLATFORM_LINUX
+static void test_optical_mounts_are_read_from_the_mount_table(void)
+{
+    char paths[4][C2_CDROM_DRIVE_PATH_CAPACITY];
+    char *dir = SDL_GetPrefPath("second-impressions", "caesar2-test");
+    char path[1024];
+    FILE *f;
+    int count;
+
+    TEST_ASSERT_NOT_NULL(dir);
+    snprintf(path, sizeof(path), "%smounts", dir);
+    f = fopen(path, "w");
+    TEST_ASSERT_NOT_NULL(f);
+    fputs("sysfs /sys sysfs rw,nosuid 0 0\n"
+          "/dev/sda2 / ext4 rw,relatime 0 0\n"
+          "/dev/sr0 /run/media/me/CAESAR\\040II iso9660 ro,nosuid,nodev,relatime 0 0\n"
+          "/dev/sr1 /media/udfdisc udf ro 0 0\n"
+          "/dev/sr0 /run/media/me/CAESAR\\040II iso9660 ro 0 0\n"
+          "tmpfs /run tmpfs rw 0 0\n", f);
+    fclose(f);
+    strcpy(paths[0], "/dev/sr0");
+    count = c2_cdrom_optical_mounts_in(path, paths, 4, 1);
+    TEST_ASSERT_EQUAL_INT(3, count);
+    TEST_ASSERT_EQUAL_STRING("/dev/sr0", paths[0]);
+    TEST_ASSERT_EQUAL_STRING("/run/media/me/CAESAR II", paths[1]);
+    TEST_ASSERT_EQUAL_STRING("/media/udfdisc", paths[2]);
+    /* A mounted volume counts as a disc; a random directory is not a device. */
+    TEST_ASSERT_TRUE(c2_cdrom_drive_has_disc(dir));
+    TEST_ASSERT_FALSE(c2_cdrom_is_device_path(dir));
+    remove(path);
+    SDL_free(dir);
+}
+#endif
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -525,5 +559,8 @@ int main(void)
     RUN_TEST(test_cdrom_reader_serves_iso_sectors);
     RUN_TEST(test_zip_streams_wrapped_cue_image);
     RUN_TEST(test_zip_streams_deflated_cue_image);
+#if PORT_PLATFORM_LINUX
+    RUN_TEST(test_optical_mounts_are_read_from_the_mount_table);
+#endif
     return UNITY_END();
 }

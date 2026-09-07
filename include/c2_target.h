@@ -40,6 +40,8 @@
  *                         present-day host backend.  A build can be a Windows
  *                         binary (PORT_PLATFORM_WIN32) while still using the
  *                         DOS-era engine semantics (PLATFORM_WINDOWS = 0).
+ *   PORT_PLATFORM_MACOS   the native macOS SDL continuation; POSIX like
+ *                         Linux, without Linux's device interfaces.
  *   PORT_PLATFORM_WASM    the browser SDL continuation compiled by Emscripten.
  *
  * Exactly one target platform is 1 and every other target platform is 0.
@@ -51,7 +53,7 @@
  */
 #if !defined(PLATFORM_DOS) && !defined(PLATFORM_WINDOWS) && \
     !defined(PORT_PLATFORM_LINUX) && !defined(PORT_PLATFORM_WIN32) && \
-    !defined(PORT_PLATFORM_WASM)
+    !defined(PORT_PLATFORM_MACOS) && !defined(PORT_PLATFORM_WASM)
 #  define PLATFORM_DOS 1
 #endif
 #ifndef PLATFORM_DOS
@@ -66,16 +68,19 @@
 #ifndef PORT_PLATFORM_WIN32
 #  define PORT_PLATFORM_WIN32 0
 #endif
+#ifndef PORT_PLATFORM_MACOS
+#  define PORT_PLATFORM_MACOS 0
+#endif
 #ifndef PORT_PLATFORM_WASM
 #  define PORT_PLATFORM_WASM 0
 #endif
 #if PLATFORM_DOS + PLATFORM_WINDOWS + PORT_PLATFORM_LINUX + PORT_PLATFORM_WIN32 + \
-    PORT_PLATFORM_WASM != 1
+    PORT_PLATFORM_MACOS + PORT_PLATFORM_WASM != 1
 #  error "exactly one PLATFORM_*/PORT_PLATFORM_* target must be selected"
 #endif
 #ifndef PORT_PLATFORM
-#  define PORT_PLATFORM (PORT_PLATFORM_LINUX || PORT_PLATFORM_WIN32 || PORT_PLATFORM_WASM)
-#elif PORT_PLATFORM != (PORT_PLATFORM_LINUX || PORT_PLATFORM_WIN32 || PORT_PLATFORM_WASM)
+#  define PORT_PLATFORM (PORT_PLATFORM_LINUX || PORT_PLATFORM_WIN32 || PORT_PLATFORM_MACOS || PORT_PLATFORM_WASM)
+#elif PORT_PLATFORM != (PORT_PLATFORM_LINUX || PORT_PLATFORM_WIN32 || PORT_PLATFORM_MACOS || PORT_PLATFORM_WASM)
 #  error "PORT_PLATFORM must match the selected target family"
 #endif
 
