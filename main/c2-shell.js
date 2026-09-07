@@ -31,7 +31,7 @@
     const userDataDrop = document.getElementById("userdata-drop");
     const query = new URLSearchParams(location.search);
     const smokeOutput = query.has("smoke-test") ? [] : null;
-    const BUILD_VERSION = "1.0.0-99-0d2c3234";
+    const BUILD_VERSION = "main-b7fc0953";
     const HAS_BUNDLED_ASSETS = 0 === 1;
     const ACTIVE_SOURCE = "c2.active-source.v1";
     const PENDING_SOURCE = "c2.pending-source.v1";
