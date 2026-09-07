@@ -38,6 +38,7 @@ fi
 # caesar2.icns is generated from icon-1024.png (PNG payloads in the icp4,
 # icp5 and ic07..ic10 slots) by tools/make-icns.py; committed so the build
 # needs neither ImageMagick nor iconutil.
+mkdir -p "$APP/Contents/Resources"
 cp packaging/macos/caesar2.icns "$APP/Contents/Resources/caesar2.icns"
 mkdir -p "$APP/Contents/Resources/licenses"
 cp LICENSE third_party/README.md third_party/libsmacker/COPYING third_party/nuked-opl3/LICENSE \
