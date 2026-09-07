@@ -53,10 +53,18 @@ def test_pages_deploys_the_single_main_wasm_build():
     assert workflow.count("cmake --build build/ci-wasm") == 1
     assert "--clean-first" not in workflow
     assert "needs: wasm" in workflow
-    # One site on the gh-pages branch: main at /, each pull request from
-    # this repository at /pr/N/, removed when it closes.
+    # One site on the gh-pages branch: the latest published release at /,
+    # main at /main/, each pull request from this repository at /pr/N/,
+    # removed when it closes. One script writes every directory.
     assert 'group: gh-pages' in workflow
-    assert 'target="pr/$PR_NUMBER"' in workflow
+    assert 'target="pr/$PR_NUMBER"; else target="main"' in workflow
+    assert ".github/scripts/publish-pages.sh" in workflow
+    pages_release = (ROOT / ".github" / "workflows" / "pages-release.yml").read_text()
+    assert "types: [published]" in pages_release
+    assert "github.event.release.prerelease == false" in pages_release
+    assert 'publish-pages.sh . _site' in pages_release
+    script = (ROOT / ".github" / "scripts" / "publish-pages.sh").read_text()
+    assert "! -name pr ! -name main" in script
     assert "github.event.pull_request.head.repo.full_name == github.repository" in workflow
     assert "preview-cleanup:" in workflow
     assert "coi-serviceworker.js" in workflow

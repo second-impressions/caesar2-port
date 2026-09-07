@@ -228,10 +228,11 @@ jobs:
           "build/ci-macos/Caesar II.app/Contents/MacOS/Caesar II" --version
 
   # ── GitHub Pages: main and pull-request previews ─────────────────────
-  # Pages serves one site per repository, from the gh-pages branch: main
-  # publishes to /, every pull request from this repository to /pr/N/
-  # (forks get artifacts only: their token cannot write), and a closed
-  # pull request removes its directory. Pushes to gh-pages are serialized.
+  # Pages serves one site per repository, from the gh-pages branch. The
+  # root is the latest published release (pages-release.yml); main
+  # publishes to /main/, every pull request from this repository to
+  # /pr/N/ (forks get artifacts only: their token cannot write), and a
+  # closed pull request removes its directory. Pushes are serialized.
   publish:
     name: Publish web build
     if: >-
@@ -248,6 +249,9 @@ jobs:
       group: gh-pages
       cancel-in-progress: false
     steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/scripts
       - uses: actions/download-artifact@v4
         with:
           name: site
@@ -257,32 +261,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          set -euo pipefail
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          if git clone --quiet --depth 1 --branch gh-pages "$remote" pages 2>/dev/null; then
-            cd pages
-          else
-            mkdir pages && cd pages && git init --quiet -b gh-pages && git remote add origin "$remote"
-          fi
-          if [ -n "$PR_NUMBER" ]; then
-            target="pr/$PR_NUMBER"
-            rm -rf "$target"; mkdir -p "$target"
-          else
-            # main owns everything at the root except the previews.
-            target="."
-            find . -mindepth 1 -maxdepth 1 ! -name .git ! -name pr -exec rm -rf {} +
-          fi
-          cp -R ../_site/. "$target/"
-          touch .nojekyll
-          git add -A
-          git commit --quiet -m "Publish ${target} from ${GITHUB_SHA}" || { echo "nothing changed"; exit 0; }
-          for attempt in 1 2 3; do
-            git push --quiet origin gh-pages && exit 0
-            git fetch --quiet origin gh-pages && git rebase --quiet origin/gh-pages
-          done
-          exit 1
+          if [ -n "$PR_NUMBER" ]; then target="pr/$PR_NUMBER"; else target="main"; fi
+          .github/scripts/publish-pages.sh "$target" _site "$GITHUB_SHA"
       - name: Point the pull request at its preview
         if: github.event_name == 'pull_request'
         env:
