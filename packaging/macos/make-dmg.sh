@@ -25,7 +25,7 @@ cmake --build "$BUILD_DIR"
 APP="$BUILD_DIR/Caesar II.app"
 BIN="$APP/Contents/MacOS/Caesar II"
 test -x "$BIN"
-VERSION=$("$BIN" --version | sed 's/^Caesar II //')
+VERSION=$("$BIN" --version | sed 's/^Caesar II //; s/+.*//')
 echo "built caesar2 $VERSION"
 lipo -info "$BIN"
 # Only system libraries may be dynamic (dependency lines are indented; the

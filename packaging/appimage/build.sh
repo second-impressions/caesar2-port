@@ -40,7 +40,7 @@ cmake -S . -B "$BUILD_DIR" -G Ninja \
     "$@"
 cmake --build "$BUILD_DIR"
 
-VERSION=$("$BUILD_DIR/caesar2" --version | sed 's/^Caesar II //')
+VERSION=$("$BUILD_DIR/caesar2" --version | sed 's/^Caesar II //; s/+.*//')
 echo "built caesar2 $VERSION"
 # Only the C library may be dynamic.
 if ldd "$BUILD_DIR/caesar2" | grep -vE 'linux-vdso|libc\.so|libm\.so|libdl\.so|libpthread\.so|librt\.so|ld-linux|libgcc_s'; then
