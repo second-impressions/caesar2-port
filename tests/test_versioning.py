@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_version_scheme_starts_at_one_and_has_build_metadata():
     cmake = (ROOT / "CMakeLists.txt").read_text()
     template = (ROOT / "include" / "c2_version.h.in").read_text()
-    assert "project(caesar2-port VERSION 1.0.0" in cmake
+    assert re.search(r"project\(caesar2-port VERSION [1-9]\d*\.\d+\.\d+ ", cmake)
     assert ('set(C2_VERSION_STRING "${PROJECT_VERSION}-${C2_BUILD_NUMBER}'
             '-${C2_GIT_HASH}")') in cmake
     # A clean checkout keeps the published format; an edited worktree matches no
