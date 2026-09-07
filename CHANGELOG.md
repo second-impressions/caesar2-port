@@ -6,6 +6,8 @@ what changed for them, not which files moved.
 
 ## Unreleased
 
+## 1.0.1 - 2026-09-07
+
 - Browser version: the text language setting moved from the front page
   into Settings → General.
 - The hosted browser version at the site root is now always the latest
