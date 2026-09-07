@@ -6,10 +6,13 @@ what changed for them, not which files moved.
 
 ## Unreleased
 
+## 1.0.0 - 2026-09-07
+
 - First release of the port: the recovered Caesar II engine on SDL3 for
-  Linux, Windows and the browser, with the original music through a
-  faithful OPL3 driver, reading your own CD-ROM, disc image, installation
-  or archive.
+  Linux (AppImage and Flatpak), Windows, macOS and the browser, with the
+  original music through a faithful OPL3 driver, reading your own CD-ROM,
+  disc image, installation or archive. The macOS app is not notarized:
+  allow it once under System Settings → Privacy & Security.
 - A launcher imports the game data once and remembers it, and offers
   fullscreen, integer or fractional scaling and the text language.
 - The game's text is built in, in English, German and French, and chosen
@@ -21,3 +24,4 @@ what changed for them, not which files moved.
   directory and the launcher points at it next time.
 - Every construction list on the city and province maps opens with a click
   and closes with the next, on every language's layout.
+
