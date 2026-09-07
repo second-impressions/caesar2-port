@@ -17,7 +17,6 @@
     const playButton = document.getElementById("play-button");
     const profileRow = document.getElementById("profile-row");
     const profileSelect = document.getElementById("profile-select");
-    const languageRow = document.getElementById("language-row");
     const languageSelect = document.getElementById("language-select");
     const settingsDialog = document.getElementById("settings-dialog");
     const assetsSummary = document.getElementById("assets-summary");
@@ -32,7 +31,7 @@
     const userDataDrop = document.getElementById("userdata-drop");
     const query = new URLSearchParams(location.search);
     const smokeOutput = query.has("smoke-test") ? [] : null;
-    const BUILD_VERSION = "1.1.0-88-9479810c";
+    const BUILD_VERSION = "1.0.1-92-1186caad";
     const HAS_BUNDLED_ASSETS = 0 === 1;
     const ACTIVE_SOURCE = "c2.active-source.v1";
     const PENDING_SOURCE = "c2.pending-source.v1";
@@ -767,20 +766,22 @@
       Module.callMain(args);
     }
     /*
-     * The game text is compiled into the runtime in every language it
-     * knows; the engine detects the game data's own language unless one is
-     * chosen here. Speech stays whatever the game data provides.
+     * Settings > General > Text language. The game text is compiled into
+     * the runtime in every language it knows; the engine detects the game
+     * data's own language unless one is chosen here. Speech stays whatever
+     * the game data provides. The list comes from the runtime once it is
+     * ready; until then only Automatic is offered.
      */
+    languageSelect.onchange = () => {
+      if (languageSelect.value) localStorage.setItem(TEXT_LANGUAGE, languageSelect.value);
+      else localStorage.removeItem(TEXT_LANGUAGE);
+    };
     function configureTextLanguages() {
       let listing = "";
       try { listing = Module.UTF8ToString(Module._c2_browser_text_languages()); }
       catch { return; }
       const languages = listing.split("\n").filter(Boolean).map(row => row.split("\t"));
-      if (!languages.length) return;
-      languageSelect.replaceChildren();
-      const automatic = document.createElement("option");
-      automatic.value = ""; automatic.textContent = "Automatic (from the game data)";
-      languageSelect.append(automatic);
+      for (const option of [...languageSelect.options].slice(1)) option.remove();
       for (const [tag, name] of languages) {
         const option = document.createElement("option");
         option.value = tag; option.textContent = name;
@@ -788,11 +789,6 @@
       }
       const stored = localStorage.getItem(TEXT_LANGUAGE) || "";
       languageSelect.value = languages.some(([tag]) => tag === stored) ? stored : "";
-      languageSelect.onchange = () => {
-        if (languageSelect.value) localStorage.setItem(TEXT_LANGUAGE, languageSelect.value);
-        else localStorage.removeItem(TEXT_LANGUAGE);
-      };
-      languageRow.hidden = false;
     }
     function configureAssetChoices(info) {
       profileSelect.replaceChildren();
