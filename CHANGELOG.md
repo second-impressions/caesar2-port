@@ -6,6 +6,14 @@ what changed for them, not which files moved.
 
 ## Unreleased
 
+- Browser version: the text language setting moved from the front page
+  into Settings → General.
+- The hosted browser version at the site root is now always the latest
+  release; the development branch is served at `/main/`.
+- Version numbers: a release is plain `1.0.1`; development builds name
+  their branch and commit (`main-29c2a676`), pull requests their number
+  (`pr23-…`), so a crash report says exactly what was running.
+
 ## 1.0.0 - 2026-09-07
 
 - First release of the port: the recovered Caesar II engine on SDL3 for
