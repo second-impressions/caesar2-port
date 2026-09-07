@@ -9,7 +9,7 @@
 # Needs GH_TOKEN and GITHUB_REPOSITORY.
 set -euo pipefail
 target=$1
-source=$2
+source=$(cd "$2" && pwd)   # absolute: the clone below is entered with cd
 description=$3
 
 git config --global user.name "github-actions[bot]"
