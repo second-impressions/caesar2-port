@@ -610,7 +610,10 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/speech.c
         src/titles.c
         src/web.c
-        PROPERTIES COMPILE_OPTIONS -Wno-implicit-function-declaration
+        PROPERTIES COMPILE_OPTIONS
+            # The recovered engine has its own random(); glibc hides libc's
+            # under -std=c11, Apple's stdlib.h needs to be told.
+            "-Wno-implicit-function-declaration;$<$<PLATFORM_ID:Darwin>:-D_POSIX_C_SOURCE=200809L>"
     )
     set_source_files_properties(
         src/platform/sdl3/c2_sdl_main.c
