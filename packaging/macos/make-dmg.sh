@@ -28,8 +28,9 @@ test -x "$BIN"
 VERSION=$("$BIN" --version | sed 's/^Caesar II //')
 echo "built caesar2 $VERSION"
 lipo -info "$BIN"
-# Only system libraries may be dynamic.
-if otool -L "$BIN" | tail -n +2 | grep -vE '/usr/lib/|/System/Library/'; then
+# Only system libraries may be dynamic (dependency lines are indented; the
+# others name the file and, in a fat binary, each architecture).
+if otool -L "$BIN" | grep '^	' | grep -vE '/usr/lib/|/System/Library/'; then
     echo "unexpected dynamic dependency" >&2
     exit 1
 fi
