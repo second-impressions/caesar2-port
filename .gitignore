@@ -57,3 +57,4 @@ tmp/
 
 # The functional rebuild (reproducible via 'c2 rebuild'; embeds delinked RAD/Miles code)
 build/
+dist/

@@ -13,8 +13,10 @@ The original game data is required and is never included.
 **Web:** the hosted build runs in any current browser; it asks for your game
 data on first use and keeps it in the browser's storage.
 
-**Native:** run `caesar2`. A small launcher window opens first: pick your game
-data once, then *Play*. It remembers the source and your display choices.
+**Native:** download from the [releases page](https://github.com/second-impressions/caesar2-port/releases):
+the `.AppImage` or `.flatpak` on Linux, the `.zip` on Windows (unzip anywhere,
+run `caesar2.exe`). A small launcher window opens first: pick your game data
+once, then *Play*. It remembers the source and your display choices.
 
 ### Game data
 
@@ -149,6 +151,8 @@ and every deviation is a named, documented flag.
 - [docs/game-text.md](docs/game-text.md) — the compiled-in text and its
   gettext files; [docs/localization.md](docs/localization.md) — speech and
   packs
+- [docs/releasing.md](docs/releasing.md) — how a release is cut and what it
+  contains
 - [docs/legacy-abi.md](docs/legacy-abi.md),
   [docs/recovered-source-delta-audit.md](docs/recovered-source-delta-audit.md)
   — compiler semantics the recovered code relies on, and every port edit to a

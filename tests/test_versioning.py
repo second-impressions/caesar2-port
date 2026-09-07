@@ -17,10 +17,32 @@ def test_version_scheme_starts_at_one_and_has_build_metadata():
     assert 'set(C2_LOCAL_BUILD_STAMP "")' in cmake
     assert 'string(TIMESTAMP C2_LOCAL_BUILD_STAMP "%Y%m%d-%H%M%S" UTC)' in cmake
     assert 'set(C2_VERSION_STRING "${PROJECT_VERSION}-${C2_LOCAL_BUILD_STAMP}")' in cmake
-    assert r'"Caesar II 1\\.0\\.0-([0-9]+-[0-9A-Fa-f]+|[0-9]{8}-[0-9]{6})")' in cmake
+    # A tagged release is the version with the revision as build metadata.
+    assert 'set(C2_VERSION_STRING "${PROJECT_VERSION}${C2_VERSION_SUFFIX}+${C2_GIT_HASH}")' in cmake
+    assert ('"Caesar II ${PROJECT_VERSION}(-([0-9]+-[0-9A-Fa-f]+|[0-9]{8}-[0-9]{6})'
+            '|(-[0-9A-Za-z.]+)?\\\\+[0-9A-Fa-f]+)")') in cmake
     assert "git rev-list --count HEAD" in cmake
     assert "git rev-parse --short=8 HEAD" in cmake
     assert '#define C2_VERSION_STRING "@C2_VERSION_STRING@"' in template
+
+
+def test_release_workflow_tags_builds_and_drafts():
+    workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text()
+    assert "tags: ['v*']" in workflow
+    assert "workflow_dispatch:" in workflow
+    # The tag goes on the verified commit, the builds check out the same one,
+    # and nothing is published without a person pressing the button.
+    assert workflow.count("ref: ${{ needs.verify.outputs.commit }}") == 4
+    assert 'git tag -a "$tag" -F /tmp/tag-notes.md "$commit"' in workflow
+    assert "--draft" in workflow
+    assert "actions/attest-build-provenance" in workflow
+    for artifact in ("windows-x64", "AppImage", ".flatpak", "-web"):
+        assert artifact in workflow
+    assert "packaging/appimage/build.sh" in workflow
+    assert "flatpak/flatpak-github-actions/flatpak-builder" in workflow
+    script = (ROOT / "tools" / "release.py").read_text()
+    assert '"prepare"' in script and '"publish"' in script
+    assert (ROOT / "CHANGELOG.md").read_text().startswith("# Changelog")
 
 
 def test_pages_deploys_the_single_main_wasm_build():
