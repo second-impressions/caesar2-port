@@ -37,6 +37,7 @@ permissions:
 
 env:
   C2_BUILD_NUMBER: ${{ github.run_number }}
+  C2_BUILD_LABEL: ${{ github.event_name == 'pull_request' && format('pr{0}', github.event.pull_request.number) || 'main' }}
 
 jobs:
   # ── The version is the tag ─────────────────────────────────────────
@@ -55,7 +56,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.commit || github.sha }}
+          ref: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
       - id: version
         env:
@@ -96,7 +97,7 @@ jobs:
             echo "prerelease=$([[ -n "$suffix" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           else
             suffix=""
-            version="$cmake_version-${{ github.run_number }}-${commit::8}"
+            version="$C2_BUILD_LABEL-${commit::8}"
             echo "release=OFF" >> "$GITHUB_OUTPUT"
             echo "prerelease=true" >> "$GITHUB_OUTPUT"
           fi
@@ -111,7 +112,7 @@ jobs:
           if grep -q "^## $v " CHANGELOG.md; then
             awk -v v="$v" '/^## /{p = ($2 == v)} p && !/^## /' CHANGELOG.md > notes.md
           else
-            echo "Build $v from ${GITHUB_SHA::8}; not a release." > notes.md
+            echo "Build $v; not a release." > notes.md
           fi
           cat notes.md
       - uses: actions/upload-artifact@v4
@@ -211,6 +212,7 @@ jobs:
           sed -i \
             -e "s/@C2_BUILD_NUMBER@/${{ github.run_number }}/" \
             -e "s/@C2_GIT_HASH@/${commit::8}/" \
+            -e "s/@C2_BUILD_LABEL@/$C2_BUILD_LABEL/" \
             -e "s/@C2_RELEASE@/${{ needs.verify.outputs.release }}/" \
             packaging/io.github.second_impressions.caesar2.yml
           if [ -n "${{ needs.verify.outputs.suffix }}" ]; then

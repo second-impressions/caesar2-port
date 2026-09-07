@@ -5,25 +5,23 @@ import re
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_version_scheme_starts_at_one_and_has_build_metadata():
+def test_version_scheme_names_releases_and_everything_else_by_origin():
     cmake = (ROOT / "CMakeLists.txt").read_text()
     template = (ROOT / "include" / "c2_version.h.in").read_text()
-    assert "project(caesar2-port VERSION 1.0.0" in cmake
-    assert ('set(C2_VERSION_STRING "${PROJECT_VERSION}-${C2_BUILD_NUMBER}'
-            '-${C2_GIT_HASH}")') in cmake
-    # A clean checkout keeps the published format; an edited worktree matches no
-    # commit, so it is named after its configure time instead.
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    assert re.search(r"project\(caesar2-port VERSION [1-9]\d*\.\d+\.\d+ ", cmake)
+    # A release is its version, and nothing else is: main-<sha>, prN-<sha>,
+    # dev-<sha>, or the configure time of an edited worktree.
+    assert 'set(C2_VERSION_STRING "${PROJECT_VERSION}${C2_VERSION_SUFFIX}")' in cmake
+    assert 'set(C2_VERSION_STRING "${C2_BUILD_LABEL}-${C2_GIT_HASH}")' in cmake
+    assert 'set(C2_VERSION_STRING "local-${C2_LOCAL_BUILD_STAMP}")' in cmake
     assert 'git status --porcelain --untracked-files=no' in cmake
-    assert 'set(C2_LOCAL_BUILD_STAMP "")' in cmake
     assert 'string(TIMESTAMP C2_LOCAL_BUILD_STAMP "%Y%m%d-%H%M%S" UTC)' in cmake
-    assert 'set(C2_VERSION_STRING "${PROJECT_VERSION}-${C2_LOCAL_BUILD_STAMP}")' in cmake
-    # A tagged release is the version with the revision as build metadata.
-    assert 'set(C2_VERSION_STRING "${PROJECT_VERSION}${C2_VERSION_SUFFIX}+${C2_GIT_HASH}")' in cmake
-    assert ('"Caesar II ${PROJECT_VERSION}(-([0-9]+-[0-9A-Fa-f]+|[0-9]{8}-[0-9]{6})'
-            '|(-[0-9A-Za-z.]+)?\\\\+[0-9A-Fa-f]+)")') in cmake
-    assert "git rev-list --count HEAD" in cmake
     assert "git rev-parse --short=8 HEAD" in cmake
     assert '#define C2_VERSION_STRING "@C2_VERSION_STRING@"' in template
+    # CI labels builds by origin, and a pull request by its own head commit.
+    assert "format('pr{0}', github.event.pull_request.number) || 'main'" in ci
+    assert "github.event.pull_request.head.sha || github.sha" in ci
 
 
 def test_release_workflow_tags_builds_and_drafts():

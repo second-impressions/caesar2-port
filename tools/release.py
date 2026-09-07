@@ -3,7 +3,6 @@
 
     tools/release.py prepare 1.0.0          # final release
     tools/release.py prepare 1.1.0-rc1      # pre-release of the version main is at
-    tools/release.py prepare 1.0.0 --next 2.0.0
     tools/release.py publish 1.0.0          # after the pull request is merged
 
 prepare, on a clean checkout of origin/main:
@@ -17,9 +16,11 @@ prepare, on a clean checkout of origin/main:
 publish finds the merged release commit on origin/main and starts the
 Release workflow on it, which tags that commit v<version>, builds every
 download and opens a *draft* GitHub release with the changelog section as
-its notes; publishing the draft is up to you. For a final release it then
-opens a second pull request that bumps project(VERSION) to the next minor
-(or --next), so main is named after what follows.
+its notes; publishing the draft is up to you.
+
+project(VERSION) only names releases: builds from main are main-<commit>,
+pull requests prN-<commit>. So nothing is bumped afterwards; the next
+prepare sets the next version.
 """
 from __future__ import annotations
 
@@ -95,15 +96,6 @@ def add_metainfo_release(version, today):
     METAINFO.write_text(text)
 
 
-def next_version(base, explicit):
-    if explicit:
-        if not VERSION_RE.match(explicit) or "-" in explicit:
-            fail(f"--next must be X.Y.Z, got {explicit}")
-        return explicit
-    major, minor, _ = base.split(".")
-    return f"{major}.{int(minor) + 1}.0"
-
-
 def prepare(args):
     base, suffix = parse_version(args.version)
     branch = f"release/{args.version}"
@@ -117,10 +109,6 @@ def prepare(args):
             fail("check out origin/main first")
         if git("ls-remote", "--tags", "origin", f"refs/tags/v{args.version}"):
             fail(f"tag v{args.version} exists")
-    current = cmake_version(CMAKE.read_text())
-    if suffix and current != base:
-        fail(f"a pre-release of {base} needs CMakeLists.txt at {base}; it is at {current}")
-
     notes = release_changelog(args.version, today)
     set_cmake_version(base)
     add_metainfo_release(args.version, today)
@@ -157,19 +145,6 @@ def publish(args):
         "-f", f"version={args.version}", "-f", f"commit={commit}", capture=False)
     print(f"Release workflow started: it tags {commit[:8]} as v{args.version} and builds it.\n"
           f"Follow it with: gh run watch; the draft appears under Releases.")
-    if suffix:
-        return
-    following = next_version(base, args.next)
-    branch = f"release/start-{following}"
-    git("checkout", "-q", "-b", branch, "origin/main")
-    set_cmake_version(following)
-    git("add", str(CMAKE))
-    git("commit", "-q", "-m", f"release: start {following}\n\nmain builds are named after what comes after {args.version}.")
-    git("push", "-q", "-u", "origin", branch)
-    url = run("gh", "pr", "create", "--base", "main", "--head", branch,
-              "--title", f"release: start {following}",
-              "--body", f"After {args.version}: main builds read {following}-<build>-<hash>.")
-    print(f"bump pull request: {url}")
 
 
 def main():
@@ -177,12 +152,10 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("prepare", help="open the release pull request")
     p.add_argument("version")
-    p.add_argument("--next", help="version main continues at after a final release")
     p.add_argument("--dry-run", action="store_true", help="edit files, do not commit or push")
     p.set_defaults(func=prepare)
     p = sub.add_parser("publish", help="tag the merged release commit and build the downloads")
     p.add_argument("version")
-    p.add_argument("--next", help="version main continues at (final releases)")
     p.set_defaults(func=publish)
     args = parser.parse_args()
     args.func(args)

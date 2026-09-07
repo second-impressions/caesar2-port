@@ -24,14 +24,12 @@ tools/release.py publish 1.0.0
 ```
 
 starts the Release workflow on the merged commit. The workflow tags it
-`v1.0.0`, builds, attests and drafts the release; for a final release the
-script also opens the follow-up pull request `release: start 1.1.0`, so
-builds from `main` are named `1.1.0-<build>-<hash>` from then on. Look at the
-draft, try a download, press *Publish*.
+`v1.0.0`, builds, attests and drafts the release. Look at the draft, try a
+download, press *Publish*. Nothing is bumped afterwards: `project(VERSION)`
+only names releases, and the next `prepare` sets the next one.
 
-Pre-releases: `prepare 1.1.0-rc1` requires `main` to be at `1.1.0` already
-(it is, after the previous release's bump), tags `v1.1.0-rc1`, marks the
-GitHub release as a pre-release, and bumps nothing.
+Pre-releases: `prepare 1.1.0-rc1` sets `project(VERSION 1.1.0)`, tags
+`v1.1.0-rc1` and marks the GitHub release as a pre-release.
 
 Running the workflow by hand without a version (`gh workflow run
 release.yml`) builds everything from any commit without tagging or
@@ -48,10 +46,14 @@ releasing: a dry run of the pipeline.
 | `caesar2-X.Y.Z-web.zip` | The browser build. Publishing the release puts it at the root of the Pages site (`pages-release.yml`); it is also for self-hosting (needs the cross-origin isolation headers, see `docs/webassembly.md`). |
 | `SHA256SUMS` | Checksums of the above. Every file also carries a GitHub build-provenance attestation (`gh attestation verify <file> --repo second-impressions/caesar2-port`). |
 
-Version strings: a release build prints `1.0.0+<hash>` (semver build
-metadata: the commit is still in every crash report); builds from `main`
-print `1.1.0-<build>-<hash>`; a build from an edited tree prints its
-configure time.
+Version strings, as `--version`, the about box and crash reports print
+them: a release is its version, `1.0.1` or `1.1.0-rc1` — there is only ever
+one of each, and the tag names the commit. Everything else names its
+origin and commit: `main-29c2a676` for the main branch, `pr21-4fa3c2d1` for
+pull request 21 (its head commit, not GitHub's merge ref), `dev-29c2a676`
+for a clean local checkout, and `local-20260907-153000` (the configure
+time) for an edited tree, which matches no commit. Download names follow
+the same strings.
 
 ## The Linux build
 

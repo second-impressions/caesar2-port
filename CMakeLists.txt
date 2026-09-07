@@ -12,26 +12,22 @@ project(caesar2-port VERSION 1.0.0 LANGUAGES C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-set(C2_BUILD_NUMBER "" CACHE STRING
-    "Monotonic build number appended to the semantic version")
-set(C2_GIT_HASH "" CACHE STRING
-    "Short Git revision appended to the build version")
-if(NOT C2_BUILD_NUMBER AND DEFINED ENV{C2_BUILD_NUMBER})
-    set(C2_BUILD_NUMBER "$ENV{C2_BUILD_NUMBER}")
-endif()
-if(NOT C2_GIT_HASH AND DEFINED ENV{C2_GIT_HASH})
-    set(C2_GIT_HASH "$ENV{C2_GIT_HASH}")
-endif()
-if(NOT C2_BUILD_NUMBER)
-    execute_process(COMMAND git rev-list --count HEAD
-        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-        OUTPUT_VARIABLE C2_BUILD_NUMBER
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET)
-endif()
-if(NOT C2_BUILD_NUMBER MATCHES "^[0-9]+$")
-    set(C2_BUILD_NUMBER "0")
-endif()
+# ---- Version string ----------------------------------------------------------
+# What --version, the about box and crash reports say:
+#   a release        1.0.1  (or 1.1.0-rc1)   C2_RELEASE=ON: the tag names the commit
+#   main             main-29c2a676           C2_BUILD_LABEL from CI, plus the commit
+#   pull request 21  pr21-4fa3c2d1           the pull request's head commit
+#   a clean checkout dev-29c2a676
+#   an edited tree   local-20260907-153000   matches no commit: its configure time
+# project(VERSION) only matters for releases; tools/release.py sets it.
+set(C2_GIT_HASH "" CACHE STRING "Short Git revision of the build")
+set(C2_BUILD_LABEL "" CACHE STRING "Where the build comes from: main, prN (CI); dev otherwise")
+set(C2_BUILD_NUMBER "" CACHE STRING "Monotonic build number (CI run); the macOS bundle version")
+foreach(var C2_GIT_HASH C2_BUILD_LABEL C2_BUILD_NUMBER)
+    if(NOT ${var} AND DEFINED ENV{${var}})
+        set(${var} "$ENV{${var}}")
+    endif()
+endforeach()
 if(NOT C2_GIT_HASH)
     execute_process(COMMAND git rev-parse --short=8 HEAD
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -40,28 +36,29 @@ if(NOT C2_GIT_HASH)
         ERROR_QUIET)
 endif()
 if(NOT C2_GIT_HASH MATCHES "^[0-9A-Fa-f]+$")
-    set(C2_GIT_HASH "local")
+    set(C2_GIT_HASH "")
 else()
-    string(LENGTH "${C2_GIT_HASH}" C2_GIT_HASH_LENGTH)
-    if(C2_GIT_HASH_LENGTH GREATER 8)
-        string(SUBSTRING "${C2_GIT_HASH}" 0 8 C2_GIT_HASH)
-    endif()
+    string(SUBSTRING "${C2_GIT_HASH}" 0 8 C2_GIT_HASH)
+    string(TOLOWER "${C2_GIT_HASH}" C2_GIT_HASH)
+endif()
+if(NOT C2_BUILD_LABEL MATCHES "^[a-z][a-z0-9]*$")
+    set(C2_BUILD_LABEL "dev")
+endif()
+if(NOT C2_BUILD_NUMBER MATCHES "^[0-9]+$")
+    set(C2_BUILD_NUMBER "0")
 endif()
 # string(TIMESTAMP) honors SOURCE_DATE_EPOCH, which the Nix dev shell pins to
 # 315532800; that would stamp every build 1980-01-01, so read the real clock
 # and put the variable back for the rest of the configure.
 set(C2_SAVED_SOURCE_DATE_EPOCH "$ENV{SOURCE_DATE_EPOCH}")
 unset(ENV{SOURCE_DATE_EPOCH})
-# A build from an edited worktree matches no commit, so a commit count and
-# revision would misidentify it. Those builds are named after their configure
-# time instead, which also keeps successive local builds distinguishable.
 if(NOT DEFINED C2_LOCAL_BUILD_STAMP)
     execute_process(COMMAND git status --porcelain --untracked-files=no
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         OUTPUT_VARIABLE C2_WORKTREE_STATUS
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_QUIET)
-    if(C2_WORKTREE_STATUS STREQUAL "")
+    if(C2_WORKTREE_STATUS STREQUAL "" AND C2_GIT_HASH)
         set(C2_LOCAL_BUILD_STAMP "")
     else()
         string(TIMESTAMP C2_LOCAL_BUILD_STAMP "%Y%m%d-%H%M%S" UTC)
@@ -70,18 +67,14 @@ endif()
 if(C2_SAVED_SOURCE_DATE_EPOCH)
     set(ENV{SOURCE_DATE_EPOCH} "${C2_SAVED_SOURCE_DATE_EPOCH}")
 endif()
-# A tagged release is just its version, with the revision as semver build
-# metadata so crash reports still say which commit; everything else names
-# the commit count and revision, or the configure time of an edited tree.
-option(C2_RELEASE "This is a tagged release build (version without build number)" OFF)
-set(C2_VERSION_SUFFIX "" CACHE STRING
-    "Pre-release suffix of a tagged release, e.g. -rc1")
+option(C2_RELEASE "This is a tagged release build: the version is project(VERSION)" OFF)
+set(C2_VERSION_SUFFIX "" CACHE STRING "Pre-release suffix of a tagged release, e.g. -rc1")
 if(C2_RELEASE)
-    set(C2_VERSION_STRING "${PROJECT_VERSION}${C2_VERSION_SUFFIX}+${C2_GIT_HASH}")
+    set(C2_VERSION_STRING "${PROJECT_VERSION}${C2_VERSION_SUFFIX}")
 elseif(C2_LOCAL_BUILD_STAMP STREQUAL "")
-    set(C2_VERSION_STRING "${PROJECT_VERSION}-${C2_BUILD_NUMBER}-${C2_GIT_HASH}")
+    set(C2_VERSION_STRING "${C2_BUILD_LABEL}-${C2_GIT_HASH}")
 else()
-    set(C2_VERSION_STRING "${PROJECT_VERSION}-${C2_LOCAL_BUILD_STAMP}")
+    set(C2_VERSION_STRING "local-${C2_LOCAL_BUILD_STAMP}")
 endif()
 message(STATUS "Caesar II build version: ${C2_VERSION_STRING}")
 configure_file(include/c2_version.h.in
@@ -736,11 +729,11 @@ include(CTest)
 
 if(BUILD_TESTING)
     add_test(NAME version-string COMMAND caesar2 --version)
-    # Published builds carry a commit count and revision; local builds from an
-    # edited worktree carry their configure time instead.
+    # A release is its version; anything else names its origin and commit, or
+    # the configure time of an edited worktree.
     set_tests_properties(version-string PROPERTIES
         PASS_REGULAR_EXPRESSION
-            "Caesar II ${PROJECT_VERSION}(-([0-9]+-[0-9A-Fa-f]+|[0-9]{8}-[0-9]{6})|(-[0-9A-Za-z.]+)?\\+[0-9A-Fa-f]+)")
+            "Caesar II ([0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.]+)?|[a-z][a-z0-9]*-[0-9a-f]{8}|local-[0-9]{8}-[0-9]{6})")
 
     # A fault must leave a report in the user-data directory (Debug builds
     # carry the --crash-test fault; the handler is the same in every build).
