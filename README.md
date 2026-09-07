@@ -10,8 +10,10 @@ The original game data is required and is never included.
 
 ## Playing
 
-**Web:** the hosted build runs in any current browser; it asks for your game
-data on first use and keeps it in the browser's storage.
+**Web:** the hosted build at https://second-impressions.github.io/caesar2-port/
+(the latest release; `/main/` is the development branch) runs in any current
+browser; it asks for your game data on first use and keeps it in the
+browser's storage.
 
 **Native:** download from the [releases page](https://github.com/second-impressions/caesar2-port/releases):
 the `.AppImage` or `.flatpak` on Linux, the `.zip` on Windows (unzip anywhere,

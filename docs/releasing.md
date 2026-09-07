@@ -45,7 +45,7 @@ releasing: a dry run of the pipeline.
 | `caesar2-X.Y.Z.flatpak` | The same game as a Flatpak bundle (`flatpak install caesar2-X.Y.Z.flatpak`), from `packaging/io.github.second_impressions.caesar2.yml`. |
 | `caesar2-X.Y.Z-macos.dmg` | `Caesar II.app`, universal (Apple silicon and Intel), macOS 11 or newer; SDL3 and libbacktrace linked in. Ad-hoc signed only: the first launch needs *Open Anyway* in System Settings → Privacy & Security (see below). |
 | `caesar2-X.Y.Z-windows-x64.zip` | `caesar2.exe` with `SDL3.dll`, `zlib1.dll`, `caesar2.pdb` and the licences. Unzip anywhere and run; the PDB next to the exe is what makes Windows crash reports readable. |
-| `caesar2-X.Y.Z-web.zip` | The browser build, the same files GitHub Pages serves, for self-hosting (needs the cross-origin isolation headers, see `docs/webassembly.md`). |
+| `caesar2-X.Y.Z-web.zip` | The browser build. Publishing the release puts it at the root of the Pages site (`pages-release.yml`); it is also for self-hosting (needs the cross-origin isolation headers, see `docs/webassembly.md`). |
 | `SHA256SUMS` | Checksums of the above. Every file also carries a GitHub build-provenance attestation (`gh attestation verify <file> --repo second-impressions/caesar2-port`). |
 
 Version strings: a release build prints `1.0.0+<hash>` (semver build

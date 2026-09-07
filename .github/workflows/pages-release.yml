@@ -1,0 +1,47 @@
+name: Pages release
+
+# The root of the Pages site is the latest published release: when a
+# release is published (a draft made public), its web zip goes to /.
+# Pre-releases stay off the root. Run by hand with a tag to republish one.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag whose web build goes to the site root"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish the release to the site root
+    if: github.event_name == 'workflow_dispatch' || github.event.release.prerelease == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/scripts
+      - name: Fetch the release's web build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*-web.zip' --dir dl
+          mkdir -p _site
+          unzip -q dl/*-web.zip -d unzipped
+          cp -R unzipped/*/. _site/
+          test -f _site/index.html
+          echo "release=$TAG" >> "$GITHUB_ENV"
+      - name: Publish to gh-pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/publish-pages.sh . _site "release ${{ env.release }}"
