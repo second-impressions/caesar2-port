@@ -43,6 +43,9 @@ jobs:
   # ── The version is the tag ─────────────────────────────────────────
   verify:
     name: Verify version and notes
+    # Dry runs on pull requests are for this repository's own branches; a
+    # fork's pull request must not occupy the macOS and Windows runners.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: write   # to create the tag when dispatched with a version
