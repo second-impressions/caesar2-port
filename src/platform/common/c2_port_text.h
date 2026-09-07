@@ -51,5 +51,7 @@ struct c2_text_bundle_entry {
 };
 extern const struct c2_text_bundle_entry c2_text_bundle[];
 extern const int c2_text_bundle_count;
+/* Tests: replace the embedded bundle (NULL restores it). */
+void c2_port_text_use_bundle(const struct c2_text_bundle_entry *entries, int count);
 
 #endif /* C2_PORT_TEXT_H */

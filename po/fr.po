@@ -5800,10 +5800,12 @@ msgstr ""
 "\"La Taxe Impériale de cette année est appropriée pour un Gouverneur "
 "aussi heureux en affaires -- et riche -- que toi !\""
 
+# Not in this language's original file; empty in English too.
 msgctxt "0x92/2"
 msgid ""
 msgstr ""
 
+# Not in this language's original file; empty in English too.
 msgctxt "0x92/3"
 msgid ""
 msgstr ""
@@ -36373,6 +36375,7 @@ msgstr ""
 "#1992Page Précédente#\n"
 "#1204Retour au scénario principal#"
 
+# Not in this language's original file; empty in English too.
 msgctxt "help/1994/0"
 msgid ""
 msgstr ""

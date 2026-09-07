@@ -286,6 +286,8 @@ static int po_header_value(const char *header, const char *key, char *out, size_
 #define LANGUAGE_CAPACITY 16
 #define NAME_CAPACITY 48
 
+static const struct c2_text_bundle_entry *bundle;
+static int bundle_count;
 static struct c2_port_language languages[LANGUAGE_CAPACITY];
 static char language_names[LANGUAGE_CAPACITY][NAME_CAPACITY];
 static char language_detects[LANGUAGE_CAPACITY][NAME_CAPACITY];
@@ -301,17 +303,21 @@ static void load_language_table(void)
 
     if (language_count >= 0) return;
     language_count = 0;
+    if (!bundle) {
+        bundle = c2_text_bundle;
+        bundle_count = c2_text_bundle_count;
+    }
     e.msgid = malloc(PO_STRING_CAPACITY);
     e.msgstr = malloc(PO_STRING_CAPACITY);
     if (!e.msgid || !e.msgstr) { free(e.msgid); free(e.msgstr); return; }
-    for (i = 0; i < c2_text_bundle_count && language_count < LANGUAGE_CAPACITY; i++) {
-        r.data = c2_text_bundle[i].data;
-        r.size = c2_text_bundle[i].size;
+    for (i = 0; i < bundle_count && language_count < LANGUAGE_CAPACITY; i++) {
+        r.data = bundle[i].data;
+        r.size = bundle[i].size;
         r.pos = 0;
         if (po_read_entry(&r, &e) != 1 || e.has_ctxt || e.msgid_length != 0) continue;
-        languages[language_count].tag = c2_text_bundle[i].tag;
+        languages[language_count].tag = bundle[i].tag;
         if (!po_header_value(e.msgstr, "X-C2-Name", language_names[language_count], NAME_CAPACITY))
-            snprintf(language_names[language_count], NAME_CAPACITY, "%s", c2_text_bundle[i].tag);
+            snprintf(language_names[language_count], NAME_CAPACITY, "%s", bundle[i].tag);
         if (!po_header_value(e.msgstr, "X-C2-Detect", language_detects[language_count], NAME_CAPACITY))
             language_detects[language_count][0] = '\0';
         transcode(language_detects[language_count], strlen(language_detects[language_count]));
@@ -321,6 +327,16 @@ static void load_language_table(void)
     }
     free(e.msgid);
     free(e.msgstr);
+}
+
+void c2_port_text_use_bundle(const struct c2_text_bundle_entry *entries, int count)
+{
+    c2_port_text_shutdown();
+    bundle = entries;
+    bundle_count = count;
+    language_count = -1;
+    selected_tag[0] = '\0';
+    effective_tag[0] = '\0';
 }
 
 int c2_port_text_language_count(void)
@@ -516,8 +532,8 @@ static int load_model(const char *tag)
     e.msgid = malloc(PO_STRING_CAPACITY);
     e.msgstr = malloc(PO_STRING_CAPACITY);
     if (!e.msgid || !e.msgstr) { free(e.msgid); free(e.msgstr); return 0; }
-    r.data = c2_text_bundle[i].data;
-    r.size = c2_text_bundle[i].size;
+    r.data = bundle[i].data;
+    r.size = bundle[i].size;
     r.pos = 0;
     while ((status = po_read_entry(&r, &e)) == 1) {
         const char *value;
