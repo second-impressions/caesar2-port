@@ -56,12 +56,12 @@ The same engine smoke can run in Chromium or Firefox. In this form the save and
 history file travel through WasmFS and OPFS, so the readback comparison tests
 the browser persistence path rather than an in-memory substitute.
 
-Build a Debug Wasm tree with test assets, serve it through the smoke harness,
-and select the `save` test:
+Build a Debug Wasm tree, then run the `save` test with the game data to
+import (a disc image, ZIP or pack):
 
 ```sh
-node tools/smoke-wasm.mjs build/wasm-debug save chromium
-node tools/smoke-wasm.mjs build/wasm-debug save firefox
+node tools/smoke-wasm.mjs build/port/wasm-debug save chromium /path/to/caesar2.iso
+node tools/smoke-wasm.mjs build/port/wasm-debug save firefox /path/to/caesar2.iso
 ```
 
 The browser test uses a new browser profile and waits for the same full-state

@@ -119,21 +119,21 @@ def test_dependencies_come_from_the_build_host():
         assert f"`{name}/`" in provenance
 
 
-def test_language_builds_split_artifacts_without_branching_the_engine():
+def test_one_executable_for_every_language_and_no_bundled_game_data():
     cmake = (ROOT / "CMakeLists.txt").read_text()
-    assert 'set(C2_LANGUAGE "en" CACHE STRING' in cmake
+    shell = (ROOT / "web" / "c2_shell.js.in").read_text()
     assert 'OUTPUT_NAME "index"' in cmake
     assert "target_compile_definitions(c2_import_core PRIVATE" in cmake
     assert "${C2_PLATFORM_LEAF}=1" in cmake
     assert "target_link_libraries(c2_import_core PUBLIC ZLIB::ZLIB SDL3::SDL3)" in cmake
-    assert 'c2_require_language_asset("c2.eng")' in cmake
-    assert 'c2_require_language_asset("help.eng")' in cmake
-
-    offenders = []
-    for path in _source_files(SRC):
-        if "C2_LANGUAGE" in path.read_text():
-            offenders.append(str(path.relative_to(ROOT)))
-    assert not offenders, "language build tag escaped into the engine:\n" + "\n".join(offenders)
+    # No per-language build, and no game data in the web build: the page
+    # always asks for the player's own (its smoke tests upload it).
+    assert "C2_LANGUAGE" not in cmake
+    assert "preload-file" not in cmake
+    assert "C2_WASM_ASSET_ROOT" not in cmake
+    assert "HAS_BUNDLED_ASSETS" not in shell
+    assert '"/assets"' not in shell
+    assert 'const smoke = query.get("smoke-test");' in shell
 
 
 def test_wasm_shell_owns_import_switching_and_save_export():
@@ -195,14 +195,12 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "SDL_GetAtomicInt(&app->prepare_result)" in sdl_main
     assert "prepare-assets-rejects-missing-source" in cmake
     assert "startGame(pending" not in shell
-    # Play is offered for remembered, cached, or bundled data alike.
+    # Play is offered for remembered or cached data.
     assert "async function discoverSource" in shell
     assert '/persistent/game-data/${name}' in shell
     assert 'id="forget-button"' in shell
     assert "Loaded game data" in shell
     assert 'id="play-button" type="button" aria-disabled="true"' in shell
-    assert "C2_HAS_BUNDLED_ASSETS" in cmake
-    assert "HAS_BUNDLED_ASSETS" in shell
     assert 'id="pane-userdata"' in shell
     assert 'id="userdata-input" type="file" accept=".sav,.dat,.inf,.zip" multiple' in shell
     assert 'id="userdata-drop" class="c2-drop-zone' in shell

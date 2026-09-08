@@ -11,6 +11,15 @@ import ssl
 
 
 class Caesar2Handler(SimpleHTTPRequestHandler):
+    # --game-data FILE is served at /smoke-data/<name>, for the page to
+    # import when a smoke test starts in a browser that has none.
+    game_data: Path | None = None
+
+    def translate_path(self, path: str) -> str:
+        if self.game_data and path.split("?", 1)[0] == f"/smoke-data/{self.game_data.name}":
+            return str(self.game_data)
+        return super().translate_path(path)
+
     def end_headers(self) -> None:
         self.send_header("Cross-Origin-Opener-Policy", "same-origin")
         self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
@@ -29,6 +38,8 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--certfile", type=Path)
     parser.add_argument("--keyfile", type=Path)
+    parser.add_argument("--game-data", type=Path,
+                        help="a disc image, ZIP or pack to serve at /smoke-data/<name>")
     args = parser.parse_args()
 
     if bool(args.certfile) != bool(args.keyfile):
@@ -50,6 +61,10 @@ def main() -> None:
     if entry.parent != directory or not entry.is_file():
         parser.error(f"{entry} is not a build entry point")
 
+    if args.game_data:
+        if not args.game_data.is_file():
+            raise SystemExit(f"{args.game_data} is not a file")
+        Caesar2Handler.game_data = args.game_data.resolve()
     handler = partial(Caesar2Handler, directory=str(directory))
     server = ThreadingHTTPServer((args.bind, args.port), handler)
     scheme = "http"
