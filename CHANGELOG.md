@@ -6,6 +6,8 @@ what changed for them, not which files moved.
 
 ## Unreleased
 
+## 1.0.2 - 2026-09-08
+
 - Windows: no console window behind the game. Started from a terminal, the
   program still prints there (`--version`, errors, the crash report's
   location).
