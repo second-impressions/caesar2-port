@@ -50,11 +50,11 @@ EMSCRIPTEN_KEEPALIVE void c2_browser_set_canvas_size(int width, int height)
     c2_host_set_canvas_size(width, height);
 }
 
-/* Settings > General > Music: 1 the Windows version's recordings, 0 the
- * DOS scores; takes effect at once when music is playing. */
+/* Settings > Game data > Music; takes effect at once when music plays. */
 EMSCRIPTEN_KEEPALIVE void c2_browser_set_music_source(int recorded)
 {
 #if PORT_FEAT_RECORDED_MUSIC
+    /* 1: the 1996 Windows recordings, 0: the 1995 DOS music. */
     c2_port_music_set_preference(recorded ? C2_PORT_MUSIC_RECORDED : C2_PORT_MUSIC_XMIDI);
 #else
     (void)recorded;
@@ -255,7 +255,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                     "[--user-data-dir PATH] [--screenshot FILE] "
                     "[--mouse-lock|--no-mouse-lock] [--prepare-assets] "
                     "[--skip-launcher] [--fullscreen] [--fractional-scaling] "
-                    "[--language TAG] [--music recorded|xmidi] "
+                    "[--language TAG] [--music dos|windows] "
                     "[--smoke-test|--city-smoke-test|"
                     "--tutorial-smoke-test|--save-load-smoke-test|"
                     "--music-buffer-smoke-test|"
@@ -268,7 +268,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                     "[--user-data-dir PATH] [--screenshot FILE] "
                     "[--mouse-lock|--no-mouse-lock] [--prepare-assets] "
                     "[--skip-launcher] [--fullscreen] [--fractional-scaling] "
-                    "[--language TAG] [--music recorded|xmidi]\n",
+                    "[--language TAG] [--music dos|windows]\n",
                     argv[0]);
 #endif
             return 0;
@@ -397,7 +397,7 @@ static void save_display_settings(const struct c2_sdl_app *app)
     fprintf(file, "fullscreen=%d\nscaling=%s\nlanguage=%s\nmusic=%s\n", app->fullscreen ? 1 : 0,
             app->fractional_scaling ? "fractional" : "integer",
             app->text_language[0] ? app->text_language : "auto",
-            app->music_source[0] ? app->music_source : "recorded");
+            app->music_source[0] ? app->music_source : "dos");
     fclose(file);
 }
 
@@ -819,7 +819,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
         enum c2_port_music_source source;
         if (music_source) {
             if (!c2_port_music_source_parse(music_source, &source)) {
-                fprintf(stderr, "unknown --music '%s'; recorded or xmidi\n", music_source);
+                fprintf(stderr, "unknown --music '%s'; dos or windows\n", music_source);
                 return SDL_APP_FAILURE;
             }
             snprintf(c2_app.music_source, sizeof(c2_app.music_source), "%s", music_source);

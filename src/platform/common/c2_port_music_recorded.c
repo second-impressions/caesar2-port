@@ -49,7 +49,9 @@ struct c2_recorded_slot {
 
 static struct c2_recorded_slot c2_recorded[C2_RECORDED_SLOTS];
 static int c2_recorded_city_tune;          /* cityprov_tune of winaudio.c */
-static enum c2_port_music_source c2_recorded_preference = C2_PORT_MUSIC_RECORDED;
+/* The DOS music is what this engine was written for, and the only place it
+ * can be heard: the Windows recordings exist as ordinary audio files. */
+static enum c2_port_music_source c2_recorded_preference = C2_PORT_MUSIC_XMIDI;
 static char c2_recorded_last_request[C2_RECORDED_SLOTS][16];
 static int c2_recorded_secondary_active;
 
@@ -86,14 +88,22 @@ enum c2_port_music_source c2_port_music_source(void)
 
 const char *c2_port_music_source_name(enum c2_port_music_source source)
 {
-    return source == C2_PORT_MUSIC_RECORDED ? "recorded" : "xmidi";
+    return source == C2_PORT_MUSIC_RECORDED ? "windows" : "dos";
 }
 
 int c2_port_music_source_parse(const char *name, enum c2_port_music_source *out)
 {
     if (name == NULL) return 0;
-    if (strcmp(name, "recorded") == 0) { *out = C2_PORT_MUSIC_RECORDED; return 1; }
-    if (strcmp(name, "xmidi") == 0) { *out = C2_PORT_MUSIC_XMIDI; return 1; }
+    /* The stored and typed names are the versions; the older spellings are
+     * still read, so a settings file from before this keeps working. */
+    if (strcmp(name, "windows") == 0 || strcmp(name, "recorded") == 0) {
+        *out = C2_PORT_MUSIC_RECORDED;
+        return 1;
+    }
+    if (strcmp(name, "dos") == 0 || strcmp(name, "xmidi") == 0) {
+        *out = C2_PORT_MUSIC_XMIDI;
+        return 1;
+    }
     return 0;
 }
 

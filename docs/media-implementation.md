@@ -234,10 +234,24 @@ having:
   `src/platform/common/c2_port_music_recorded.c` does the same behind
   `play_tune()` (`PORT_FEAT_RECORDED_MUSIC`), on two host voices with the
   pause/resume the engine's `start_tune()` gives its two sequence slots.
-  The player chooses the source (launcher row, web Settings, `--music`);
-  the recordings are the default when present, and a change while music
-  plays switches in place. No Caesar II disc has CD-audio tracks: all 19
-  Redump entries are single data tracks.
+  No Caesar II disc has CD-audio tracks: all 19 Redump entries are single
+  data tracks.
+
+  **These are not the same music.** The 1995 game is credited to Jeremy A.
+  Bell and Jason P. Rinaldi; the recordings are Keith Zizza's, who joined
+  Impressions in the autumn of 1995 and wrote them in 1996 — his upload of
+  the battle piece says so in as many words ("the 16-bit battle music for
+  Caesar II (Win 95 / Mac version) … written in parallel with the Lords of
+  the Realm II soundtrack, using the same music setup (Roland JV-1080, EMU
+  UltraProteus, Yamaha MU-80, and an EMU ESI-32 Sampler)",
+  <https://www.youtube.com/watch?v=nm9jfhqfHNg>, 2:13 against `BATTLE0.RAW`
+  at 2:12.0). The "Caesar II gamerip" circulating as MP3s is these seven
+  files, duration for duration; the DOS music has never been published,
+  because it cannot be recorded off a disc — it is a branching sequence,
+  not a recording. So the port defaults to the DOS music, the thing only
+  this engine can play, and offers the recordings beside it (launcher row,
+  web Settings, `--music dos|windows`); a change while music plays
+  switches in place.
 - **`SMK/BATTLOST`, `BATTWON`, `LOSEGAME`, `PROMOTE`, `WINGAME`** at
   500x240 where the DOS files are 320x152. Mode-2 movies (`do_vga_smacked_anim`)
   are scaled into the VGA box anyway, so `start_smacking` plays whichever

@@ -112,6 +112,8 @@ static void drain(int voice)
     voices[voice].queued_ms = 0;
 }
 
+static enum c2_port_music_source initial_preference;
+
 void setUp(void)
 {
     memset(voices, 0, sizeof(voices));
@@ -121,11 +123,18 @@ void setUp(void)
     c2inf.tunes_on = 1;
     c2inf.tunes_level = 100;
     c2_port_recorded_music_shutdown();
-    c2_port_music_set_preference(C2_PORT_MUSIC_RECORDED);
+    c2_port_music_set_preference(C2_PORT_MUSIC_RECORDED);   /* the tests' subject */
     USE(with_recordings);
 }
 
 void tearDown(void) {}
+
+/* What the module starts with, before setUp() chooses anything: the 1995
+ * DOS music, this port's default. */
+static void test_the_default_is_the_dos_music(void)
+{
+    TEST_ASSERT_EQUAL_INT(C2_PORT_MUSIC_XMIDI, initial_preference);
+}
 
 static void test_source_follows_preference_and_availability(void)
 {
@@ -227,18 +236,26 @@ static void test_changing_the_source_replays_the_current_tunes(void)
 static void test_names(void)
 {
     enum c2_port_music_source source;
+    TEST_ASSERT_TRUE(c2_port_music_source_parse("windows", &source));
+    TEST_ASSERT_EQUAL_INT(C2_PORT_MUSIC_RECORDED, source);
+    TEST_ASSERT_TRUE(c2_port_music_source_parse("dos", &source));
+    TEST_ASSERT_EQUAL_INT(C2_PORT_MUSIC_XMIDI, source);
+    /* The spellings of the first release still parse. */
     TEST_ASSERT_TRUE(c2_port_music_source_parse("recorded", &source));
     TEST_ASSERT_EQUAL_INT(C2_PORT_MUSIC_RECORDED, source);
     TEST_ASSERT_TRUE(c2_port_music_source_parse("xmidi", &source));
     TEST_ASSERT_EQUAL_INT(C2_PORT_MUSIC_XMIDI, source);
     TEST_ASSERT_FALSE(c2_port_music_source_parse("midi", &source));
     TEST_ASSERT_FALSE(c2_port_music_source_parse(NULL, &source));
-    TEST_ASSERT_EQUAL_STRING("recorded", c2_port_music_source_name(C2_PORT_MUSIC_RECORDED));
+    TEST_ASSERT_EQUAL_STRING("windows", c2_port_music_source_name(C2_PORT_MUSIC_RECORDED));
+    TEST_ASSERT_EQUAL_STRING("dos", c2_port_music_source_name(C2_PORT_MUSIC_XMIDI));
 }
 
 int main(void)
 {
+    initial_preference = c2_port_music_preference();
     UNITY_BEGIN();
+    RUN_TEST(test_the_default_is_the_dos_music);
     RUN_TEST(test_source_follows_preference_and_availability);
     RUN_TEST(test_xmidi_preference_leaves_the_request_to_the_engine);
     RUN_TEST(test_city_tune_streams_and_moves_on_to_the_next);
