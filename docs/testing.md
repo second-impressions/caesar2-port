@@ -74,6 +74,24 @@ To register the semantic smoke tests with CTest, configure with
 Native C unit tests use Unity, supplied by the Nix development shell, while
 CTest remains the suite runner. Pytest covers repository tooling and static
 layering checks; the Debug-only smoke drivers cover recovered engine flows.
+## Continuous integration
+
+`.github/workflows/ci.yml` builds every target on every push and pull
+request and keeps each build as an artifact, named
+`caesar2-<label>-<platform>` where the label is `main` or `prN`:
+
+| Artifact | Contents |
+|---|---|
+| `…-linux-gcc-debug`, `…-linux-clang-debug` | the Debug binary, linked against the Nix store (runs where the dev shell's store paths exist, e.g. NixOS) |
+| `…-linux-x64-package` | the `cmake --install` tree of the release-tarball build, likewise Nix-linked |
+| `…-web` | the WebAssembly build (also published to Pages; `site` is the same files) |
+| `…-windows-x64` | `caesar2.exe`, the DLLs and `caesar2.pdb` |
+| `…-macos-arm64` | the app bundle, zipped (ad-hoc signed; Gatekeeper will ask) |
+
+Self-contained downloads for Linux (AppImage, Flatpak) and the universal
+macOS dmg come from the release workflow's dry run on pull requests that
+touch packaging (`docs/releasing.md`).
+
 ## Sanitizers
 
 The `linux-tsan` configure/build/test preset runs the same worker-thread slice

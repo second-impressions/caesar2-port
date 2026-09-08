@@ -41,7 +41,7 @@ jobs:
           - cc: gcc
           - cc: clang
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-nix
         with:
           scope: dev
@@ -66,6 +66,12 @@ jobs:
         run: |
           nix develop --command uv run pytest -q \
             --ignore=tests/test_function_annotations.py
+      # The debug binary, linked against the Nix store: runs on a machine
+      # with the same store paths (NixOS, or any Nix with the dev shell).
+      - uses: actions/upload-artifact@v7
+        with:
+          name: caesar2-${{ env.C2_BUILD_LABEL }}-linux-${{ matrix.cc }}-debug
+          path: build/ci/caesar2
 
   # ── Package build ────────────────────────────────────────────────────
   # What a distribution does: a release tarball (no .git, no submodules,
@@ -76,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.action != 'closed'
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-nix
         with:
           scope: dev
@@ -96,6 +102,12 @@ jobs:
             test -x "$RUNNER_TEMP/stage/usr/bin/caesar2"
             "$RUNNER_TEMP/stage/usr/bin/caesar2" --version
           '
+          # Artifact paths must lie in the workspace.
+          mv "$RUNNER_TEMP/stage" "$GITHUB_WORKSPACE/stage"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: caesar2-${{ env.C2_BUILD_LABEL }}-linux-x64-package
+          path: stage/
 
   # ── WebAssembly + Pages artifact ─────────────────────────────────────
   # This is the only Wasm compilation. The deploy job below consumes the
@@ -107,12 +119,12 @@ jobs:
     env:
       EM_CACHE: ${{ github.workspace }}/.cache/emscripten
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-nix
         with:
           scope: dev
       - name: Restore Wasm configure and system-library cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             build/ci-wasm
@@ -144,9 +156,9 @@ jobs:
             grep -A2 'function signature mismatch' /tmp/wasm-build.log
             exit 1
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: caesar2-wasm-${{ env.C2_BUILD_LABEL }}
+          name: caesar2-${{ env.C2_BUILD_LABEL }}-web
           path: |
             build/ci-wasm/index.html
             build/ci-wasm/index.js
@@ -169,7 +181,7 @@ jobs:
                    caesar2-background-light.jpg version.txt LICENSE favicon.svg; do
             cp "build/ci-wasm/$f" _site/
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: site
           path: _site
@@ -186,12 +198,10 @@ jobs:
     env:
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
     steps:
-      - uses: actions/checkout@v5
-      - uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/msvc-env
       - uses: lukka/get-cmake@latest
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v9
         with:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
@@ -202,9 +212,9 @@ jobs:
         run: cmake --build --preset windows-msvc-release
       - name: Install
         run: cmake --install build/port/windows-msvc-release --prefix build/port/windows-msvc-release/stage
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: caesar2-windows-msvc-x64
+          name: caesar2-${{ env.C2_BUILD_LABEL }}-windows-x64
           path: |
             build/port/windows-msvc-release/stage/bin/
             build/port/windows-msvc-release/caesar2.pdb
@@ -218,7 +228,7 @@ jobs:
     runs-on: macos-14
     if: github.event.action != 'closed'
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - run: brew install ninja
       - name: Configure and build
         run: |
@@ -229,6 +239,13 @@ jobs:
             -DBUILD_TESTING=OFF
           cmake --build build/ci-macos
           "build/ci-macos/Caesar II.app/Contents/MacOS/Caesar II" --version
+      - name: Zip the bundle
+        # An artifact loses file modes; a zip keeps the executable bit.
+        run: ditto -c -k --keepParent "build/ci-macos/Caesar II.app" caesar2-macos-arm64.zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: caesar2-${{ env.C2_BUILD_LABEL }}-macos-arm64
+          path: caesar2-macos-arm64.zip
 
   # ── GitHub Pages: main and pull-request previews ─────────────────────
   # Pages serves one site per repository, from the gh-pages branch. The
@@ -252,10 +269,10 @@ jobs:
       group: gh-pages
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: .github/scripts
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: site
           path: _site
