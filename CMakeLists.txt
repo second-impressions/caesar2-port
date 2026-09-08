@@ -459,7 +459,14 @@ if(UNIX AND NOT EMSCRIPTEN AND PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER)
 elseif(WIN32)
     # The unhandled-exception filter symbolizes through dbghelp from the
     # caesar2.pdb shipped next to the executable and writes a minidump.
-    target_sources(caesar2 PRIVATE src/platform/win32/c2_win32_debug.c)
+    # A windows-subsystem executable: no console window behind the game.
+    # SDL_main.h supplies the WinMain; c2_win32_console.c gives --version
+    # and the fatal messages somewhere to go when a terminal started it.
+    set_target_properties(caesar2 PROPERTIES WIN32_EXECUTABLE ON)
+    target_sources(caesar2 PRIVATE
+        src/platform/win32/c2_win32_debug.c
+        src/platform/win32/c2_win32_console.c)
+    target_include_directories(caesar2 PRIVATE src/platform/win32)
     target_compile_definitions(caesar2 PRIVATE
         PORT_ENABLE_CRASH_HANDLER=1
         "PORT_SOURCE_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/\"")

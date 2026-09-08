@@ -212,6 +212,15 @@ jobs:
         run: cmake --build --preset windows-msvc-release
       - name: Install
         run: cmake --install build/port/windows-msvc-release --prefix build/port/windows-msvc-release/stage
+      - name: The windowed executable still prints
+        # A windows-subsystem program has no console of its own; piping makes
+        # PowerShell wait for it and captures what it wrote to the one it
+        # inherited. Empty output would mean --version reaches nobody.
+        shell: pwsh
+        run: |
+          $v = (& build/port/windows-msvc-release/stage/bin/caesar2.exe --version | Out-String).Trim()
+          if (-not $v) { throw "caesar2.exe --version printed nothing" }
+          Write-Host $v
       - uses: actions/upload-artifact@v7
         with:
           name: caesar2-${{ env.C2_BUILD_LABEL }}-windows-x64

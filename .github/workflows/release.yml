@@ -153,7 +153,9 @@ jobs:
           Copy-Item build/port/windows-msvc-release/caesar2.pdb dist/$name/
           Copy-Item build/stage/share/licenses/caesar2/* dist/$name/
           Copy-Item README.md dist/$name/
-          & "dist/$name/caesar2.exe" --version
+          $v = (& "dist/$name/caesar2.exe" --version | Out-String).Trim()
+          if (-not $v) { throw "caesar2.exe --version printed nothing" }
+          Write-Host $v
           Compress-Archive -Path dist/$name -DestinationPath dist/$name.zip
           Get-ChildItem dist/$name
       - uses: actions/upload-artifact@v7

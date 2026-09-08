@@ -6,6 +6,10 @@ what changed for them, not which files moved.
 
 ## Unreleased
 
+- Windows: no console window behind the game. Started from a terminal, the
+  program still prints there (`--version`, errors, the crash report's
+  location).
+
 - The Windows version's soundtrack plays: every CD from August 1996
   carries it (`C2WIN95/RAW/`), the 1998 US disc has nothing else. It is
   different music, not the DOS score re-recorded — Keith Zizza wrote it in

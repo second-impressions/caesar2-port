@@ -136,6 +136,21 @@ def test_one_executable_for_every_language_and_no_bundled_game_data():
     assert 'const smoke = query.get("smoke-test");' in shell
 
 
+def test_windows_executable_is_windowed_and_still_prints():
+    """No console window behind the game, and a terminal still sees output."""
+    cmake = (ROOT / "CMakeLists.txt").read_text()
+    assert "set_target_properties(caesar2 PROPERTIES WIN32_EXECUTABLE ON)" in cmake
+    assert "src/platform/win32/c2_win32_console.c" in cmake
+    console = (ROOT / "src" / "platform" / "win32" / "c2_win32_console.c").read_text()
+    assert "AttachConsole(ATTACH_PARENT_PROCESS)" in console
+    # A redirected or piped handle is inherited and must be left alone.
+    assert "if (stdout_taken && stderr_taken) return;" in console
+    main = (ROOT / "src" / "platform" / "sdl3" / "c2_sdl_main.c").read_text()
+    assert "c2_win32_attach_parent_console();" in main
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    assert "caesar2.exe --version | Out-String" in workflow
+
+
 def test_wasm_shell_owns_import_switching_and_save_export():
     cmake = (ROOT / "CMakeLists.txt").read_text()
     shell = "\n".join(

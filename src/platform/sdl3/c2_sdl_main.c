@@ -21,6 +21,9 @@
 #endif
 #include "c2_sdl_host.h"
 #include "c2_setup_ui.h"
+#if PORT_PLATFORM_WIN32
+#include "c2_win32_console.h"
+#endif
 #include "c2_port_text.h"
 #include "c2_version.h"
 #if PORT_FEAT_DEBUG_OBSERVATION
@@ -720,6 +723,11 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     int explicit_source;
     int saved_source = 0;
 
+#if PORT_PLATFORM_WIN32
+    /* Before the first printf: this executable is windowed, so what it
+     * prints to is the console that started it, if there is one. */
+    c2_win32_attach_parent_console();
+#endif
     *appstate = &c2_app;
     {
         int i;
