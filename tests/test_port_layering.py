@@ -171,7 +171,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "onImportError(message)" in shell
     assert "A CUE sheet needs its BIN image; select the BIN file" in shell
     assert "use Browse folder or drop the whole folder" in shell
-    assert "beginOperation(\"Removing cached assets\"" in shell
+    assert "beginOperation(\"Removing game data\"" in shell
     assert "writeBrowserFile(root, relative, file, onBytes)" in shell
     assert "Browse folder" in shell
     assert "Browse file" in shell
@@ -184,7 +184,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "Replace game data" in shell
     assert "Change assets" not in shell
     # Play stays disabled and explains itself until validated data exists.
-    assert 'data-tooltip="Load assets first"' in shell
+    assert 'data-tooltip="Load game data first"' in shell
     # Uploads are imported without starting the engine.
     assert "--prepare-assets" in shell
     sdl_main = (SDL_BACKEND / "c2_sdl_main.c").read_text()
@@ -199,7 +199,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "async function discoverSource" in shell
     assert '/persistent/game-data/${name}' in shell
     assert 'id="forget-button"' in shell
-    assert "Cached assets" in shell
+    assert "Loaded game data" in shell
     assert 'id="play-button" type="button" aria-disabled="true"' in shell
     assert "C2_HAS_BUNDLED_ASSETS" in cmake
     assert "HAS_BUNDLED_ASSETS" in shell
@@ -410,7 +410,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "Drop new game data here to replace the current set" in shell
     assert 'if (pane === "assets") {' in shell
     assert "updateAssetsSummary().catch(error =>" in shell
-    assert 'beginOperation("Removing cached assets", targets.length)' in shell
+    assert 'beginOperation("Removing game data", targets.length)' in shell
     assert "updateOperation(removed, targets.length" in shell
     assert "@media (prefers-color-scheme: light)" in shell
     assert ':root:not([data-theme])' in shell
