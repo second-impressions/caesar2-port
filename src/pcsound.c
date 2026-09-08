@@ -556,6 +556,10 @@ void play_tune(unsigned char *filename, int loop_count)
     if (c2inf.tunes_on == 0) return;
     if (sequences_running == 0) return;
     if (*filename == 0) return;
+#if PORT_FEAT_RECORDED_MUSIC
+    /* The Windows version's recordings answer the request when chosen. */
+    if (c2_port_recorded_music_play((const char *)filename, loop_count)) return;
+#endif
     if (readfile(filename, tune_buffer, PORT_TUNE_BUFFER_SIZE, 0) == 0) return;
     start_tune(tune_buffer, 0, loop_count);
 }
@@ -591,6 +595,9 @@ char __far *start_tune(unsigned char *sequence_data, int sequence_num, int seque
 // FUNCTION: C2 0x1239c
 void stop_tune(void)
 {
+#if PORT_FEAT_RECORDED_MUSIC
+    c2_port_recorded_music_stop(1);
+#endif
     mdi_status = AIL_sequence_status(S_mdi[0]);
     if (mdi_status == 4) AIL_stop_sequence(S_mdi[0]);
     mdi_status = AIL_sequence_status(S_mdi[1]);
@@ -601,6 +608,9 @@ void stop_tune(void)
 // FUNCTION: C2 0x123f5
 void stop_tune0(void)
 {
+#if PORT_FEAT_RECORDED_MUSIC
+    c2_port_recorded_music_stop(0);
+#endif
     mdi_status = AIL_sequence_status(S_mdi[0]);
     if (mdi_status == 4) AIL_stop_sequence(S_mdi[0]);
 }

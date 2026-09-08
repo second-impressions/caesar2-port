@@ -11,7 +11,7 @@
 #include "xmidi/xmidi.h"
 
 #define C2_SAMPLE_VOICE_COUNT 6
-#define C2_AUDIO_VOICE_COUNT 10
+#define C2_AUDIO_VOICE_COUNT 11   /* 9 and 10: the recorded music's two slots */
 #define C2_BEEP_VOICE 6
 #define C2_DIGITAL_VOICE_COUNT 8
 #define C2_MUSIC_VOICE 8
@@ -133,6 +133,9 @@ static void pump_sequences(void)
 
 void AIL_shutdown(void)
 {
+#if PORT_FEAT_RECORDED_MUSIC
+    c2_port_recorded_music_shutdown();
+#endif
     xmi_player_destroy(c2_music);
     c2_music = NULL;
     memset(c2_sequences, 0, sizeof(c2_sequences));
@@ -326,10 +329,18 @@ int AIL_install_MDI_INI(int *mdi_handle_out)
     if (c2_music == NULL) {
         c2_music = xmi_player_create(C2_MUSIC_SAMPLE_RATE);
         if (c2_music == NULL || !load_music_bank(c2_music)) {
-            fprintf(stderr, "could not load the Miles OPL bank "
-                            "(CAESAR.OPL or CAESAR.AD)\n");
             xmi_player_destroy(c2_music);
             c2_music = NULL;
+#if PORT_FEAT_RECORDED_MUSIC
+            /* The 1998 pressing has no OPL bank and no XMI, only the
+             * recordings: music still runs, through them. */
+            if (c2_port_music_recorded_available()) {
+                if (mdi_handle_out != NULL) *mdi_handle_out = 1;
+                return 0;
+            }
+#endif
+            fprintf(stderr, "could not load the Miles OPL bank "
+                            "(CAESAR.OPL or CAESAR.AD)\n");
             c2inf.tunes_on = 0;
             return 1;
         }
@@ -343,13 +354,15 @@ int AIL_allocate_sequence_handle(int mdi_handle)
     struct c2_ail_sequence *sequence;
 
     (void)mdi_handle;
-    if (c2_music == NULL || c2_next_sequence_handle >= C2_SEQUENCE_COUNT) {
-        return 0;
-    }
+    if (c2_next_sequence_handle >= C2_SEQUENCE_COUNT) return 0;
     sequence = &c2_sequences[c2_next_sequence_handle];
     memset(sequence, 0, sizeof(*sequence));
-    sequence->sequence = xmi_sequence_create(xmi_player_driver(c2_music));
-    if (sequence->sequence == NULL) return 0;
+    /* No synthesizer (recordings only): a handle whose sequence is NULL,
+     * which every operation below treats as silent. */
+    if (c2_music != NULL) {
+        sequence->sequence = xmi_sequence_create(xmi_player_driver(c2_music));
+        if (sequence->sequence == NULL) return 0;
+    }
     c2_next_sequence_handle++;
     sequence->handle = c2_next_sequence_handle;
     return sequence->handle;
@@ -386,6 +399,9 @@ void AIL_set_sequence_volume(int handle, int volume, int milliseconds)
 {
     struct c2_ail_sequence *sequence;
 
+#if PORT_FEAT_RECORDED_MUSIC
+    c2_port_recorded_music_set_volume(handle - 1, volume, milliseconds);
+#endif
     sequence = sequence_from_handle(handle);
     if (sequence == NULL || sequence->sequence == NULL) return;
     xmi_sequence_set_volume(sequence->sequence, volume, milliseconds);
@@ -474,6 +490,9 @@ void set_db_sound(char *filename)
 void continue_db(void)
 {
     pump_sequences();
+#if PORT_FEAT_RECORDED_MUSIC
+    c2_port_recorded_music_pump();
+#endif
     if (db_playing != 0 && !c2_speech_paused &&
         !c2_host_audio_voice_playing(5)) {
         db_playing = 0;

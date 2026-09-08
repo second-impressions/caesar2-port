@@ -18,6 +18,7 @@
     const profileRow = document.getElementById("profile-row");
     const profileSelect = document.getElementById("profile-select");
     const languageSelect = document.getElementById("language-select");
+    const musicSelect = document.getElementById("music-select");
     const settingsDialog = document.getElementById("settings-dialog");
     const assetsSummary = document.getElementById("assets-summary");
     const assetsLoaded = document.getElementById("assets-loaded");
@@ -40,6 +41,7 @@
     const THEME_CHOICE = "c2.theme.v1";
     const SCALING_MODE = "c2.scaling.v1";
     const TEXT_LANGUAGE = "c2.text-language.v1";
+    const MUSIC_SOURCE = "c2.music.v1";
     const CONFIRM_CLOSE = "c2.confirm-close.v1";
     const AUTOSTART_SOURCE = "c2.autostart.v1";
     const PENDING_ORIGIN = "c2.pending-origin.v1";
@@ -716,6 +718,8 @@
       if (profile) args.push("--asset-profile", profile);
       const language = localStorage.getItem(TEXT_LANGUAGE);
       if (language) args.push("--language", language);
+      const music = localStorage.getItem(MUSIC_SOURCE);
+      if (music === "xmidi" || music === "recorded") args.push("--music", music);
       if (scalingMode === "fractional") args.push("--fractional-scaling");
       if (query.get("mouse-lock") === "1") args.push("--mouse-lock");
       const smoke = query.get("smoke-test");
@@ -775,6 +779,18 @@
     languageSelect.onchange = () => {
       if (languageSelect.value) localStorage.setItem(TEXT_LANGUAGE, languageSelect.value);
       else localStorage.removeItem(TEXT_LANGUAGE);
+    };
+    /*
+     * Settings > General > Music. Changing it while the game runs switches
+     * the soundtrack in place; otherwise it is passed at the next start.
+     */
+    musicSelect.value = localStorage.getItem(MUSIC_SOURCE) === "xmidi" ? "xmidi" : "recorded";
+    musicSelect.onchange = () => {
+      localStorage.setItem(MUSIC_SOURCE, musicSelect.value);
+      if (gameRunning) {
+        try { Module._c2_browser_set_music_source(musicSelect.value === "xmidi" ? 0 : 1); }
+        catch {}
+      }
     };
     function configureTextLanguages() {
       let listing = "";

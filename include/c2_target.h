@@ -247,6 +247,13 @@
  * builds use a separate deterministic branch sequence only while paused. */
 #define PORT_FIX_PAUSED_MUSIC_VARIETY PORT_PLATFORM
 
+/* The Windows 95 version streamed recorded music (RAW/CITYPRO*.RAW,
+ * FORUM*.RAW, BATTLE0.RAW, on every CD from August 1996) where the DOS
+ * version sequences XMIDI. Portable builds offer play_tune()'s requests to
+ * the recorded soundtrack first; which source answers is the player's
+ * choice when the data has both (src/platform/common/c2_port_music_recorded.c). */
+#define PORT_FEAT_RECORDED_MUSIC PORT_PLATFORM
+
 /* Loading restarts the portable engine loop. A mouse button still held from
  * the load dialog can reach the province builder without its preceding press,
  * making the recovered empty-tool path restore an uninitialized treasury

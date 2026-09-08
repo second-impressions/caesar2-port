@@ -32,6 +32,25 @@ unsigned int c2_port_scroll_keys(void);
 int c2_port_paused_music_branch(int base, int count,
                                 int current_branch, int branch_count);
 #endif
+#if PORT_FEAT_RECORDED_MUSIC
+enum c2_port_music_source {
+    C2_PORT_MUSIC_XMIDI = 0,     /* the DOS scores through the OPL synthesizer */
+    C2_PORT_MUSIC_RECORDED = 1   /* the Windows version's recordings */
+};
+int c2_port_music_recorded_available(void);
+int c2_port_music_xmidi_available(void);
+void c2_port_music_set_preference(enum c2_port_music_source preference);
+enum c2_port_music_source c2_port_music_preference(void);
+enum c2_port_music_source c2_port_music_source(void);   /* what plays */
+const char *c2_port_music_source_name(enum c2_port_music_source source);
+int c2_port_music_source_parse(const char *name, enum c2_port_music_source *out);
+/* pcsound.c hooks and the AIL layer's forwarding */
+int c2_port_recorded_music_play(const char *filename, int loop_count);
+void c2_port_recorded_music_stop(int end_secondary);
+void c2_port_recorded_music_pump(void);
+void c2_port_recorded_music_set_volume(int slot, int volume, int fade_ms);
+void c2_port_recorded_music_shutdown(void);
+#endif
 #if PORT_FEAT_STICKY_DROPDOWNS
 void c2_port_selection_begin(int mouse_x, int mouse_y);
 void c2_port_selection_end(void);

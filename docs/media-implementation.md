@@ -215,6 +215,41 @@ One official `CITYPROV.XMI` is 28,678 bytes, larger than the recovered DOS
 the feature retains the legacy limit. This avoids truncating a valid official
 asset without changing the reconstruction or mutating the asset.
 
+## The Windows 95 tree: recorded music and larger movies
+
+CDs from August 1996 on carry a second, Windows 95 tree, `C2WIN95/`, beside
+the DOS one; the 1998 US pressing has only that tree, at the root. Its
+`HD/` and `PL8/` are the same art with the palette remapped around
+Windows' reserved entries (fewer colours; useless to the DOS renderer, and
+the host keeps preferring the DOS files). Two things in it are worth
+having:
+
+- **`RAW/CITYPRO0..2.RAW`, `FORUM0..2.RAW`, `BATTLE0.RAW`, `INTRO.RAW`**
+  — the Windows version's music: headerless 8-bit unsigned mono PCM at
+  22050 Hz (the reconstruction's `winaudio.c` and `CAESAR2.EXE`: `resaud`,
+  `init_streamed_tune(22050, ...)`), 19 MB, byte-identical on every disc
+  that has them. Where the DOS engine plays `cityprov.xmi` the Windows one
+  streams `CITYPRO0`, `1`, `2` in turn to their ends; `forum1..3.xmi` are
+  `FORUM0..2` (one per forum visit, looped); `batest2.xmi` is `BATTLE0`.
+  `src/platform/common/c2_port_music_recorded.c` does the same behind
+  `play_tune()` (`PORT_FEAT_RECORDED_MUSIC`), on two host voices with the
+  pause/resume the engine's `start_tune()` gives its two sequence slots.
+  The player chooses the source (launcher row, web Settings, `--music`);
+  the recordings are the default when present, and a change while music
+  plays switches in place. No Caesar II disc has CD-audio tracks: all 19
+  Redump entries are single data tracks.
+- **`SMK/BATTLOST`, `BATTWON`, `LOSEGAME`, `PROMOTE`, `WINGAME`** at
+  500x240 where the DOS files are 320x152. Mode-2 movies (`do_vga_smacked_anim`)
+  are scaled into the VGA box anyway, so `start_smacking` plays whichever
+  file has more pixels (`c2_host_asset_windows_*`), scaling any frame size
+  into the 640x365 box the DOS movie occupies. The same-size Windows
+  re-encodes have fewer colours and are not preferred; movies drawn 1:1
+  (the intro, the message window) keep their DOS files.
+
+The importer extracts everything with a game extension, so both trees
+are already in every disc-image cache; only the reading side needed to
+know.
+
 ## Intended dependency direction
 
 ```text

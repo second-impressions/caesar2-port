@@ -107,6 +107,9 @@ static void remove_layout_test(void)
 {
     const char *paths[] = {
         "c2-layout-test/C2WIN95/SMK/Intro.SMK",
+        "c2-layout-test/C2WIN95/RAW/Citypro0.RAW",
+        "c2-layout-test/C2WIN95/RAW/Voice.RAW",
+        "c2-layout-test/RAW/Voice.RAW",
         "c2-layout-test/C2WIN95/HD/C2.ENG",
         "c2-layout-test/C2WIN95/HD/Windows.Dat",
         "c2-layout-test/C2WIN95/HD/Empire.PL8",
@@ -117,6 +120,8 @@ static void remove_layout_test(void)
         "c2-layout-test/HD/Root.Dat",
         "c2-layout-test/PL8/Media.PL8",
         "c2-layout-test/C2WIN95/SMK",
+        "c2-layout-test/C2WIN95/RAW",
+        "c2-layout-test/RAW",
         "c2-layout-test/C2WIN95/HD",
         "c2-layout-test/C2WIN95",
         "c2-layout-test/PL8",
@@ -156,6 +161,11 @@ static void test_cd_and_win95_layouts_are_detected(void)
     write_test_asset("c2-layout-test/C2WIN95/HD/Windows.Dat", 'N');
     write_test_asset("c2-layout-test/C2WIN95/HD/Empire.PL8", 'W');
     write_test_asset("c2-layout-test/C2WIN95/SMK/Intro.SMK", 'W');
+    TEST_ASSERT_TRUE(SDL_CreateDirectory("c2-layout-test/C2WIN95/RAW"));
+    TEST_ASSERT_TRUE(SDL_CreateDirectory("c2-layout-test/RAW"));
+    write_test_asset("c2-layout-test/C2WIN95/RAW/Citypro0.RAW", 'M');
+    write_test_asset("c2-layout-test/C2WIN95/RAW/Voice.RAW", 'W');
+    write_test_asset("c2-layout-test/RAW/Voice.RAW", 'D');
     write_test_asset("c2-layout-test/HD/CAESAR.OPL", 'O');
     write_test_asset("c2-layout-test/HD/Empire.PL8", 'D');
     write_test_asset("c2-layout-test/SMK/Intro.SMK", 'D');
@@ -168,6 +178,17 @@ static void test_cd_and_win95_layouts_are_detected(void)
     TEST_ASSERT_EQUAL_UINT8('D', byte);
     TEST_ASSERT_EQUAL_size_t(1, c2_host_asset_read("caesar.opl", &byte, 1, 0));
     TEST_ASSERT_EQUAL_UINT8('O', byte);
+    /* The DOS tree wins a plain lookup; what only the Windows tree has (the
+     * recorded music) is found through it; and the Windows copy of a file
+     * both trees have is reachable as the Windows variant. */
+    TEST_ASSERT_EQUAL_size_t(1, c2_host_asset_read("voice.raw", &byte, 1, 0));
+    TEST_ASSERT_EQUAL_UINT8('D', byte);
+    TEST_ASSERT_EQUAL_size_t(1, c2_host_asset_read("citypro0.raw", &byte, 1, 0));
+    TEST_ASSERT_EQUAL_UINT8('M', byte);
+    TEST_ASSERT_EQUAL_UINT64(1, c2_host_asset_windows_size("intro.smk"));
+    TEST_ASSERT_EQUAL_size_t(1, c2_host_asset_windows_read("intro.smk", &byte, 1, 0));
+    TEST_ASSERT_EQUAL_UINT8('W', byte);
+    TEST_ASSERT_EQUAL_UINT64(0, c2_host_asset_windows_size("caesar.opl"));
     c2_host_shutdown();
     remove_layout_test(); remove_test_files();
 }

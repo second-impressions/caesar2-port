@@ -6,6 +6,15 @@ what changed for them, not which files moved.
 
 ## Unreleased
 
+- The Windows version's recorded soundtrack plays: every CD from August
+  1996 carries it (`C2WIN95/RAW/`), the 1998 US disc has nothing else.
+  Choose between it and the DOS FM synthesis in the launcher, in the web
+  page's Settings → General → Music, or with `--music recorded|xmidi`;
+  the recordings are the default when the data has both.
+- The five full-screen movies the Windows version ships at 500x240
+  (battle won/lost, promotion, victory, defeat) play from those files
+  instead of the 320x152 DOS ones.
+
 - Launcher: the game data's version and release note each get a line of
   their own (no more left-truncated "...rsion 1.02"), and the status line
   no longer draws over the media note.

@@ -45,6 +45,19 @@ language of your game data. Speech and illustrations remain those of your
 game data. Translations are ordinary gettext files under `po/` — see
 [docs/game-text.md](docs/game-text.md) to contribute one.
 
+### Music
+
+Caesar II has two soundtracks. The DOS version plays XMIDI scores through
+an OPL synthesizer, which the port reproduces chip-exactly. The Windows
+version streamed recordings of the same music instead (8-bit, 22 kHz), and
+every CD from August 1996 carries both — the recordings in `C2WIN95/RAW/`,
+which the port now uses. The launcher's *Music* row and the web page's
+Settings → General → Music choose between *Recorded (Windows version)*,
+the default, and *FM synthesis (DOS version)* whenever the data has both;
+`--music recorded|xmidi` on the command line. The 1998 US disc has only
+the recordings, discs before August 1996 only the scores. The Windows tree
+also supplies the larger (500x240) versions of five full-screen movies.
+
 Note that the original installer copied only part of the game to the hard
 disk: an installation folder without `XMI/` and `RAW/` has no music or
 speech. The launcher and web page say so; use the disc or its image for

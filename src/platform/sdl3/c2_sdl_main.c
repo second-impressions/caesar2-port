@@ -50,6 +50,17 @@ EMSCRIPTEN_KEEPALIVE void c2_browser_set_canvas_size(int width, int height)
     c2_host_set_canvas_size(width, height);
 }
 
+/* Settings > General > Music: 1 the Windows version's recordings, 0 the
+ * DOS scores; takes effect at once when music is playing. */
+EMSCRIPTEN_KEEPALIVE void c2_browser_set_music_source(int recorded)
+{
+#if PORT_FEAT_RECORDED_MUSIC
+    c2_port_music_set_preference(recorded ? C2_PORT_MUSIC_RECORDED : C2_PORT_MUSIC_XMIDI);
+#else
+    (void)recorded;
+#endif
+}
+
 /* "tag\tname\n" per compiled-in text language, for the page's selector. */
 EMSCRIPTEN_KEEPALIVE const char *c2_browser_text_languages(void)
 {
@@ -100,6 +111,7 @@ struct c2_sdl_app {
     char screenshot_filename[4096];
     char asset_profile[128];
     char text_language[16];   /* "" = detect from the game data */
+    char music_source[16];    /* "recorded" or "xmidi"; "" = the default */
     int headless;
     int mouse_lock;
     int fractional_scaling;
@@ -143,6 +155,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                            const char **screenshot_filename,
                            const char **asset_profile,
                            const char **text_language,
+                           const char **music_source,
                            int *crash_test,
                            int *headless, int *mouse_lock,
                            int *fractional_scaling, int *smoke_kind,
@@ -171,6 +184,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
     *screenshot_filename = NULL;
     *asset_profile = getenv("C2_ASSET_PROFILE");
     *text_language = NULL;
+    *music_source = NULL;
     *crash_test = 0;
 
     for (i = 1; i < argc; i++) {
@@ -227,6 +241,8 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
             *asset_profile = argv[++i];
         } else if (strcmp(argv[i], "--language") == 0 && i + 1 < argc) {
             *text_language = argv[++i];
+        } else if (strcmp(argv[i], "--music") == 0 && i + 1 < argc) {
+            *music_source = argv[++i];
         } else if (strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
             *screenshot_filename = argv[++i];
         } else if (argv[i][0] != '-') {
@@ -239,7 +255,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                     "[--user-data-dir PATH] [--screenshot FILE] "
                     "[--mouse-lock|--no-mouse-lock] [--prepare-assets] "
                     "[--skip-launcher] [--fullscreen] [--fractional-scaling] "
-                    "[--language TAG] "
+                    "[--language TAG] [--music recorded|xmidi] "
                     "[--smoke-test|--city-smoke-test|"
                     "--tutorial-smoke-test|--save-load-smoke-test|"
                     "--music-buffer-smoke-test|"
@@ -252,7 +268,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                     "[--user-data-dir PATH] [--screenshot FILE] "
                     "[--mouse-lock|--no-mouse-lock] [--prepare-assets] "
                     "[--skip-launcher] [--fullscreen] [--fractional-scaling] "
-                    "[--language TAG]\n",
+                    "[--language TAG] [--music recorded|xmidi]\n",
                     argv[0]);
 #endif
             return 0;
@@ -343,7 +359,8 @@ static int load_saved_asset_source(const char *user_root, char *source, size_t c
  * the defaults (windowed, integer scaling). */
 static void load_display_settings(const char *user_root, int *fullscreen,
                                   int *fractional_scaling,
-                                  char *text_language, size_t language_capacity)
+                                  char *text_language, size_t language_capacity,
+                                  char *music_source, size_t music_capacity)
 {
     char path[4096];
     char line[256];
@@ -361,6 +378,9 @@ static void load_display_settings(const char *user_root, int *fullscreen,
             const char *tag = line + 9;
             if (strcmp(tag, "auto") == 0 || strlen(tag) >= language_capacity) tag = "";
             strcpy(text_language, tag);
+        } else if (strncmp(line, "music=", 6) == 0 && music_source &&
+                   strlen(line + 6) < music_capacity) {
+            strcpy(music_source, line + 6);
         }
     }
     fclose(file);
@@ -374,9 +394,10 @@ static void save_display_settings(const struct c2_sdl_app *app)
     SDL_CreateDirectory(app->user_data_root);
     file = fopen(path, "wb");
     if (!file) return;
-    fprintf(file, "fullscreen=%d\nscaling=%s\nlanguage=%s\n", app->fullscreen ? 1 : 0,
+    fprintf(file, "fullscreen=%d\nscaling=%s\nlanguage=%s\nmusic=%s\n", app->fullscreen ? 1 : 0,
             app->fractional_scaling ? "fractional" : "integer",
-            app->text_language[0] ? app->text_language : "auto");
+            app->text_language[0] ? app->text_language : "auto",
+            app->music_source[0] ? app->music_source : "recorded");
     fclose(file);
 }
 
@@ -614,6 +635,7 @@ static int open_launcher(struct c2_sdl_app *app, const char *error)
     config.cache_root = app->user_data_root;
     config.asset_profile = app->asset_profile[0] ? app->asset_profile : NULL;
     config.text_language = app->text_language;
+    config.music_source = app->music_source;
     config.error = error;
     config.fullscreen = app->fullscreen > 0;
     config.fractional_scaling = app->fractional_scaling > 0;
@@ -686,6 +708,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     const char *screenshot_filename;
     const char *asset_profile;
     const char *text_language;
+    const char *music_source;
     int crash_test;
     int headless;
     int mouse_lock;
@@ -722,7 +745,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     if (!parse_arguments(argc, argv, &asset_root, &user_data_root,
                          &c2_app.default_user_data_root,
                          &screenshot_filename, &asset_profile,
-                         &text_language, &crash_test,
+                         &text_language, &music_source, &crash_test,
                          &headless, &mouse_lock, &fractional_scaling,
                          &smoke_kind, &prepare_only, &skip_launcher,
                          &explicit_source, &fullscreen)) {
@@ -759,7 +782,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
         int saved_fullscreen = 0;
         int saved_fractional = 0;
         load_display_settings(user_data_root, &saved_fullscreen, &saved_fractional,
-                              c2_app.text_language, sizeof(c2_app.text_language));
+                              c2_app.text_language, sizeof(c2_app.text_language),
+                              c2_app.music_source, sizeof(c2_app.music_source));
         if (fullscreen < 0) fullscreen = saved_fullscreen;
         if (fractional_scaling < 0) fractional_scaling = saved_fractional;
     }
@@ -790,6 +814,23 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     } else if (c2_app.text_language[0] && !c2_port_text_select(c2_app.text_language)) {
         c2_app.text_language[0] = '\0';  /* a language no longer compiled in */
     }
+#if PORT_FEAT_RECORDED_MUSIC
+    {
+        enum c2_port_music_source source;
+        if (music_source) {
+            if (!c2_port_music_source_parse(music_source, &source)) {
+                fprintf(stderr, "unknown --music '%s'; recorded or xmidi\n", music_source);
+                return SDL_APP_FAILURE;
+            }
+            snprintf(c2_app.music_source, sizeof(c2_app.music_source), "%s", music_source);
+        }
+        if (c2_port_music_source_parse(c2_app.music_source, &source)) {
+            c2_port_music_set_preference(source);
+        } else {
+            c2_app.music_source[0] = '\0';
+        }
+    }
+#endif
     c2_app.smoke_kind = smoke_kind;
     c2_app.prepare_only = prepare_only;
     c2_app.skip_launcher = skip_launcher;
@@ -903,6 +944,16 @@ SDL_AppResult SDL_AppIterate(void *appstate)
         snprintf(app->text_language, sizeof(app->text_language), "%s",
                  c2_setup_selected_text_language());
         c2_port_text_select(app->text_language[0] ? app->text_language : NULL);
+#if PORT_FEAT_RECORDED_MUSIC
+        {
+            enum c2_port_music_source source;
+            snprintf(app->music_source, sizeof(app->music_source), "%s",
+                     c2_setup_selected_music_source());
+            if (c2_port_music_source_parse(app->music_source, &source)) {
+                c2_port_music_set_preference(source);
+            }
+        }
+#endif
         c2_setup_close();
         if (setup == C2_SETUP_PLAY) save_display_settings(app);
         app->launcher_active = 0;

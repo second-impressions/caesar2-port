@@ -47,6 +47,8 @@ static struct c2_observation c2_observation;
 static char c2_asset_base_roots[C2_ASSET_BASE_ROOT_CAPACITY][C2_PATH_CAPACITY];
 static int c2_asset_base_root_count;
 static char c2_asset_media_roots[C2_ASSET_MEDIA_KIND_COUNT][C2_PATH_CAPACITY];
+/* The Windows 95 tree's media directories, when the data has both trees. */
+static char c2_asset_windows_media_roots[C2_ASSET_MEDIA_KIND_COUNT][C2_PATH_CAPACITY];
 struct c2_pack_mapping { char *logical; char *object; };
 static struct c2_pack_mapping *c2_pack_mappings;
 static size_t c2_pack_mapping_count;
@@ -467,6 +469,7 @@ static int configure_asset_layout(const char *source)
     c2_asset_base_root_count = 0;
     memset(c2_asset_base_roots, 0, sizeof(c2_asset_base_roots));
     memset(c2_asset_media_roots, 0, sizeof(c2_asset_media_roots));
+    memset(c2_asset_windows_media_roots, 0, sizeof(c2_asset_windows_media_roots));
     if (load_pack_mappings(source)) return 1;
 
     if (resolve_directory_at(win_root, sizeof(win_root), source, "C2WIN95") &&
@@ -474,18 +477,22 @@ static int configure_asset_layout(const char *source)
         directory_has_asset(win_hd, "C2.ENG")) {
         /* The continuation runs the recovered DOS renderer. Hybrid CDs carry
          * incompatible Win95 PL8/UI assets beside the DOS installation, so
-         * prefer DOS HD/media and use Win95 only as a fallback. */
+         * prefer DOS HD/media and use Win95 only as a fallback; the Win95
+         * media directories stay known as the Windows variants (recorded
+         * music, larger movies). */
         if (resolve_directory_at(dos_hd, sizeof(dos_hd), source, "HD")) {
             if (!add_asset_base_root(dos_hd)) return 0;
         }
         if (!add_asset_base_root(win_hd)) return 0;
         for (i = 0; i < C2_ASSET_MEDIA_KIND_COUNT; i++) {
+            resolve_directory_at(c2_asset_windows_media_roots[i],
+                                 sizeof(c2_asset_windows_media_roots[i]),
+                                 win_root, media_names[i]);
             if (!resolve_directory_at(c2_asset_media_roots[i],
                                       sizeof(c2_asset_media_roots[i]),
                                       source, media_names[i])) {
-                resolve_directory_at(c2_asset_media_roots[i],
-                                     sizeof(c2_asset_media_roots[i]),
-                                     win_root, media_names[i]);
+                strcpy(c2_asset_media_roots[i], c2_asset_windows_media_roots[i]);
+                c2_asset_windows_media_roots[i][0] = '\0';
             }
         }
         return 1;
@@ -555,8 +562,26 @@ static FILE *open_asset(const char *filename)
         if (file != NULL) return file;
     }
     kind = asset_media_kind(filename);
-    if (kind < 0 || c2_asset_media_roots[kind][0] == '\0') return NULL;
-    return open_file_in_directory(c2_asset_media_roots[kind], filename);
+    if (kind < 0) return NULL;
+    if (c2_asset_media_roots[kind][0] != '\0') {
+        file = open_file_in_directory(c2_asset_media_roots[kind], filename);
+        if (file != NULL) return file;
+    }
+    if (c2_asset_windows_media_roots[kind][0] == '\0') return NULL;
+    return open_file_in_directory(c2_asset_windows_media_roots[kind], filename);
+}
+
+/* The Windows 95 tree's copy of a media file, or NULL when the data has no
+ * such tree beside the DOS one. */
+static FILE *open_windows_asset(const char *filename)
+{
+    int kind;
+
+    if (!is_safe_relative_path(filename)) return NULL;
+    if (c2_pack_mapping_count) return NULL;
+    kind = asset_media_kind(filename);
+    if (kind < 0 || c2_asset_windows_media_roots[kind][0] == '\0') return NULL;
+    return open_file_in_directory(c2_asset_windows_media_roots[kind], filename);
 }
 
 static int resolve_user_path(char *path, size_t capacity,
@@ -994,12 +1019,10 @@ int c2_host_has_capability(enum c2_host_capability capability)
            capability == C2_HOST_CAPABILITY_VIDEO;
 }
 
-uint64_t c2_host_asset_size(const char *filename)
+static uint64_t file_size_of(FILE *file)
 {
-    FILE *file;
     long size;
 
-    file = open_asset(filename);
     if (file == NULL) return 0;
     if (fseek(file, 0, SEEK_END) != 0) {
         fclose(file);
@@ -1010,16 +1033,11 @@ uint64_t c2_host_asset_size(const char *filename)
     return size < 0 ? 0 : (uint64_t)size;
 }
 
-size_t c2_host_asset_read(const char *filename, void *buffer,
-                          size_t size, size_t offset)
+static size_t file_read_at(FILE *file, void *buffer, size_t size, size_t offset)
 {
-    FILE *file;
     size_t bytes_read;
 
-    file = open_asset(filename);
-    if (file == NULL) {
-        return 0;
-    }
+    if (file == NULL) return 0;
     if (fseek(file, (long)offset, SEEK_SET) != 0) {
         fclose(file);
         return 0;
@@ -1027,6 +1045,28 @@ size_t c2_host_asset_read(const char *filename, void *buffer,
     bytes_read = fread(buffer, 1, size, file);
     fclose(file);
     return bytes_read;
+}
+
+uint64_t c2_host_asset_size(const char *filename)
+{
+    return file_size_of(open_asset(filename));
+}
+
+size_t c2_host_asset_read(const char *filename, void *buffer,
+                          size_t size, size_t offset)
+{
+    return file_read_at(open_asset(filename), buffer, size, offset);
+}
+
+uint64_t c2_host_asset_windows_size(const char *filename)
+{
+    return file_size_of(open_windows_asset(filename));
+}
+
+size_t c2_host_asset_windows_read(const char *filename, void *buffer,
+                                  size_t size, size_t offset)
+{
+    return file_read_at(open_windows_asset(filename), buffer, size, offset);
 }
 
 int c2_host_user_file_write(const char *filename, const void *buffer,

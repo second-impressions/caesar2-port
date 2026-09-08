@@ -351,6 +351,7 @@ add_executable(caesar2
     src/platform/common/c2_port_keymap.c
     src/platform/common/c2_port_mouse.c
     src/platform/common/c2_port_music.c
+    src/platform/common/c2_port_music_recorded.c
     src/platform/common/c2_port_save.c
     src/platform/common/c2_port_save_compat.c
     src/platform/common/c2_port_pause.c
@@ -629,6 +630,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/platform/common/c2_port_input.c
         src/platform/common/c2_port_keymap.c
             src/platform/common/c2_port_mouse.c
+        src/platform/common/c2_port_music_recorded.c
         src/platform/common/c2_port_observation.c
         src/platform/common/c2_port_save.c
         src/platform/common/c2_port_save_compat.c
@@ -827,6 +829,32 @@ if(BUILD_TESTING)
         src/platform/common)
     target_link_libraries(c2-port-music-test PRIVATE c2_unity_framework)
     add_test(NAME port-music COMMAND c2-port-music-test)
+
+    add_executable(c2-port-music-recorded-test
+        tests/c2_port_music_recorded_test.c
+        src/platform/common/c2_port_music_recorded.c)
+    target_compile_features(c2-port-music-recorded-test PRIVATE c_std_11)
+    target_compile_definitions(c2-port-music-recorded-test PRIVATE
+        PORT_PLATFORM=1
+        PORT_PLATFORM_LINUX=1)
+    target_include_directories(c2-port-music-recorded-test PRIVATE
+        include
+        src/platform/common)
+    target_link_libraries(c2-port-music-recorded-test PRIVATE c2_unity_framework)
+    add_test(NAME port-music-recorded COMMAND c2-port-music-recorded-test)
+
+    add_executable(c2-port-video-test tests/c2_port_video_test.c)
+    target_compile_features(c2-port-video-test PRIVATE c_std_11)
+    target_compile_definitions(c2-port-video-test PRIVATE
+        PORT_PLATFORM=1
+        PORT_PLATFORM_LINUX=1)
+    target_compile_options(c2-port-video-test PRIVATE -fms-extensions -Wno-implicit-function-declaration)
+    target_include_directories(c2-port-video-test PRIVATE
+        include
+        src/platform/common
+        third_party)
+    target_link_libraries(c2-port-video-test PRIVATE c2_unity_framework c2_libsmacker)
+    add_test(NAME port-video COMMAND c2-port-video-test)
 
     add_executable(c2-port-selection-test
         tests/c2_port_selection_test.c
