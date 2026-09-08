@@ -695,9 +695,9 @@ static int has_media(const char *root, const char *subdir, const char *pattern)
 
 /* The original installer copied only the HD tree; XMI music and RAW speech
  * stayed on the CD. Say so instead of leaving the silence unexplained. A
- * disc that has no XMI directory at all (the late Sierra rerelease played
- * its music as CD audio tracks, which an ISO does not carry) gets the
- * explanation that is true of it. */
+ * disc that has no XMI directory at all (Sierra's 1998 US pressing, the one
+ * with the Caesar III demo, was mastered without one; no Caesar II disc
+ * carries audio tracks) gets the plain fact instead. */
 static void detect_media(const char *root)
 {
     char map[UI_PATH_CAPACITY];
@@ -712,14 +712,9 @@ static void detect_media(const char *root)
     music = has_media(root, "XMI", "*.xmi");
     speech = has_media(root, "RAW", "*.raw");
     if (music && speech) return;
-    if (ui.source_is_disc && !music && speech) {
-        snprintf(ui.media_note, sizeof(ui.media_note),
-                 "No music files on this disc: it used CD audio tracks");
-    } else {
-        snprintf(ui.media_note, sizeof(ui.media_note), "No %s files%s",
-                 !music && !speech ? "music or speech" : !music ? "music" : "speech",
-                 ui.source_is_disc ? " on this disc" : ": they stayed on the CD");
-    }
+    snprintf(ui.media_note, sizeof(ui.media_note), "No %s files%s",
+             !music && !speech ? "music or speech" : !music ? "music" : "speech",
+             ui.source_is_disc ? " on this disc" : ": they stayed on the CD");
 }
 
 static void refresh_source(void)
