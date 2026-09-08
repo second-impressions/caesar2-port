@@ -9,9 +9,10 @@ what changed for them, not which files moved.
 - Launcher: the game data's version and release note each get a line of
   their own (no more left-truncated "...rsion 1.02"), and the status line
   no longer draws over the media note.
-- Launcher: a disc image without music says why — the late Sierra rerelease
-  (archive.org's `caesar-2`) played its music as CD audio tracks, which an
-  ISO does not carry — instead of "they stayed on the CD".
+- Launcher: a disc without music files (Sierra's 1998 US pressing, the one
+  with the Caesar III demo, was mastered without an XMI directory) is told
+  so, instead of "they stayed on the CD", which is only true of an
+  installed folder.
 - Launcher: accented letters in a localized version line ("Version
   Française") are shown without the accent instead of as "?": C2.ENG is
   CP437, not Latin-1.
