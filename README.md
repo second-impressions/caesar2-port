@@ -4,7 +4,9 @@ Caesar II (1995) running natively on Linux, Windows, macOS and in a browser.
 There is no DOSBox and no emulator underneath: the game's own code was
 recovered from the original executable and made to build for current systems.
 
-[![The city map](docs/screenshots/city.png)](docs/screenshots/city.png)
+[![A city in the game's German text](docs/screenshots/city.png)](docs/screenshots/city.png)
+
+Playing with the game's German text. English and French are built in as well.
 
 | | |
 |---|---|
