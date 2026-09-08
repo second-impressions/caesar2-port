@@ -19,6 +19,7 @@
     const profileSelect = document.getElementById("profile-select");
     const languageSelect = document.getElementById("language-select");
     const musicSelect = document.getElementById("music-select");
+    const musicHint = document.getElementById("music-hint");
     const settingsDialog = document.getElementById("settings-dialog");
     const assetsSummary = document.getElementById("assets-summary");
     const assetsLoaded = document.getElementById("assets-loaded");
@@ -32,7 +33,7 @@
     const userDataDrop = document.getElementById("userdata-drop");
     const query = new URLSearchParams(location.search);
     const smokeOutput = query.has("smoke-test") ? [] : null;
-    const BUILD_VERSION = "pr28-445d0475";
+    const BUILD_VERSION = "pr28-30737cb3";
     const HAS_BUNDLED_ASSETS = 0 === 1;
     const ACTIVE_SOURCE = "c2.active-source.v1";
     const PENDING_SOURCE = "c2.pending-source.v1";
@@ -144,11 +145,25 @@
      * and the movies stayed on the CD. Report what a source lacks so silence
      * is explained rather than mysterious.
      */
-    async function missingMedia(root, base) {
+    /*
+     * The two soundtracks: the DOS scores (XMI/) and the Windows version's
+     * recordings (RAW/CITYPRO0.RAW; in C2WIN95/RAW/ on the CDs that have
+     * both trees).
+     */
+    async function musicSources(root, base) {
+      const xmi = await descendCaseInsensitive(root, ["XMI"]);
+      const xmidi = (await hasFileWithExtension(xmi, ".xmi")) || (await hasFileWithExtension(base, ".xmi"));
+      let recorded = false;
+      for (const path of [["RAW"], ["C2WIN95", "RAW"]]) {
+        const dir = await descendCaseInsensitive(root, path);
+        if (dir && await childCaseInsensitive(dir, "CITYPRO0.RAW", "file")) recorded = true;
+      }
+      return {xmidi, recorded};
+    }
+    async function missingMedia(root, base, music) {
       const missing = [];
-      const music = await descendCaseInsensitive(root, ["XMI"]);
       const speech = await descendCaseInsensitive(root, ["RAW"]);
-      if (!(await hasFileWithExtension(music, ".xmi")) && !(await hasFileWithExtension(base, ".xmi"))) missing.push("music");
+      if (!music.xmidi && !music.recorded) missing.push("music");
       if (!(await hasFileWithExtension(speech, ".raw")) && !(await hasFileWithExtension(base, ".raw"))) missing.push("speech");
       return missing;
     }
@@ -175,7 +190,9 @@
       "0c0f5a4a6ba9ff9e986a9cea8a748db83e323eab24a83b7a2de86fff53d3b0f5":
         {language:"German", edition:"Germany original"},
       "e26ac14fd8ff64860cc0b78b55373bd20ea7c2e6fa81558e4393b1a5165a7219":
-        {language:"German", edition:"Germany, Windows 95 tree"}
+        {language:"German", edition:"Germany, Windows 95 tree"},
+      "bbf703a7fbb1f06f700040863b4f7ca38406a64e4d4cfaa3ddf2534dba787347":
+        {language:"English", edition:"1998 US rerelease (Windows version only)"}
     };
     async function sourceInfo(source) {
       if (source === "/assets") {
@@ -208,7 +225,7 @@
         const win = await descendCaseInsensitive(root, ["C2WIN95", "HD"]);
         const candidates = [
           [direct, "Installed game directory"],
-          [dos, win ? "DOS/Win95 hybrid · DOS assets" : "DOS CD layout"],
+          [dos, win ? "DOS/Win95 hybrid CD" : "DOS CD layout"],
           [win, "Windows 95 CD layout"],
         ];
         for (const [base, layout] of candidates) {
@@ -217,13 +234,15 @@
           const help = await childCaseInsensitive(base, "HELP.ENG", "file");
           if (text && help) {
             const known = knownEditions[await hashFile(await text.getFile())];
+            const music = await musicSources(root, base);
             return {
               available: true,
               profiles: [],
               language: known?.language || "Unrecognised text data",
               edition: known?.edition || "Unrecognised release",
               layout,
-              missing: await missingMedia(root, base)
+              music,
+              missing: await missingMedia(root, base, music)
             };
           }
         }
@@ -350,7 +369,7 @@
         if (/\.(eng|exe|dat|pl8|raw|xmi|smk)$/i.test(name) || unknown.length > 1) {
           throw new Error(`${name} is part of an installation; use Browse folder or drop the whole folder`);
         }
-        throw new Error(`${name} is not a Caesar II disc image, ZIP or asset pack`);
+        throw new Error(`${name} is not a Caesar II disc image, ZIP or .c2assets pack`);
       }
       // A BIN is enough on its own; a CUE beside it is copied but not required.
       let primary = selected.find((_, i) => kinds[i] === "bin")
@@ -636,6 +655,7 @@
         const dd = document.createElement("dd"); dd.textContent = value;
         assetsSummary.append(dt, dd);
       }
+      configureMusicChoice(info.music);
     }
     const settingsTabs = [...document.querySelectorAll(".c2-settings-tab")];
     function selectSettingsPane(pane, focus = false) {
@@ -649,7 +669,7 @@
       if (pane === "assets") {
         assetsStatus.textContent = "";
         updateAssetsSummary().catch(error => {
-          assetsStatus.textContent = `Could not inspect loaded assets: ${error.message}`;
+          assetsStatus.textContent = `Could not inspect the loaded game data: ${error.message}`;
         });
       }
     }
@@ -687,7 +707,7 @@
         } catch {}
       }
       let removed = 0;
-      beginOperation("Removing cached assets", targets.length);
+      beginOperation("Removing game data", targets.length);
       updateOperation(0, targets.length, ` · 0/${targets.length} items`);
       for (const [parent, child] of targets) {
         try {
@@ -706,8 +726,8 @@
       localStorage.removeItem(ACTIVE_ORIGIN);
       await updateAssetsSummary();
       assetsStatus.textContent = removed === 1
-        ? "Removed 1 cached asset set."
-        : `Removed ${removed} cached asset sets.`;
+        ? "Removed the game data."
+        : `Removed ${removed} sets of game data.`;
       endOperation();
       showMainWindow({available:false, profiles:[]});
       openSettings("assets");
@@ -781,10 +801,10 @@
       else localStorage.removeItem(TEXT_LANGUAGE);
     };
     /*
-     * Settings > General > Music. Changing it while the game runs switches
-     * the soundtrack in place; otherwise it is passed at the next start.
+     * Settings > Game data > Music: which of the two soundtracks the loaded
+     * data has, and when it has both, the one to play. A change while the
+     * game runs switches in place; otherwise it is passed at the next start.
      */
-    musicSelect.value = localStorage.getItem(MUSIC_SOURCE) === "xmidi" ? "xmidi" : "recorded";
     musicSelect.onchange = () => {
       localStorage.setItem(MUSIC_SOURCE, musicSelect.value);
       if (gameRunning) {
@@ -792,6 +812,18 @@
         catch {}
       }
     };
+    function configureMusicChoice(music) {
+      const has = music || {xmidi: true, recorded: true};   // packs: not inspected, both offered
+      const preferred = localStorage.getItem(MUSIC_SOURCE) === "xmidi" ? "xmidi" : "recorded";
+      for (const option of musicSelect.options) option.disabled = !has[option.value];
+      musicSelect.value = has[preferred] ? preferred : has.recorded ? "recorded" : has.xmidi ? "xmidi" : preferred;
+      musicSelect.disabled = !(has.xmidi && has.recorded);
+      musicHint.textContent = has.xmidi && has.recorded
+        ? "This game data has both: the DOS scores for the FM synthesizer and the Windows version's recordings of the same music."
+        : has.recorded ? "This game data has only the Windows version's recordings (the 1998 disc)."
+        : has.xmidi ? "This game data has only the DOS scores (discs before August 1996)."
+        : "This game data has no music.";
+    }
     function configureTextLanguages() {
       let listing = "";
       try { listing = Module.UTF8ToString(Module._c2_browser_text_languages()); }
@@ -827,7 +859,7 @@
     function setPlayEnabled(enabled) {
       playButton.setAttribute("aria-disabled", enabled ? "false" : "true");
       if (enabled) playButton.removeAttribute("data-tooltip");
-      else playButton.setAttribute("data-tooltip", "Load assets first");
+      else playButton.setAttribute("data-tooltip", "Load game data first");
     }
     function playDisabled() {
       return playButton.getAttribute("aria-disabled") === "true";

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Caesar II — pr28-445d0475</title>
+  <title>Caesar II — pr28-30737cb3</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" sizes="any">
   <link rel="stylesheet" href="pico.min.css">
   <script>
@@ -19,7 +19,7 @@
 <body>
   <main class="game-stage"><canvas id="canvas" tabindex="0" draggable="false"></canvas></main>
   <nav id="toolbar" class="topbar" aria-label="Caesar II controls">
-    <ul><li class="brand"><strong>CAESAR II</strong><span class="version">pr28-445d0475</span></li></ul>
+    <ul><li class="brand"><strong>CAESAR II</strong><span class="version">pr28-30737cb3</span></li></ul>
     <ul>
       <li><a id="settings-button" class="nav-action" href="#settings">Settings</a></li>
       <li><a id="about-button" class="nav-action" href="#about">About</a></li>
@@ -32,7 +32,7 @@
       <p id="detected-row" class="c2-hint" hidden></p>
       <p id="profile-row" hidden><label>Speech<select id="profile-select"></select></label></p>
       <div class="c2-action-grid">
-        <button id="play-button" type="button" aria-disabled="true" data-tooltip="Load assets first" data-placement="bottom">Play</button>
+        <button id="play-button" type="button" aria-disabled="true" data-tooltip="Load game data first" data-placement="bottom">Play</button>
         <button id="assets-button" class="secondary outline" type="button">Load game data</button>
       </div>
     </article>
@@ -44,7 +44,7 @@
         <div class="c2-settings-tabs" role="tablist" aria-label="Settings sections">
           <button id="tab-general" class="c2-settings-tab" type="button" role="tab" data-pane="general" aria-selected="true" aria-controls="pane-general">General</button>
           <button id="tab-rendering" class="c2-settings-tab" type="button" role="tab" data-pane="rendering" aria-selected="false" aria-controls="pane-rendering">Rendering</button>
-          <button id="tab-assets" class="c2-settings-tab" type="button" role="tab" data-pane="assets" aria-selected="false" aria-controls="pane-assets">Assets</button>
+          <button id="tab-assets" class="c2-settings-tab" type="button" role="tab" data-pane="assets" aria-selected="false" aria-controls="pane-assets">Game data</button>
           <button id="tab-userdata" class="c2-settings-tab" type="button" role="tab" data-pane="userdata" aria-selected="false" aria-controls="pane-userdata">User Data</button>
         </div>
         <div class="c2-settings-panes">
@@ -64,14 +64,6 @@
               </select>
             </div>
             <p class="c2-hint">Automatic follows the game data. Speech and illustrations always come from the game data.</p>
-            <div class="c2-settings-row">
-              <span class="c2-settings-label">Music</span>
-              <select id="music-select" aria-label="Music">
-                <option value="recorded">Recorded (Windows version)</option>
-                <option value="xmidi">FM synthesis (DOS version)</option>
-              </select>
-            </div>
-            <p class="c2-hint">CDs from August 1996 carry both: the DOS scores for the OPL synthesizer and the Windows version's recordings of them. Older discs have only the scores, the 1998 disc only the recordings; the one the data has plays.</p>
             <div class="c2-settings-row">
               <span class="c2-settings-label">Ask before closing the tab</span>
               <input id="confirm-close-toggle" type="checkbox" role="switch">
@@ -97,7 +89,15 @@
             <div id="assets-loaded" class="c2-stack" hidden>
               <dl id="assets-summary"></dl>
               <div class="c2-settings-row">
-                <span class="c2-settings-label">Cached assets</span>
+                <span class="c2-settings-label">Music</span>
+                <select id="music-select" aria-label="Music">
+                  <option value="recorded">Recorded (Windows version)</option>
+                  <option value="xmidi">FM synthesis (DOS version)</option>
+                </select>
+              </div>
+              <p id="music-hint" class="c2-hint"></p>
+              <div class="c2-settings-row">
+                <span class="c2-settings-label">Loaded game data</span>
                 <button id="forget-button" class="c2-compact-action outline" type="button">Remove</button>
               </div>
             </div>
@@ -136,7 +136,7 @@
   </dialog>
   <dialog id="operation-dialog" class="operation-dialog">
     <article class="c2-surface c2-operation-panel c2-stack">
-      <h2 id="operation-title">Working with assets…</h2>
+      <h2 id="operation-title">Working with game data…</h2>
       <progress id="operation-progress"></progress>
       <p id="operation-detail" class="c2-hint"></p>
       <button id="operation-close" class="secondary" type="button" hidden>Okay</button>
@@ -145,13 +145,13 @@
   <dialog id="about-dialog">
     <article class="c2-surface c2-dialog-panel c2-stack">
       <div class="c2-modal-header"><h2>About</h2><button id="about-close" class="close" type="button" aria-label="Close"></button></div>
-      <span class="about-version">pr28-445d0475</span>
+      <span class="about-version">pr28-30737cb3</span>
       <p>A modern, portable build of the classic city builder.</p>
       <nav class="c2-about-links" aria-label="Project repositories">
         <a href="https://github.com/second-impressions/caesar2-port" target="_blank" rel="noopener">Game port</a>
         <a href="https://github.com/second-impressions/caesar2-reconstruction" target="_blank" rel="noopener">Source reconstruction</a>
       </nav>
-      <p class="c2-disclaimer">Caesar II game assets are not distributed with this project. They are supplied by the user from a copy they are authorized to use. Original game content remains the property of its respective rights holders.</p>
+      <p class="c2-disclaimer">Caesar II game data is not distributed with this project. They are supplied by the user from a copy they are authorized to use. Original game content remains the property of its respective rights holders.</p>
       <p class="c2-license"><strong>License:</strong> <a href="LICENSE" target="_blank" rel="license noopener">AGPL-3.0-or-later</a>. Distributed without warranty. Third-party components retain their respective licenses.</p>
     </article>
   </dialog>
@@ -202,7 +202,7 @@
       .then(async ready => {
         if (!(await ensureCurrentBuild())) return;
         if (!ready) {
-          showMessage("Choose an installation folder, CD image, or asset ZIP.");
+          showMessage("Choose an installation folder, CD image, or ZIP.");
           return;
         }
         const generated = document.getElementById("emscripten-runtime")
