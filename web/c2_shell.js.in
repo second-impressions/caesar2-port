@@ -998,9 +998,9 @@
       };
     }
     /*
-     * The recovered game has no autosave, so a closed tab loses the session.
-     * Browsers only allow a generic prompt, and only when the player asked for
-     * one, so this stays opt-in.
+     * A closed tab ends the session where it is. Browsers only allow a
+     * generic prompt, and only when the player asked for one, so this
+     * stays opt-in.
      */
     const confirmCloseToggle = document.getElementById("confirm-close-toggle");
     confirmCloseToggle.checked = localStorage.getItem(CONFIRM_CLOSE) === "1";
