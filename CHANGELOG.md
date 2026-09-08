@@ -17,17 +17,18 @@ what changed for them, not which files moved.
 - The five full-screen movies the Windows version ships at 500x240
   (battle won/lost, promotion, victory, defeat) play from those files
   instead of the 320x152 DOS ones.
-
 - Launcher: the game data's version and release note each get a line of
   their own (no more left-truncated "...rsion 1.02"), and the status line
   no longer draws over the media note.
-- Launcher: a disc without music files (Sierra's 1998 US pressing, the one
-  with the Caesar III demo, was mastered without an XMI directory) is told
-  so, instead of "they stayed on the CD", which is only true of an
-  installed folder.
+- Launcher: a disc without music files is told so, instead of "they
+  stayed on the CD", which is only true of an installed folder.
 - Launcher: accented letters in a localized version line ("Version
   Française") are shown without the accent instead of as "?": C2.ENG is
   CP437, not Latin-1.
+- The helmet is the icon everywhere: the game and launcher windows
+  (taskbar, Alt-Tab), the Windows executable (with a version block), the
+  AppImage, the macOS disk image's volume, and a 256 px icon on Linux
+  desktops without SVG support.
 
 ## 1.0.1 - 2026-09-07
 

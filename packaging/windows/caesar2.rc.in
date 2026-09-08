@@ -1,0 +1,30 @@
+// The executable's icon (Explorer, taskbar, Alt-Tab) and its version
+// block (the Details tab of Properties). Configured by CMake. The
+// constants are spelled out so no windows.h is needed to compile it.
+
+1 ICON "@C2_WINDOWS_ICON@"
+
+1 VERSIONINFO
+FILEVERSION     @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
+PRODUCTVERSION  @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
+FILEOS          0x40004L
+FILETYPE        0x1L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName",      "Second Impressions"
+            VALUE "FileDescription",  "Caesar II"
+            VALUE "FileVersion",      "@C2_VERSION_STRING@"
+            VALUE "InternalName",     "caesar2"
+            VALUE "OriginalFilename", "caesar2.exe"
+            VALUE "ProductName",      "Caesar II (Second Impressions port)"
+            VALUE "ProductVersion",   "@C2_VERSION_STRING@"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

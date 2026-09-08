@@ -54,8 +54,11 @@ DESTDIR="$APPDIR" cmake --install "$BUILD_DIR" --prefix /usr
 ID=io.github.second_impressions.caesar2
 ln -sf usr/bin/caesar2 "$APPDIR/AppRun"
 cp "$APPDIR/usr/share/applications/$ID.desktop" "$APPDIR/"
+# The desktop entry's Icon= finds the SVG; .DirIcon (file managers, the
+# AppImage thumbnailer) is a PNG, which every reader of it understands.
 cp "$APPDIR/usr/share/icons/hicolor/scalable/apps/$ID.svg" "$APPDIR/"
-ln -sf "$ID.svg" "$APPDIR/.DirIcon"
+cp "$APPDIR/usr/share/icons/hicolor/256x256/apps/$ID.png" "$APPDIR/"
+ln -sf "$ID.png" "$APPDIR/.DirIcon"
 desktop-file-validate "$APPDIR/$ID.desktop"
 
 TOOLS="$BUILD_DIR/tools"
