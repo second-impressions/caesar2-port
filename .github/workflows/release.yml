@@ -108,20 +108,13 @@ jobs:
           echo "suffix=$suffix" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "Building $version"
-      - name: Extract the release notes
+      - name: Show the release notes
+        # The draft reads them from the same commit's CHANGELOG.md; this
+        # only puts them in the log of the job that checks them.
         run: |
           set -euo pipefail
           v="${{ steps.version.outputs.version }}"
-          if grep -q "^## $v " CHANGELOG.md; then
-            awk -v v="$v" '/^## /{p = ($2 == v)} p && !/^## /' CHANGELOG.md > notes.md
-          else
-            echo "Build $v; not a release." > notes.md
-          fi
-          cat notes.md
-      - uses: actions/upload-artifact@v7
-        with:
-          name: notes
-          path: notes.md
+          awk -v v="$v" '/^## /{p = ($2 == v)} p && !/^## /' CHANGELOG.md
 
   # ── Windows: one zip, exe + DLLs + PDB ─────────────────────────────
   windows:
@@ -303,6 +296,9 @@ jobs:
       id-token: write
       attestations: write
     steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.verify.outputs.commit }}
       - uses: actions/download-artifact@v8
         with:
           path: artifacts
@@ -326,7 +322,9 @@ jobs:
         run: |
           set -euo pipefail
           v="${{ needs.verify.outputs.version }}"
-          flags=(--draft --title "Caesar II $v" --notes-file artifacts/notes/notes.md)
+          awk -v v="$v" '/^## /{p = ($2 == v)} p && !/^## /' CHANGELOG.md > notes.md
+          cat notes.md
+          flags=(--draft --title "Caesar II $v" --notes-file notes.md)
           [[ "${{ needs.verify.outputs.prerelease }}" == "true" ]] && flags+=(--prerelease)
           gh release create "${{ needs.verify.outputs.tag }}" "${flags[@]}" --repo "$GITHUB_REPOSITORY" dist/*
           echo "Draft: https://github.com/$GITHUB_REPOSITORY/releases"

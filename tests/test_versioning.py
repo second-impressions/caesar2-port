@@ -30,7 +30,9 @@ def test_release_workflow_tags_builds_and_drafts():
     assert "workflow_dispatch:" in workflow
     # The tag goes on the verified commit, the builds check out the same one,
     # and nothing is published without a person pressing the button.
-    assert workflow.count("ref: ${{ needs.verify.outputs.commit }}") == 5
+    # five build jobs and the one that drafts (for the changelog it quotes)
+    assert workflow.count("ref: ${{ needs.verify.outputs.commit }}") == 6
+    assert "upload-artifact" not in workflow.split("# ── Windows")[0]
     assert 'git tag -a "$tag" -F /tmp/tag-notes.md "$commit"' in workflow
     assert "--draft" in workflow
     assert "actions/attest-build-provenance" in workflow
