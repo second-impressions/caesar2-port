@@ -406,12 +406,16 @@ static void rebuild_buttons(void)
         }
         add_button(BUTTON_TEXT, label, "Enter to change", NULL, 1);
     }
-    if (ui.music_xmidi && ui.music_recorded) {
-        /* Both soundtracks: the recordings unless FM synthesis is chosen. */
+    if (ui.music_xmidi || ui.music_recorded) {
+        /* Which soundtrack plays: a choice when the data has both, a
+         * statement when it has one. */
+        int both = ui.music_xmidi && ui.music_recorded;
+        int xmidi = both ? strcmp(ui.music_source, "xmidi") == 0 : !ui.music_recorded;
         add_button(BUTTON_MUSIC,
-                   strcmp(ui.music_source, "xmidi") == 0 ? "Music: FM synth (DOS version)"
-                                                         : "Music: Recorded (Windows version)",
-                   "Enter to change", NULL, 1);
+                   xmidi ? "Music: FM synth (DOS version)"
+                         : "Music: Recorded (Windows version)",
+                   both ? "Enter to change" : "the only one here",
+                   NULL, both);
     }
     if (ui.profile_count > 1) {
         char label[64];
@@ -478,7 +482,7 @@ static void describe_source_kind(void)
     ui.source_is_disc = 0;
     if (!ui.source[0]) return;
     if (child_path(probe, sizeof(probe), ui.source, ".c2-object-map", SDL_PATHTYPE_FILE)) {
-        snprintf(ui.source_kind, sizeof(ui.source_kind), "Asset pack");
+        snprintf(ui.source_kind, sizeof(ui.source_kind), "Game data pack (.c2assets)");
         return;
     }
     if (!c2_import_classify(ui.source, &kind, root, sizeof(root), NULL, 0)) {
@@ -498,7 +502,7 @@ static void describe_source_kind(void)
         snprintf(ui.source_kind, sizeof(ui.source_kind), "%s",
                  content == C2_ZIP_CUE_IMAGE ? "ZIP archive (CUE/BIN disc dump)"
                : content == C2_ZIP_ISO_IMAGE ? "ZIP archive (ISO disc dump)"
-               : extension_is(ui.source, ".c2assets") ? "Asset pack"
+               : extension_is(ui.source, ".c2assets") ? "Game data pack (.c2assets)"
                : "ZIP archive (installation)");
         break;
     }
