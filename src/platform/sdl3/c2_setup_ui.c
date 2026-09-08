@@ -415,7 +415,7 @@ static void rebuild_buttons(void)
         add_button(BUTTON_MUSIC,
                    xmidi ? "Music: FM synth (DOS version)"
                          : "Music: Recorded (Windows version)",
-                   both ? "Enter to change" : "the only one here",
+                   both ? "Enter to change" : "",
                    NULL, both);
     }
     if (ui.profile_count > 1) {
