@@ -315,7 +315,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "originLabel" in shell
     assert '["Edition", info.edition]' in shell
     assert 'rows.push(["Layout", info.layout])' in shell
-    assert "DOS/Win95 hybrid · DOS assets" in shell
+    assert "DOS/Win95 hybrid CD" in shell
     assert 'assetsButton.textContent = info.available ? "Replace game data" : "Load game data"' in shell
     assert "Change assets" not in shell
     assert "sourceInfo" in shell
@@ -373,7 +373,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert 'id="settings-button"' in shell
     assert "https://github.com/second-impressions/caesar2-port" in shell
     assert "https://github.com/second-impressions/caesar2-reconstruction" in shell
-    assert "game assets are not distributed" in shell
+    assert "game data is not distributed" in shell
     assert "supplied by the user" in shell
     assert 'href="LICENSE"' in shell
     assert "AGPL-3.0-or-later" in shell
