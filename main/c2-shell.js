@@ -32,7 +32,7 @@
     const userDataDrop = document.getElementById("userdata-drop");
     const query = new URLSearchParams(location.search);
     const smokeOutput = query.has("smoke-test") ? [] : null;
-    const BUILD_VERSION = "main-6df39a28";
+    const BUILD_VERSION = "main-fc4550a2";
     const ACTIVE_SOURCE = "c2.active-source.v1";
     const PENDING_SOURCE = "c2.pending-source.v1";
     const ACTIVE_PROFILE = "c2.active-profile.v1";
