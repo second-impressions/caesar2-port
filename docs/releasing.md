@@ -103,7 +103,7 @@ game data from wherever it is kept.
 `packaging/macos/make-dmg.sh` builds the universal bundle with the same
 vendored SDL3 and libbacktrace as the AppImage (`CMAKE_OSX_ARCHITECTURES`
 arm64 and x86_64, deployment target 11.0), renders the icon set from
-`packaging/macos/icon-1024.png` (`tools/make-icns.py`, committed as `caesar2.icns`), signs the bundle
+`packaging/macos/icon-1024.png` (`tools/make-icons.py`, committed as `caesar2.icns`), signs the bundle
 ad hoc (which arm64 requires to launch at all) and makes the dmg with
 `hdiutil`. It runs on the release workflow's `macos-14` runner.
 

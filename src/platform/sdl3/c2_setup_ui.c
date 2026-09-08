@@ -4,6 +4,7 @@
 #if !PORT_PLATFORM_WASM
 
 #include "c2_import.h"
+#include "c2_sdl_host.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1337,6 +1338,7 @@ int c2_setup_open(const struct c2_setup_config *config)
         SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
         return 0;
     }
+    c2_sdl_set_window_icon(ui.window);
     SDL_SetRenderLogicalPresentation(ui.renderer, UI_WIDTH, UI_HEIGHT,
                                      SDL_LOGICAL_PRESENTATION_LETTERBOX);
     ui.font = build_font(ui.renderer);

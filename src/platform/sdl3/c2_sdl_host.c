@@ -904,6 +904,7 @@ int c2_host_init(const struct c2_host_config *config)
         return 0;
     }
     apply_minimum_window_size();
+    c2_sdl_set_window_icon(c2_window);
     if (!SDL_HideCursor()) {
         fprintf(stderr, "could not hide the host cursor: %s\n", SDL_GetError());
         c2_host_shutdown();

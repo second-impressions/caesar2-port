@@ -13,4 +13,4 @@
 
   Flood-filling from the corners keeps light pixels inside the city artwork untouched.
 - `vendor/pico.min.css` is Pico CSS 2.1.1, distributed under the MIT license in `vendor/PICO-LICENSE.md`.
-- `favicon.svg` is an original Roman helmet drawn in profile for this port; it contains no extracted or traced Caesar II game assets. The full candidate set, comparison gallery, and PNG renders live under `caesar2/` in the separate [assets](https://github.com/second-impressions/assets) repository.
+- `favicon.svg` is an original Roman helmet drawn in profile for this port; it contains no extracted or traced Caesar II game asset. The same helmet is the icon everywhere else: `packaging/macos/icon-1024.png` is its 1024 px rendering, from which `tools/make-icons.py` writes the macOS `.icns`, the Windows `.ico` (the executable's resource) and `packaging/icon/caesar2-256.png`, which is compiled into the binary as the window icon and installed as the hicolor icon on Linuxs. The full candidate set, comparison gallery, and PNG renders live under `caesar2/` in the separate [assets](https://github.com/second-impressions/assets) repository.

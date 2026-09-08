@@ -36,7 +36,7 @@ if otool -L "$BIN" | grep '^	' | grep -vE '/usr/lib/|/System/Library/'; then
 fi
 
 # caesar2.icns is generated from icon-1024.png (PNG payloads in the icp4,
-# icp5 and ic07..ic10 slots) by tools/make-icns.py; committed so the build
+# icp5 and ic07..ic10 slots) by tools/make-icons.py; committed so the build
 # needs neither ImageMagick nor iconutil.
 mkdir -p "$APP/Contents/Resources"
 cp packaging/macos/caesar2.icns "$APP/Contents/Resources/caesar2.icns"
@@ -55,5 +55,16 @@ ln -s /Applications "$STAGE/Applications"
 mkdir -p "$DIST_DIR"
 OUT="$DIST_DIR/caesar2-$VERSION-macos.dmg"
 rm -f "$OUT"
-hdiutil create -volname "Caesar II" -srcfolder "$STAGE" -ov -format UDZO "$OUT"
+# The volume gets the helmet too: a writable image first, the icon copied
+# in and the folder's custom-icon bit set, then compressed read-only.
+RW="$BUILD_DIR/caesar2-rw.dmg"
+rm -f "$RW"
+hdiutil create -volname "Caesar II" -srcfolder "$STAGE" -ov -format UDRW "$RW"
+MOUNT=$(hdiutil attach -readwrite -noverify -nobrowse "$RW" | awk -F'\t' '/\/Volumes\//{print $NF}')
+cp packaging/macos/caesar2.icns "$MOUNT/.VolumeIcon.icns"
+SetFile -c icnC "$MOUNT/.VolumeIcon.icns"
+SetFile -a C "$MOUNT"
+hdiutil detach "$MOUNT"
+hdiutil convert "$RW" -format UDZO -o "$OUT"
+rm -f "$RW"
 ls -la "$OUT"

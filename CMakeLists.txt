@@ -305,6 +305,32 @@ add_custom_command(
 add_library(c2_text_bundle STATIC "${C2_TEXT_BUNDLE_C}")
 target_include_directories(c2_text_bundle PRIVATE src/platform/common include)
 
+# The window icon, compiled in (src/platform/sdl3/c2_sdl_icon.c). The same
+# helmet is web/favicon.svg, the desktop icon, the Windows resource and
+# the macOS bundle icon; tools/make-icons.py writes the raster forms.
+set(C2_WINDOW_ICON_PNG "${CMAKE_CURRENT_SOURCE_DIR}/packaging/icon/caesar2-256.png")
+set(C2_WINDOW_ICON_C "${CMAKE_CURRENT_BINARY_DIR}/generated/c2_window_icon.c")
+add_custom_command(
+    OUTPUT "${C2_WINDOW_ICON_C}"
+    COMMAND "${CMAKE_COMMAND}"
+        "-DOUTPUT=${C2_WINDOW_ICON_C}"
+        "-DINPUT=${C2_WINDOW_ICON_PNG}"
+        "-DSYMBOL=c2_window_icon_png"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedFile.cmake"
+    DEPENDS "${C2_WINDOW_ICON_PNG}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedFile.cmake"
+    COMMENT "Embedding the window icon"
+    VERBATIM
+)
+# One library for everything that creates a window (the game, the launcher,
+# the tests that link the host); on WebAssembly a window has no icon.
+if(EMSCRIPTEN)
+    add_library(c2_window_icon STATIC src/platform/sdl3/c2_sdl_icon_none.c)
+else()
+    add_library(c2_window_icon STATIC src/platform/sdl3/c2_sdl_icon.c "${C2_WINDOW_ICON_C}")
+endif()
+target_include_directories(c2_window_icon PRIVATE src/platform/sdl3 include)
+target_link_libraries(c2_window_icon PRIVATE SDL3::SDL3)
+
 add_executable(caesar2
     src/action.c
     src/battle.c
@@ -365,6 +391,15 @@ add_executable(caesar2
     src/platform/sdl3/c2_sdl_host.c
     src/platform/sdl3/c2_setup_ui.c
 )
+target_link_libraries(caesar2 PRIVATE c2_window_icon)
+if(WIN32)
+    # The executable's icon and version block.
+    enable_language(RC)
+    set(C2_WINDOWS_ICON "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/caesar2.ico")
+    configure_file(packaging/windows/caesar2.rc.in
+        "${CMAKE_CURRENT_BINARY_DIR}/generated/caesar2.rc" @ONLY)
+    target_sources(caesar2 PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated/caesar2.rc")
+endif()
 
 target_sources(caesar2 PRIVATE
     $<$<CONFIG:Debug>:src/platform/common/c2_port_observation.c>
@@ -724,6 +759,9 @@ if(NOT EMSCRIPTEN)
         install(FILES web/favicon.svg
             DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps"
             RENAME io.github.second_impressions.caesar2.svg)
+        install(FILES packaging/icon/caesar2-256.png
+            DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps"
+            RENAME io.github.second_impressions.caesar2.png)
     endif()
 endif()
 
@@ -917,7 +955,7 @@ if(BUILD_TESTING)
         include
         src/platform/common
         src/platform/sdl3)
-    target_link_libraries(c2-port-save-test PRIVATE SDL3::SDL3)
+    target_link_libraries(c2-port-save-test PRIVATE SDL3::SDL3 c2_window_icon)
     add_test(NAME port-save COMMAND c2-port-save-test)
 
     add_executable(c2-user-files-test
@@ -931,7 +969,7 @@ if(BUILD_TESTING)
         include
         src/platform/common
         src/platform/sdl3)
-    target_link_libraries(c2-user-files-test PRIVATE SDL3::SDL3)
+    target_link_libraries(c2-user-files-test PRIVATE SDL3::SDL3 c2_window_icon)
     add_test(NAME user-files COMMAND c2-user-files-test)
 
     add_executable(c2-import-test tests/c2_import_test.c)
