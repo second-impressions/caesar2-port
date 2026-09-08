@@ -202,6 +202,13 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "Loaded game data" in shell
     assert 'id="play-button" type="button" aria-disabled="true"' in shell
     assert 'id="pane-userdata"' in shell
+    # Every settings pane occupies the same grid cell, so the dialog is as
+    # tall as the tallest one and never resizes or clips as tabs are used.
+    css = (ROOT / "web" / "c2_shell.css").read_text()
+    assert ".c2-settings-panes { display: grid; }" in css
+    assert ".c2-settings-pane { grid-area: 1 / 1;" in css
+    assert ".c2-settings-pane[hidden] { display: flex !important; visibility: hidden; }" in css
+    assert "height: 15rem" not in css
     assert 'id="userdata-input" type="file" accept=".sav,.dat,.inf,.zip" multiple' in shell
     assert 'id="userdata-drop" class="c2-drop-zone' in shell
     assert 'id="userdata-import"' in shell
