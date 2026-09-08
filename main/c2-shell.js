@@ -32,7 +32,7 @@
     const userDataDrop = document.getElementById("userdata-drop");
     const query = new URLSearchParams(location.search);
     const smokeOutput = query.has("smoke-test") ? [] : null;
-    const BUILD_VERSION = "main-252c2f61";
+    const BUILD_VERSION = "main-52a1449d";
     const ACTIVE_SOURCE = "c2.active-source.v1";
     const PENDING_SOURCE = "c2.pending-source.v1";
     const ACTIVE_PROFILE = "c2.active-profile.v1";
@@ -998,9 +998,9 @@
       };
     }
     /*
-     * The recovered game has no autosave, so a closed tab loses the session.
-     * Browsers only allow a generic prompt, and only when the player asked for
-     * one, so this stays opt-in.
+     * A closed tab ends the session where it is. Browsers only allow a
+     * generic prompt, and only when the player asked for one, so this
+     * stays opt-in.
      */
     const confirmCloseToggle = document.getElementById("confirm-close-toggle");
     confirmCloseToggle.checked = localStorage.getItem(CONFIRM_CLOSE) === "1";
