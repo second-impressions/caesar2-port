@@ -7,7 +7,7 @@
  * byte-identical worker is never reinstalled, so the first worker a visitor
  * ever received would keep serving them forever.
  */
-const C2_BUILD_VERSION = "pr29-cace0dbd";
+const C2_BUILD_VERSION = "pr29-2f2f712d";
 if (typeof window === "undefined") {
   self.addEventListener("install", () => self.skipWaiting());
   self.addEventListener("activate", event => event.waitUntil((async () => {
