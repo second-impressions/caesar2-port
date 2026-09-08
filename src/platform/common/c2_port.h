@@ -33,9 +33,15 @@ int c2_port_paused_music_branch(int base, int count,
                                 int current_branch, int branch_count);
 #endif
 #if PORT_FEAT_RECORDED_MUSIC
+/* Caesar II has two soundtracks, by different composers: the 1995 DOS
+ * music (Jeremy A. Bell and Jason P. Rinaldi), sequenced through the sound
+ * card's synthesizer and branching with the city's mood, and the 1996
+ * Windows music (Keith Zizza), recorded from hardware synthesizers as
+ * seven fixed pieces. "xmidi"/"recorded" say how each is
+ * stored; the player sees the version each was written for. */
 enum c2_port_music_source {
-    C2_PORT_MUSIC_XMIDI = 0,     /* the DOS scores through the OPL synthesizer */
-    C2_PORT_MUSIC_RECORDED = 1   /* the Windows version's recordings */
+    C2_PORT_MUSIC_XMIDI = 0,     /* the 1995 DOS music */
+    C2_PORT_MUSIC_RECORDED = 1   /* the 1996 Windows recordings */
 };
 int c2_port_music_recorded_available(void);
 int c2_port_music_xmidi_available(void);

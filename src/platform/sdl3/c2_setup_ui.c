@@ -384,6 +384,12 @@ static void scan_drives(void)
 /* The user never has to say what kind of data they have: one chooser
  * accepts a file inside an installation, a disc image, a ZIP or a pack and
  * the importer classifies it; inserted discs are offered automatically. */
+/* "" is the default, which is the DOS music. */
+static int music_is_windows(const char *choice)
+{
+    return strcmp(choice, "windows") == 0 || strcmp(choice, "recorded") == 0;
+}
+
 static void rebuild_buttons(void)
 {
     enum button_kind focused_kind = BUTTON_PLAY;
@@ -408,13 +414,14 @@ static void rebuild_buttons(void)
         add_button(BUTTON_TEXT, label, "Enter to change", NULL, 1);
     }
     if (ui.music_xmidi || ui.music_recorded) {
-        /* Which soundtrack plays: a choice when the data has both, a
-         * statement when it has one. */
+        /* The two soundtracks are different music, not two renderings of
+         * one, so each is named after the version it was written for: a
+         * choice when the data has both, a statement when it has one. */
         int both = ui.music_xmidi && ui.music_recorded;
-        int xmidi = both ? strcmp(ui.music_source, "xmidi") == 0 : !ui.music_recorded;
+        int windows = both ? music_is_windows(ui.music_source) : !ui.music_xmidi;
         add_button(BUTTON_MUSIC,
-                   xmidi ? "Music: FM synth (DOS version)"
-                         : "Music: Recorded (Windows version)",
+                   windows ? "Music: Windows version (1996)"
+                           : "Music: DOS version (1995)",
                    both ? "Enter to change" : "",
                    NULL, both);
     }
@@ -975,7 +982,7 @@ static void activate(int index)
     }
     case BUTTON_MUSIC:
         snprintf(ui.music_source, sizeof(ui.music_source), "%s",
-                 strcmp(ui.music_source, "xmidi") == 0 ? "recorded" : "xmidi");
+                 music_is_windows(ui.music_source) ? "dos" : "windows");
         rebuild_buttons();
         break;
     case BUTTON_LANGUAGE: {

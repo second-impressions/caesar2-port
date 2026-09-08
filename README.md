@@ -47,17 +47,26 @@ game data. Translations are ordinary gettext files under `po/` — see
 
 ### Music
 
-Caesar II has two soundtracks. The DOS version plays XMIDI scores through
-an OPL synthesizer, which the port reproduces chip-exactly. The Windows
-version streamed recordings of the same music instead (8-bit, 22 kHz), and
-every CD from August 1996 carries both — the recordings in `C2WIN95/RAW/`,
-which the port now uses. The launcher's *Music* row and the web page's
-Settings → Game data → Music show which soundtrack the game data has and,
-when it has both, choose between *Recorded (Windows version)*, the
-default, and *FM synthesis (DOS version)*; `--music recorded|xmidi` on the
-command line. The 1998 US disc has only the recordings, discs before
-August 1996 only the scores. The Windows tree also supplies the larger
-(500x240) versions of five full-screen movies.
+Caesar II has **two soundtracks, and they are different music**. The 1995
+DOS version's, by Jeremy A. Bell and Jason P. Rinaldi, is played by the
+sound card's synthesizer — the port reproduces the Sound Blaster's OPL3
+chip-exactly — and it *reacts*: the score branches between some fifty
+phrases as your city goes from content to threatened to burning. The 1996
+Windows version's, by Keith Zizza, was recorded from hardware synthesizers
+(Roland JV-1080 and friends) and is seven fixed pieces, three of which take
+turns on the city map.
+
+Every CD from August 1996 carries both — the recordings in `C2WIN95/RAW/`,
+which the port now plays too; the 1998 US disc has only the recordings and
+discs before August 1996 only the DOS music. The launcher's *Music* row and
+the web page's Settings → Game data → Music say which the game data has
+and, when it has both, choose between them; `--music dos|windows` on the
+command line. The DOS music is the default: it is what this engine was
+written for and the only place it can be heard, while the Windows
+recordings have circulated as ordinary audio files for years.
+
+The Windows tree also supplies the larger (500x240) versions of five
+full-screen movies.
 
 Note that the original installer copied only part of the game to the hard
 disk: an installation folder without `XMI/` and `RAW/` has no music or

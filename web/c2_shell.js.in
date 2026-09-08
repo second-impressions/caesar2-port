@@ -739,7 +739,7 @@
       const language = localStorage.getItem(TEXT_LANGUAGE);
       if (language) args.push("--language", language);
       const music = localStorage.getItem(MUSIC_SOURCE);
-      if (music === "xmidi" || music === "recorded") args.push("--music", music);
+      if (music) args.push("--music", music);
       if (scalingMode === "fractional") args.push("--fractional-scaling");
       if (query.get("mouse-lock") === "1") args.push("--mouse-lock");
       const smoke = query.get("smoke-test");
@@ -801,27 +801,32 @@
       else localStorage.removeItem(TEXT_LANGUAGE);
     };
     /*
-     * Settings > Game data > Music: which of the two soundtracks the loaded
-     * data has, and when it has both, the one to play. A change while the
-     * game runs switches in place; otherwise it is passed at the next start.
+     * Settings > Game data > Music. Caesar II has two soundtracks, by
+     * different composers: the 1995 DOS music (Jeremy A. Bell and Jason P.
+     * Rinaldi), which the game's synthesizer plays and branches with the
+     * city's mood, and the 1996 Windows music (Keith Zizza), recorded from
+     * hardware synthesizers. This says which the loaded data has and, with
+     * both, which plays; a change while the game runs switches in place.
      */
     musicSelect.onchange = () => {
       localStorage.setItem(MUSIC_SOURCE, musicSelect.value);
       if (gameRunning) {
-        try { Module._c2_browser_set_music_source(musicSelect.value === "xmidi" ? 0 : 1); }
+        try { Module._c2_browser_set_music_source(musicSelect.value === "windows" ? 1 : 0); }
         catch {}
       }
     };
     function configureMusicChoice(music) {
-      const has = music || {xmidi: true, recorded: true};   // packs: not inspected, both offered
-      const preferred = localStorage.getItem(MUSIC_SOURCE) === "xmidi" ? "xmidi" : "recorded";
+      const available = music || {xmidi: true, recorded: true};  // packs: not inspected
+      const has = {dos: available.xmidi, windows: available.recorded};
+      const stored = localStorage.getItem(MUSIC_SOURCE);
+      const preferred = stored === "windows" || stored === "recorded" ? "windows" : "dos";
       for (const option of musicSelect.options) option.disabled = !has[option.value];
-      musicSelect.value = has[preferred] ? preferred : has.recorded ? "recorded" : has.xmidi ? "xmidi" : preferred;
-      musicSelect.disabled = !(has.xmidi && has.recorded);
-      musicHint.textContent = has.xmidi && has.recorded
-        ? "This game data has both: the DOS scores for the FM synthesizer and the Windows version's recordings of the same music."
-        : has.recorded ? "This game data has only the Windows version's recordings (the 1998 disc)."
-        : has.xmidi ? "This game data has only the DOS scores (discs before August 1996)."
+      musicSelect.value = has[preferred] ? preferred : has.dos ? "dos" : has.windows ? "windows" : preferred;
+      musicSelect.disabled = !(has.dos && has.windows);
+      musicHint.textContent = has.dos && has.windows
+        ? "Two different soundtracks. The 1995 one is played by a synthesizer and follows your city's mood; the 1996 one was recorded with real instruments for the Windows release and repeats three pieces."
+        : has.windows ? "This game data has the 1996 Windows music only (the 1998 disc)."
+        : has.dos ? "This game data has the 1995 DOS music only (discs before August 1996)."
         : "This game data has no music.";
     }
     function configureTextLanguages() {
