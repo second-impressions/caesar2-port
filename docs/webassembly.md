@@ -112,9 +112,13 @@ CI publishes to the `gh-pages` branch, which Pages serves. The site root
 is the latest published release (`pages-release.yml` copies the release's
 web zip there when a draft is published; pre-releases stay off it). Every
 push to `main` lands at `/main/`, and every pull request from this
-repository gets its own build at `/pr/N/` (linked from a comment on the
-pull request, removed when it closes). The service worker registers
-relative to its directory, so each build is isolated on its own scope.
+repository gets its own build at `/pr/N/`, removed when it closes. Each
+directory is recorded as a GitHub Deployment (`.github/scripts/deployment.js`):
+the pull request shows *View deployment*, the repository's Deployments
+sidebar lists what is live in the `production`, `main` and transient
+`preview/pr-N` environments, and a closed pull request's environment is
+retired. The service worker registers relative to its directory, so each
+build is isolated on its own scope.
 
 A storage pthread mounts one WasmFS OPFS backend before SDL host startup.
 Imported assets/cache live below `/persistent/game-data`; mutable files live

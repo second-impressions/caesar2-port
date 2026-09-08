@@ -264,7 +264,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
+      deployments: write
     concurrency:
       group: gh-pages
       cancel-in-progress: false
@@ -283,23 +283,20 @@ jobs:
         run: |
           if [ -n "$PR_NUMBER" ]; then target="pr/$PR_NUMBER"; else target="main"; fi
           .github/scripts/publish-pages.sh "$target" _site "$GITHUB_SHA"
-      - name: Point the pull request at its preview
-        if: github.event_name == 'pull_request'
+      - name: Record the deployment
+        # The pull request gets "View deployment"; the Deployments sidebar
+        # lists what is live where. Pull requests deploy to a transient
+        # environment of their own, retired when they close.
+        uses: actions/github-script@v9
         env:
-          GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/pr/${PR_NUMBER}/"
-          # The marker on its own line: a line that starts with an HTML
-          # comment is an HTML block, and Markdown would not link inside it.
-          body="$(printf '<!-- preview -->\n**Web build of this pull request:** [%s](%s)\n\nUpdated for %s.' "$url" "$url" "$GITHUB_SHA")"
-          existing=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
-                     --jq '.[] | select(.body | startswith("<!-- preview -->")) | .id' | head -1)
-          if [ -n "$existing" ]; then
-            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${existing}" -f body="$body" >/dev/null
-          else
-            gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "$body"
-          fi
+        with:
+          script: |
+            const site = `https://${context.repo.owner}.github.io/${context.repo.repo}`;
+            const pr = process.env.PR_NUMBER;
+            await require('./.github/scripts/deployment.js').record({github, context, core}, pr
+              ? { environment: `preview/pr-${pr}`, url: `${site}/pr/${pr}/`, ref: context.payload.pull_request.head.sha, transient: true }
+              : { environment: 'main', url: `${site}/main/`, ref: context.sha });
 
   preview-cleanup:
     name: Remove pull-request preview
@@ -307,10 +304,22 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      deployments: write
     concurrency:
       group: gh-pages
       cancel-in-progress: false
     steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/scripts
+      - name: Retire the deployment
+        uses: actions/github-script@v9
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        with:
+          script: |
+            await require('./.github/scripts/deployment.js').retire({github, context, core},
+              { environment: `preview/pr-${process.env.PR_NUMBER}` });
       - name: Remove pr/N from gh-pages
         env:
           GH_TOKEN: ${{ github.token }}

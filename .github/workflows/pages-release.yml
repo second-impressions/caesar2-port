@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: write
+  deployments: write
 
 concurrency:
   group: gh-pages
@@ -45,3 +46,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: .github/scripts/publish-pages.sh . _site "release ${{ env.release }}"
+      - name: Record the deployment
+        uses: actions/github-script@v9
+        with:
+          script: |
+            await require('./.github/scripts/deployment.js').record({github, context, core}, {
+              environment: 'production',
+              url: `https://${context.repo.owner}.github.io/${context.repo.repo}/`,
+              ref: process.env.release,
+              production: true,
+            });
