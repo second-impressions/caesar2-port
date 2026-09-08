@@ -13,13 +13,19 @@
 #include "font8x8/font8x8_basic.h"
 
 #define UI_WIDTH 480
-#define UI_HEIGHT 420
+#define UI_HEIGHT 440
 #define UI_SCALE 2
 #define UI_MARGIN 16
 #define UI_GLYPH 8
 #define UI_BUTTON_HEIGHT 22
 #define UI_BUTTON_GAP 6
-#define UI_BUTTONS_TOP 112
+/* The game-data block above the buttons: kind, version, release note,
+ * media note, each on its own line from UI_DATA_TOP; the status line has a
+ * row of its own below them, so nothing is ever drawn over anything. */
+#define UI_DATA_TOP 72
+#define UI_LINE 12
+#define UI_STATUS_TOP (UI_DATA_TOP + 4 * UI_LINE + 2)
+#define UI_BUTTONS_TOP (UI_STATUS_TOP + UI_LINE + 2)
 #define UI_MAX_BUTTONS 12
 #define UI_MAX_DRIVES 2
 #define UI_PATH_CAPACITY 4096
@@ -125,7 +131,9 @@ static struct {
     char version[64];
     char source[UI_PATH_CAPACITY];
     char source_kind[64];     /* "Installation folder", "CD-ROM drive /dev/sr0" */
-    char detected[128];       /* c2.eng version + release date, once imported */
+    int source_is_disc;       /* image or drive: what is missing never left it */
+    char detected[128];       /* c2.eng version line, once imported */
+    char detected_note[128];  /* its second line ("Updated Pre-Win95 version.") */
     char media_note[96];      /* "no music or speech files", when so */
     int startup_check;        /* silent validation of the preselected source */
     char cache_root[UI_PATH_CAPACITY];
@@ -275,7 +283,17 @@ static void draw_text(int x, int y, int scale, const struct rgb *color,
     }
 }
 
-/* Keep the informative tail of a long path visible. */
+/* Prose is cut on the right; a path keeps its tail, the file name. */
+static void fit_text(char *out, size_t capacity, const char *text, int max_chars)
+{
+    size_t length = strlen(text);
+    if ((int)length <= max_chars) {
+        snprintf(out, capacity, "%s", text);
+        return;
+    }
+    snprintf(out, capacity, "%.*s...", max_chars - 3, text);
+}
+
 static void fit_path(char *out, size_t capacity, const char *path, int max_chars)
 {
     size_t length = strlen(path);
@@ -446,6 +464,7 @@ static void describe_source_kind(void)
     char root[UI_PATH_CAPACITY];
     enum c2_source_kind kind;
     ui.source_kind[0] = '\0';
+    ui.source_is_disc = 0;
     if (!ui.source[0]) return;
     if (child_path(probe, sizeof(probe), ui.source, ".c2-object-map", SDL_PATHTYPE_FILE)) {
         snprintf(ui.source_kind, sizeof(ui.source_kind), "Asset pack");
@@ -455,6 +474,8 @@ static void describe_source_kind(void)
         snprintf(ui.source_kind, sizeof(ui.source_kind), "Unrecognized game data");
         return;
     }
+    ui.source_is_disc = kind == C2_SOURCE_CDROM || kind == C2_SOURCE_ISO ||
+                        kind == C2_SOURCE_RAW_BIN || kind == C2_SOURCE_CUE;
     switch (kind) {
     case C2_SOURCE_CDROM:
         snprintf(ui.source_kind, sizeof(ui.source_kind), "CD-ROM drive %.40s", ui.source);
@@ -518,14 +539,18 @@ static int find_c2_eng(const char *root, char *out, size_t capacity)
     return 0;
 }
 
-/* The launcher font is ASCII-only; strip accents from the Latin-1 text the
- * localized C2.ENG files carry rather than show '?'. */
-static char fold_latin1(unsigned char c)
+/* The launcher font is ASCII-only, and C2.ENG is CP437 (the game's own
+ * font order: "Française" spells its ç as 0x87). Strip the accents from
+ * the letters the localized version lines use rather than show '?'. */
+static char fold_cp437(unsigned char c)
 {
-    static const char table[64] =
-        "AAAAAAACEEEEIIIIDNOOOOOxOUUUUYTsaaaaaaaceeeeiiiidnooooo/ouuuuyty";
+    static const char table[] =
+        /* 0x80 */ "CueaaaaceeeiiiAA"
+        /* 0x90 */ "EaAooouuyOU$$$Pf"
+        /* 0xa0 */ "aiounN";
     if (c >= ' ' && c < 0x7f) return (char)c;
-    if (c >= 0xc0) return table[c - 0xc0];
+    if (c >= 0x80 && c < 0x80 + sizeof(table) - 1) return table[c - 0x80];
+    if (c == 0xe1) return 's'; /* sharp s */
     return '?';
 }
 
@@ -548,7 +573,7 @@ static int eng_string(const unsigned char *buf, size_t size, int list,
     while (p < size && buf[p] < ' ') p++;
     e = p;
     while (e < size && buf[e] != 0 && e - p + 1 < capacity) {
-        out[e - p] = fold_latin1(buf[e]);
+        out[e - p] = fold_cp437(buf[e]);
         e++;
     }
     out[e - p] = '\0';
@@ -619,6 +644,7 @@ static void detect_version(const char *root)
     char version[64];
     char date[64];
     snprintf(ui.detected, sizeof(ui.detected), "version unknown");
+    ui.detected_note[0] = '\0';
     if (!find_c2_eng(root, path, sizeof(path))) return;
     file = fopen(path, "rb");
     if (!file) return;
@@ -630,12 +656,15 @@ static void detect_version(const char *root)
         const char *tag = c2_port_text_detect(buf, size);
         snprintf(ui.detected_language, sizeof(ui.detected_language), "%s", tag ? tag : "");
     }
+    /* "Caesar II - version 1.02 - 2nd Feb 96" and, on some discs, a second
+     * line such as "Updated Pre-Win95 version.": each gets a row of its own.
+     * The window's title already says Caesar II. */
     if (eng_string(buf, size, 0x0b, 0, version, sizeof(version))) {
+        const char *text = version;
+        if (SDL_strncasecmp(text, "Caesar II - ", 12) == 0) text += 12;
+        snprintf(ui.detected, sizeof(ui.detected), "%s", text);
         if (eng_string(buf, size, 0x0b, 1, date, sizeof(date))) {
-            snprintf(ui.detected, sizeof(ui.detected), "%.60s, %.60s",
-                     version, date);
-        } else {
-            snprintf(ui.detected, sizeof(ui.detected), "%s", version);
+            snprintf(ui.detected_note, sizeof(ui.detected_note), "%s", date);
         }
     }
     free(buf);
@@ -665,7 +694,10 @@ static int has_media(const char *root, const char *subdir, const char *pattern)
 }
 
 /* The original installer copied only the HD tree; XMI music and RAW speech
- * stayed on the CD. Say so instead of leaving the silence unexplained. */
+ * stayed on the CD. Say so instead of leaving the silence unexplained. A
+ * disc that has no XMI directory at all (the late Sierra rerelease played
+ * its music as CD audio tracks, which an ISO does not carry) gets the
+ * explanation that is true of it. */
 static void detect_media(const char *root)
 {
     char map[UI_PATH_CAPACITY];
@@ -680,14 +712,21 @@ static void detect_media(const char *root)
     music = has_media(root, "XMI", "*.xmi");
     speech = has_media(root, "RAW", "*.raw");
     if (music && speech) return;
-    snprintf(ui.media_note, sizeof(ui.media_note), "No %s files: they stayed on the CD",
-             !music && !speech ? "music or speech" : !music ? "music" : "speech");
+    if (ui.source_is_disc && !music && speech) {
+        snprintf(ui.media_note, sizeof(ui.media_note),
+                 "No music files on this disc: it used CD audio tracks");
+    } else {
+        snprintf(ui.media_note, sizeof(ui.media_note), "No %s files%s",
+                 !music && !speech ? "music or speech" : !music ? "music" : "speech",
+                 ui.source_is_disc ? " on this disc" : ": they stayed on the CD");
+    }
 }
 
 static void refresh_source(void)
 {
     ui.source_ready = c2_setup_source_looks_valid(ui.source);
     ui.detected[0] = '\0';
+    ui.detected_note[0] = '\0';
     ui.media_note[0] = '\0';
     ui.profile_count = 0;
     describe_source_kind();
@@ -1163,30 +1202,39 @@ static void render(void)
     draw_text(UI_MARGIN, 36, 1, &COLOR_MUTED, line);
     fill_rect(UI_MARGIN, 52, UI_WIDTH - 2 * UI_MARGIN, 1, &COLOR_RULE);
 
-    draw_text(UI_MARGIN, 60, 1, &COLOR_MUTED, "Game data");
+    draw_text(UI_MARGIN, UI_DATA_TOP - UI_LINE, 1, &COLOR_MUTED, "Game data");
     if (ui.source[0]) {
-        fit_path(shown, sizeof(shown), ui.source_kind, max_chars);
-        draw_text(UI_MARGIN, 72, 1, &COLOR_TEXT, shown);
+        int y = UI_DATA_TOP;
+        fit_text(shown, sizeof(shown), ui.source_kind, max_chars);
+        draw_text(UI_MARGIN, y, 1, &COLOR_TEXT, shown);
+        y += UI_LINE;
         if (ui.detected[0]) {
-            fit_path(shown, sizeof(shown), ui.detected, max_chars);
-            draw_text(UI_MARGIN, 84, 1, &COLOR_TEXT, shown);
+            fit_text(shown, sizeof(shown), ui.detected, max_chars);
+            draw_text(UI_MARGIN, y, 1, &COLOR_TEXT, shown);
+            y += UI_LINE;
+            if (ui.detected_note[0]) {
+                fit_text(shown, sizeof(shown), ui.detected_note, max_chars);
+                draw_text(UI_MARGIN, y, 1, &COLOR_TEXT, shown);
+                y += UI_LINE;
+            }
             if (ui.media_note[0]) {
-                fit_path(shown, sizeof(shown), ui.media_note, max_chars);
-                draw_text(UI_MARGIN, 96, 1, &COLOR_ERROR, shown);
+                fit_text(shown, sizeof(shown), ui.media_note, max_chars);
+                draw_text(UI_MARGIN, y, 1, &COLOR_ERROR, shown);
             }
         } else if (ui.source_ready) {
-            draw_text(UI_MARGIN, 84, 1, &COLOR_MUTED,
+            draw_text(UI_MARGIN, y, 1, &COLOR_MUTED,
                       ui.state == SETUP_IMPORT ? "Checking..." : "Not imported yet");
         }
     } else {
-        draw_text(UI_MARGIN, 72, 1, &COLOR_MUTED,
+        draw_text(UI_MARGIN, UI_DATA_TOP, 1, &COLOR_MUTED,
                   "None selected. Choose below, or drop it on this window:");
-        draw_text(UI_MARGIN, 84, 1, &COLOR_MUTED,
+        draw_text(UI_MARGIN, UI_DATA_TOP + UI_LINE, 1, &COLOR_MUTED,
                   "installed folder, ISO/BIN image, ZIP or .c2assets pack.");
     }
     if (ui.status[0]) {
+        /* The status may end in a path (a crash report): keep its tail. */
         fit_path(shown, sizeof(shown), ui.status, max_chars);
-        draw_text(UI_MARGIN, 98, 1, ui.status_color, shown);
+        draw_text(UI_MARGIN, UI_STATUS_TOP, 1, ui.status_color, shown);
     }
 
     if (ui.state == SETUP_IMPORT) {
@@ -1305,6 +1353,24 @@ int c2_setup_open(const struct c2_setup_config *config)
     return 1;
 }
 
+/* C2_SETUP_SCREENSHOT=<file> saves the launcher's first idle frame as a PNG
+ * and quits: how the layout is looked at without a desktop (with
+ * SDL_VIDEODRIVER=dummy), and what tests/screenshots of the launcher use. */
+static void capture_frame_if_asked(void)
+{
+    const char *filename = SDL_getenv("C2_SETUP_SCREENSHOT");
+    SDL_Surface *frame;
+    if (filename == NULL || filename[0] == '\0') return;
+    frame = SDL_RenderReadPixels(ui.renderer, NULL);
+    if (frame != NULL) {
+        if (!SDL_SavePNG(frame, filename)) {
+            SDL_Log("could not write %s: %s", filename, SDL_GetError());
+        }
+        SDL_DestroySurface(frame);
+    }
+    ui.result = C2_SETUP_QUIT;
+}
+
 enum c2_setup_result c2_setup_iterate(void)
 {
     if (!ui.open) return C2_SETUP_QUIT;
@@ -1324,6 +1390,9 @@ enum c2_setup_result c2_setup_iterate(void)
         poll_drives();
     }
     if (ui.result == C2_SETUP_RUNNING) render();
+    if (ui.result == C2_SETUP_RUNNING && ui.state == SETUP_MENU) {
+        capture_frame_if_asked();
+    }
     return ui.result;
 }
 
