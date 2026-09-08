@@ -6,6 +6,16 @@ what changed for them, not which files moved.
 
 ## Unreleased
 
+- Launcher: the game data's version and release note each get a line of
+  their own (no more left-truncated "...rsion 1.02"), and the status line
+  no longer draws over the media note.
+- Launcher: a disc image without music says why — the late Sierra rerelease
+  (archive.org's `caesar-2`) played its music as CD audio tracks, which an
+  ISO does not carry — instead of "they stayed on the CD".
+- Launcher: accented letters in a localized version line ("Version
+  Française") are shown without the accent instead of as "?": C2.ENG is
+  CP437, not Latin-1.
+
 ## 1.0.1 - 2026-09-07
 
 - Browser version: the text language setting moved from the front page

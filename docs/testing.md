@@ -59,6 +59,14 @@ Pass `--screenshot output.png` to write the final headless frame or the current
 interactive startup state as a PNG beneath the user-data root. The recovered
 screenshot hotkeys likewise write `shot1.png` through `shot8.png`.
 
+The launcher window has its own: `C2_SETUP_SCREENSHOT=file.png` saves its
+first idle frame and quits, so the layout can be looked at without a desktop:
+
+```bash
+SDL_VIDEODRIVER=dummy C2_SETUP_SCREENSHOT=/tmp/launcher.png \
+  ./build/port/linux-debug/caesar2 --game-data /path/to/CAESAR2.ISO --user-data-dir /tmp/ud
+```
+
 ## Test suites
 
 To register the semantic smoke tests with CTest, configure with
