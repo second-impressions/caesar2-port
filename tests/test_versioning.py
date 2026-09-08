@@ -65,6 +65,12 @@ def test_pages_deploys_the_single_main_wasm_build():
     assert "! -name pr ! -name main" in script
     assert "github.event.pull_request.head.repo.full_name == github.repository" in workflow
     assert "preview-cleanup:" in workflow
+    # Deployments, not comments, point at the previews.
+    assert "deployments: write" in workflow
+    assert "environment: `preview/pr-${pr}`" in workflow
+    assert "environment: 'main'" in workflow
+    assert "pull-requests: write" not in workflow
+    assert (ROOT / ".github" / "scripts" / "deployment.js").exists()
     assert "coi-serviceworker.js" in workflow
     assert "c2-shell.js" in workflow
     assert "c2-shell.css" in workflow
