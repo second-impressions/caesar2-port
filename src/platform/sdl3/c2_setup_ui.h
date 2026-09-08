@@ -20,6 +20,7 @@ struct c2_setup_config {
     const char *cache_root;     /* user-data directory for imports */
     const char *asset_profile;  /* may be NULL */
     const char *text_language;  /* compiled-in text language tag; "" or NULL = detect */
+    const char *music_source;   /* "recorded", "xmidi"; "" or NULL = the default */
     const char *error;          /* initial error line, may be NULL */
     int fullscreen;             /* initial display settings */
     int fractional_scaling;
@@ -37,6 +38,7 @@ enum c2_setup_result c2_setup_iterate(void);
 const char *c2_setup_selected_source(void);
 const char *c2_setup_selected_profile(void);
 const char *c2_setup_selected_text_language(void);
+const char *c2_setup_selected_music_source(void);
 int c2_setup_selected_fullscreen(void);
 int c2_setup_selected_fractional_scaling(void);
 void c2_setup_close(void);

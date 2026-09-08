@@ -222,6 +222,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert 'scalingMode === "fractional"' in shell
     assert 'args.push("--fractional-scaling")' in shell
     assert "Module._c2_browser_set_fractional_scaling" in shell
+    assert "Module._c2_browser_set_music_source" in shell   # Settings > General > Music, live
     assert "Module._c2_browser_set_canvas_size(cssWidth, cssHeight)" in shell
     host = (SDL_BACKEND / "c2_sdl_host.c").read_text()
     assert "void c2_host_set_canvas_size" in host
@@ -260,6 +261,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "PORT_FEAT_REGION_SIDED_DRAW" not in target_header
     assert "#define PORT_FEAT_STICKY_DROPDOWNS PORT_PLATFORM" in target_header
     assert "#define PORT_FIX_PAUSED_MUSIC_VARIETY PORT_PLATFORM" in target_header
+    assert "#define PORT_FEAT_RECORDED_MUSIC PORT_PLATFORM" in target_header
     assert "#define PORT_FIX_REGION_IDLE_CLICK_FUNDS PORT_PLATFORM" in target_header
     action_source = (SRC / "action.c").read_text()
     loadsave = (SRC / "loadsave.c").read_text()

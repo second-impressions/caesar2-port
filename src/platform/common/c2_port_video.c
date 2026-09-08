@@ -9,6 +9,14 @@
 
 #define C2_MOVIE_AUDIO_VOICE 7
 
+/* Mode 2 plays a movie in the VGA 320x200 screen, which the 640x480 frame
+ * shows at 2x horizontally and 2.4x vertically (mode 13h's aspect): every
+ * DOS mode-2 movie is 320x152 and lands in a 640x365 box. The Windows 95
+ * versions of five of them are 500x240; they are scaled into that same
+ * box. */
+#define C2_MOVIE_VGA_WIDTH 320u
+#define C2_MOVIE_VGA_HEIGHT 152u
+
 struct c2_movie_state {
     smk decoder;
     unsigned char *asset;
@@ -101,42 +109,82 @@ static void copy_normal_frame(const unsigned char *pixels, int left, int top)
     }
 }
 
+/* Fill the box a 320x152 movie occupies in the scaled VGA screen from a
+ * frame of any size: each destination pixel takes the source pixel under
+ * it (nearest neighbour; the frame is palette-indexed, so no blending). */
 static void copy_vga_frame(const unsigned char *pixels, int left, int top)
 {
-    unsigned long source_x;
-    unsigned long source_y;
-    int logical_x;
-    int logical_y;
-    int x_begin;
-    int x_end;
-    int y_begin;
-    int y_end;
-    int destination_x;
-    int destination_y;
+    int box_x = left * C2_SCREEN_WIDTH / 320;
+    int box_y = top * C2_SCREEN_HEIGHT / 200;
+    int box_w = (left + (int)C2_MOVIE_VGA_WIDTH) * C2_SCREEN_WIDTH / 320 - box_x;
+    int box_h = (top + (int)C2_MOVIE_VGA_HEIGHT) * C2_SCREEN_HEIGHT / 200 - box_y;
+    int x;
+    int y;
 
-    for (source_y = 0; source_y < c2_movie.height; source_y++) {
-        logical_y = top + (int)source_y;
-        y_begin = logical_y * C2_SCREEN_HEIGHT / 200;
-        y_end = (logical_y + 1) * C2_SCREEN_HEIGHT / 200;
-        if (y_begin < 0) y_begin = 0;
-        if (y_end > C2_SCREEN_HEIGHT) y_end = C2_SCREEN_HEIGHT;
-        for (source_x = 0; source_x < c2_movie.width; source_x++) {
-            logical_x = left + (int)source_x;
-            x_begin = logical_x * C2_SCREEN_WIDTH / 320;
-            x_end = (logical_x + 1) * C2_SCREEN_WIDTH / 320;
-            if (x_begin < 0) x_begin = 0;
-            if (x_end > C2_SCREEN_WIDTH) x_end = C2_SCREEN_WIDTH;
-            for (destination_y = y_begin; destination_y < y_end;
-                 destination_y++) {
-                for (destination_x = x_begin; destination_x < x_end;
-                     destination_x++) {
-                    internal_screen[(size_t)destination_y * C2_SCREEN_WIDTH +
-                                    (size_t)destination_x] =
-                        pixels[source_y * c2_movie.width + source_x];
-                }
-            }
+    if (c2_movie.width == 0 || c2_movie.height == 0) return;
+    for (y = 0; y < box_h; y++) {
+        int destination_y = box_y + y;
+        unsigned long source_y = (unsigned long)y * c2_movie.height / (unsigned long)box_h;
+        const unsigned char *row;
+        if (destination_y < 0 || destination_y >= C2_SCREEN_HEIGHT) continue;
+        if (source_y >= c2_movie.height) source_y = c2_movie.height - 1;
+        row = pixels + source_y * c2_movie.width;
+        for (x = 0; x < box_w; x++) {
+            int destination_x = box_x + x;
+            unsigned long source_x = (unsigned long)x * c2_movie.width / (unsigned long)box_w;
+            if (destination_x < 0 || destination_x >= C2_SCREEN_WIDTH) continue;
+            if (source_x >= c2_movie.width) source_x = c2_movie.width - 1;
+            internal_screen[(size_t)destination_y * C2_SCREEN_WIDTH +
+                            (size_t)destination_x] = row[source_x];
         }
     }
+}
+
+/* Smacker header: "SMK2", width, height (little-endian 32-bit). */
+static unsigned long smk_header_pixels(const unsigned char *header, size_t size)
+{
+    unsigned long width;
+    unsigned long height;
+
+    if (size < 12 || memcmp(header, "SMK2", 4) != 0) return 0;
+    width = header[4] | ((unsigned long)header[5] << 8) |
+            ((unsigned long)header[6] << 16) | ((unsigned long)header[7] << 24);
+    height = header[8] | ((unsigned long)header[9] << 8) |
+             ((unsigned long)header[10] << 16) | ((unsigned long)header[11] << 24);
+    return width * height;
+}
+
+/* The movie file to play: the DOS one, unless the Windows 95 tree has the
+ * same movie with more pixels and the mode scales it anyway (mode 2). The
+ * same-size Windows re-encodes have fewer colours, so they are not
+ * preferred; a movie drawn 1:1 (modes 0 and 1) keeps its DOS size. */
+static unsigned char *load_movie_asset(const char *filename, int mode,
+                                       size_t *size_out)
+{
+    unsigned char dos_header[12];
+    unsigned char windows_header[12];
+    uint64_t windows_size;
+    unsigned char *data;
+    size_t size;
+
+    if (mode == 2) {
+        windows_size = c2_host_asset_windows_size(filename);
+        if (windows_size >= 12 && windows_size <= SIZE_MAX &&
+            c2_host_asset_read(filename, dos_header, sizeof(dos_header), 0) == sizeof(dos_header) &&
+            c2_host_asset_windows_read(filename, windows_header, sizeof(windows_header), 0) == sizeof(windows_header) &&
+            smk_header_pixels(windows_header, sizeof(windows_header)) >
+                smk_header_pixels(dos_header, sizeof(dos_header))) {
+            size = (size_t)windows_size;
+            data = malloc(size);
+            if (data != NULL &&
+                c2_host_asset_windows_read(filename, data, size, 0) == size) {
+                *size_out = size;
+                return data;
+            }
+            free(data);
+        }
+    }
+    return c2_port_load_asset(filename, size_out);
 }
 
 static void copy_decoded_frame(int left, int top, int mode)
@@ -194,7 +242,7 @@ void start_smacking(char *filename, int left, int top, int mode)
         show_movie_fallback(filename, left, top, mode);
         return;
     }
-    c2_movie.asset = c2_port_load_asset(filename, &asset_size);
+    c2_movie.asset = load_movie_asset(filename, mode, &asset_size);
     if (c2_movie.asset == NULL) {
         show_movie_fallback(filename, left, top, mode);
         return;

@@ -97,8 +97,8 @@ enum {
     CAMPANIA_REGION = 2,
     CAMPANIA_X = 301,
     CAMPANIA_Y = 280,
-    MUSIC_VOICE_FIRST = 8,
-    MUSIC_VOICE_COUNT = 1,
+    MUSIC_VOICE_FIRST = 8,     /* the synthesizer; 9 and 10 the recordings */
+    MUSIC_VOICE_COUNT = 3,
     MUSIC_SAMPLE_DURATION_MS = 8000,
     MUSIC_SAMPLE_LOG_INTERVAL_MS = 250,
     MUSIC_MIN_SAFE_QUEUE_MS = 40,

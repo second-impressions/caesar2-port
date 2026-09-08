@@ -39,6 +39,7 @@ enum setup_state {
 enum button_kind {
     BUTTON_PLAY = 0,
     BUTTON_TEXT,
+    BUTTON_MUSIC,
     BUTTON_LANGUAGE,
     BUTTON_DISPLAY,
     BUTTON_SCALING,
@@ -141,6 +142,9 @@ static struct {
     char profiles[8][32];     /* from C2PACK.IDX when the data is a pack */
     int profile_count;
     char text_language[16];   /* compiled-in text; "" follows the game data */
+    char music_source[16];    /* "recorded" or "xmidi"; "" = the default */
+    int music_xmidi;          /* the data has the DOS scores (XMI/) */
+    int music_recorded;       /* ...and/or the Windows recordings (RAW/) */
     char detected_language[16];
     int fullscreen;
     int fractional_scaling;
@@ -401,6 +405,13 @@ static void rebuild_buttons(void)
             snprintf(label, sizeof(label), "Text: Automatic");
         }
         add_button(BUTTON_TEXT, label, "Enter to change", NULL, 1);
+    }
+    if (ui.music_xmidi && ui.music_recorded) {
+        /* Both soundtracks: the recordings unless FM synthesis is chosen. */
+        add_button(BUTTON_MUSIC,
+                   strcmp(ui.music_source, "xmidi") == 0 ? "Music: FM synth (DOS version)"
+                                                         : "Music: Recorded (Windows version)",
+                   "Enter to change", NULL, 1);
     }
     if (ui.profile_count > 1) {
         char label[64];
@@ -694,10 +705,9 @@ static int has_media(const char *root, const char *subdir, const char *pattern)
 }
 
 /* The original installer copied only the HD tree; XMI music and RAW speech
- * stayed on the CD. Say so instead of leaving the silence unexplained. A
- * disc that has no XMI directory at all (Sierra's 1998 US pressing, the one
- * with the Caesar III demo, was mastered without one; no Caesar II disc
- * carries audio tracks) gets the plain fact instead. */
+ * stayed on the CD. Say so instead of leaving the silence unexplained. Music
+ * is either soundtrack: the DOS scores or the Windows version's recordings
+ * (Sierra's 1998 US pressing has only the latter). */
 static void detect_media(const char *root)
 {
     char map[UI_PATH_CAPACITY];
@@ -705,11 +715,19 @@ static void detect_media(const char *root)
     int speech;
 
     ui.media_note[0] = '\0';
+    ui.music_xmidi = 0;
+    ui.music_recorded = 0;
     if (child_path(map, sizeof(map), root, ".c2-object-map", SDL_PATHTYPE_FILE) ||
         child_path(map, sizeof(map), root, "C2PACK.IDX", SDL_PATHTYPE_FILE)) {
         return; /* packs and object-mapped caches carry what they list */
     }
-    music = has_media(root, "XMI", "*.xmi");
+    /* The DOS scores; the Windows version's recordings, which the CDs from
+     * August 1996 keep in C2WIN95/RAW and the 1998 pressing at the root. */
+    ui.music_xmidi = has_media(root, "XMI", "*.xmi");
+    ui.music_recorded = has_media(root, "RAW", "citypro0.raw") ||
+                        (child_path(map, sizeof(map), root, "C2WIN95", SDL_PATHTYPE_DIRECTORY) &&
+                         has_media(map, "RAW", "citypro0.raw"));
+    music = ui.music_xmidi || ui.music_recorded;
     speech = has_media(root, "RAW", "*.raw");
     if (music && speech) return;
     snprintf(ui.media_note, sizeof(ui.media_note), "No %s files%s",
@@ -950,6 +968,11 @@ static void activate(int index)
         rebuild_buttons();
         break;
     }
+    case BUTTON_MUSIC:
+        snprintf(ui.music_source, sizeof(ui.music_source), "%s",
+                 strcmp(ui.music_source, "xmidi") == 0 ? "recorded" : "xmidi");
+        rebuild_buttons();
+        break;
     case BUTTON_LANGUAGE: {
         int i;
         int current = -1;
@@ -1287,6 +1310,8 @@ int c2_setup_open(const struct c2_setup_config *config)
              config->asset_profile ? config->asset_profile : "");
     snprintf(ui.text_language, sizeof(ui.text_language), "%s",
              config->text_language ? config->text_language : "");
+    snprintf(ui.music_source, sizeof(ui.music_source), "%s",
+             config->music_source ? config->music_source : "");
     ui.detected_language[0] = '\0';
     ui.fullscreen = config->fullscreen != 0;
     ui.fractional_scaling = config->fractional_scaling != 0;
@@ -1406,6 +1431,11 @@ const char *c2_setup_selected_text_language(void)
     return ui.text_language;
 }
 
+const char *c2_setup_selected_music_source(void)
+{
+    return ui.music_source;
+}
+
 int c2_setup_selected_fullscreen(void)
 {
     return ui.fullscreen;
@@ -1445,6 +1475,7 @@ enum c2_setup_result c2_setup_iterate(void) { return C2_SETUP_QUIT; }
 const char *c2_setup_selected_source(void) { return ""; }
 const char *c2_setup_selected_profile(void) { return ""; }
 const char *c2_setup_selected_text_language(void) { return ""; }
+const char *c2_setup_selected_music_source(void) { return ""; }
 int c2_setup_selected_fullscreen(void) { return 0; }
 int c2_setup_selected_fractional_scaling(void) { return 0; }
 void c2_setup_close(void) {}
