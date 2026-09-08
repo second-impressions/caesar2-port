@@ -57,7 +57,7 @@ jobs:
       release: ${{ steps.version.outputs.release }}
       prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
@@ -118,7 +118,7 @@ jobs:
             echo "Build $v; not a release." > notes.md
           fi
           cat notes.md
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: notes
           path: notes.md
@@ -132,14 +132,12 @@ jobs:
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
       C2_GIT_HASH: ${{ needs.verify.outputs.commit }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.verify.outputs.commit }}
-      - uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
+      - uses: ./.github/actions/msvc-env
       - uses: lukka/get-cmake@latest
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v9
         with:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
@@ -165,7 +163,7 @@ jobs:
           & "dist/$name/caesar2.exe" --version
           Compress-Archive -Path dist/$name -DestinationPath dist/$name.zip
           Get-ChildItem dist/$name
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows
           path: dist/*.zip
@@ -184,7 +182,7 @@ jobs:
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git ca-certificates
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.verify.outputs.commit }}
       - name: Build
@@ -192,7 +190,7 @@ jobs:
           packaging/appimage/build.sh \
             -DC2_RELEASE=${{ needs.verify.outputs.release }} \
             -DC2_VERSION_SUFFIX=${{ needs.verify.outputs.suffix }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: appimage
           path: dist/*.AppImage
@@ -206,7 +204,7 @@ jobs:
       image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-24.08
       options: --privileged
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.verify.outputs.commit }}
       - name: Fill in the build identity
@@ -228,7 +226,7 @@ jobs:
           manifest-path: packaging/io.github.second_impressions.caesar2.yml
           cache-key: flatpak-builder-${{ github.sha }}
           upload-artifact: false
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: flatpak
           path: caesar2-*.flatpak
@@ -241,7 +239,7 @@ jobs:
     env:
       C2_GIT_HASH: ${{ needs.verify.outputs.commit }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.verify.outputs.commit }}
       - run: brew install ninja
@@ -250,7 +248,7 @@ jobs:
           packaging/macos/make-dmg.sh \
             -DC2_RELEASE=${{ needs.verify.outputs.release }} \
             -DC2_VERSION_SUFFIX=${{ needs.verify.outputs.suffix }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos
           path: dist/*.dmg
@@ -264,7 +262,7 @@ jobs:
       EM_CACHE: ${{ github.workspace }}/.cache/emscripten
       C2_GIT_HASH: ${{ needs.verify.outputs.commit }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.verify.outputs.commit }}
       - uses: ./.github/actions/setup-nix
@@ -289,7 +287,7 @@ jobs:
             cp "build/web/$f" "dist/$name/"
           done
           (cd dist && zip -qr "$name.zip" "$name")
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: web
           path: dist/*.zip
@@ -305,7 +303,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
       - name: Collect
@@ -315,7 +313,7 @@ jobs:
           find artifacts -type f \( -name '*.zip' -o -name '*.AppImage' -o -name '*.flatpak' -o -name '*.dmg' \) -exec mv {} dist/ \;
           (cd dist && sha256sum * > SHA256SUMS)
           cat dist/SHA256SUMS
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             dist/*.zip

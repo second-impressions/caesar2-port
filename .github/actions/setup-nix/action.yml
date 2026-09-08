@@ -20,7 +20,7 @@ runs:
         gc-max-store-size-linux: 2G
         save: true
     - name: Restore compiler cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.cache/ccache
         key: ccache-${{ runner.os }}-${{ inputs.scope }}-${{ hashFiles('flake.lock') }}-${{ github.ref_name }}

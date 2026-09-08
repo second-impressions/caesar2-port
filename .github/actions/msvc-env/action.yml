@@ -1,0 +1,15 @@
+name: MSVC environment
+description: >-
+  Put the x64 MSVC toolchain (cl, link, rc, the SDK) on PATH and in the
+  environment of every later step, as vcvars64.bat does for a console. This
+  is what ilammy/msvc-dev-cmd did; that action is stuck on Node.js 20, which
+  the runners have deprecated.
+runs:
+  using: composite
+  steps:
+    - shell: cmd
+      run: |
+        for /f "usebackq delims=" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set "VSPATH=%%i"
+        if not defined VSPATH (echo no Visual Studio with the x64 C++ tools & exit /b 1)
+        call "%VSPATH%\VC\Auxiliary\Build\vcvars64.bat" || exit /b 1
+        set >> "%GITHUB_ENV%"
