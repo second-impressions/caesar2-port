@@ -8,7 +8,6 @@
     const operationClose = document.getElementById("operation-close");
     const toolbar = document.getElementById("toolbar");
     const assetsButton = document.getElementById("assets-button");
-    const bundledButton = document.getElementById("bundled-button");
     const forgetButton = document.getElementById("forget-button");
     const folderInput = document.getElementById("folder-input");
     const fileInput = document.getElementById("file-input");
@@ -18,6 +17,8 @@
     const profileRow = document.getElementById("profile-row");
     const profileSelect = document.getElementById("profile-select");
     const languageSelect = document.getElementById("language-select");
+    const musicSelect = document.getElementById("music-select");
+    const musicHint = document.getElementById("music-hint");
     const settingsDialog = document.getElementById("settings-dialog");
     const assetsSummary = document.getElementById("assets-summary");
     const assetsLoaded = document.getElementById("assets-loaded");
@@ -31,8 +32,7 @@
     const userDataDrop = document.getElementById("userdata-drop");
     const query = new URLSearchParams(location.search);
     const smokeOutput = query.has("smoke-test") ? [] : null;
-    const BUILD_VERSION = "1.0.1";
-    const HAS_BUNDLED_ASSETS = 0 === 1;
+    const BUILD_VERSION = "1.0.2";
     const ACTIVE_SOURCE = "c2.active-source.v1";
     const PENDING_SOURCE = "c2.pending-source.v1";
     const ACTIVE_PROFILE = "c2.active-profile.v1";
@@ -40,6 +40,7 @@
     const THEME_CHOICE = "c2.theme.v1";
     const SCALING_MODE = "c2.scaling.v1";
     const TEXT_LANGUAGE = "c2.text-language.v1";
+    const MUSIC_SOURCE = "c2.music.v1";
     const CONFIRM_CLOSE = "c2.confirm-close.v1";
     const AUTOSTART_SOURCE = "c2.autostart.v1";
     const PENDING_ORIGIN = "c2.pending-origin.v1";
@@ -142,11 +143,25 @@
      * and the movies stayed on the CD. Report what a source lacks so silence
      * is explained rather than mysterious.
      */
-    async function missingMedia(root, base) {
+    /*
+     * The two soundtracks: the DOS scores (XMI/) and the Windows version's
+     * recordings (RAW/CITYPRO0.RAW; in C2WIN95/RAW/ on the CDs that have
+     * both trees).
+     */
+    async function musicSources(root, base) {
+      const xmi = await descendCaseInsensitive(root, ["XMI"]);
+      const xmidi = (await hasFileWithExtension(xmi, ".xmi")) || (await hasFileWithExtension(base, ".xmi"));
+      let recorded = false;
+      for (const path of [["RAW"], ["C2WIN95", "RAW"]]) {
+        const dir = await descendCaseInsensitive(root, path);
+        if (dir && await childCaseInsensitive(dir, "CITYPRO0.RAW", "file")) recorded = true;
+      }
+      return {xmidi, recorded};
+    }
+    async function missingMedia(root, base, music) {
       const missing = [];
-      const music = await descendCaseInsensitive(root, ["XMI"]);
       const speech = await descendCaseInsensitive(root, ["RAW"]);
-      if (!(await hasFileWithExtension(music, ".xmi")) && !(await hasFileWithExtension(base, ".xmi"))) missing.push("music");
+      if (!music.xmidi && !music.recorded) missing.push("music");
       if (!(await hasFileWithExtension(speech, ".raw")) && !(await hasFileWithExtension(base, ".raw"))) missing.push("speech");
       return missing;
     }
@@ -173,16 +188,11 @@
       "0c0f5a4a6ba9ff9e986a9cea8a748db83e323eab24a83b7a2de86fff53d3b0f5":
         {language:"German", edition:"Germany original"},
       "e26ac14fd8ff64860cc0b78b55373bd20ea7c2e6fa81558e4393b1a5165a7219":
-        {language:"German", edition:"Germany, Windows 95 tree"}
+        {language:"German", edition:"Germany, Windows 95 tree"},
+      "bbf703a7fbb1f06f700040863b4f7ca38406a64e4d4cfaa3ddf2534dba787347":
+        {language:"English", edition:"1998 US rerelease (Windows version only)"}
     };
     async function sourceInfo(source) {
-      if (source === "/assets") {
-        return {
-          available: HAS_BUNDLED_ASSETS,
-          profiles: [],
-          language: languageNames["en"] || "en"
-        };
-      }
       if (!source?.startsWith("/persistent/")) return {available:false, profiles:[]};
       try {
         const root = await descendCaseInsensitive(await opfsRoot(), source.slice(12).split("/").filter(Boolean));
@@ -206,7 +216,7 @@
         const win = await descendCaseInsensitive(root, ["C2WIN95", "HD"]);
         const candidates = [
           [direct, "Installed game directory"],
-          [dos, win ? "DOS/Win95 hybrid · DOS assets" : "DOS CD layout"],
+          [dos, win ? "DOS/Win95 hybrid CD" : "DOS CD layout"],
           [win, "Windows 95 CD layout"],
         ];
         for (const [base, layout] of candidates) {
@@ -215,13 +225,15 @@
           const help = await childCaseInsensitive(base, "HELP.ENG", "file");
           if (text && help) {
             const known = knownEditions[await hashFile(await text.getFile())];
+            const music = await musicSources(root, base);
             return {
               available: true,
               profiles: [],
               language: known?.language || "Unrecognised text data",
               edition: known?.edition || "Unrecognised release",
               layout,
-              missing: await missingMedia(root, base)
+              music,
+              missing: await missingMedia(root, base, music)
             };
           }
         }
@@ -325,7 +337,7 @@
       localStorage.setItem(PENDING_SOURCE, `/persistent/incoming/${generation}`);
       rememberOrigin(folderName(entries));
       requestPersistence().catch(() => {});
-      location.href = location.pathname;
+      location.href = location.pathname + smokeQuery();
     }
     /* Same signatures the native importer sniffs: ZIP, raw CD sector, ISO-9660. */
     async function fileLooksImportable(file) {
@@ -338,6 +350,10 @@
       if (/\.cue$/i.test(file.name)) return "cue";
       return null;
     }
+    /* A smoke test's query survives the reloads of an import. */
+    function smokeQuery() {
+      return query.get("smoke-test") ? `?smoke-test=${encodeURIComponent(query.get("smoke-test"))}` : "";
+    }
     async function importFiles(files) {
       const selected = [...files];
       if (!selected.length) throw new Error("No file selected");
@@ -348,7 +364,7 @@
         if (/\.(eng|exe|dat|pl8|raw|xmi|smk)$/i.test(name) || unknown.length > 1) {
           throw new Error(`${name} is part of an installation; use Browse folder or drop the whole folder`);
         }
-        throw new Error(`${name} is not a Caesar II disc image, ZIP or asset pack`);
+        throw new Error(`${name} is not a Caesar II disc image, ZIP or .c2assets pack`);
       }
       // A BIN is enough on its own; a CUE beside it is copied but not required.
       let primary = selected.find((_, i) => kinds[i] === "bin")
@@ -374,7 +390,7 @@
       localStorage.setItem(PENDING_SOURCE, `/persistent/incoming/${generation}/${primary.name}`);
       rememberOrigin(selected.map(f => f.name).join(", "));
       requestPersistence().catch(() => {});
-      location.href = location.pathname;
+      location.href = location.pathname + smokeQuery();
     }
     /* Dropped folders arrive as directory entries; flatten them to files. */
     function readEntries(reader) {
@@ -634,6 +650,7 @@
         const dd = document.createElement("dd"); dd.textContent = value;
         assetsSummary.append(dt, dd);
       }
+      configureMusicChoice(info.music);
     }
     const settingsTabs = [...document.querySelectorAll(".c2-settings-tab")];
     function selectSettingsPane(pane, focus = false) {
@@ -644,12 +661,15 @@
         document.getElementById(`pane-${tab.dataset.pane}`).hidden = !active;
         if (active && focus) tab.focus();
       }
-      if (pane === "assets") {
-        assetsStatus.textContent = "";
-        updateAssetsSummary().catch(error => {
-          assetsStatus.textContent = `Could not inspect loaded assets: ${error.message}`;
-        });
-      }
+      if (pane === "assets") assetsStatus.textContent = "";
+    }
+    /* The dialog is as tall as its tallest pane, so the game-data summary
+     * is filled in as it opens rather than when its tab is first used;
+     * otherwise the dialog would grow under the player's hand. */
+    function refreshSettings() {
+      updateAssetsSummary().catch(error => {
+        assetsStatus.textContent = `Could not inspect the loaded game data: ${error.message}`;
+      });
     }
     selectSettingsPane("general");
     for (const tab of settingsTabs) {
@@ -667,6 +687,7 @@
     }
     function openSettings(pane) {
       selectSettingsPane(pane);
+      refreshSettings();
       setChromePause(true);
       if (!settingsDialog.open) settingsDialog.showModal();
     }
@@ -685,7 +706,7 @@
         } catch {}
       }
       let removed = 0;
-      beginOperation("Removing cached assets", targets.length);
+      beginOperation("Removing game data", targets.length);
       updateOperation(0, targets.length, ` · 0/${targets.length} items`);
       for (const [parent, child] of targets) {
         try {
@@ -704,8 +725,8 @@
       localStorage.removeItem(ACTIVE_ORIGIN);
       await updateAssetsSummary();
       assetsStatus.textContent = removed === 1
-        ? "Removed 1 cached asset set."
-        : `Removed ${removed} cached asset sets.`;
+        ? "Removed the game data."
+        : `Removed ${removed} sets of game data.`;
       endOperation();
       showMainWindow({available:false, profiles:[]});
       openSettings("assets");
@@ -716,6 +737,8 @@
       if (profile) args.push("--asset-profile", profile);
       const language = localStorage.getItem(TEXT_LANGUAGE);
       if (language) args.push("--language", language);
+      const music = localStorage.getItem(MUSIC_SOURCE);
+      if (music) args.push("--music", music);
       if (scalingMode === "fractional") args.push("--fractional-scaling");
       if (query.get("mouse-lock") === "1") args.push("--mouse-lock");
       const smoke = query.get("smoke-test");
@@ -776,6 +799,35 @@
       if (languageSelect.value) localStorage.setItem(TEXT_LANGUAGE, languageSelect.value);
       else localStorage.removeItem(TEXT_LANGUAGE);
     };
+    /*
+     * Settings > Game data > Music. Caesar II has two soundtracks, by
+     * different composers: the 1995 DOS music (Jeremy A. Bell and Jason P.
+     * Rinaldi), which the game's synthesizer plays and branches with the
+     * city's mood, and the 1996 Windows music (Keith Zizza), recorded from
+     * hardware synthesizers. This says which the loaded data has and, with
+     * both, which plays; a change while the game runs switches in place.
+     */
+    musicSelect.onchange = () => {
+      localStorage.setItem(MUSIC_SOURCE, musicSelect.value);
+      if (gameRunning) {
+        try { Module._c2_browser_set_music_source(musicSelect.value === "windows" ? 1 : 0); }
+        catch {}
+      }
+    };
+    function configureMusicChoice(music) {
+      const available = music || {xmidi: true, recorded: true};  // packs: not inspected
+      const has = {dos: available.xmidi, windows: available.recorded};
+      const stored = localStorage.getItem(MUSIC_SOURCE);
+      const preferred = stored === "windows" || stored === "recorded" ? "windows" : "dos";
+      for (const option of musicSelect.options) option.disabled = !has[option.value];
+      musicSelect.value = has[preferred] ? preferred : has.dos ? "dos" : has.windows ? "windows" : preferred;
+      musicSelect.disabled = !(has.dos && has.windows);
+      musicHint.textContent = has.dos && has.windows
+        ? "Two different soundtracks. The 1995 one is played by a synthesizer and follows your city's mood; the 1996 one was recorded with real instruments for the Windows release and repeats three pieces."
+        : has.windows ? "This game data has the 1996 Windows music only (the 1998 disc)."
+        : has.dos ? "This game data has the 1995 DOS music only (discs before August 1996)."
+        : "This game data has no music.";
+    }
     function configureTextLanguages() {
       let listing = "";
       try { listing = Module.UTF8ToString(Module._c2_browser_text_languages()); }
@@ -811,7 +863,7 @@
     function setPlayEnabled(enabled) {
       playButton.setAttribute("aria-disabled", enabled ? "false" : "true");
       if (enabled) playButton.removeAttribute("data-tooltip");
-      else playButton.setAttribute("data-tooltip", "Load assets first");
+      else playButton.setAttribute("data-tooltip", "Load game data first");
     }
     function playDisabled() {
       return playButton.getAttribute("aria-disabled") === "true";
@@ -856,7 +908,7 @@
     }
     /*
      * Play must work whenever usable data exists: the remembered source, any
-     * previously imported cache directory, or data bundled with the build.
+     * previously imported cache directory.
      */
     async function discoverSource() {
       const remembered = localStorage.getItem(ACTIVE_SOURCE);
@@ -869,7 +921,6 @@
           if ((await sourceInfo(candidate)).available) return candidate;
         }
       } catch {}
-      if (HAS_BUNDLED_ASSETS && (await sourceInfo("/assets")).available) return "/assets";
       return null;
     }
     async function bootstrap() {
@@ -884,11 +935,30 @@
         await startGame(autostart);
         return;
       }
-      if (query.get("smoke-test") === "prepare") { prepareAssets("/assets"); return; }
-      if (query.get("smoke-test")) { await startGame("/assets", true); return; }
       const pending = localStorage.getItem(PENDING_SOURCE);
       if (pending) { prepareAssets(pending); return; }
       const source = await discoverSource();
+      /*
+       * tools/smoke-wasm.mjs: run a smoke against whatever game data is in
+       * the browser's storage; with none, the page waits at Load game data
+       * for the tool to upload some (the query survives that import).
+       */
+      const smoke = query.get("smoke-test");
+      if (smoke && source) {
+        if (smoke === "prepare") prepareAssets(source);
+        else await startGame(source, true);
+        return;
+      }
+      if (smoke && query.get("smoke-data")) {
+        // The tool serves the game data; import it as a dropped file would
+        // be, which reloads the page (query intact) once it is in storage.
+        const url = query.get("smoke-data");
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`smoke data ${url}: ${response.status}`);
+        const name = decodeURIComponent(url.split("/").pop());
+        importFiles([new File([await response.blob()], name)]).catch(importFailed);
+        return;
+      }
       if (source) localStorage.setItem(ACTIVE_SOURCE, source);
       else localStorage.removeItem(ACTIVE_SOURCE);
       await showReady(source);
@@ -928,9 +998,9 @@
       };
     }
     /*
-     * The recovered game has no autosave, so a closed tab loses the session.
-     * Browsers only allow a generic prompt, and only when the player asked for
-     * one, so this stays opt-in.
+     * A closed tab ends the session where it is. Browsers only allow a
+     * generic prompt, and only when the player asked for one, so this
+     * stays opt-in.
      */
     const confirmCloseToggle = document.getElementById("confirm-close-toggle");
     confirmCloseToggle.checked = localStorage.getItem(CONFIRM_CLOSE) === "1";
@@ -973,11 +1043,6 @@
       };
     }
     profileSelect.onchange = () => localStorage.setItem(ACTIVE_PROFILE, profileSelect.value);
-    bundledButton.hidden = !HAS_BUNDLED_ASSETS;
-    /* Remember the choice label so the assets summary can repeat it verbatim. */
-    function choiceLabel(button) {
-      return button.childNodes[0].textContent.trim();
-    }
     for (const [id, input, label] of [["folder-button", folderInput, "Folder"],
                                      ["file-button", fileInput, "File"]]) {
       document.getElementById(id).onclick = () => { chosenSourceLabel = label; input.click(); };
@@ -999,13 +1064,6 @@
         importDrop(event.dataTransfer).catch(importFailed);
       });
     }
-    bundledButton.onclick = async () => {
-      if (!HAS_BUNDLED_ASSETS) return;
-      settingsDialog.close();
-      localStorage.setItem(ACTIVE_SOURCE, "/assets");
-      localStorage.setItem(ACTIVE_ORIGIN, JSON.stringify({kind: choiceLabel(bundledButton), name: ""}));
-      await showReady("/assets");
-    };
     playButton.onclick = () => {
       const source = localStorage.getItem(ACTIVE_SOURCE);
       if (playDisabled()) { openAssetsModal(); return; }
@@ -1124,7 +1182,7 @@
           // user returns to the main window instead of straight into the game.
           updateOperation(0, 0, "Complete");
           showMessage("Game data imported.");
-          location.replace(location.pathname);
+          location.replace(location.pathname + smokeQuery());
         }
       },
       onAbort(reason) {
