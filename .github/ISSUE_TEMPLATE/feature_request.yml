@@ -1,0 +1,25 @@
+name: An idea for the port
+description: Something the port could do that it does not do yet
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The aim is the game as it was brought to life thirty years ago —
+        but not every quirk is sacred. Fixes that make life easier while
+        leaving that game intact are welcome, as is anything about how it
+        is carried: window handling, input, sound, file formats, packaging.
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      description: What it would do, and what it would let you do that you cannot today.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything that helps
+      description: >-
+        How the original did it, how another port does it, a screenshot, a
+        link.

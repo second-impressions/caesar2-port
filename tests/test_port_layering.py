@@ -136,6 +136,23 @@ def test_one_executable_for_every_language_and_no_bundled_game_data():
     assert 'const smoke = query.get("smoke-test");' in shell
 
 
+def test_the_readme_and_issue_forms_face_a_player_first():
+    readme = (ROOT / "README.md").read_text()
+    # Where to get the game, and what to do with it, before any build talk.
+    assert readme.index("gog.com/en/game/caesar_ii") < readme.index("## Building")
+    assert "## Play it in three steps" in readme
+    for shot in ("city", "province", "launcher", "web"):
+        assert f"docs/screenshots/{shot}.png" in readme
+        assert (ROOT / "docs" / "screenshots" / f"{shot}.png").exists()
+    forms = ROOT / ".github" / "ISSUE_TEMPLATE"
+    bug = (forms / "bug_report.yml").read_text()
+    assert (forms / "feature_request.yml").exists()
+    # The two things a report needs, where a reporter can actually find them.
+    assert "In the title bar of the game's window" in bug
+    assert "~/.var/app/io.github.second_impressions.caesar2/data" in bug
+    assert "%APPDATA%" in bug
+
+
 def test_windows_executable_is_windowed_and_still_prints():
     """No console window behind the game, and a terminal still sees output."""
     cmake = (ROOT / "CMakeLists.txt").read_text()

@@ -1,0 +1,74 @@
+name: Something is wrong in the game
+description: A crash, a wrong picture or sound, something the original did differently
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time. The two things that make a report
+        usable are the **version** and **which game data** you play with —
+        the discs differ from each other more than anyone expects.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: >-
+        In the title bar of the game's window, and on the launcher's second
+        line. On the web page it stands beside the title and in *About*.
+      placeholder: "1.0.2, or main-a630e29c"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where you play
+      options:
+        - Linux (AppImage)
+        - Linux (Flatpak)
+        - Linux (built from source)
+        - Windows
+        - macOS
+        - Browser
+    validations:
+      required: true
+  - type: input
+    id: data
+    attributes:
+      label: Your game data
+      description: >-
+        GOG, an original CD, a disc image, an old installation — and which
+        release, if you know it. The launcher's *Game data* lines say what it
+        recognised; the web page shows the same under Settings → Game data.
+      placeholder: "GOG installation, or: Disc image (ISO), version 1.02 - 2nd Feb 96"
+    validations:
+      required: true
+  - type: textarea
+    id: crash
+    attributes:
+      label: Crash report
+      description: |
+        If the game crashed it wrote `crash-<date>-<time>.txt` (and, on
+        Windows, a `.dmp` beside it), and the launcher points at it the next
+        time it opens. Paste or attach the whole file. It lives with your
+        saves, in:
+
+        | | |
+        |---|---|
+        | Linux | `~/.local/share/second-impressions/caesar2` |
+        | Linux, Flatpak | `~/.var/app/io.github.second_impressions.caesar2/data/second-impressions/caesar2` |
+        | Windows | `%APPDATA%\second-impressions\caesar2` |
+        | macOS | `~/Library/Application Support/second-impressions/caesar2` |
+        | Browser | nothing to find: the page has no crash file, so say what the tab showed |
+      render: text
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, a save file, what you were doing just before.

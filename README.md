@@ -1,116 +1,125 @@
-# Caesar II Port
+# Caesar II
 
-A source port of Impressions Games' *Caesar II* (1995) for current systems:
-Linux, Windows, and the browser. It runs the recovered original engine — the
-byte-exact [Caesar II reconstruction](https://github.com/second-impressions/caesar2-reconstruction)
-— on SDL3, plays the original music through a faithful reimplementation of
-the game's OPL3 driver, and reads the game data from your own copy.
+**Caesar II (1995) on your computer today** — no DOSBox, no virtual machine,
+no emulator. This is the original game's own code, recovered instruction by
+instruction from the 1995 executable and made to build and run on Linux,
+Windows, macOS and in a browser.
 
-The original game data is required and is never included.
+You bring your own copy of the game; this project never distributes it.
 
-## Playing
+[![The city map](docs/screenshots/city.png)](docs/screenshots/city.png)
 
-**Web:** the hosted build at https://second-impressions.github.io/caesar2-port/
-(the latest release; `/main/` is the development branch) runs in any current
-browser; it asks for your game data on first use and keeps it in the
-browser's storage.
+| | |
+|---|---|
+| [![The province map](docs/screenshots/province.png)](docs/screenshots/province.png) | [![The browser version](docs/screenshots/web.png)](docs/screenshots/web.png) |
+| The province map | The same game in a browser |
 
-**Native:** download from the [releases page](https://github.com/second-impressions/caesar2-port/releases):
-the `.AppImage` or `.flatpak` on Linux, the `.zip` on Windows (unzip anywhere,
-run `caesar2.exe`), the `.dmg` on macOS (unsigned: allow it once under
-System Settings → Privacy & Security). A small launcher window opens first: pick your game data
-once, then *Play*. It remembers the source and your display choices.
+## Play it in three steps
 
-### Game data
+1. **Get the game.** Caesar II is sold on
+  [GOG](https://www.gog.com/en/game/caesar_ii) for a few euros, DRM-free. An
+  original CD, a disc image or an old installation works just as well.
+2. **Get the port.** Either open
+  [the browser version](https://second-impressions.github.io/caesar2-port/) —
+  nothing to install — or download for your system from the
+  [releases page](https://github.com/second-impressions/caesar2-port/releases):
+  `.AppImage` or `.flatpak` for Linux, `.zip` for Windows (unzip anywhere, run
+  `caesar2.exe`), `.dmg` for macOS.
+3. **Point it at your copy and press Play.** A small launcher opens first; drop
+  in your disc, image or game folder. It is imported once and remembered.
 
-Any of these works, natively or in the browser — the importer works out what
-it is by content:
+![The launcher](docs/screenshots/launcher.png)
 
-- the original **CD-ROM** in a drive (natively; the launcher lists the disc
-  when one is inserted),
+## What you get
+
+- **The real game.** The recovered engine, bugs and balance included — not a
+  remake and not an emulator. Your original save files load.
+- **A native program.** A resizable window, fullscreen, sharp integer scaling,
+  screenshots, and no configuration files to edit.
+- **In a browser too**, on the same code: your game data stays on your machine,
+  in the browser's own storage.
+- **English, German and French text**, chosen in the launcher; the game data
+  supplies speech and pictures. Translations are ordinary gettext files under
+  `po/` — see [docs/game-text.md](docs/game-text.md) to add one.
+- **Both soundtracks.** The 1995 DOS music, played through a faithful
+  reimplementation of the Sound Blaster's OPL3 chip and branching with your
+  city's mood, or — from the CDs that carry it — the recorded 1996 Windows
+  soundtrack.
+
+## Where your copy can come from
+
+Anything below works, natively or in the browser; the importer works out what
+it is by looking inside:
+
+- an **installed game folder** — GOG's, or an old DOS/Windows installation
+  (pick any file inside it, e.g. `C2.ENG`),
+- the original **CD-ROM** in a drive (the launcher lists the disc when one is
+  inserted),
 - a **disc image**: `.iso`, `.bin` with or without its `.cue`, also inside a
   `.zip`,
-- an **installed game folder** (GOG, or an old DOS/Windows installation —
-  pick any file inside it, e.g. `C2.ENG`),
-- a `.zip` of such a folder,
-- a `.c2assets` pack, which can carry several languages of speech in one
-  file (`tools/c2-assets.py build`, see
-  [docs/localization.md](docs/localization.md)).
+- a `.zip` of an installed folder,
+- a `.c2assets` pack, which can carry several languages of speech in one file
+  (`tools/c2-assets.py build`, see [docs/localization.md](docs/localization.md)).
 
-### Language
+Disc images and archives are imported once and reused on later starts; saves,
+screenshots and settings live in the same place:
 
-The game's text is built into the port in English, German and French; the
-launcher and the web page have a *Text* selector, which defaults to the
-language of your game data. Speech and illustrations remain those of your
-game data. Translations are ordinary gettext files under `po/` — see
-[docs/game-text.md](docs/game-text.md) to contribute one.
+| | |
+|---|---|
+| Linux | `~/.local/share/second-impressions/caesar2` |
+| Linux, Flatpak | `~/.var/app/io.github.second_impressions.caesar2/data/second-impressions/caesar2` |
+| Windows | `%APPDATA%\second-impressions\caesar2` |
+| macOS | `~/Library/Application Support/second-impressions/caesar2` |
+| Browser | the browser's own storage for the page |
 
-### Music
+The original installer copied only part of the game to the hard disk, so an
+installation folder without `XMI/` and `RAW/` has no music or speech. The
+launcher and the web page say so when they see it; use the disc or an image of
+it for everything.
 
-Caesar II has **two soundtracks, and they are different music**. The 1995
-DOS version's, by Jeremy A. Bell and Jason P. Rinaldi, is played by the
-sound card's synthesizer — the port reproduces the Sound Blaster's OPL3
-chip-exactly — and it *reacts*: the score branches between some fifty
-phrases as your city goes from content to threatened to burning. The 1996
-Windows version's, by Keith Zizza, was recorded from hardware synthesizers
-(Roland JV-1080 and friends) and is seven fixed pieces, three of which take
-turns on the city map.
+## Keys and options
 
-Every CD from August 1996 carries both — the recordings in `C2WIN95/RAW/`,
-which the port now plays too; the 1998 US disc has only the recordings and
-discs before August 1996 only the DOS music. The launcher's *Music* row and
-the web page's Settings → Game data → Music say which the game data has
-and, when it has both, choose between them; `--music dos|windows` on the
-command line. The DOS music is the default: it is what this engine was
-written for and the only place it can be heard, while the Windows
-recordings have circulated as ordinary audio files for years.
-
-The Windows tree also supplies the larger (500x240) versions of five
-full-screen movies.
-
-Note that the original installer copied only part of the game to the hard
-disk: an installation folder without `XMI/` and `RAW/` has no music or
-speech. The launcher and web page say so; use the disc or its image for
-everything.
-
-Disc images and archives are imported once into the user-data directory
-(`~/.local/share/second-impressions/caesar2` on Linux) and reused on later
-starts; saves, screenshots and settings live there too.
-
-### Display and controls
-
-The game is 640x480. The window opens at the largest whole multiple that
-fits your desktop and can be resized freely; with *integer scaling* (the
-default) the game is shown at the largest whole multiple that fits the
-window, in real pixels, letterboxed until the next multiple fits. With
-*fractional scaling* it fills the window. Both toggles are remembered.
+Everything in the game itself is the original's — hotkeys, mouse, menus; see
+its manual. The port adds only these:
 
 | Key | Action |
 |---|---|
-| **F11** | toggle fullscreen |
-| **F10** | toggle integer / fractional scaling |
+| **F11** | fullscreen |
+| **F10** | integer / fractional scaling |
 | **Ctrl+1** … **Ctrl+5** | window at exactly 1x … 5x |
 | **Ctrl+0** | window at the largest multiple that fits the screen |
 | Mouse wheel | zoom (the game's own `+`/`-`) |
 | **Alt+1** … **Alt+8** | screenshot `shot1.png` … `shot8.png` into the user-data directory |
 
-Everything else — hotkeys, mouse behaviour, menus — is the original game's;
-see its manual. Maximizing the window also gives the largest scale the
-screen holds.
+The game is 640x480. The window opens at the largest whole multiple that fits
+your desktop and can be resized freely; integer scaling (the default) keeps
+square pixels and letterboxes until the next multiple fits, fractional scaling
+fills the window. Both are remembered.
 
 Command line: `caesar2 [SOURCE]` starts with a given game-data source;
 `--fullscreen`, `--fractional-scaling`, `--skip-launcher`, `--mouse-lock`
-(confine the pointer to the game area), `--user-data-dir PATH`,
-`--language TAG` (text language: `en`, `de`, `fr`), `--asset-profile NAME`
-(speech in a multi-profile pack), `--version`.
+(confine the pointer to the game area), `--user-data-dir PATH`, `--language
+TAG` (`en`, `de`, `fr`), `--music dos|windows`, `--asset-profile NAME` (speech
+in a multi-profile pack), `--version`.
 
-### Crashes
+## Something wrong?
 
-If the game crashes, it writes a report to the user-data directory
-(`crash-<date>-<time>.txt`; on Windows also a `.dmp` minidump) and prints it
-to the terminal, and the launcher points at it the next time it opens. Please
-open an issue with the whole report — it already contains the build version,
-function names and source lines — and say what you were doing.
+Open an [issue](https://github.com/second-impressions/caesar2-port/issues/new/choose);
+the form asks for the few things that make a report usable.
+
+## How this works, and the rest of the family
+
+The engine is not reimplemented: it is the original, recovered as C source in
+the byte-exact
+[Caesar II reconstruction](https://github.com/second-impressions/caesar2-reconstruction),
+whose build reproduces the 1995 executable byte for byte. This repository
+continues that source onto SDL3: the DOS and Windows APIs the game called are
+replaced one function at a time, the game's own logic is left alone, and every
+deliberate difference is a named flag in `include/c2_target.h`.
+
+The music, the movies and the file formats are handled by code written for
+this port (an XMIDI sequencer and OPL3 synthesizer, Smacker video, the
+importer), described under [docs/](docs/).
 
 ## Building
 
