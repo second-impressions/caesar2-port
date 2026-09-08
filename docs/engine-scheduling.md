@@ -162,8 +162,8 @@ implementation detail. They do not acquire access to legacy game state.
 ### Filesystem
 
 Asset and save APIs remain synchronous on the engine worker. Native hosts
-perform normal blocking I/O there. The Emscripten build packages assets at
-`/assets`; SDL completes its IDBFS synchronization for `/user-data` before
+perform normal blocking I/O there. The Emscripten build keeps imported
+assets in OPFS; SDL completes its IDBFS synchronization for `/user-data` before
 calling `SDL_AppInit`, and only then starts the engine worker.
 
 ## Wait semantics

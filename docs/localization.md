@@ -27,14 +27,9 @@ names from the compiled-in text.
 
 ## Native builds
 
-The executable is identical for every language; `C2_LANGUAGE` only labels a
-distribution artifact and the web page's bundled-data description:
-
-```bash
-cmake --preset linux-release -B build/port/linux-release-de -DC2_LANGUAGE=de
-```
-
-Keeping language out of engine control flow keeps saves portable across
+The executable is identical for every language: the text of every language
+is compiled in and chosen at run time, and nothing else differs. Keeping
+language out of engine control flow keeps saves portable across
 distributions.
 
 ## Packs

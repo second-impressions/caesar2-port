@@ -84,17 +84,6 @@ set(C2_TEST_SAVE_FIXTURE "" CACHE FILEPATH
     "Original 225745-byte Caesar II save used by compatibility tests")
 set(C2_TEST_GAME_DATA_SOURCES "" CACHE STRING
     "Optional semicolon-separated directories/ZIPs/ISOs/CUEs/packs for corpus smoke tests")
-set(C2_LANGUAGE "en" CACHE STRING
-    "Two-letter language tag for this distribution artifact")
-string(TOLOWER "${C2_LANGUAGE}" C2_LANGUAGE)
-if(NOT C2_LANGUAGE MATCHES "^[a-z][a-z]$")
-    message(FATAL_ERROR
-        "Invalid C2_LANGUAGE '${C2_LANGUAGE}'; use a two-letter tag")
-endif()
-set(C2_LANGUAGE "${C2_LANGUAGE}" CACHE STRING
-    "Two-letter language tag for this distribution artifact" FORCE)
-message(STATUS "Caesar II language build: ${C2_LANGUAGE}")
-
 # ---- Dependencies ----------------------------------------------------------
 # Every library comes from the build host and is located here, in one place:
 # the distribution package on Linux, the vcpkg manifest (vcpkg.json) on
@@ -222,9 +211,6 @@ if(PORT_ASAN_DISABLE_GLOBALS)
     # those flags on feature-check link commands, where Clang 21 warns.
     add_compile_options(-mllvm -asan-globals=0)
 endif()
-set(C2_WASM_ASSET_ROOT "" CACHE PATH
-    "Original Caesar II asset directory to package into the WASM build")
-
 add_library(c2_asm_portable STATIC
     src/asm/c2_asm_diamond_image.c
     src/asm/c2_asm_diamond_ptr.c
@@ -519,11 +505,6 @@ target_link_libraries(caesar2 PRIVATE
     SDL3::SDL3)
 
 if(EMSCRIPTEN)
-    if(C2_WASM_ASSET_ROOT)
-        set(C2_HAS_BUNDLED_ASSETS 1)
-    else()
-        set(C2_HAS_BUNDLED_ASSETS 0)
-    endif()
     set(C2_WASM_SHELL "${CMAKE_CURRENT_BINARY_DIR}/caesar2-shell.html")
     set(C2_WASM_UI_JS "${CMAKE_CURRENT_BINARY_DIR}/c2-shell.js")
     configure_file(web/caesar2.html "${C2_WASM_SHELL}" @ONLY)
@@ -571,39 +552,6 @@ if(EMSCRIPTEN)
         "--shell-file=${C2_WASM_SHELL}"
         "--js-library=${CMAKE_CURRENT_SOURCE_DIR}/web/c2_browser.js"
     )
-    if(C2_WASM_ASSET_ROOT)
-        if(NOT IS_DIRECTORY "${C2_WASM_ASSET_ROOT}")
-            message(FATAL_ERROR
-                "C2_WASM_ASSET_ROOT is not a directory: ${C2_WASM_ASSET_ROOT}")
-        endif()
-        function(c2_require_language_asset filename)
-            file(GLOB root_entries LIST_DIRECTORIES false
-                "${C2_WASM_ASSET_ROOT}/*")
-            string(TOLOWER "${filename}" required_name)
-            set(found FALSE)
-            foreach(entry IN LISTS root_entries)
-                get_filename_component(entry_name "${entry}" NAME)
-                string(TOLOWER "${entry_name}" entry_name)
-                if(entry_name STREQUAL required_name)
-                    set(found TRUE)
-                    break()
-                endif()
-            endforeach()
-            if(NOT found)
-                message(FATAL_ERROR
-                    "The ${C2_LANGUAGE} asset tree is missing ${filename}: "
-                    "${C2_WASM_ASSET_ROOT}")
-            endif()
-        endfunction()
-        c2_require_language_asset("c2.eng")
-        c2_require_language_asset("help.eng")
-        target_link_options(caesar2 PRIVATE
-            "--preload-file=${C2_WASM_ASSET_ROOT}@/assets")
-    else()
-        message(STATUS
-            "C2_WASM_ASSET_ROOT is empty; the web page will request a "
-            "directory, ZIP, optimized pack, ISO, or BIN/CUE on first use")
-    endif()
 endif()
 
 if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")

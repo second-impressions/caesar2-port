@@ -2,7 +2,7 @@
 
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createInterface } from "node:readline";
@@ -12,6 +12,9 @@ const root = resolve(import.meta.dirname, "..");
 const build = resolve(process.argv[2] ?? `${root}/build/port/wasm-debug`);
 const smokeKind = process.argv[3] ?? "province";
 const browserKind = process.argv[4] ?? "chromium";
+// The game data the smoke runs on: a disc image, ZIP or pack, served to the
+// page and imported by it, since the browser profile starts empty.
+const gameData = process.argv[5] ? resolve(process.argv[5]) : null;
 const smokeResults = {
   province: "recovered province-selection smoke completed",
   canvas: "canvas focus styling suppressed",
@@ -30,6 +33,9 @@ if (!(smokeKind in smokeResults)) {
 }
 if (!["chromium", "firefox"].includes(browserKind)) {
   throw new Error(`unknown browser '${browserKind}'`);
+}
+if (!gameData) {
+  throw new Error("usage: smoke-wasm.mjs BUILD KIND chromium|firefox GAME-DATA (a disc image, ZIP or pack)");
 }
 const profile = await mkdtemp(`${tmpdir()}/caesar2-wasm-smoke-`);
 let server;
@@ -102,7 +108,7 @@ function smokeWait(socket, navigate, getEntry) {
       reject(new Error(
         `Wasm ${smokeKind} smoke timed out in ${browserKind}${suffix}`
       ));
-    }, 60_000);
+    }, 300_000);
     socket.addEventListener("message", (event) => {
       const entry = getEntry(JSON.parse(event.data));
       if (!entry) return;
@@ -155,7 +161,7 @@ async function runChromium(gameUrl) {
   const page = await context.newPage();
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
-  await page.goto(`${gameUrl}?smoke-test=${smokeKind}`, {waitUntil:"domcontentloaded"});
+  await page.goto(`${gameUrl}smoke-test=${smokeKind}`, {waitUntil:"domcontentloaded"});
 
   if (smokeKind === "contextmenu") {
     await page.waitForFunction(() =>
@@ -168,7 +174,7 @@ async function runChromium(gameUrl) {
       {button:"right"});
   }
 
-  const deadline = Date.now() + 60_000;
+  const deadline = Date.now() + 300_000;
   let lines = [];
   while (Date.now() < deadline) {
     if (pageErrors.length) throw new Error(pageErrors[0]);
@@ -244,7 +250,7 @@ async function runFirefox(gameUrl) {
 
   await send("browsingContext.navigate", {
     context,
-    url: `${gameUrl}?smoke-test=${smokeKind}`,
+    url: `${gameUrl}smoke-test=${smokeKind}`,
     wait: "complete"
   });
   if (smokeKind === "contextmenu") {
@@ -284,7 +290,7 @@ async function runFirefox(gameUrl) {
       }]
     });
   }
-  const deadline = Date.now() + 60_000;
+  const deadline = Date.now() + 300_000;
   let consoleLines = [];
   while (Date.now() < deadline) {
     const evaluated = await send("script.evaluate", {
@@ -330,12 +336,13 @@ try {
   }
   server = spawn("python3", [
     `${root}/tools/serve-wasm.py`, build, "--entry", entries[0],
-    "--port", "0"
+    "--port", "0", "--game-data", gameData
   ], { stdio: ["ignore", "pipe", "inherit"] });
-  const gameUrl = await waitForLine(server.stdout, (line) => {
+  const servedUrl = await waitForLine(server.stdout, (line) => {
     const match = line.match(/Serving (http:\/\/\S+\.html)/);
     return match?.[1];
   });
+  const gameUrl = `${servedUrl}?smoke-data=/smoke-data/${encodeURIComponent(basename(gameData))}&`;
 
   if (browserKind === "firefox") {
     await runFirefox(gameUrl);

@@ -8,7 +8,6 @@
     const operationClose = document.getElementById("operation-close");
     const toolbar = document.getElementById("toolbar");
     const assetsButton = document.getElementById("assets-button");
-    const bundledButton = document.getElementById("bundled-button");
     const forgetButton = document.getElementById("forget-button");
     const folderInput = document.getElementById("folder-input");
     const fileInput = document.getElementById("file-input");
@@ -34,7 +33,6 @@
     const query = new URLSearchParams(location.search);
     const smokeOutput = query.has("smoke-test") ? [] : null;
     const BUILD_VERSION = "@C2_VERSION_STRING@";
-    const HAS_BUNDLED_ASSETS = @C2_HAS_BUNDLED_ASSETS@ === 1;
     const ACTIVE_SOURCE = "c2.active-source.v1";
     const PENDING_SOURCE = "c2.pending-source.v1";
     const ACTIVE_PROFILE = "c2.active-profile.v1";
@@ -195,13 +193,6 @@
         {language:"English", edition:"1998 US rerelease (Windows version only)"}
     };
     async function sourceInfo(source) {
-      if (source === "/assets") {
-        return {
-          available: HAS_BUNDLED_ASSETS,
-          profiles: [],
-          language: languageNames["@C2_LANGUAGE@"] || "@C2_LANGUAGE@"
-        };
-      }
       if (!source?.startsWith("/persistent/")) return {available:false, profiles:[]};
       try {
         const root = await descendCaseInsensitive(await opfsRoot(), source.slice(12).split("/").filter(Boolean));
@@ -346,7 +337,7 @@
       localStorage.setItem(PENDING_SOURCE, `/persistent/incoming/${generation}`);
       rememberOrigin(folderName(entries));
       requestPersistence().catch(() => {});
-      location.href = location.pathname;
+      location.href = location.pathname + smokeQuery();
     }
     /* Same signatures the native importer sniffs: ZIP, raw CD sector, ISO-9660. */
     async function fileLooksImportable(file) {
@@ -358,6 +349,10 @@
       if (String.fromCharCode(...pvd.slice(1, 6)) === "CD001") return "iso";
       if (/\.cue$/i.test(file.name)) return "cue";
       return null;
+    }
+    /* A smoke test's query survives the reloads of an import. */
+    function smokeQuery() {
+      return query.get("smoke-test") ? `?smoke-test=${encodeURIComponent(query.get("smoke-test"))}` : "";
     }
     async function importFiles(files) {
       const selected = [...files];
@@ -395,7 +390,7 @@
       localStorage.setItem(PENDING_SOURCE, `/persistent/incoming/${generation}/${primary.name}`);
       rememberOrigin(selected.map(f => f.name).join(", "));
       requestPersistence().catch(() => {});
-      location.href = location.pathname;
+      location.href = location.pathname + smokeQuery();
     }
     /* Dropped folders arrive as directory entries; flatten them to files. */
     function readEntries(reader) {
@@ -909,7 +904,7 @@
     }
     /*
      * Play must work whenever usable data exists: the remembered source, any
-     * previously imported cache directory, or data bundled with the build.
+     * previously imported cache directory.
      */
     async function discoverSource() {
       const remembered = localStorage.getItem(ACTIVE_SOURCE);
@@ -922,7 +917,6 @@
           if ((await sourceInfo(candidate)).available) return candidate;
         }
       } catch {}
-      if (HAS_BUNDLED_ASSETS && (await sourceInfo("/assets")).available) return "/assets";
       return null;
     }
     async function bootstrap() {
@@ -937,11 +931,30 @@
         await startGame(autostart);
         return;
       }
-      if (query.get("smoke-test") === "prepare") { prepareAssets("/assets"); return; }
-      if (query.get("smoke-test")) { await startGame("/assets", true); return; }
       const pending = localStorage.getItem(PENDING_SOURCE);
       if (pending) { prepareAssets(pending); return; }
       const source = await discoverSource();
+      /*
+       * tools/smoke-wasm.mjs: run a smoke against whatever game data is in
+       * the browser's storage; with none, the page waits at Load game data
+       * for the tool to upload some (the query survives that import).
+       */
+      const smoke = query.get("smoke-test");
+      if (smoke && source) {
+        if (smoke === "prepare") prepareAssets(source);
+        else await startGame(source, true);
+        return;
+      }
+      if (smoke && query.get("smoke-data")) {
+        // The tool serves the game data; import it as a dropped file would
+        // be, which reloads the page (query intact) once it is in storage.
+        const url = query.get("smoke-data");
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`smoke data ${url}: ${response.status}`);
+        const name = decodeURIComponent(url.split("/").pop());
+        importFiles([new File([await response.blob()], name)]).catch(importFailed);
+        return;
+      }
       if (source) localStorage.setItem(ACTIVE_SOURCE, source);
       else localStorage.removeItem(ACTIVE_SOURCE);
       await showReady(source);
@@ -1026,11 +1039,6 @@
       };
     }
     profileSelect.onchange = () => localStorage.setItem(ACTIVE_PROFILE, profileSelect.value);
-    bundledButton.hidden = !HAS_BUNDLED_ASSETS;
-    /* Remember the choice label so the assets summary can repeat it verbatim. */
-    function choiceLabel(button) {
-      return button.childNodes[0].textContent.trim();
-    }
     for (const [id, input, label] of [["folder-button", folderInput, "Folder"],
                                      ["file-button", fileInput, "File"]]) {
       document.getElementById(id).onclick = () => { chosenSourceLabel = label; input.click(); };
@@ -1052,13 +1060,6 @@
         importDrop(event.dataTransfer).catch(importFailed);
       });
     }
-    bundledButton.onclick = async () => {
-      if (!HAS_BUNDLED_ASSETS) return;
-      settingsDialog.close();
-      localStorage.setItem(ACTIVE_SOURCE, "/assets");
-      localStorage.setItem(ACTIVE_ORIGIN, JSON.stringify({kind: choiceLabel(bundledButton), name: ""}));
-      await showReady("/assets");
-    };
     playButton.onclick = () => {
       const source = localStorage.getItem(ACTIVE_SOURCE);
       if (playDisabled()) { openAssetsModal(); return; }
@@ -1177,7 +1178,7 @@
           // user returns to the main window instead of straight into the game.
           updateOperation(0, 0, "Complete");
           showMessage("Game data imported.");
-          location.replace(location.pathname);
+          location.replace(location.pathname + smokeQuery());
         }
       },
       onAbort(reason) {

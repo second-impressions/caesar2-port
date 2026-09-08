@@ -58,28 +58,31 @@ splash card itself) plus *Browse folder* / *Browse file*. Anything goes in —
 an installation folder, ZIP, optimized `.c2assets` pack, ISO, or a BIN with
 or without its CUE — and the importer classifies it by content. It imports and
 validates data into OPFS before starting the game; afterwards the same button
-reads **Replace game data**. `C2_WASM_ASSET_ROOT` remains available for
-self-hosted/demo bundles; the Assets settings page offers **Bundled data** for
-those builds. A multi-profile `.c2assets` pack can carry all text/speech languages
-and DOS, Win95, Mac, or custom video sets in one deduplicated container.
+reads **Replace game data**. There is no way to build game data into the
+page: every build asks the player for their own, which is also what the
+smoke tests do. A multi-profile `.c2assets` pack can carry all text/speech
+languages and DOS, Win95, Mac, or custom video sets in one deduplicated
+container.
 
 For assertions, semantic observations, and the recovered province-selection
 smoke test:
 
+Each run takes `BUILD KIND BROWSER GAME-DATA`; the harness serves the game
+data beside the page, and the page imports it into a fresh browser profile
+exactly as a player's drop would, so a run starts from nothing every time:
+
 ```bash
-emcmake cmake --preset wasm-debug \
-  -B build/port/wasm-debug \
-  -DC2_LANGUAGE=en \
-  -DC2_WASM_ASSET_ROOT=/path/to/CAESAR2
+emcmake cmake --preset wasm-debug -B build/port/wasm-debug
 cmake --build build/port/wasm-debug
-node tools/smoke-wasm.mjs build/port/wasm-debug
-node tools/smoke-wasm.mjs build/port/wasm-debug city
-node tools/smoke-wasm.mjs build/port/wasm-debug music
-node tools/smoke-wasm.mjs build/port/wasm-debug campania firefox
-node tools/smoke-wasm.mjs build/port/wasm-debug build firefox
-node tools/smoke-wasm.mjs build/port/wasm-debug citybuild chromium
-node tools/smoke-wasm.mjs build/port/wasm-debug contextmenu firefox
-node tools/smoke-wasm.mjs build/port/wasm-debug canvas firefox
+data=/path/to/caesar2.iso     # or a ZIP, a .c2assets pack, a BIN
+node tools/smoke-wasm.mjs build/port/wasm-debug province chromium "$data"
+node tools/smoke-wasm.mjs build/port/wasm-debug city chromium "$data"
+node tools/smoke-wasm.mjs build/port/wasm-debug music chromium "$data"
+node tools/smoke-wasm.mjs build/port/wasm-debug campania firefox "$data"
+node tools/smoke-wasm.mjs build/port/wasm-debug build firefox "$data"
+node tools/smoke-wasm.mjs build/port/wasm-debug citybuild chromium "$data"
+node tools/smoke-wasm.mjs build/port/wasm-debug contextmenu firefox "$data"
+node tools/smoke-wasm.mjs build/port/wasm-debug canvas firefox "$data"
 ```
 
 ## Serving and deployment
@@ -203,9 +206,9 @@ game exit.
 
 - This is currently a threaded Wasm product and therefore requires browser
   support for `SharedArrayBuffer` plus the isolation headers above.
-- Original data is user-supplied at runtime unless a distributor deliberately
-  configures `C2_WASM_ASSET_ROOT`. Multi-profile packs select language, speech,
-  and video before startup without rebuilding the Wasm executable.
+- Original data is always user-supplied at run time; no build packages it.
+  Multi-profile packs select language, speech, and video before startup
+  without rebuilding the Wasm executable.
 - The native and browser builds share engine, UI, media, save, and SDL host
   implementations. A browser-only replacement screen or control loop would
   violate the platform boundary.
