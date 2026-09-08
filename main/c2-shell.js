@@ -32,7 +32,7 @@
     const userDataDrop = document.getElementById("userdata-drop");
     const query = new URLSearchParams(location.search);
     const smokeOutput = query.has("smoke-test") ? [] : null;
-    const BUILD_VERSION = "main-1fb172d6";
+    const BUILD_VERSION = "main-252c2f61";
     const ACTIVE_SOURCE = "c2.active-source.v1";
     const PENDING_SOURCE = "c2.pending-source.v1";
     const ACTIVE_PROFILE = "c2.active-profile.v1";
@@ -661,12 +661,15 @@
         document.getElementById(`pane-${tab.dataset.pane}`).hidden = !active;
         if (active && focus) tab.focus();
       }
-      if (pane === "assets") {
-        assetsStatus.textContent = "";
-        updateAssetsSummary().catch(error => {
-          assetsStatus.textContent = `Could not inspect the loaded game data: ${error.message}`;
-        });
-      }
+      if (pane === "assets") assetsStatus.textContent = "";
+    }
+    /* The dialog is as tall as its tallest pane, so the game-data summary
+     * is filled in as it opens rather than when its tab is first used;
+     * otherwise the dialog would grow under the player's hand. */
+    function refreshSettings() {
+      updateAssetsSummary().catch(error => {
+        assetsStatus.textContent = `Could not inspect the loaded game data: ${error.message}`;
+      });
     }
     selectSettingsPane("general");
     for (const tab of settingsTabs) {
@@ -684,6 +687,7 @@
     }
     function openSettings(pane) {
       selectSettingsPane(pane);
+      refreshSettings();
       setChromePause(true);
       if (!settingsDialog.open) settingsDialog.showModal();
     }

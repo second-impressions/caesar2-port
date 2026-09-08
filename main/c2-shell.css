@@ -167,8 +167,17 @@
     .c2-settings-tab:hover { background: var(--c2-field); color: var(--pico-color); }
     .c2-settings-tab[aria-selected="true"] { background: var(--pico-primary-background); color: var(--pico-primary-inverse); }
     /* One fixed pane box: component gaps stay stable when controls are hidden. */
-    .c2-settings-panes { height: 15rem; overflow: visible; }
-    .c2-settings-pane { --c2-stack-gap: var(--c2-space-4); }
+    /* Every pane lies in the same grid cell, so the box is as tall as the
+     * tallest of them and the dialog never changes size, or clips a pane,
+     * as the tabs are used. A hidden pane keeps its space but is out of
+     * the page for reading, pointing and tabbing. */
+    .c2-settings-panes { display: grid; }
+    .c2-settings-pane { grid-area: 1 / 1; --c2-stack-gap: var(--c2-space-4); }
+    /* Pico hides [hidden] with !important, which would take a hidden pane
+     * out of the layout and shrink the box back to the visible one. The
+     * display must stay the .c2-stack flex box, or the hidden pane loses
+     * its gaps and measures shorter than it will be shown. */
+    .c2-settings-pane[hidden] { display: flex !important; visibility: hidden; }
     .c2-settings-row { display: flex; align-items: center; justify-content: space-between; gap: var(--c2-space-4); }
     .c2-settings-label { font-size: .82rem; }
     .c2-inline-actions { display: inline-flex; gap: var(--c2-space-3); }
