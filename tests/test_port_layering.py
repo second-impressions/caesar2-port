@@ -370,7 +370,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     components_doc = (ROOT / "web" / "COMPONENTS.md").read_text()
     assert "Vertical rhythm belongs to the parent" in components_doc
     # The dialog keeps one size and empty status lines take no space.
-    assert ".c2-settings-panes { height: 15rem; overflow: visible; }" in shell
+    assert ".c2-settings-panes { display: grid; }" in shell
     assert ".c2-hint:empty { display: none; }" in shell
     # Top-bar links use the brand colour, and About sits last.
     assert ".topbar .nav-action" in shell
@@ -413,7 +413,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert 'id="assets-loaded"' in shell
     assert "No game data has been loaded yet" in shell
     assert "Drop new game data here to replace the current set" in shell
-    assert 'if (pane === "assets") {' in shell
+    assert 'function refreshSettings()' in shell   # fills the summary as the dialog opens
     assert "updateAssetsSummary().catch(error =>" in shell
     assert 'beginOperation("Removing game data", targets.length)' in shell
     assert "updateOperation(removed, targets.length" in shell
