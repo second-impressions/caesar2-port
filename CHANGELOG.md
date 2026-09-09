@@ -6,6 +6,8 @@ what changed for them, not which files moved.
 
 ## Unreleased
 
+## 1.0.3 - 2026-09-09
+
 - Installed GOG copies now provide music, speech and movies automatically:
   the launcher reads the complete original CD from their `game.gog` file
   instead of using only the partial hard-disk installation beside it.
