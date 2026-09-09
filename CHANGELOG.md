@@ -6,6 +6,10 @@ what changed for them, not which files moved.
 
 ## Unreleased
 
+- Installed GOG copies now provide music, speech and movies automatically:
+  the launcher reads the complete original CD from their `game.gog` file
+  instead of using only the partial hard-disk installation beside it.
+
 ## 1.0.2 - 2026-09-08
 
 - Windows: no console window behind the game. Started from a terminal, the
