@@ -151,6 +151,7 @@ int c2_iso_extract(const struct c2_source_reader *source,
 enum c2_source_kind {
     C2_SOURCE_NONE = 0,
     C2_SOURCE_DIRECTORY,      /* installation folder, used in place */
+    C2_SOURCE_GOG_DIRECTORY,  /* GOG installation with an embedded game.gog ISO */
     C2_SOURCE_PACK_DIRECTORY, /* unpacked .c2assets (C2PACK.IDX) */
     C2_SOURCE_ZIP,            /* installation ZIP, .c2assets, or wrapped image */
     C2_SOURCE_ISO,            /* 2048-byte-sector image */
@@ -159,8 +160,8 @@ enum c2_source_kind {
     C2_SOURCE_CDROM           /* physical drive */
 };
 
-/* root receives the path the importer will actually use: the resolved
- * installation root for directory-like sources, otherwise path itself. */
+/* root receives the resolved installation root for directory-like sources
+ * (including GOG installations), otherwise path itself. */
 int c2_import_classify(const char *path, enum c2_source_kind *kind,
                        char *root, size_t root_capacity,
                        char *error, size_t error_capacity);

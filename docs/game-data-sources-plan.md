@@ -11,7 +11,11 @@ The portable build should accept:
 - (native only) a physical CD-ROM drive read directly as logical ISO-9660
   sectors, cached by the disc's primary volume descriptor fingerprint.
 
-An already-installed GOG copy is an ordinary installation directory. Importing a GOG installer is explicitly out of scope; users can install or unpack it first.
+An already-installed GOG copy is a directory containing a partial flat DOS
+installation and the complete original CD as `game.gog`. The importer prefers
+that embedded ISO so music, speech, and other CD media are retained. Importing
+a GOG installer is explicitly out of scope; users can install or unpack it
+first.
 
 The WebAssembly product must additionally provide:
 

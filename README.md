@@ -56,7 +56,8 @@ Any of these works, natively or in the browser. The importer looks inside and
 works out what it has:
 
 - an installed game folder, whether GOG's or an old DOS or Windows
-  installation (pick any file inside it, for example `C2.ENG`),
+  installation (pick any file inside it, for example `C2.ENG`); for GOG's
+  DOS release the importer automatically uses its complete `game.gog` CD image,
 - the original CD-ROM in a drive, which the launcher lists when one is
   inserted,
 - a disc image: `.iso`, or `.bin` with or without its `.cue`, also inside a
@@ -79,7 +80,8 @@ screenshots and settings live in the same place:
 The original installer copied only part of the game to the hard disk, so an
 installation folder without `XMI/` and `RAW/` has no music or speech. The
 launcher and the web page say so when they see it; use the disc or an image of
-it to get everything.
+it to get everything. GOG installations are complete: their `game.gog` file
+is the original CD image, and the importer reads it automatically.
 
 ## Keys and options
 
