@@ -335,6 +335,24 @@ static enum c2_source_kind sniff_file(const char *path)
     return kind;
 }
 
+/* GOG's installed DOS release has a partial, flat hard-disk installation
+ * beside game.gog, the complete original CD as an ISO image. Prefer that
+ * image so importing the installation also supplies XMI music, RAW speech,
+ * and the rest of the CD media. */
+static int classify_installation(const char *start, enum c2_source_kind *kind,
+                                 char *root, size_t root_capacity)
+{
+    char image[C2_IMPORT_PATH_CAPACITY];
+    if (!resolve_install_root(start, root, root_capacity)) return 0;
+    if (child_of_type(image, sizeof(image), root, "game.gog", SDL_PATHTYPE_FILE) &&
+        sniff_file(image) == C2_SOURCE_ISO) {
+        *kind = C2_SOURCE_GOG_DIRECTORY;
+    } else {
+        *kind = C2_SOURCE_DIRECTORY;
+    }
+    return 1;
+}
+
 int c2_import_classify(const char *path, enum c2_source_kind *kind,
                        char *root, size_t root_capacity,
                        char *error, size_t error_capacity)
@@ -356,10 +374,7 @@ int c2_import_classify(const char *path, enum c2_source_kind *kind,
             snprintf(root, root_capacity, "%s", path);
             return 1;
         }
-        if (resolve_install_root(path, root, root_capacity)) {
-            *kind = C2_SOURCE_DIRECTORY;
-            return 1;
-        }
+        if (classify_installation(path, kind, root, root_capacity)) return 1;
         set_error(error, error_capacity, "no Caesar II installation was found in this folder");
         return 0;
     }
@@ -372,10 +387,8 @@ int c2_import_classify(const char *path, enum c2_source_kind *kind,
     /* Not an archive or image: maybe a file inside an installation. */
     if (strlen(path) < sizeof(probe)) {
         strcpy(probe, path);
-        if (parent_directory(probe) && resolve_install_root(probe, root, root_capacity)) {
-            *kind = C2_SOURCE_DIRECTORY;
-            return 1;
-        }
+        if (parent_directory(probe) &&
+            classify_installation(probe, kind, root, root_capacity)) return 1;
     }
     set_error(error, error_capacity, "not a Caesar II installation, disc image, ZIP or asset pack");
     return 0;
@@ -385,6 +398,7 @@ const char *c2_source_kind_name(enum c2_source_kind kind)
 {
     switch (kind) {
     case C2_SOURCE_DIRECTORY: return "Installation folder";
+    case C2_SOURCE_GOG_DIRECTORY: return "GOG installation (embedded CD image)";
     case C2_SOURCE_PACK_DIRECTORY: return "Asset pack folder";
     case C2_SOURCE_ZIP: return "ZIP archive";
     case C2_SOURCE_ISO: return "Disc image (ISO)";
@@ -552,6 +566,7 @@ int c2_import_path(const char *source_path, const char *cache_root,
     char marker[C2_IMPORT_PATH_CAPACITY];
     char key[32];
     char root[C2_IMPORT_PATH_CAPACITY];
+    char import_source[C2_IMPORT_PATH_CAPACITY];
     enum c2_source_kind kind;
     FILE *done;
     int ok;
@@ -565,6 +580,13 @@ int c2_import_path(const char *source_path, const char *cache_root,
         if (strlen(root) >= asset_root_capacity) return 0;
         strcpy(asset_root, root);
         return 1;
+    case C2_SOURCE_GOG_DIRECTORY:
+        if (!child_of_type(import_source, sizeof(import_source), root,
+                           "game.gog", SDL_PATHTYPE_FILE)) {
+            set_error(error, error_capacity, "GOG game.gog disc image is missing");
+            return 0;
+        }
+        break;
     case C2_SOURCE_CDROM: {
         /* Key the cache by the disc's primary volume descriptor: the
          * device path is identical for every disc in the drive and the
@@ -577,9 +599,15 @@ int c2_import_path(const char *source_path, const char *cache_root,
         break;
     }
     default:
-        if (!SDL_GetPathInfo(source_path, &info)) { set_error(error, error_capacity, "game-data source does not exist"); return 0; }
-        snprintf(key, sizeof(key), "%016llx", (unsigned long long)source_key(source_path, &info));
+        snprintf(import_source, sizeof(import_source), "%s", source_path);
         break;
+    }
+    if (kind != C2_SOURCE_CDROM) {
+        if (!SDL_GetPathInfo(import_source, &info)) {
+            set_error(error, error_capacity, "game-data source does not exist"); return 0;
+        }
+        snprintf(key, sizeof(key), "%016llx",
+                 (unsigned long long)source_key(import_source, &info));
     }
     if (!join_path(game_data_root, sizeof(game_data_root), cache_root, "game-data") ||
         !join_path(destination, sizeof(destination), game_data_root, key) ||
@@ -592,13 +620,14 @@ int c2_import_path(const char *source_path, const char *cache_root,
     case C2_SOURCE_CDROM:
         ok = import_cdrom_device(source_path, destination, progress, error, error_capacity); break;
     case C2_SOURCE_ZIP:
-        ok = import_zip(source_path, destination, progress, error, error_capacity); break;
+        ok = import_zip(import_source, destination, progress, error, error_capacity); break;
+    case C2_SOURCE_GOG_DIRECTORY:
     case C2_SOURCE_ISO:
-        ok = import_iso_file(source_path, destination, progress, error, error_capacity); break;
+        ok = import_iso_file(import_source, destination, progress, error, error_capacity); break;
     case C2_SOURCE_RAW_BIN:
-        ok = import_raw_bin(source_path, destination, progress, error, error_capacity); break;
+        ok = import_raw_bin(import_source, destination, progress, error, error_capacity); break;
     case C2_SOURCE_CUE:
-        ok = import_cue(source_path, destination, progress, error, error_capacity); break;
+        ok = import_cue(import_source, destination, progress, error, error_capacity); break;
     default:
         set_error(error, error_capacity, "unsupported game-data source type"); return 0;
     }

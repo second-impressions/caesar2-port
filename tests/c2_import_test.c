@@ -69,6 +69,7 @@ static unsigned char *make_iso(size_t *size_out)
     static const unsigned char dotdot = 1;
     static const unsigned char hd[] = "HD";
     static const unsigned char file[] = "C2.ENG;1";
+    static const unsigned char help[] = "HELP.ENG;1";
     unsigned char *iso = calloc(32, SECTOR);
     unsigned char *pvd = iso + 16 * SECTOR;
     unsigned char *term = iso + 17 * SECTOR;
@@ -94,8 +95,10 @@ static unsigned char *make_iso(size_t *size_out)
     pos = 0;
     pos += record(dir + pos, 21, SECTOR, 2, &dot, 1);
     pos += record(dir + pos, 20, SECTOR, 2, &dotdot, 1);
-    record(dir + pos, 22, 4, 0, file, 8);
+    pos += record(dir + pos, 22, 4, 0, file, 8);
+    record(dir + pos, 23, 4, 0, help, 10);
     memcpy(iso + 22 * SECTOR, "text", 4);
+    memcpy(iso + 23 * SECTOR, "help", 4);
     *size_out = 32 * SECTOR;
     return iso;
 }
@@ -115,7 +118,7 @@ static void test_iso_catalog_reads_nested_file(void)
     source.size = memory.size;
     source.read_at = memory_read;
     TEST_ASSERT_TRUE(c2_iso_catalog_open(&source, &catalog, error, sizeof(error)));
-    TEST_ASSERT_EQUAL_size_t(1, catalog.count);
+    TEST_ASSERT_EQUAL_size_t(2, catalog.count);
     entry = c2_iso_catalog_find(&catalog, "hd\\c2.eng");
     TEST_ASSERT_NOT_NULL(entry);
     TEST_ASSERT_EQUAL_UINT64(4, entry->size);
@@ -241,6 +244,67 @@ static void test_pack_activates_default_profile(void)
     remove("c2-pack-test/OBJECTS");
     remove("c2-pack-test/C2PACK.IDX");
     remove("c2-pack-test");
+}
+
+static void test_gog_installation_imports_embedded_cd_image(void)
+{
+    struct memory_source memory;
+    enum c2_source_kind kind;
+    char root[512];
+    char path[1024];
+    char error[256];
+    char value[5] = {0};
+    FILE *file;
+
+    remove("c2-gog-install-test/game.gog");
+    remove("c2-gog-install-test/C2.ENG");
+    remove("c2-gog-install-test/HELP.ENG");
+    remove("c2-gog-install-test");
+    TEST_ASSERT_TRUE(SDL_CreateDirectory("c2-gog-install-test"));
+    file = fopen("c2-gog-install-test/C2.ENG", "wb");
+    TEST_ASSERT_NOT_NULL(file); fputs("installed", file); fclose(file);
+    file = fopen("c2-gog-install-test/HELP.ENG", "wb");
+    TEST_ASSERT_NOT_NULL(file); fputs("installed", file); fclose(file);
+    memory.data = make_iso(&memory.size);
+    file = fopen("c2-gog-install-test/game.gog", "wb");
+    TEST_ASSERT_NOT_NULL(file);
+    TEST_ASSERT_EQUAL_size_t(memory.size,
+                             fwrite(memory.data, 1, memory.size, file));
+    TEST_ASSERT_EQUAL_INT(0, fclose(file));
+    free(memory.data);
+
+    /* Picking either the folder or a file inside it resolves to the GOG
+     * installation, whose complete embedded CD takes precedence over the
+     * partial flat hard-disk copy. */
+    TEST_ASSERT_TRUE_MESSAGE(c2_import_classify("c2-gog-install-test/C2.ENG",
+                                                &kind, root, sizeof(root),
+                                                error, sizeof(error)), error);
+    TEST_ASSERT_EQUAL(C2_SOURCE_GOG_DIRECTORY, kind);
+    TEST_ASSERT_EQUAL_STRING("c2-gog-install-test", root);
+    TEST_ASSERT_EQUAL_STRING("GOG installation (embedded CD image)",
+                             c2_source_kind_name(kind));
+
+    TEST_ASSERT_TRUE_MESSAGE(c2_import_path("c2-gog-install-test",
+                                            "c2-gog-cache", NULL, NULL,
+                                            root, sizeof(root),
+                                            error, sizeof(error)), error);
+    snprintf(path, sizeof(path), "%s/HD/C2.ENG", root);
+    file = fopen(path, "rb");
+    TEST_ASSERT_NOT_NULL_MESSAGE(file, path);
+    TEST_ASSERT_EQUAL_size_t(4, fread(value, 1, 4, file));
+    fclose(file);
+    TEST_ASSERT_EQUAL_STRING("text", value);
+    remove(path);
+    snprintf(path, sizeof(path), "%s/HD/HELP.ENG", root); remove(path);
+    snprintf(path, sizeof(path), "%s/HD", root); remove(path);
+    snprintf(path, sizeof(path), "%s/.complete", root); remove(path);
+    remove(root);
+    remove("c2-gog-cache/game-data");
+    remove("c2-gog-cache");
+    remove("c2-gog-install-test/game.gog");
+    remove("c2-gog-install-test/C2.ENG");
+    remove("c2-gog-install-test/HELP.ENG");
+    remove("c2-gog-install-test");
 }
 
 static void test_raw_sector_adapter_feeds_iso_reader(void)
@@ -555,6 +619,7 @@ int main(void)
     RUN_TEST(test_cue_accepts_observed_modes);
     RUN_TEST(test_zip_extracts_one_outer_directory);
     RUN_TEST(test_pack_activates_default_profile);
+    RUN_TEST(test_gog_installation_imports_embedded_cd_image);
     RUN_TEST(test_raw_sector_adapter_feeds_iso_reader);
     RUN_TEST(test_cdrom_reader_serves_iso_sectors);
     RUN_TEST(test_zip_streams_wrapped_cue_image);

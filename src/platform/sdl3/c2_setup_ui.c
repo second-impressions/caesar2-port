@@ -498,7 +498,8 @@ static void describe_source_kind(void)
         return;
     }
     ui.source_is_disc = kind == C2_SOURCE_CDROM || kind == C2_SOURCE_ISO ||
-                        kind == C2_SOURCE_RAW_BIN || kind == C2_SOURCE_CUE;
+                        kind == C2_SOURCE_RAW_BIN || kind == C2_SOURCE_CUE ||
+                        kind == C2_SOURCE_GOG_DIRECTORY;
     switch (kind) {
     case C2_SOURCE_CDROM:
         snprintf(ui.source_kind, sizeof(ui.source_kind), "CD-ROM drive %.40s", ui.source);
@@ -920,7 +921,8 @@ static void select_path(const char *path)
         return;
     }
     snprintf(ui.source, sizeof(ui.source), "%s",
-             kind == C2_SOURCE_DIRECTORY ? root : path);
+             kind == C2_SOURCE_DIRECTORY || kind == C2_SOURCE_GOG_DIRECTORY
+                 ? root : path);
     refresh_source();
     start_import(0);
 }
