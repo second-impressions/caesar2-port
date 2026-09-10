@@ -8,6 +8,7 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import ssl
+from urllib.parse import unquote, urlsplit
 
 
 class Caesar2Handler(SimpleHTTPRequestHandler):
@@ -16,7 +17,8 @@ class Caesar2Handler(SimpleHTTPRequestHandler):
     game_data: Path | None = None
 
     def translate_path(self, path: str) -> str:
-        if self.game_data and path.split("?", 1)[0] == f"/smoke-data/{self.game_data.name}":
+        requested = unquote(urlsplit(path).path)
+        if self.game_data and requested == f"/smoke-data/{self.game_data.name}":
             return str(self.game_data)
         return super().translate_path(path)
 

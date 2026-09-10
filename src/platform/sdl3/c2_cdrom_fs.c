@@ -379,7 +379,11 @@ int c2_cdrom_open(const char *path, struct c2_cdrom_reader *reader,
     unsigned int index;
     int found;
 
-    if (reader == NULL) return 0;
+    if (error && error_capacity) error[0] = '\0';
+    if (reader == NULL) {
+        set_error(error, error_capacity, "no CD-ROM reader output was provided");
+        return 0;
+    }
     memset(reader, 0, sizeof(*reader));
     reader->fd = -1;
     if (path == NULL || !cdrom_open_handle(reader, path)) {

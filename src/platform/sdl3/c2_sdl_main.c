@@ -100,6 +100,7 @@ struct c2_sdl_app {
     SDL_Thread *prepare_thread;
     SDL_AtomicInt storage_result;
     SDL_AtomicInt prepare_result;
+    char prepared_asset_root[4096];
     int pointer_watch_installed;
 #endif
     SDL_AtomicInt engine_result;
@@ -423,7 +424,8 @@ static void save_asset_source(const struct c2_sdl_app *app)
 #if PORT_PLATFORM_WASM
 struct c2_browser_progress_state {
     uint64_t last_bytes;
-    size_t last_files;
+    Uint64 last_ticks;
+    char last_phase[64];
     int reported;
 };
 
@@ -433,13 +435,17 @@ static void publish_import_progress(void *userdata, const char *phase,
                                     size_t total_files)
 {
     struct c2_browser_progress_state *state = userdata;
+    Uint64 now = SDL_GetTicks();
     if (state->reported && completed < total &&
-        completed_files == state->last_files &&
-        completed - state->last_bytes < 1024 * 1024) {
+        strcmp(state->last_phase, phase ? phase : "") == 0 &&
+        completed - state->last_bytes < 1024 * 1024 &&
+        now - state->last_ticks < 100) {
         return;
     }
     state->last_bytes = completed;
-    state->last_files = completed_files;
+    state->last_ticks = now;
+    snprintf(state->last_phase, sizeof(state->last_phase), "%s",
+             phase ? phase : "");
     state->reported = 1;
     c2_browser_import_progress(
         phase,
@@ -469,20 +475,23 @@ static int prepare_assets(struct c2_sdl_app *app)
 #else
     cache_root = app->user_data_root;
 #endif
+    import_error[0] = '\0';
+    app->last_error[0] = '\0';
     if (!c2_import_path(app->asset_source, cache_root,
                         app->asset_profile[0] ? app->asset_profile : NULL,
                         progress_ptr,
                         resolved_asset_root, sizeof(resolved_asset_root),
                         import_error, sizeof(import_error))) {
+        const char *message = import_error[0]
+            ? import_error : "game-data import failed without an explanation";
         fprintf(stderr, "could not import game data '%s': %s\n",
-                app->asset_source, import_error);
-#if PORT_PLATFORM_WASM
-        c2_browser_import_error(import_error);
-#endif
+                app->asset_source, message);
+        snprintf(app->last_error, sizeof(app->last_error), "%s", message);
         return 0;
     }
 #if PORT_PLATFORM_WASM
-    c2_browser_source_ready(resolved_asset_root, app->asset_source);
+    snprintf(app->prepared_asset_root, sizeof(app->prepared_asset_root), "%s",
+             resolved_asset_root);
 #endif
     printf("prepared game data: %s\n", resolved_asset_root);
     return 1;
@@ -502,16 +511,19 @@ static int start_runtime(struct c2_sdl_app *app)
     cache_root = app->user_data_root;
 #endif
     app->last_error[0] = '\0';
+    import_error[0] = '\0';
     if (!c2_import_path(app->asset_source, cache_root,
                         app->asset_profile[0] ? app->asset_profile : NULL,
                         NULL,
                         resolved_asset_root, sizeof(resolved_asset_root),
                         import_error, sizeof(import_error))) {
+        const char *message = import_error[0]
+            ? import_error : "game-data import failed without an explanation";
         fprintf(stderr, "could not import game data '%s': %s\n",
-                app->asset_source, import_error);
-        snprintf(app->last_error, sizeof(app->last_error), "%s", import_error);
+                app->asset_source, message);
+        snprintf(app->last_error, sizeof(app->last_error), "%s", message);
 #if PORT_PLATFORM_WASM
-        c2_browser_import_error(import_error);
+        c2_browser_import_error(message);
 #endif
         return 0;
     }
@@ -849,6 +861,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 #if PORT_PLATFORM_WASM
     SDL_SetAtomicInt(&c2_app.storage_result, 0);
     SDL_SetAtomicInt(&c2_app.prepare_result, 0);
+    c2_app.prepared_asset_root[0] = '\0';
     c2_app.storage_thread = SDL_CreateThread(storage_main, "caesar2-storage", NULL);
     if (c2_app.storage_thread == NULL) return SDL_APP_FAILURE;
     return SDL_APP_CONTINUE;
@@ -999,7 +1012,19 @@ SDL_AppResult SDL_AppIterate(void *appstate)
                 SDL_WaitThread(app->prepare_thread, NULL);
                 app->prepare_thread = NULL;
             }
-            return prepare_result > 0 ? SDL_APP_SUCCESS : SDL_APP_FAILURE;
+            /* Report a worker rejection from this main-browser-thread
+             * boundary. Emscripten keeps the runtime alive for OPFS, so a
+             * failed SDL exit does not reliably invoke Module.onExit; waiting
+             * for it left the page forever saying "Reading source catalog". */
+            if (prepare_result < 0) {
+                c2_browser_import_error(app->last_error[0]
+                    ? app->last_error
+                    : "game-data import failed without an explanation");
+            } else {
+                c2_browser_source_ready(app->prepared_asset_root,
+                                        app->asset_source);
+            }
+            return SDL_APP_SUCCESS;
         }
         if (!start_runtime(app)) return SDL_APP_FAILURE;
         return SDL_APP_CONTINUE;
