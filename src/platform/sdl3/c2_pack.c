@@ -10,6 +10,7 @@
 #define C2_PACK_PATH_CAPACITY 4096
 #define C2_PACK_LINE_CAPACITY 2048
 #define C2_PACK_COMPONENT_CAPACITY 32
+#define C2_PACK_MAX_INDEX_SIZE (16u * 1024u * 1024u)
 
 static void set_error(char *error, size_t capacity, const char *message)
 {
@@ -54,10 +55,28 @@ int c2_pack_activate(const char *pack_root, const char *profile,
     char line[C2_PACK_LINE_CAPACITY];
     FILE *index;
     char current_component[128] = {0};
+    SDL_PathInfo index_info;
     int header = 0;
     FILE *map = NULL;
 
-    if (snprintf(index_path, sizeof(index_path), "%s/C2PACK.IDX", pack_root) >= (int)sizeof(index_path)) return 0;
+    if (error && error_capacity) error[0] = '\0';
+    if (!pack_root || !active_root || active_root_capacity == 0) {
+        set_error(error, error_capacity, "invalid asset-pack path"); return 0;
+    }
+    active_root[0] = '\0';
+    if (snprintf(index_path, sizeof(index_path), "%s/C2PACK.IDX", pack_root) >=
+        (int)sizeof(index_path)) {
+        set_error(error, error_capacity, "asset-pack index path is too long");
+        return 0;
+    }
+    if (!SDL_GetPathInfo(index_path, &index_info) ||
+        index_info.type != SDL_PATHTYPE_FILE) {
+        set_error(error, error_capacity, "asset pack index is missing"); return 0;
+    }
+    if (index_info.size > C2_PACK_MAX_INDEX_SIZE) {
+        set_error(error, error_capacity, "asset pack index exceeds safety limits");
+        return 0;
+    }
     index = fopen(index_path, "rb");
     if (!index) { set_error(error, error_capacity, "asset pack index is missing"); return 0; }
     while (fgets(line, sizeof(line), index)) {
@@ -91,8 +110,11 @@ int c2_pack_activate(const char *pack_root, const char *profile,
     }
     {
         char map_path[C2_PACK_PATH_CAPACITY];
-        if (snprintf(map_path, sizeof(map_path), "%s/.c2-object-map", active_root) >= (int)sizeof(map_path)) {
-            fclose(index); return 0;
+        if (snprintf(map_path, sizeof(map_path), "%s/.c2-object-map", active_root) >=
+            (int)sizeof(map_path)) {
+            fclose(index);
+            set_error(error, error_capacity, "active asset-map path is too long");
+            return 0;
         }
         map = fopen(map_path, "wb");
         if (!map) { fclose(index); set_error(error, error_capacity, "could not create active object map"); return 0; }
@@ -116,7 +138,11 @@ int c2_pack_activate(const char *pack_root, const char *profile,
             }
         }
     }
-    if (fclose(map) != 0) { fclose(index); return 0; }
+    if (fclose(map) != 0) {
+        fclose(index);
+        set_error(error, error_capacity, "could not finish the active asset map");
+        return 0;
+    }
     fclose(index);
     return 1;
 }

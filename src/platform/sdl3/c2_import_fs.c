@@ -18,6 +18,12 @@ static void set_error(char *error, size_t capacity, const char *message)
     if (error && capacity) snprintf(error, capacity, "%s", message ? message : "import failed");
 }
 
+static void set_error_if_empty(char *error, size_t capacity,
+                               const char *message)
+{
+    if (error && capacity && error[0] == '\0') set_error(error, capacity, message);
+}
+
 static void report_progress(const struct c2_import_progress *progress,
                             const char *phase, uint64_t completed,
                             uint64_t total, size_t files, size_t total_files)
@@ -101,6 +107,8 @@ int c2_iso_extract(const struct c2_source_reader *source,
     size_t total_files = 0;
     size_t completed_files = 0;
     size_t i;
+    if (error && error_capacity) error[0] = '\0';
+    report_progress(progress, "Reading source catalog", 0, 0, 0, 0);
     if (!c2_iso_catalog_open(source, &catalog, error, error_capacity)) return 0;
     for (i = 0; i < catalog.count; i++) {
         if (runtime_path(catalog.entries[i].path)) {
@@ -120,9 +128,17 @@ int c2_iso_extract(const struct c2_source_reader *source,
         uint64_t offset = 0;
         FILE *file;
         if (!runtime_path(entry->path)) continue;
-        if (snprintf(output, sizeof(output), "%s/%s", destination, entry->path) >= (int)sizeof(output) ||
-            !make_parents(output)) {
-            c2_iso_catalog_close(&catalog); set_error(error, error_capacity, "ISO output path is too long"); return 0;
+        if (snprintf(output, sizeof(output), "%s/%s", destination,
+                     entry->path) >= (int)sizeof(output)) {
+            c2_iso_catalog_close(&catalog);
+            set_error(error, error_capacity, "ISO output path is too long");
+            return 0;
+        }
+        if (!make_parents(output)) {
+            c2_iso_catalog_close(&catalog);
+            set_error(error, error_capacity,
+                      "could not create an ISO output directory");
+            return 0;
         }
         file = fopen(output, "wb");
         if (!file) { c2_iso_catalog_close(&catalog); set_error(error, error_capacity, "could not create ISO output"); return 0; }
@@ -140,7 +156,11 @@ int c2_iso_extract(const struct c2_source_reader *source,
                             completed_bytes, total_bytes,
                             completed_files, total_files);
         }
-        if (fclose(file) != 0) { c2_iso_catalog_close(&catalog); return 0; }
+        if (fclose(file) != 0) {
+            c2_iso_catalog_close(&catalog);
+            set_error(error, error_capacity, "could not finish writing an ISO file");
+            return 0;
+        }
         completed_files++;
         report_progress(progress, "Extracting disc image",
                         completed_bytes, total_bytes,
@@ -453,7 +473,9 @@ static int import_cue(const char *cue_path, const char *destination,
     fclose(stream); cue[info.size] = '\0';
     if (!c2_cue_parse_single_data_track(cue, bin_name, sizeof(bin_name), &mode, error, error_capacity)) { free(cue); return 0; }
     free(cue);
-    if (strlen(cue_path) >= sizeof(directory)) return 0;
+    if (strlen(cue_path) >= sizeof(directory)) {
+        set_error(error, error_capacity, "CUE path is too long"); return 0;
+    }
     strcpy(directory, cue_path);
     slash = strrchr(directory, '/');
 #if PORT_PLATFORM_WIN32
@@ -515,7 +537,10 @@ static int import_zipped_cue(const char *zip_path, const char *cue_entry,
     if (slash) {
         int n = snprintf(bin_entry, sizeof(bin_entry), "%.*s/%s",
                          (int)(slash - cue_entry), cue_entry, bin_name);
-        if (n < 0 || (size_t)n >= sizeof(bin_entry)) return 0;
+        if (n < 0 || (size_t)n >= sizeof(bin_entry)) {
+            set_error(error, error_capacity, "CUE BIN path in ZIP is too long");
+            return 0;
+        }
     } else {
         snprintf(bin_entry, sizeof(bin_entry), "%s", bin_name);
     }
@@ -571,13 +596,34 @@ int c2_import_path(const char *source_path, const char *cache_root,
     FILE *done;
     int ok;
 
-    if (!c2_import_classify(source_path, &kind, root, sizeof(root), error, error_capacity)) return 0;
+    if (error && error_capacity) error[0] = '\0';
+    if (!asset_root || asset_root_capacity == 0) {
+        set_error(error, error_capacity, "no asset-root output was provided");
+        return 0;
+    }
+    asset_root[0] = '\0';
+    if (!cache_root || !cache_root[0]) {
+        set_error(error, error_capacity, "no game-data cache directory was provided");
+        return 0;
+    }
+    if (!c2_import_classify(source_path, &kind, root, sizeof(root),
+                            error, error_capacity)) {
+        set_error_if_empty(error, error_capacity,
+                           "could not classify the selected game data");
+        return 0;
+    }
     switch (kind) {
     case C2_SOURCE_PACK_DIRECTORY:
-        return c2_pack_activate(root, asset_profile, asset_root, asset_root_capacity,
-                                error, error_capacity);
+        ok = c2_pack_activate(root, asset_profile, asset_root,
+                              asset_root_capacity, error, error_capacity);
+        if (!ok) set_error_if_empty(error, error_capacity,
+                                    "could not activate the asset pack");
+        return ok;
     case C2_SOURCE_DIRECTORY:
-        if (strlen(root) >= asset_root_capacity) return 0;
+        if (strlen(root) >= asset_root_capacity) {
+            set_error(error, error_capacity, "installation path is too long");
+            return 0;
+        }
         strcpy(asset_root, root);
         return 1;
     case C2_SOURCE_GOG_DIRECTORY:
@@ -592,14 +638,22 @@ int c2_import_path(const char *source_path, const char *cache_root,
          * device path is identical for every disc in the drive and the
          * device node reports no useful size or modify time. */
         struct c2_cdrom_reader cdrom;
-        if (!c2_cdrom_open(source_path, &cdrom, error, error_capacity)) return 0;
+        if (!c2_cdrom_open(source_path, &cdrom, error, error_capacity)) {
+            set_error_if_empty(error, error_capacity,
+                               "could not open the CD-ROM drive");
+            return 0;
+        }
         snprintf(key, sizeof(key), "%016llx",
                  (unsigned long long)cdrom.fingerprint);
         c2_cdrom_close(&cdrom);
         break;
     }
     default:
-        snprintf(import_source, sizeof(import_source), "%s", source_path);
+        if (snprintf(import_source, sizeof(import_source), "%s", source_path) >=
+            (int)sizeof(import_source)) {
+            set_error(error, error_capacity, "game-data source path is too long");
+            return 0;
+        }
         break;
     }
     if (kind != C2_SOURCE_CDROM) {
@@ -611,7 +665,10 @@ int c2_import_path(const char *source_path, const char *cache_root,
     }
     if (!join_path(game_data_root, sizeof(game_data_root), cache_root, "game-data") ||
         !join_path(destination, sizeof(destination), game_data_root, key) ||
-        !join_path(marker, sizeof(marker), destination, ".complete")) return 0;
+        !join_path(marker, sizeof(marker), destination, ".complete")) {
+        set_error(error, error_capacity, "game-data cache path is too long");
+        return 0;
+    }
     if (SDL_GetPathInfo(marker, NULL)) goto activate;
     if (!make_parents(marker) || (!SDL_CreateDirectory(destination) && !SDL_GetPathInfo(destination, NULL))) {
         set_error(error, error_capacity, "could not create game-data cache"); return 0;
@@ -631,22 +688,40 @@ int c2_import_path(const char *source_path, const char *cache_root,
     default:
         set_error(error, error_capacity, "unsupported game-data source type"); return 0;
     }
-    if (!ok) return 0;
+    if (!ok) {
+        set_error_if_empty(error, error_capacity,
+                           "could not import the selected game data");
+        return 0;
+    }
     done = fopen(marker, "wb");
-    if (!done) return 0;
-    if (fclose(done) != 0) return 0;
+    if (!done) {
+        set_error(error, error_capacity,
+                  "could not mark the game-data import complete");
+        return 0;
+    }
+    if (fclose(done) != 0) {
+        set_error(error, error_capacity,
+                  "could not finish the game-data completion marker");
+        return 0;
+    }
 
 activate:
     {
         char index_path[C2_IMPORT_PATH_CAPACITY];
         if (join_path(index_path, sizeof(index_path), destination, "C2PACK.IDX") &&
             SDL_GetPathInfo(index_path, NULL)) {
-            return c2_pack_activate(destination, asset_profile,
-                                    asset_root, asset_root_capacity,
-                                    error, error_capacity);
+            ok = c2_pack_activate(destination, asset_profile,
+                                  asset_root, asset_root_capacity,
+                                  error, error_capacity);
+            if (!ok) set_error_if_empty(error, error_capacity,
+                                        "could not activate the imported asset pack");
+            return ok;
         }
     }
-    if (strlen(destination) >= asset_root_capacity) return 0;
+    if (strlen(destination) >= asset_root_capacity) {
+        set_error(error, error_capacity, "imported game-data path is too long");
+        return 0;
+    }
     strcpy(asset_root, destination);
     return 1;
 }

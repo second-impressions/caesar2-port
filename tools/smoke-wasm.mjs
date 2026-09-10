@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, resolve } from "node:path";
 import { spawn } from "node:child_process";
@@ -27,6 +27,7 @@ const smokeResults = {
   restart: "restart after exit completed",
   save: "save/load disk and full-state verification restored",
   prepare: "asset preparation completed without starting the game",
+  reject: "game data import rejected visibly",
 };
 if (!(smokeKind in smokeResults)) {
   throw new Error(`unknown smoke kind '${smokeKind}'`);
@@ -35,7 +36,11 @@ if (!["chromium", "firefox"].includes(browserKind)) {
   throw new Error(`unknown browser '${browserKind}'`);
 }
 if (!gameData) {
-  throw new Error("usage: smoke-wasm.mjs BUILD KIND chromium|firefox GAME-DATA (a disc image, ZIP or pack)");
+  throw new Error("usage: smoke-wasm.mjs BUILD KIND chromium|firefox GAME-DATA (an installation directory, disc image, ZIP or pack)");
+}
+const gameDataIsDirectory = (await stat(gameData)).isDirectory();
+if (gameDataIsDirectory && browserKind !== "chromium") {
+  throw new Error("installation-directory smoke tests currently require Chromium");
 }
 const profile = await mkdtemp(`${tmpdir()}/caesar2-wasm-smoke-`);
 let server;
@@ -162,6 +167,9 @@ async function runChromium(gameUrl) {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto(`${gameUrl}smoke-test=${smokeKind}`, {waitUntil:"domcontentloaded"});
+  if (gameDataIsDirectory) {
+    await page.locator("#folder-input").setInputFiles(gameData);
+  }
 
   if (smokeKind === "contextmenu") {
     await page.waitForFunction(() =>
@@ -334,15 +342,19 @@ try {
   if (entries.length !== 1) {
     throw new Error(`${build} must contain index.html`);
   }
-  server = spawn("python3", [
-    `${root}/tools/serve-wasm.py`, build, "--entry", entries[0],
-    "--port", "0", "--game-data", gameData
-  ], { stdio: ["ignore", "pipe", "inherit"] });
+  const serverArgs = [
+    `${root}/tools/serve-wasm.py`, build, "--entry", entries[0], "--port", "0"
+  ];
+  if (!gameDataIsDirectory) serverArgs.push("--game-data", gameData);
+  server = spawn("python3", serverArgs,
+    { stdio: ["ignore", "pipe", "inherit"] });
   const servedUrl = await waitForLine(server.stdout, (line) => {
     const match = line.match(/Serving (http:\/\/\S+\.html)/);
     return match?.[1];
   });
-  const gameUrl = `${servedUrl}?smoke-data=/smoke-data/${encodeURIComponent(basename(gameData))}&`;
+  const gameUrl = gameDataIsDirectory
+    ? `${servedUrl}?`
+    : `${servedUrl}?smoke-data=/smoke-data/${encodeURIComponent(basename(gameData))}&`;
 
   if (browserKind === "firefox") {
     await runFirefox(gameUrl);
