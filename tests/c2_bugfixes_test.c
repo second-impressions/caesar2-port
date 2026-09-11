@@ -34,10 +34,29 @@ static void test_mosaic_random_sentinel(void)
 #endif
 }
 
+static void test_envoy_retires_itself(void)
+{
+    /* A replacement walker handed a different slot never retires itself. */
+    TEST_ASSERT_EQUAL_INT(0, c2_fix_envoy_retires_itself(7, 9));
+    TEST_ASSERT_EQUAL_INT(0, c2_fix_envoy_retires_itself(0, 9));
+
+#if PORT_FIX_MARKET_ENVOY_SELF_KILL
+    /* Recycled slot: the cell's recorded envoy is the new walker itself. */
+    TEST_ASSERT_NOT_EQUAL_INT(0, c2_fix_envoy_retires_itself(9, 9));
+    TEST_ASSERT_NOT_EQUAL_INT(0, c2_fix_envoy_retires_itself(1, 1));
+    /* Slot 0 is never allocated, so this pair cannot occur in the engine;
+     * skipping is equivalent to the recovered empty-record check anyway. */
+    TEST_ASSERT_NOT_EQUAL_INT(0, c2_fix_envoy_retires_itself(0, 0));
+#else
+    TEST_ASSERT_EQUAL_INT(0, c2_fix_envoy_retires_itself(9, 9));
+#endif
+}
+
 int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_player_name_padding);
     RUN_TEST(test_mosaic_random_sentinel);
+    RUN_TEST(test_envoy_retires_itself);
     return UNITY_END();
 }

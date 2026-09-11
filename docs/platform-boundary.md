@@ -160,6 +160,28 @@ acts like a stable sentinel. Modern linkers do not preserve that adjacency;
 the resulting arbitrary sprite number appears as unrelated icons in dialog
 backgrounds and as an incorrect frame tile.
 
+Markets and businesses keep the citizen slot of the walker they last sent out
+in their own city cell (`+0x12`) and retire that walker when its replacement
+leaves, so one building never has two. `evolve_industrial_activity` assigns the
+replacement's target cell before calling `remove_envoy`, which then reads the
+recorded slot and retires whichever walker is in it and belongs to this
+building. Citizen slots are handed out lowest-free-first from a pool of 200
+(`create_citizen`), so once that pool is saturated a building's expired walker
+frees exactly the slot its own replacement is handed next — and the replacement
+retires itself on the tick it appears. The building then waits its full
+four-month dispatch interval believing it succeeded, which repeats for as long
+as the pool stays tight. Long-established markets hold the low slot numbers
+that are reclaimed first, so they stall first and stay stalled.
+
+`PORT_FIX_MARKET_ENVOY_SELF_KILL` skips the retirement when the recorded slot
+is the replacement itself (`c2_fix_envoy_retires_itself`). Replacing a walker
+that is genuinely still alive is unchanged, so a building still never keeps
+two. It defaults on for the portable continuation; set
+`-DPORT_FIX_MARKET_ENVOY_SELF_KILL=OFF` to retain the recovered
+self-retirement. The fix does not change how many walkers the city may have at
+once: the 200-slot pool and the dispatch order that serves markets and
+businesses last are recovered behavior and remain.
+
 `C2_FIX_MOSAIC_RANDOM_SENTINEL` makes that accidental value an explicit 65th
 table element. It preserves the shipped visual sequence without relying on
 object adjacency and defaults on for the portable continuation. Set

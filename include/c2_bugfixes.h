@@ -33,6 +33,10 @@
 #define C2_FIX_MOSAIC_RANDOM_SENTINEL PORT_PLATFORM
 #endif
 
+#ifndef PORT_FIX_MARKET_ENVOY_SELF_KILL
+#define PORT_FIX_MARKET_ENVOY_SELF_KILL PORT_PLATFORM
+#endif
+
 #if PORT_FIX_MEDIUM_RIGHT_HAT_OFFSET != 0 && \
     PORT_FIX_MEDIUM_RIGHT_HAT_OFFSET != 1
 #error "PORT_FIX_MEDIUM_RIGHT_HAT_OFFSET must be 0 or 1"
@@ -63,6 +67,19 @@
 #error "C2_FIX_MOSAIC_RANDOM_SENTINEL must be 0 or 1"
 #endif
 
+#if PORT_FIX_MARKET_ENVOY_SELF_KILL != 0 && \
+    PORT_FIX_MARKET_ENVOY_SELF_KILL != 1
+#error "PORT_FIX_MARKET_ENVOY_SELF_KILL must be 0 or 1"
+#endif
+
 void c2_fix_player_name_padding(char *name, int capacity);
+
+/* Markets and businesses record the walker they last sent out in their city
+ * cell and retire that walker once its replacement leaves. `remove_envoy`
+ * reads the recorded slot after the replacement has already claimed the
+ * building, so a replacement handed that same slot back retires itself on the
+ * tick it appears. Returns non-zero when that self-retirement must be
+ * skipped; the recovered behavior is to never skip. */
+int c2_fix_envoy_retires_itself(int recorded_citizen, int replacement_citizen);
 
 #endif
