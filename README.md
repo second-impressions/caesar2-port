@@ -191,6 +191,8 @@ default, and every deviation is a named, documented flag.
   [docs/user-data.md](docs/user-data.md): data import, caching, user files
 - [docs/game-text.md](docs/game-text.md): the compiled-in text and its gettext
   files, and [docs/localization.md](docs/localization.md) for speech and packs
+- [docs/save-format.md](docs/save-format.md): the planned versioned save
+  container, how the original layout keeps being read, and what it drops
 - [docs/releasing.md](docs/releasing.md): how a release is cut and what it
   contains
 - [docs/legacy-abi.md](docs/legacy-abi.md) and
