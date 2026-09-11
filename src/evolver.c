@@ -1,3 +1,4 @@
+#include "c2_bugfixes.h"
 #include "c2_data.h"
 #include "c2_types.h"
 
@@ -172,6 +173,23 @@ void citymap_evolution(void)
                                          evolve_land_value(10); }
     else if (evolve_clock < 0x8e)     { evolve_row = (evolve_clock - 0x7e) * 5;
                                          cap_land_value(5); }
+#if PORT_PLATFORM && PORT_FIX_WALKER_DISPATCH_FAIRNESS
+    /* The four walker-dispatch phases are one 4x4 grid of phase by row band,
+     * each phase running four clock ticks of twenty rows. Rotating which
+     * phase owns which tick stops markets and businesses always competing
+     * for the shared walker pool last. The rotation is a permutation, so
+     * every phase still runs four ticks over all eighty rows each month. */
+    else if (evolve_clock < 0x9e)     { int phase_slot = evolve_clock - 0x8e;
+                                         security_debar = 1;
+                                         evolve_row = (phase_slot & 3) * 0x14;
+                                         switch (c2_fix_dispatch_phase(phase_slot,
+                                                 c2_fix_dispatch_rotation(year, month))) {
+                                         case 0:  evolve_forum_activity(0x14);    break;
+                                         case 1:  evolve_fort_activity(0x14);     break;
+                                         case 2:  evolve_security_activity(0x14); break;
+                                         default: evolve_industrial_activity(0x14); break;
+                                         } }
+#else
     else if (evolve_clock < 0x92)     { security_debar = 1;
                                          evolve_row = (evolve_clock - 0x8e) * 0x14;
                                          evolve_forum_activity(0x14); }
@@ -184,6 +202,7 @@ void citymap_evolution(void)
     else if (evolve_clock < 0x9e)     { security_debar = 1;
                                          evolve_row = (evolve_clock - 0x9a) * 0x14;
                                          evolve_industrial_activity(0x14); }
+#endif
     else if (evolve_clock < 0xa2)     { security_debar = 1;
                                          evolve_row = (evolve_clock - 0x9e) * 0x14;
                                          spread_fire_and_plague_and_unrest(0x14); }
@@ -1161,11 +1180,23 @@ void evolve_industrial_activity(int rows)
     unsigned char counter;
     int x;
     int people;
+#if PORT_PLATFORM && PORT_FIX_WALKER_DISPATCH_FAIRNESS
+    int col;
+    unsigned int rotation = c2_fix_dispatch_rotation(year, month);
+#endif
 
     cm_sptr = evolve_row * 1600;
 
     for (row = 0; rows > row; row++) {
+#if PORT_PLATFORM && PORT_FIX_WALKER_DISPATCH_FAIRNESS
+        /* Rotate the column order so the same markets in a row band do not
+         * always claim a free walker slot first. */
+        for (col = 0; col < 80; col++) {
+            x = c2_fix_dispatch_column(col, rotation);
+            cm_sptr = (evolve_row + row) * 1600 + x * 20;
+#else
         for (x = 0; x < 80; x++, cm_sptr += 20) {
+#endif
             kind = ((unsigned char *)city_map)[cm_sptr];
             if (kind >= 0xfc && kind <= 0xff) {
                 occupancy = ((unsigned char *)city_map)[cm_sptr + 5] & 0xf;

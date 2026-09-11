@@ -6,6 +6,13 @@ what changed for them, not which files moved.
 
 ## Unreleased
 
+- In a city big enough to reach the game's limit on walkers out at once, the
+  buildings that went without were always the same ones: markets and
+  businesses, and within them the ones furthest west. Whose turn it is to
+  wait now moves every month, so a market that misses one round is served
+  the next instead of being skipped for good. Loading a save resumes the
+  same order it was saved with.
+
 ## 1.0.3 - 2026-09-09
 
 - Installed GOG copies now provide music, speech and movies automatically:

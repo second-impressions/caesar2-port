@@ -160,6 +160,30 @@ acts like a stable sentinel. Modern linkers do not preserve that adjacency;
 the resulting arbitrary sprite number appears as unrelated icons in dialog
 backgrounds and as an incorrect frame tile.
 
+Walker dispatch occupies sixteen consecutive clock ticks each month as four
+phases of four twenty-row bands: forums, then forts, then prefectures and
+barracks, then markets and businesses. Every phase sweeps its band from column
+zero upward. All walkers come from one 200-slot citizen pool, so in a city
+large enough to saturate that pool the phase that runs last and the columns
+visited last never find a free slot — and because both orders are fixed, it is
+the same buildings every month. Markets and businesses are the phase that runs
+last.
+
+`PORT_FIX_WALKER_DISPATCH_FAIRNESS` rotates both orders once per month
+(`c2_fix_dispatch_phase`, `c2_fix_dispatch_column`). Both mappings are
+permutations, so each phase still runs four ticks over all eighty rows and each
+column is still visited exactly once; only the order changes. The rotation is
+derived from `year` and `month`, which are save state, so a reloaded save
+resumes the identical order. It defaults on for the portable continuation; set
+`-DPORT_FIX_WALKER_DISPATCH_FAIRNESS=OFF` to retain the recovered fixed sweep.
+
+The fix adds no walker capacity. A saturated city still has buildings that miss
+a dispatch cycle; what changes is that the loser rotates instead of starving
+the same markets permanently. Two deltas follow from the rotation: business
+goods claims from warehouses now resolve in the rotated order, and fire or riot
+response may shift by up to four ticks within a month (a tick is roughly
+1/215th of a game month).
+
 `C2_FIX_MOSAIC_RANDOM_SENTINEL` makes that accidental value an explicit 65th
 table element. It preserves the shipped visual sequence without relying on
 object adjacency and defaults on for the portable continuation. Set
