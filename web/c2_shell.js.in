@@ -507,7 +507,14 @@
     }
     async function writeUserData(name, data) {
       name = canonicalUserDataName(name);
-      if (/\.sav$/i.test(name) && data.byteLength !== 225745) throw new Error(`${name} is not a 225745-byte Caesar II save`);
+      if (/\.sav$/i.test(name)) {
+        // Either the original 225,745-byte layout or the port's container
+        // (FlatBuffer with identifier "C2SV" at offset 4, docs/save-format.md).
+        const isLegacy = data.byteLength === 225745;
+        const head = new Uint8Array(data.buffer ?? data, data.byteOffset ?? 0, Math.min(8, data.byteLength));
+        const isContainer = data.byteLength > 8 && head[4] === 0x43 && head[5] === 0x32 && head[6] === 0x53 && head[7] === 0x56;
+        if (!isLegacy && !isContainer) throw new Error(`${name} is not a Caesar II save`);
+      }
       if (name === "history.dat" && data.byteLength !== 4000) throw new Error("history.dat must be 4000 bytes");
       if (name === "caesar2.inf" && (data.byteLength < 64 || data.byteLength > 1048576)) throw new Error("caesar2.inf has an invalid size");
       const dir = await directoryAt("user-data");
