@@ -1,5 +1,6 @@
 
 #include "c2_types.h"
+#include "c2_citizen_index.h"
 #include "c2_vars.h"
 #include "c2_data.h"
 
@@ -689,7 +690,7 @@ signed char fire_zones[100];
 int pseudo_map[PM_H][PM_W];
 unsigned char q_people_list[10];
 unsigned char cohort_in_action[10];
-struct citizen_rec citizen_list[201];
+struct citizen_rec citizen_list[PORT_CITIZEN_SLOTS];
 unsigned char empire[50];
 struct unit_rec unit_list[51];
 char ferret_run[22];

@@ -160,6 +160,53 @@ acts like a stable sentinel. Modern linkers do not preserve that adjacency;
 the resulting arbitrary sprite number appears as unrelated icons in dialog
 backgrounds and as an incorrect frame tile.
 
+Markets and businesses keep the citizen slot of the walker they last sent out
+in their own city cell (`+0x12`) and retire that walker when its replacement
+leaves, so one building never has two. `evolve_industrial_activity` assigns the
+replacement's target cell before calling `remove_envoy`, which then reads the
+recorded slot and retires whichever walker is in it and belongs to this
+building. Citizen slots are handed out lowest-free-first from a pool of 200
+(`create_citizen`), so once that pool is saturated a building's expired walker
+frees exactly the slot its own replacement is handed next — and the replacement
+retires itself on the tick it appears. The building then waits its full
+four-month dispatch interval believing it succeeded, which repeats for as long
+as the pool stays tight. Long-established markets hold the low slot numbers
+that are reclaimed first, so they stall first and stay stalled.
+
+`PORT_FIX_MARKET_ENVOY_SELF_KILL` skips the retirement when the recorded slot
+is the replacement itself (`c2_fix_envoy_retires_itself`). Replacing a walker
+that is genuinely still alive is unchanged, so a building still never keeps
+two. It defaults on for the portable continuation; set
+`-DPORT_FIX_MARKET_ENVOY_SELF_KILL=OFF` to retain the recovered
+self-retirement. The fix does not change how many walkers the city may have at
+once: the 200-slot pool and the dispatch order that serves markets and
+businesses last are recovered behavior and remain.
+
+The walker pool has a second, structural limit. Every walker index the engine
+stores is one byte: two per city cell (`citizen_a`, `citizen_b`: who stands on
+the tile), one per market or business cell (`industrial`: the walker it last
+sent out) and one per citizen (`target_kind`: a fighter's quarry). The 20-byte
+cell is addressed by raw byte offset throughout and is a raw image in the
+original save, so the pool of 200 cannot be raised past 254 in place. Each
+forum, prefecture, barracks, market and business keeps one to three walkers
+out at a time, so a city with about two hundred such buildings fills the pool
+and `create_citizen` refuses every later dispatch; the industrial pass runs
+last in the month, so markets and businesses are the buildings left unserved.
+
+`PORT_FEAT_WIDE_CITIZEN_INDEX` moves the three references into 16-bit side
+tables in `src/platform/common/c2_port_citizen_index.c` and raises the pool to
+`PORT_CITIZEN_POOL` (CMake cache value, default 1000). Every recovered access
+goes through `PORT_CELL_CITIZEN_A/B`, `PORT_CELL_ENVOY`, `PORT_CITIZEN_TARGET`
+and the six pool bounds through `PORT_CITIZEN_SLOTS`
+(`include/c2_citizen_index.h`); with the feature off they expand to the
+original bytes and `0xC9`, so the retained builds keep their exact text. A
+larger pool adds no walkers -- buildings dispatch on the same schedule and
+walkers live as long as before -- it only decides when dispatch fails, so
+below saturation the game is identical to the original. The port's save
+format persists the wide references; the original layout cannot, which is one
+reason it is import-only. Set `-DPORT_FEAT_WIDE_CITIZEN_INDEX=OFF` for the
+recovered byte references and pool.
+
 `C2_FIX_MOSAIC_RANDOM_SENTINEL` makes that accidental value an explicit 65th
 table element. It preserves the shipped visual sequence without relying on
 object adjacency and defaults on for the portable continuation. Set
@@ -388,14 +435,14 @@ Other extensions remain root-only; the resolver must not search unrelated
 media directories heuristically.
 
 Mutable storage is a separate namespace from assets. Save games,
-`caesar2.inf`, `history.dat`, and screenshots use a writable user-data root.
+`caesar2.inf`, and screenshots use a writable user-data root.
 The Emscripten SDL backend mounts and synchronizes IDBFS-backed `/user-data`
 before the engine starts, after which the legacy worker continues to perform
 synchronous file operations.
 
 The native host separates `asset_root` and `user_data_root`. `readfile` uses
 the asset service, while save-game enumeration, bulk `savegame` / `loadgame`
-streams, preferences, history data, autosaves, and screenshots use the
+streams, preferences, autosaves, and screenshots use the
 user-file service. The completed contract and save-layout treatment are
 documented in [user-data.md](user-data.md).
 
@@ -404,9 +451,9 @@ The command-line names expose that ownership directly. `--asset-root` (or
 `--user-data-dir` (or `C2_USER_DATA_DIR`) overrides the mutable runtime tree.
 When it is not overridden, the SDL backend uses its platform preference path:
 the XDG application-data location on Linux and the corresponding standard
-per-user location on Windows and macOS. Save games, `caesar2.inf`,
-`history.dat`, and screenshots all belong to this mutable namespace; asset
-fallback into it is forbidden.
+per-user location on Windows and macOS. Save games, `caesar2.inf`, and
+screenshots all belong to this mutable namespace; asset fallback into it is
+forbidden.
 
 The host returns every asset unchanged, with one exception above it:
 `readfile()` in `c2_port_compat.c` answers `c2.eng` and `help.eng` from the
@@ -422,17 +469,17 @@ These functions mix serialization or game fixups with raw file descriptors:
 - `capture_shot`.
 
 Their game behavior remains shared. Narrow portable guards replace only their
-open/read/write/seek/close operations with the complete-file platform service.
-The two native-pointer-bearing entity arrays are converted by an engine-side
-save codec; save ordering and post-load behavior are not duplicated in the
-platform layer.
-
-The complete portable save stream is assembled and validated in
-`src/platform/common/c2_port_save.c`. Engine call sites only delegate across
-that boundary and honor its success result. The platform implementation
-accepts the recovered registry's full 500-entry form, validates the exact
-legacy payload size, and reads a complete file before changing live state.
-DOS and Windows continue through the recovered descriptor/file operations.
+open/read/write/seek/close operations. `savegame` and `loadgame` delegate to
+the engine adapter in `src/platform/common/c2_port_save.c`, which captures the
+engine's state into a staging image and commits an image back; the format
+core in `c2_save_v1.c` translates between that image and the versioned
+FlatBuffers container, or imports the original layout into it. The three
+history functions keep the ring in memory through `c2_port_history_*`; there
+is no `history.dat` on the portable target. Engine call sites only delegate
+across that boundary and honor its success result; nothing reaches live
+state before the whole file has been verified, checksummed and its indices
+bounded. DOS and Windows continue through the recovered descriptor/file
+operations and the original layout. See [save-format.md](save-format.md).
 
 For screenshots, the shared engine passes the current indexed framebuffer and
 VGA palette read-only across the host boundary. The SDL backend encodes PNG

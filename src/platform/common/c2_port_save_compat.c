@@ -3,6 +3,12 @@
 
 #include "c2_save_compat.h"
 
+/*
+ * Layout guards for the recovered records the save format carries as byte
+ * images and for the original (version 0) layout the importer reads. There
+ * is no code here on purpose: the format's codec is c2_save_v1.c.
+ */
+
 #define C2_FIGURE_POINTER_OFFSET 0x0a
 #define C2_FIGURE_DISK_TAIL_OFFSET 0x12
 #define C2_ARROW_POINTER_OFFSET 0x08
@@ -58,102 +64,3 @@ _Static_assert(offsetof(struct arrow_rec, grid_x) ==
 _Static_assert(sizeof(struct arrow_rec) ==
                    C2_SAVE_ARROW_SIZE + (sizeof(void *) - 4),
                "arrow runtime record differs beyond its native pointer");
-
-static void write_pointer_marker(unsigned char *destination,
-                                 const void *pointer)
-{
-    destination[0] = pointer == NULL ? 0 : 1;
-    destination[1] = 0;
-    destination[2] = 0;
-    destination[3] = 0;
-}
-
-static void *read_pointer_marker(const unsigned char *source)
-{
-    return (source[0] | source[1] | source[2] | source[3]) == 0
-        ? NULL : (void *)(uintptr_t)1;
-}
-
-void c2_save_pack_figures(unsigned char *destination,
-                          const struct figure_rec *source)
-{
-    size_t i;
-
-    for (i = 0; i < C2_SAVE_FIGURE_COUNT; i++) {
-        const unsigned char *record;
-        unsigned char *disk_record;
-
-        record = (const unsigned char *)&source[i];
-        disk_record = destination + i * C2_SAVE_FIGURE_SIZE;
-        memcpy(disk_record, record, C2_FIGURE_POINTER_OFFSET);
-        write_pointer_marker(disk_record + C2_FIGURE_POINTER_OFFSET,
-                             source[i].arrow_data_ptr);
-        write_pointer_marker(disk_record + C2_FIGURE_POINTER_OFFSET + 4,
-                             source[i].sprite_data_ptr);
-        memcpy(disk_record + C2_FIGURE_DISK_TAIL_OFFSET,
-               record + offsetof(struct figure_rec, map_ref),
-               C2_SAVE_FIGURE_SIZE - C2_FIGURE_DISK_TAIL_OFFSET);
-    }
-}
-
-void c2_save_unpack_figures(struct figure_rec *destination,
-                            const unsigned char *source)
-{
-    size_t i;
-
-    for (i = 0; i < C2_SAVE_FIGURE_COUNT; i++) {
-        unsigned char *record;
-        const unsigned char *disk_record;
-
-        record = (unsigned char *)&destination[i];
-        disk_record = source + i * C2_SAVE_FIGURE_SIZE;
-        memcpy(record, disk_record, C2_FIGURE_POINTER_OFFSET);
-        destination[i].arrow_data_ptr = read_pointer_marker(
-            disk_record + C2_FIGURE_POINTER_OFFSET);
-        destination[i].sprite_data_ptr = read_pointer_marker(
-            disk_record + C2_FIGURE_POINTER_OFFSET + 4);
-        memcpy(record + offsetof(struct figure_rec, map_ref),
-               disk_record + C2_FIGURE_DISK_TAIL_OFFSET,
-               C2_SAVE_FIGURE_SIZE - C2_FIGURE_DISK_TAIL_OFFSET);
-    }
-}
-
-void c2_save_pack_arrows(unsigned char *destination,
-                         const struct arrow_rec *source)
-{
-    size_t i;
-
-    for (i = 0; i < C2_SAVE_ARROW_COUNT; i++) {
-        const unsigned char *record;
-        unsigned char *disk_record;
-
-        record = (const unsigned char *)&source[i];
-        disk_record = destination + i * C2_SAVE_ARROW_SIZE;
-        memcpy(disk_record, record, C2_ARROW_POINTER_OFFSET);
-        write_pointer_marker(disk_record + C2_ARROW_POINTER_OFFSET,
-                             source[i].arrow_data_ptr);
-        memcpy(disk_record + C2_ARROW_DISK_TAIL_OFFSET,
-               record + offsetof(struct arrow_rec, grid_x),
-               C2_SAVE_ARROW_SIZE - C2_ARROW_DISK_TAIL_OFFSET);
-    }
-}
-
-void c2_save_unpack_arrows(struct arrow_rec *destination,
-                           const unsigned char *source)
-{
-    size_t i;
-
-    for (i = 0; i < C2_SAVE_ARROW_COUNT; i++) {
-        unsigned char *record;
-        const unsigned char *disk_record;
-
-        record = (unsigned char *)&destination[i];
-        disk_record = source + i * C2_SAVE_ARROW_SIZE;
-        memcpy(record, disk_record, C2_ARROW_POINTER_OFFSET);
-        destination[i].arrow_data_ptr = read_pointer_marker(
-            disk_record + C2_ARROW_POINTER_OFFSET);
-        memcpy(record + offsetof(struct arrow_rec, grid_x),
-               disk_record + C2_ARROW_DISK_TAIL_OFFSET,
-               C2_SAVE_ARROW_SIZE - C2_ARROW_DISK_TAIL_OFFSET);
-    }
-}

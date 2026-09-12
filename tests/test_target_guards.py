@@ -41,6 +41,7 @@ ALLOWED_TOKENS = re.compile(
     # added by the port
     r"|PORT_PLATFORM(_(LINUX|WIN32|MACOS|WASM))?"
     r"|PORT_(FEAT|FIX|ENABLE|DEBUG)_[A-Z0-9_]+"
+    r"|PORT_CITIZEN_POOL"    # numeric tunable behind PORT_FEAT_WIDE_CITIZEN_INDEX
     r"|S_IRUSR"              # portable stat-mode fallback
     r"|_M_(X64|ARM64|IX86)"  # host CPU register set, platform backends only
     r"|\w+_H\b"              # include guards

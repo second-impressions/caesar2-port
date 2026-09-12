@@ -1,3 +1,4 @@
+#include "c2_citizen_index.h"
 #include "c2_data.h"
 
 /* Temporary coordinates used while tracing a route. */
@@ -287,11 +288,11 @@ void test_elastic_range(int radius, unsigned char reject_mask)
                     (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = 0xff;
                     continue;
                 }
-                if ((*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).citizen_a != 0) {
+                if (PORT_CELL_CITIZEN_A(gmn_sptr) != 0) {
                     (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = 0xff;
                     continue;
                 }
-                if ((*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).citizen_b != 0) {
+                if (PORT_CELL_CITIZEN_B(gmn_sptr) != 0) {
                     (*(struct city_cell *)((unsigned char *)city_map + (gmn_sptr))).road_aqueduct = 0xff;
                     continue;
                 }
@@ -2682,8 +2683,8 @@ void build_an_area(int x1, int y1, int x2, int y2,
             if (CM_CELL(cm_sptr).base_kind < 8)
                 if ((CM_CELL(cm_sptr).edge_bits & 0x80) != 0)
                     continue;
-            if (CM_CELL(cm_sptr).citizen_a != 0) continue;
-            if (CM_CELL(cm_sptr).citizen_b != 0) continue;
+            if (PORT_CELL_CITIZEN_A(cm_sptr) != 0) continue;
+            if (PORT_CELL_CITIZEN_B(cm_sptr) != 0) continue;
             particles_built++;
             if (CM_CELL(cm_sptr).base_kind < 0x1a) particles_cleared++;
             CM_CELL(cm_sptr).base_kind = base_kind;
@@ -2721,11 +2722,11 @@ int put_x1_area(int x, int y, char base_kind, int edge_bits, int color)
         illegal_build = 1;
         return 0;
     }
-    if ((*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).citizen_a != 0) {
+    if (PORT_CELL_CITIZEN_A(cm_sptr) != 0) {
         illegal_build = 1;
         return 0;
     }
-    if ((*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).citizen_b != 0) {
+    if (PORT_CELL_CITIZEN_B(cm_sptr) != 0) {
         illegal_build = 1;
         return 0;
     }
@@ -2790,8 +2791,8 @@ int put_x2_area(int x, int y, char base_kind, int edge_bits, int color)
             if (((*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).terrain   & 0xe7) != 0) bad = 1;
             if ((*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).base_kind < 8 &&
                 ((*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).edge_bits & 0x80) != 0) bad = 1;
-            if ((*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).citizen_a != 0) bad = 1;
-            if ((*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).citizen_b != 0) bad = 1;
+            if (PORT_CELL_CITIZEN_A(cm_sptr) != 0) bad = 1;
+            if (PORT_CELL_CITIZEN_B(cm_sptr) != 0) bad = 1;
             (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).edge_bits |= 1;
         }
     }
@@ -2867,8 +2868,8 @@ int put_x3_area(int x, int y, char base_kind, int edge_bits, int color)
             if (((*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).terrain   & 0xe7) != 0) bad = 1;
             if ((*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).base_kind < 8 &&
                 ((*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).edge_bits & 0x80) != 0) bad = 1;
-            if ((*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).citizen_a != 0) bad = 1;
-            if ((*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).citizen_b != 0) bad = 1;
+            if (PORT_CELL_CITIZEN_A(cm_sptr) != 0) bad = 1;
+            if (PORT_CELL_CITIZEN_B(cm_sptr) != 0) bad = 1;
             (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).edge_bits |= 1;
         }
     }
@@ -2944,8 +2945,8 @@ int put_x4_area(int x, int y, char base_kind, int edge_bits, int color)
             if (((*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).terrain   & 0xe7) != 0) bad = 1;
             if ((*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).base_kind < 8 &&
                 ((*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).edge_bits & 0x80) != 0) bad = 1;
-            if ((*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).citizen_a != 0) bad = 1;
-            if ((*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).citizen_b != 0) bad = 1;
+            if (PORT_CELL_CITIZEN_A(cm_sptr) != 0) bad = 1;
+            if (PORT_CELL_CITIZEN_B(cm_sptr) != 0) bad = 1;
             (*(struct city_cell *)((unsigned char *)city_map + ((cm_sptr)))).edge_bits |= 1;
         }
     }

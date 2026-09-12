@@ -125,9 +125,10 @@ build is isolated on its own scope.
 
 A storage pthread mounts one WasmFS OPFS backend before SDL host startup.
 Imported assets/cache live below `/persistent/game-data`; mutable files live
-below `/persistent/user-data`. Saves, `history.dat`, `caesar2.inf`, and
-screenshots survive reload without mirroring assets into the Wasm heap. The
-page can export individual saves/history/settings or a local store-only ZIP,
+below `/persistent/user-data`. Saves, `caesar2.inf`, and screenshots
+survive reload without mirroring assets into the Wasm heap. The page can
+export individual saves/settings or a local store-only ZIP (an old
+`history.dat` is exported if present, though the port no longer uses one),
 and game-data deletion is deliberately separate from save deletion.
 
 ## Pixel-exact presentation

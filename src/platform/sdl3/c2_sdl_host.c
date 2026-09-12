@@ -1132,6 +1132,26 @@ int c2_host_user_file_write_at(const char *filename, const void *buffer,
     return ok;
 }
 
+int c2_host_user_file_rename(const char *from, const char *to)
+{
+    char from_path[C2_PATH_CAPACITY];
+    char to_path[C2_PATH_CAPACITY];
+
+    if (!resolve_user_path(from_path, sizeof(from_path), from, 0) ||
+        !resolve_user_path(to_path, sizeof(to_path), to, 1)) {
+        return 0;
+    }
+    return SDL_RenamePath(from_path, to_path);
+}
+
+int c2_host_user_file_remove(const char *filename)
+{
+    char path[C2_PATH_CAPACITY];
+
+    if (!resolve_user_path(path, sizeof(path), filename, 0)) return 0;
+    return SDL_RemovePath(path);
+}
+
 int c2_host_user_file_exists(const char *filename)
 {
     char path[C2_PATH_CAPACITY];
