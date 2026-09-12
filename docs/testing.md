@@ -44,10 +44,11 @@ the final continue prompt, and verifies return to the original menu:
 ```
 
 The save/load scenario enters a city, saves `c2smoke.sav` through the recovered
-filename editor, reads the file back from the host, and compares all 221,745
-registered state bytes plus the 4,000-byte history block. It then changes the
-view, loads through the recovered dialog, repeats the complete comparison, and
-verifies semantic state after re-entry into the city loop. The native,
+filename editor, reads the file back from the host, and compares the state it
+describes against the live engine part by part (see
+[`docs/save-format.md`](save-format.md)). It then changes the view, loads
+through the recovered dialog, repeats the comparison, and verifies semantic
+state after re-entry into the city loop. The native,
 corruption-injection, and browser/OPFS layers are documented in
 [`docs/save-testing.md`](docs/save-testing.md):
 

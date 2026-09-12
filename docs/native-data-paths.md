@@ -123,7 +123,6 @@ $XDG_CONFIG_HOME/caesar2-port/          (default ~/.config/caesar2-port)
 $XDG_DATA_HOME/caesar2-port/            (default ~/.local/share/caesar2-port)
     user-data/
         *.sav, lastyear.sav
-        history.dat
         caesar2.inf
         shot*.png
     game-data/
@@ -143,7 +142,7 @@ computed manually from `XDG_CONFIG_HOME` with a `$HOME/.config` fallback.
 ```text
 %APPDATA%\caesar2-port\
     config.ini
-    user-data\           saves, history.dat, caesar2.inf, screenshots
+    user-data\           saves, caesar2.inf, screenshots
 
 %LOCALAPPDATA%\caesar2-port\
     game-data\           extracted contents, staging, active.json
@@ -169,8 +168,8 @@ fixed-size blobs that only this port reads, and SDL maps that folder to plain
 
 The layout is deliberately the same shape as the OPFS tree in
 `game-data-sources-plan.md`: a `game-data/` tree holding generations, staging
-and an `active.json` pointer, beside a `user-data/` tree holding saves,
-history and settings. Same names, same roles, same transactional activation.
+and an `active.json` pointer, beside a `user-data/` tree holding saves and
+settings. Same names, same roles, same transactional activation.
 One mental model, and the state machine tests can assert the same
 expectations against both targets.
 
