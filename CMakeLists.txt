@@ -199,6 +199,10 @@ option(C2_FIX_MOSAIC_RANDOM_SENTINEL
     "Define the mosaic walk's accidental byte-64 sentinel explicitly" ON)
 option(PORT_FIX_MARKET_ENVOY_SELF_KILL
     "Stop markets and businesses retiring the walker they just sent out" ON)
+option(PORT_FEAT_WIDE_CITIZEN_INDEX
+    "Keep walker indices in 16-bit side tables so the pool can exceed 254" ON)
+set(PORT_CITIZEN_POOL 1000 CACHE STRING
+    "Walker slots when PORT_FEAT_WIDE_CITIZEN_INDEX is on (200..65534; the original has 200)")
 option(PORT_ENABLE_ARROW_KEY_SCROLL
     "Use held arrow keys to pan the active map instead of moving the cursor" ON)
 option(PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER
@@ -255,6 +259,12 @@ if(PORT_FIX_MARKET_ENVOY_SELF_KILL)
     add_compile_definitions(PORT_FIX_MARKET_ENVOY_SELF_KILL=1)
 else()
     add_compile_definitions(PORT_FIX_MARKET_ENVOY_SELF_KILL=0)
+endif()
+if(PORT_FEAT_WIDE_CITIZEN_INDEX)
+    add_compile_definitions(PORT_FEAT_WIDE_CITIZEN_INDEX=1
+        PORT_CITIZEN_POOL=${PORT_CITIZEN_POOL})
+else()
+    add_compile_definitions(PORT_FEAT_WIDE_CITIZEN_INDEX=0)
 endif()
 if(PORT_ENABLE_ARROW_KEY_SCROLL)
     add_compile_definitions(PORT_FEAT_ARROW_KEY_SCROLL=1)
@@ -365,6 +375,7 @@ add_executable(caesar2
     src/platform/common/c2_port_app.c
     src/platform/common/c2_port_audio.c
     src/platform/common/c2_port_bugfixes.c
+    src/platform/common/c2_port_citizen_index.c
     src/platform/common/c2_port_compat.c
     src/platform/common/c2_port_input.c
     src/platform/common/c2_port_keymap.c
@@ -623,6 +634,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/platform/common/c2_port_app.c
         src/platform/common/c2_port_audio.c
         src/platform/common/c2_port_bugfixes.c
+        src/platform/common/c2_port_citizen_index.c
         src/platform/common/c2_port_compat.c
         src/platform/common/c2_port_input.c
         src/platform/common/c2_port_keymap.c

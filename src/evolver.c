@@ -1,4 +1,5 @@
 #include "c2_bugfixes.h"
+#include "c2_citizen_index.h"
 #include "c2_data.h"
 #include "c2_types.h"
 
@@ -1059,7 +1060,7 @@ void evolve_fort_activity(int rows)
                     res = put_out_a(4, (unsigned char)col, (unsigned char)(evolve_row + row), 0, 0, 1, 0);
                     if (res != 0) {
                         citizen_a = enemy_target;
-                        citizen_list[created_citizen_no].target_kind = citizen_a;
+                        PORT_CITIZEN_TARGET(created_citizen_no) = citizen_a;
                         citizen_list[created_citizen_no].target_marker = citizen_list[citizen_a].evolve_timer;
                         citizen_list[created_citizen_no].dest_x = citizen_list[citizen_a].x; citizen_list[created_citizen_no].dest_y = citizen_list[citizen_a].y;
                         citizen_list[created_citizen_no].state_idx = 1;
@@ -1187,7 +1188,7 @@ void evolve_industrial_activity(int rows)
                         citizen_list[created_citizen_no].saved_state_idx = 4;
                         citizen_list[created_citizen_no].target_ref = cm_sptr;
                         remove_envoy();
-                        ((unsigned char *)city_map)[cm_sptr + 0x12] = (unsigned char)created_citizen_no;
+                        PORT_CELL_ENVOY(cm_sptr) = PORT_CITIZEN_CAST(created_citizen_no);
                     }
                     buyers++; if (buyers >= 4) buyers = 0;
                 } else {
@@ -1217,7 +1218,7 @@ void evolve_industrial_activity(int rows)
                         citizen_list[created_citizen_no].saved_state_idx = 0xa;
                         citizen_list[created_citizen_no].target_ref = cm_sptr;
                         remove_envoy();
-                        ((unsigned char *)city_map)[cm_sptr + 0x12] = (unsigned char)created_citizen_no;
+                        PORT_CELL_ENVOY(cm_sptr) = PORT_CITIZEN_CAST(created_citizen_no);
                     }
                     buyers++; if (buyers >= 9) buyers = 0;
                 } else {
@@ -1237,7 +1238,7 @@ void evolve_industrial_activity(int rows)
 // FUNCTION: C2WIN 0x004654b5
 void remove_envoy(void)
 {
-    citizen_a = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).industrial;
+    citizen_a = PORT_CELL_ENVOY(cm_sptr);
 #if PORT_PLATFORM && PORT_FIX_MARKET_ENVOY_SELF_KILL
     /* Both callers assign the new envoy's target cell before calling this, so
      * a recycled slot matches the cell's recorded envoy and the replacement

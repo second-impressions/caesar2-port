@@ -1,5 +1,6 @@
 
 #include "pm_map1.h"
+#include "c2_citizen_index.h"
 #include "c2_data.h"
 
 struct byte_delta_rec fire_offs[16] = {
@@ -1488,8 +1489,8 @@ void place_sprite(int edge_side)
     citizen_b = 0;
     citizen_a = 0;
 #endif
-    citizen_a = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).citizen_a;
-    citizen_b = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).citizen_b;
+    citizen_a = PORT_CELL_CITIZEN_A(pm_shown_ptr);
+    citizen_b = PORT_CELL_CITIZEN_B(pm_shown_ptr);
     terrain_flags = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).terrain;
     if (flag_mode != 0)
         marker_kind = (*(struct city_cell *)((unsigned char *)city_map + (pm_shown_ptr))).road_aqueduct;

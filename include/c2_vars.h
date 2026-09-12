@@ -1,6 +1,8 @@
 #ifndef C2_VARS_H
 #define C2_VARS_H
 
+#include "c2_citizen_index.h"
+
 /*
  * Shared-variable declarations in recovered Watcom symbol-handle page order.
  * PS BSS ordering proves the 33 page boundaries.  Pages appear here in source
