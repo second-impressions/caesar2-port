@@ -1,3 +1,4 @@
+#include "c2_bugfixes.h"
 #include "c2_data.h"
 #include "c2_types.h"
 
@@ -1237,6 +1238,13 @@ void evolve_industrial_activity(int rows)
 void remove_envoy(void)
 {
     citizen_a = (*(struct city_cell *)((unsigned char *)city_map + (cm_sptr))).industrial;
+#if PORT_PLATFORM && PORT_FIX_MARKET_ENVOY_SELF_KILL
+    /* Both callers assign the new envoy's target cell before calling this, so
+     * a recycled slot matches the cell's recorded envoy and the replacement
+     * would retire itself before it ever walks. */
+    if (c2_fix_envoy_retires_itself(citizen_a, created_citizen_no))
+        return;
+#endif
     if (citizen_list[citizen_a].exists == 0)
         return;
     if (citizen_list[citizen_a].target_ref != cm_sptr)

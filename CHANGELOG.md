@@ -6,6 +6,11 @@ what changed for them, not which files moved.
 
 ## Unreleased
 
+- A market or business that was handed the same walker slot it had just
+  freed retired its new walker on the spot and then waited its usual four
+  months before trying again. It now keeps that walker. This does not
+  change how many walkers a city can have out at once.
+
 ## 1.0.3 - 2026-09-09
 
 - Installed GOG copies now provide music, speech and movies automatically:

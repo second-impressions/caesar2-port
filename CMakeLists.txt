@@ -197,6 +197,8 @@ option(PORT_FIX_LARGE_XMI_ASSETS
     "Accept official XMIDI assets larger than the legacy tune buffer" ON)
 option(C2_FIX_MOSAIC_RANDOM_SENTINEL
     "Define the mosaic walk's accidental byte-64 sentinel explicitly" ON)
+option(PORT_FIX_MARKET_ENVOY_SELF_KILL
+    "Stop markets and businesses retiring the walker they just sent out" ON)
 option(PORT_ENABLE_ARROW_KEY_SCROLL
     "Use held arrow keys to pan the active map instead of moving the cursor" ON)
 option(PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER
@@ -248,6 +250,11 @@ if(C2_FIX_MOSAIC_RANDOM_SENTINEL)
     add_compile_definitions(C2_FIX_MOSAIC_RANDOM_SENTINEL=1)
 else()
     add_compile_definitions(C2_FIX_MOSAIC_RANDOM_SENTINEL=0)
+endif()
+if(PORT_FIX_MARKET_ENVOY_SELF_KILL)
+    add_compile_definitions(PORT_FIX_MARKET_ENVOY_SELF_KILL=1)
+else()
+    add_compile_definitions(PORT_FIX_MARKET_ENVOY_SELF_KILL=0)
 endif()
 if(PORT_ENABLE_ARROW_KEY_SCROLL)
     add_compile_definitions(PORT_FEAT_ARROW_KEY_SCROLL=1)
