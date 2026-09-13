@@ -198,9 +198,16 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert 'id="operation-dialog"' in shell
     assert 'id="operation-progress"' in shell
     assert "beginOperation(\"Checking game data\", 0, \"Reading source catalog…\")" in shell
-    assert "elapsed" not in shell
+    assert "Reading the source catalog timed out after 2 minutes" in shell
+    assert "operationDetail.textContent = `${detail} (${seconds}s)`" in shell
     assert "onImportProgress(phase, completedKiB, totalKiB" in shell
     assert "onImportError(message)" in shell
+    assert "if (preparingAssets) finishImportFailure(pendingImportError)" in shell
+    assert "game data import rejected visibly" in shell
+    main = (ROOT / "src/platform/sdl3/c2_sdl_main.c").read_text()
+    joined = main.index("SDL_WaitThread(app->prepare_thread")
+    assert main.index("c2_browser_import_error(app->last_error", joined) > joined
+    assert "return SDL_APP_SUCCESS;" in main[joined:]
     assert "A CUE sheet needs its BIN image; select the BIN file" in shell
     assert "use Browse folder or drop the whole folder" in shell
     assert "beginOperation(\"Removing game data\"" in shell
@@ -503,9 +510,15 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     browser_bridge = (ROOT / "web" / "c2_browser.js").read_text()
     assert "c2_browser_import_progress" in browser_bridge
     assert "c2_browser_import_error" in browser_bridge
+    assert 'c2_browser_import_progress__proxy: "async"' in browser_bridge
     assert 'c2_browser_show_restart__proxy: "sync"' in browser_bridge
     wasm_smoke = (ROOT / "tools/smoke-wasm.mjs").read_text()
     assert 'save: "save/load disk and full-state verification restored"' in wasm_smoke
+    assert 'reject: "game data import rejected visibly"' in wasm_smoke
+    assert 'page.locator("#folder-input").setInputFiles(gameData)' in wasm_smoke
+    assert "gameDataIsDirectory" in wasm_smoke
+    serve = (ROOT / "tools" / "serve-wasm.py").read_text()
+    assert "unquote(urlsplit(path).path)" in serve
     assert 'Module["onGameExit"]()' in browser_bridge
     video = (ROOT / "src" / "platform" / "common" / "c2_port_video.c").read_text()
     assert "static int show_movie_fallback" in video

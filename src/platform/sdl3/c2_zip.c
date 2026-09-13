@@ -64,6 +64,12 @@ static void set_error(char *error, size_t capacity, const char *message)
     if (error && capacity) snprintf(error, capacity, "%s", message ? message : "archive error");
 }
 
+static void set_error_if_empty(char *error, size_t capacity,
+                               const char *message)
+{
+    if (error && capacity && error[0] == '\0') set_error(error, capacity, message);
+}
+
 static void report_progress(const struct c2_import_progress *progress,
                             uint64_t completed, uint64_t total,
                             size_t files, size_t total_files)
@@ -244,7 +250,10 @@ static struct zip_archive *open_archive(const char *path, char *error, size_t er
     size_t pos = 0;
     size_t i;
 
-    if (!archive) return NULL;
+    if (!archive) {
+        set_error(error, error_capacity, "out of memory opening ZIP");
+        return NULL;
+    }
     archive->file = fopen(path, "rb");
     if (!archive->file) { set_error(error, error_capacity, "could not open ZIP"); goto fail; }
     size = file_size(archive->file);
@@ -293,6 +302,7 @@ static struct zip_archive *open_archive(const char *path, char *error, size_t er
     free(directory);
     return archive;
 fail:
+    set_error_if_empty(error, error_capacity, "could not read ZIP archive");
     free(directory);
     close_archive(archive);
     return NULL;
@@ -409,6 +419,7 @@ int c2_zip_probe(const char *zip_path, enum c2_zip_content *content,
     char iso[C2_IMPORT_MAX_PATH] = {0};
     size_t i;
 
+    if (error && error_capacity) error[0] = '\0';
     *content = C2_ZIP_EMPTY;
     if (entry_capacity) entry[0] = '\0';
     archive = open_archive(zip_path, error, error_capacity);
@@ -456,6 +467,7 @@ int c2_zip_read_entry(const char *zip_path, const char *entry,
     uint64_t size;
     uint32_t crc;
 
+    if (error && error_capacity) error[0] = '\0';
     *size_out = 0;
     archive = open_archive(zip_path, error, error_capacity);
     if (!archive) return 0;
@@ -543,6 +555,7 @@ int c2_zip_stream_open(struct c2_zip_stream *stream, const char *zip_path,
     const struct zip_entry *item;
     const char *problem;
 
+    if (error && error_capacity) error[0] = '\0';
     memset(stream, 0, sizeof(*stream));
     state = calloc(1, sizeof(*state));
     stream->state = state;
@@ -634,6 +647,7 @@ int c2_zip_extract(const char *zip_path, const char *destination,
     uint64_t completed = 0;
     unsigned char *buffer = NULL;
 
+    if (error && error_capacity) error[0] = '\0';
     archive = open_archive(zip_path, error, error_capacity);
     if (!archive) return 0;
     for (i = 0; i < archive->count; i++) {
@@ -753,6 +767,7 @@ int c2_zip_extract(const char *zip_path, const char *destination,
     close_archive(archive);
     return 1;
 fail:
+    set_error_if_empty(error, error_capacity, "could not extract ZIP archive");
     free(buffer);
     free_items(items, count);
     close_archive(archive);

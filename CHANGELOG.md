@@ -6,6 +6,10 @@ what changed for them, not which files moved.
 
 ## Unreleased
 
+- Browser: a rejected game-data source now shows the reason instead of
+  remaining forever on “Reading source catalog”. Long catalogue reads show
+  elapsed time and stop with an error after two minutes.
+
 ## 1.0.3 - 2026-09-09
 
 - Installed GOG copies now provide music, speech and movies automatically:

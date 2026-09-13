@@ -38,8 +38,12 @@ int c2_cue_parse_single_data_track(const char *cue,
     int indexes;
     enum c2_cd_sector_mode selected;
 
+    if (error && error_capacity) error[0] = '\0';
     if (cue == NULL || bin_name == NULL || bin_name_capacity == 0 ||
-        mode == NULL) return 0;
+        mode == NULL) {
+        set_error(error, error_capacity, "invalid CUE parser arguments");
+        return 0;
+    }
     bin_name[0] = '\0';
     files = tracks = indexes = 0;
     selected = 0;
@@ -131,8 +135,12 @@ int c2_raw_cd_reader_init(struct c2_raw_cd_reader *reader,
                           char *error, size_t error_capacity)
 {
     unsigned char first[C2_RAW_SECTOR_SIZE];
+    if (error && error_capacity) error[0] = '\0';
     if (reader == NULL || raw == NULL || raw->read_at == NULL ||
-        (mode != C2_CD_MODE1_2352 && mode != C2_CD_MODE2_2352)) return 0;
+        (mode != C2_CD_MODE1_2352 && mode != C2_CD_MODE2_2352)) {
+        set_error(error, error_capacity, "invalid raw CD reader arguments");
+        return 0;
+    }
     if (raw->size == 0 || raw->size % C2_RAW_SECTOR_SIZE != 0) {
         set_error(error, error_capacity, "BIN size is not a whole number of raw sectors");
         return 0;

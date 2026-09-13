@@ -129,6 +129,54 @@ static void test_iso_catalog_reads_nested_file(void)
     free(memory.data);
 }
 
+static void test_iso_rejects_duplicate_folded_paths(void)
+{
+    static const unsigned char duplicate[] = "c2.eng;1";
+    struct memory_source memory;
+    struct c2_source_reader source;
+    struct c2_iso_catalog catalog;
+    unsigned char *directory;
+    char error[128];
+    size_t position = 0;
+
+    memory.data = make_iso(&memory.size);
+    directory = memory.data + 21 * SECTOR;
+    while (directory[position] != 0) position += directory[position];
+    record(directory + position, 22, 4, 0, duplicate, 8);
+    source.userdata = &memory;
+    source.size = memory.size;
+    source.read_at = memory_read;
+    TEST_ASSERT_FALSE(c2_iso_catalog_open(&source, &catalog,
+                                           error, sizeof(error)));
+    TEST_ASSERT_EQUAL_STRING("ISO contains duplicate case-insensitive paths",
+                             error);
+    free(memory.data);
+}
+
+static void test_iso_bounds_recursive_directory_catalogs(void)
+{
+    static const unsigned char loop[] = "LOOP";
+    struct memory_source memory;
+    struct c2_source_reader source;
+    struct c2_iso_catalog catalog;
+    unsigned char *directory;
+    char error[128];
+    size_t position = 0;
+
+    memory.data = make_iso(&memory.size);
+    directory = memory.data + 21 * SECTOR;
+    while (directory[position] != 0) position += directory[position];
+    record(directory + position, 21, SECTOR, 2, loop, 4);
+    source.userdata = &memory;
+    source.size = memory.size;
+    source.read_at = memory_read;
+    TEST_ASSERT_FALSE(c2_iso_catalog_open(&source, &catalog,
+                                           error, sizeof(error)));
+    TEST_ASSERT_EQUAL_STRING("ISO directory catalog exceeds safety limits",
+                             error);
+    free(memory.data);
+}
+
 static void test_cue_accepts_observed_modes(void)
 {
     char name[64];
@@ -246,6 +294,28 @@ static void test_pack_activates_default_profile(void)
     remove("c2-pack-test");
 }
 
+static void test_pack_rejects_oversized_index(void)
+{
+    FILE *file;
+    char active[256];
+    char error[128];
+
+    remove("c2-large-pack/C2PACK.IDX");
+    remove("c2-large-pack");
+    TEST_ASSERT_TRUE(SDL_CreateDirectory("c2-large-pack"));
+    file = fopen("c2-large-pack/C2PACK.IDX", "wb");
+    TEST_ASSERT_NOT_NULL(file);
+    TEST_ASSERT_EQUAL_INT(0, fseek(file, 16L * 1024L * 1024L, SEEK_SET));
+    TEST_ASSERT_TRUE(fputc('x', file) != EOF);
+    TEST_ASSERT_EQUAL_INT(0, fclose(file));
+    TEST_ASSERT_FALSE(c2_pack_activate("c2-large-pack", NULL,
+                                       active, sizeof(active),
+                                       error, sizeof(error)));
+    TEST_ASSERT_EQUAL_STRING("asset pack index exceeds safety limits", error);
+    remove("c2-large-pack/C2PACK.IDX");
+    remove("c2-large-pack");
+}
+
 static void test_gog_installation_imports_embedded_cd_image(void)
 {
     struct memory_source memory;
@@ -305,6 +375,48 @@ static void test_gog_installation_imports_embedded_cd_image(void)
     remove("c2-gog-install-test/C2.ENG");
     remove("c2-gog-install-test/HELP.ENG");
     remove("c2-gog-install-test");
+}
+
+static void test_import_failure_has_an_explanation(void)
+{
+    unsigned char *bad = calloc(17, SECTOR);
+    char root[256];
+    char error[256];
+    char **entries;
+    int entry_count;
+    int i;
+    FILE *file;
+
+    TEST_ASSERT_NOT_NULL(bad);
+    bad[16 * SECTOR] = 1;
+    memcpy(bad + 16 * SECTOR + 1, "CD001", 5);
+    bad[16 * SECTOR + 6] = 1;
+    remove("c2-invalid.iso");
+    file = fopen("c2-invalid.iso", "wb");
+    TEST_ASSERT_NOT_NULL(file);
+    TEST_ASSERT_EQUAL_size_t(17 * SECTOR,
+                             fwrite(bad, 1, 17 * SECTOR, file));
+    TEST_ASSERT_EQUAL_INT(0, fclose(file));
+    free(bad);
+
+    error[0] = '\0';
+    TEST_ASSERT_FALSE(c2_import_path("c2-invalid.iso", "c2-invalid-cache",
+                                     NULL, NULL, root, sizeof(root),
+                                     error, sizeof(error)));
+    TEST_ASSERT_EQUAL_STRING("invalid ISO-9660 root directory", error);
+    TEST_ASSERT_EQUAL_CHAR('\0', root[0]);
+    entries = SDL_GlobDirectory("c2-invalid-cache/game-data", "*", 0,
+                                &entry_count);
+    for (i = 0; entries && i < entry_count; i++) {
+        char path[512];
+        snprintf(path, sizeof(path), "c2-invalid-cache/game-data/%s",
+                 entries[i]);
+        remove(path);
+    }
+    SDL_free(entries);
+    remove("c2-invalid-cache/game-data");
+    remove("c2-invalid-cache");
+    remove("c2-invalid.iso");
 }
 
 static void test_raw_sector_adapter_feeds_iso_reader(void)
@@ -616,10 +728,14 @@ int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_iso_catalog_reads_nested_file);
+    RUN_TEST(test_iso_rejects_duplicate_folded_paths);
+    RUN_TEST(test_iso_bounds_recursive_directory_catalogs);
     RUN_TEST(test_cue_accepts_observed_modes);
     RUN_TEST(test_zip_extracts_one_outer_directory);
     RUN_TEST(test_pack_activates_default_profile);
+    RUN_TEST(test_pack_rejects_oversized_index);
     RUN_TEST(test_gog_installation_imports_embedded_cd_image);
+    RUN_TEST(test_import_failure_has_an_explanation);
     RUN_TEST(test_raw_sector_adapter_feeds_iso_reader);
     RUN_TEST(test_cdrom_reader_serves_iso_sectors);
     RUN_TEST(test_zip_streams_wrapped_cue_image);

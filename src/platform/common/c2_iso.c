@@ -9,7 +9,9 @@
 #define C2_ISO_MAX_DESCRIPTORS 240u
 #define C2_ISO_MAX_DEPTH 16u
 #define C2_ISO_MAX_ENTRIES 8192u
+#define C2_ISO_MAX_DIRECTORIES 4096u
 #define C2_ISO_MAX_DIRECTORY_SIZE (16u * 1024u * 1024u)
+#define C2_ISO_MAX_CATALOG_BYTES (64u * 1024u * 1024u)
 #define C2_ISO_MAX_PATH 512u
 
 static uint32_t read_le32(const unsigned char *p)
@@ -65,12 +67,8 @@ static int add_entry(struct c2_iso_catalog *catalog, const char *path,
     struct c2_iso_entry *grown;
     char *copy;
     size_t capacity;
-    size_t i;
 
     if (catalog->count >= C2_ISO_MAX_ENTRIES) return 0;
-    for (i = 0; i < catalog->count; i++) {
-        if (folded_equal(catalog->entries[i].path, path)) return 0;
-    }
     if (catalog->count == catalog->capacity) {
         capacity = catalog->capacity == 0 ? 128 : catalog->capacity * 2;
         if (capacity > C2_ISO_MAX_ENTRIES) capacity = C2_ISO_MAX_ENTRIES;
@@ -112,8 +110,14 @@ static int canonical_name(char *output, size_t capacity,
     return 1;
 }
 
+struct iso_walk_state {
+    size_t directories;
+    uint64_t catalog_bytes;
+};
+
 static int walk_directory(const struct c2_source_reader *source,
                           struct c2_iso_catalog *catalog,
+                          struct iso_walk_state *state,
                           uint32_t extent, uint32_t length,
                           const char *parent, unsigned int depth,
                           char *error, size_t error_capacity)
@@ -122,10 +126,14 @@ static int walk_directory(const struct c2_source_reader *source,
     uint64_t byte_offset;
     size_t position;
 
-    if (depth > C2_ISO_MAX_DEPTH || length > C2_ISO_MAX_DIRECTORY_SIZE) {
-        set_error(error, error_capacity, "ISO directory exceeds safety limits");
+    if (depth > C2_ISO_MAX_DEPTH || length > C2_ISO_MAX_DIRECTORY_SIZE ||
+        state->directories >= C2_ISO_MAX_DIRECTORIES ||
+        state->catalog_bytes > C2_ISO_MAX_CATALOG_BYTES - length) {
+        set_error(error, error_capacity, "ISO directory catalog exceeds safety limits");
         return 0;
     }
+    state->directories++;
+    state->catalog_bytes += length;
     byte_offset = (uint64_t)extent * C2_ISO_SECTOR_SIZE;
     if (byte_offset > source->size || length > source->size - byte_offset) {
         set_error(error, error_capacity, "ISO directory extent is outside the image");
@@ -202,7 +210,8 @@ static int walk_directory(const struct c2_source_reader *source,
             continue;
         }
         if ((record[25] & 2) != 0) {
-            if (!walk_directory(source, catalog, child_extent, child_length,
+            if (!walk_directory(source, catalog, state,
+                                child_extent, child_length,
                                 path, depth + 1, error, error_capacity)) {
                 free(data);
                 return 0;
@@ -215,6 +224,15 @@ static int walk_directory(const struct c2_source_reader *source,
     }
     free(data);
     return 1;
+}
+
+static int path_compare(const char *left, const char *right);
+
+static int compare_path(const void *left, const void *right)
+{
+    const struct c2_iso_entry *a = left;
+    const struct c2_iso_entry *b = right;
+    return path_compare(a->path, b->path);
 }
 
 static int compare_extent(const void *left, const void *right)
@@ -234,15 +252,22 @@ int c2_iso_catalog_open(const struct c2_source_reader *source,
     const unsigned char *root;
     uint32_t extent;
     uint32_t length;
+    struct iso_walk_state state;
+    size_t i;
     int found;
 
-    if (catalog == NULL) return 0;
+    if (error && error_capacity) error[0] = '\0';
+    if (catalog == NULL) {
+        set_error(error, error_capacity, "no ISO catalog output was provided");
+        return 0;
+    }
     memset(catalog, 0, sizeof(*catalog));
     if (source == NULL || source->read_at == NULL ||
         source->size < 17u * C2_ISO_SECTOR_SIZE) {
         set_error(error, error_capacity, "source is too small for ISO-9660");
         return 0;
     }
+    memset(&state, 0, sizeof(state));
     found = 0;
     for (index = 16; index < 16 + C2_ISO_MAX_DESCRIPTORS; index++) {
         if (!read_exact(source, (uint64_t)index * C2_ISO_SECTOR_SIZE,
@@ -270,10 +295,25 @@ int c2_iso_catalog_open(const struct c2_source_reader *source,
     }
     extent = read_le32(root + 2);
     length = read_le32(root + 10);
-    if (!walk_directory(source, catalog, extent, length, "", 0,
+    if (!walk_directory(source, catalog, &state, extent, length, "", 0,
                         error, error_capacity)) {
         c2_iso_catalog_close(catalog);
         return 0;
+    }
+    /* Detect folded-name collisions in O(n log n), not once against every
+     * preceding path. Besides making large valid discs predictable, this
+     * keeps a hostile catalog from turning the entry quota into quadratic
+     * work before it can be rejected. */
+    qsort(catalog->entries, catalog->count, sizeof(*catalog->entries),
+          compare_path);
+    for (i = 1; i < catalog->count; i++) {
+        if (folded_equal(catalog->entries[i - 1].path,
+                         catalog->entries[i].path)) {
+            c2_iso_catalog_close(catalog);
+            set_error(error, error_capacity,
+                      "ISO contains duplicate case-insensitive paths");
+            return 0;
+        }
     }
     /* Extent order makes extraction a single forward sweep, which is what
      * optical drives and sequential (deflated) sources want. */

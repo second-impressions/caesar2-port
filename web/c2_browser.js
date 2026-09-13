@@ -13,7 +13,7 @@ mergeInto(LibraryManager.library, {
     }
   },
   c2_browser_import_progress__deps: ["$UTF8ToString"],
-  c2_browser_import_progress__proxy: "sync",
+  c2_browser_import_progress__proxy: "async",
   c2_browser_import_progress: function(phase, completed, total,
                                        completedFiles, totalFiles) {
     if (Module["onImportProgress"]) {
