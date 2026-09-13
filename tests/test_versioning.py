@@ -52,7 +52,7 @@ def test_pages_deploys_the_single_main_wasm_build():
     assert workflow.count("emcmake cmake --preset wasm-release") == 1
     assert workflow.count("cmake --build build/ci-wasm") == 1
     assert "--clean-first" not in workflow
-    assert "needs: wasm" in workflow
+    assert "needs: [wasm, package, windows-msvc, macos]" in workflow
     # One site on the gh-pages branch: the latest published release at /,
     # main at /main/, each pull request from this repository at /pr/N/,
     # removed when it closes. One script writes every directory.
@@ -69,10 +69,24 @@ def test_pages_deploys_the_single_main_wasm_build():
     assert "preview-cleanup:" in workflow
     # Deployments, not comments, point at the previews.
     assert "deployments: write" in workflow
-    assert "environment: `preview/pr-${pr}`" in workflow
+    # One long-lived preview environment: the workflow token cannot delete
+    # environments, so a pull request owns deployments (by task), not an
+    # environment, and its deployments are removed when it closes.
+    assert "environment: 'preview', task: `preview/pr-${pr}`" in workflow
     assert "environment: 'main'" in workflow
     assert "pull-requests: write" not in workflow
-    assert (ROOT / ".github" / "scripts" / "deployment.js").exists()
+    deployment = (ROOT / ".github" / "scripts" / "deployment.js").read_text()
+    assert "deleteDeployment" in deployment
+    assert "deleteAnEnvironment" not in deployment
+    assert "auto_inactive: false" in deployment
+    # Native builds are published beside each web build, since Actions
+    # artifacts cannot be downloaded without a GitHub login.
+    assert "needs: [wasm, package, windows-msvc, macos]" in workflow
+    assert ".github/scripts/assemble-downloads.sh artifacts _site/downloads" in workflow
+    assert "pattern: caesar2-${{ env.C2_BUILD_LABEL }}-*" in workflow
+    # The branch stays one commit deep: binaries must not accumulate.
+    assert "git checkout --quiet --orphan" in script
+    assert "--force origin publish:gh-pages" in script
     assert "coi-serviceworker.js" in workflow
     assert "c2-shell.js" in workflow
     assert "c2-shell.css" in workflow

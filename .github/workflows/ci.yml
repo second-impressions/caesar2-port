@@ -256,20 +256,23 @@ jobs:
           name: caesar2-${{ env.C2_BUILD_LABEL }}-macos-arm64
           path: caesar2-macos-arm64.zip
 
-  # ── GitHub Pages: main and pull-request previews ─────────────────────
+  # ── GitHub Pages: main and pull-request previews, with downloads ───────
   # Pages serves one site per repository, from the gh-pages branch. The
   # root is the latest published release (pages-release.yml); main
   # publishes to /main/, every pull request from this repository to
   # /pr/N/ (forks get artifacts only: their token cannot write), and a
-  # closed pull request removes its directory. Pushes are serialized.
+  # closed pull request removes its directory. Each directory carries the
+  # web build and, under downloads/, the native builds of the same commit:
+  # Actions artifacts need a GitHub login, the site does not. Pushes are
+  # serialized and the branch is kept at one commit.
   publish:
-    name: Publish web build
+    name: Publish web build and downloads
     if: >-
       github.event_name == 'push' ||
       (github.event_name == 'pull_request' &&
        github.event.action != 'closed' &&
        github.event.pull_request.head.repo.full_name == github.repository)
-    needs: wasm
+    needs: [wasm, package, windows-msvc, macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -285,6 +288,12 @@ jobs:
         with:
           name: site
           path: _site
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: caesar2-${{ env.C2_BUILD_LABEL }}-*
+          path: artifacts
+      - name: Assemble the downloads
+        run: .github/scripts/assemble-downloads.sh artifacts _site/downloads "$C2_BUILD_LABEL" "$C2_GIT_HASH"
       - name: Publish to gh-pages
         env:
           GH_TOKEN: ${{ github.token }}
@@ -294,8 +303,9 @@ jobs:
           .github/scripts/publish-pages.sh "$target" _site "$GITHUB_SHA"
       - name: Record the deployment
         # The pull request gets "View deployment"; the Deployments sidebar
-        # lists what is live where. Pull requests deploy to a transient
-        # environment of their own, retired when they close.
+        # lists what is live where. Pull requests share one preview
+        # environment; each owns its deployments (task preview/pr-N), which
+        # are replaced on every push and removed when it closes.
         uses: actions/github-script@v9
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -304,8 +314,8 @@ jobs:
             const site = `https://${context.repo.owner}.github.io/${context.repo.repo}`;
             const pr = process.env.PR_NUMBER;
             await require('./.github/scripts/deployment.js').record({github, context, core}, pr
-              ? { environment: `preview/pr-${pr}`, url: `${site}/pr/${pr}/`, ref: context.payload.pull_request.head.sha, transient: true }
-              : { environment: 'main', url: `${site}/main/`, ref: context.sha });
+              ? { environment: 'preview', task: `preview/pr-${pr}`, url: `${site}/pr/${pr}/`, ref: context.payload.pull_request.head.sha }
+              : { environment: 'main', task: 'main', url: `${site}/main/`, ref: context.sha });
 
   preview-cleanup:
     name: Remove pull-request preview
@@ -328,7 +338,7 @@ jobs:
         with:
           script: |
             await require('./.github/scripts/deployment.js').retire({github, context, core},
-              { environment: `preview/pr-${process.env.PR_NUMBER}` });
+              { environment: 'preview', task: `preview/pr-${process.env.PR_NUMBER}` });
       - name: Remove pr/N from gh-pages
         env:
           GH_TOKEN: ${{ github.token }}
