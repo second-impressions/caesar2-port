@@ -115,13 +115,23 @@ CI publishes to the `gh-pages` branch, which Pages serves. The site root
 is the latest published release (`pages-release.yml` copies the release's
 web zip there when a draft is published; pre-releases stay off it). Every
 push to `main` lands at `/main/`, and every pull request from this
-repository gets its own build at `/pr/N/`, removed when it closes. Each
-directory is recorded as a GitHub Deployment (`.github/scripts/deployment.js`):
-the pull request shows *View deployment*, the repository's Deployments
-sidebar lists what is live in the `production`, `main` and transient
-`preview/pr-N` environments, and a closed pull request's environment is
-retired. The service worker registers relative to its directory, so each
-build is isolated on its own scope.
+repository gets its own build at `/pr/N/`, removed when it closes. Beside
+each web build, `downloads/` holds the native builds of the same commit
+(Linux tarball, Windows zip, macOS zip, with `SHA256SUMS`), assembled by
+`.github/scripts/assemble-downloads.sh` from the run's artifacts: Actions
+artifacts can only be fetched with a GitHub login, the site by anyone. The
+`gh-pages` branch is kept at a single commit so those files do not pile up
+in its history.
+
+Each directory is recorded as a GitHub Deployment
+(`.github/scripts/deployment.js`): the pull request shows *View deployment*
+and the repository's Deployments sidebar lists what is live in the
+`production`, `main` and `preview` environments. Pull requests share the
+one `preview` environment and own their deployments, tagged
+`preview/pr-N`; a push replaces the previous one and closing the pull
+request removes them. The workflow token cannot delete environments, which
+is why there is not one per pull request. The service worker registers
+relative to its directory, so each build is isolated on its own scope.
 
 A storage pthread mounts one WasmFS OPFS backend before SDL host startup.
 Imported assets/cache live below `/persistent/game-data`; mutable files live

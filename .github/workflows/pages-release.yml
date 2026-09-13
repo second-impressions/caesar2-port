@@ -52,6 +52,7 @@ jobs:
           script: |
             await require('./.github/scripts/deployment.js').record({github, context, core}, {
               environment: 'production',
+              task: 'release',
               url: `https://${context.repo.owner}.github.io/${context.repo.repo}/`,
               ref: process.env.release,
               production: true,
