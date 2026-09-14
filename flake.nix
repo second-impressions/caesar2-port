@@ -15,6 +15,23 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
+          # The save format's schema compiler. Pinned to the latest release
+          # independently of the nixpkgs lock: the runtime bundled under
+          # third_party/flatcc must be the same version, and the generated
+          # accessors under src/platform/common/c2_save_gen/ must come from
+          # it (tests/test_save_schema.py). Bump all three together.
+          flatcc = pkgs.flatcc.overrideAttrs (old: rec {
+            version = "0.6.3";
+            # nixpkgs' clang-15 patch and hexdigits fix are upstream since 0.6.2
+            patches = [ ];
+            postPatch = "";
+            src = pkgs.fetchFromGitHub {
+              owner = "dvidelabs";
+              repo = "flatcc";
+              tag = "v${version}";
+              hash = "sha256-kDZ05r/k15peBLGG2jzyeKwrdTn3+1PWrrDUmC3SV50=";
+            };
+          });
         in
         {
           default = pkgs.mkShell {
@@ -38,6 +55,7 @@
               pkgs.python313
               pkgs.uv
               pkgs.unity-test
+              flatcc                  # save-format schema compiler (tools/regen-save-schema.sh)
             ];
 
             # libstdc++/zlib must be resolvable so capstone (used by the

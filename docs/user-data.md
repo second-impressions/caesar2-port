@@ -19,7 +19,6 @@ The mutable files currently supported by the recovered engine are:
 | File | Purpose |
 | --- | --- |
 | `*.sav`, including `lastyear.sav` | manual saves and yearly autosaves |
-| `history.dat` | 200 five-value history rows used by the current game |
 | `caesar2.inf` | 64-byte preferences and career block |
 | `shot1.png` through `shot8.png` | portable screenshot hotkeys |
 | a `--screenshot` filename | portable diagnostic PNG output |
@@ -58,44 +57,11 @@ containing every `*.sav`, `history.dat`, and `caesar2.inf` file in the durable
 namespace. The same ZIP can be imported directly, with every entry passing the
 normal size and filename validation before it is written.
 
-Portable save serialization is owned by `src/platform/common`. The recovered
-registry contains exactly 500 live entries rather than a shorter list followed
-by a zero sentinel; the portable validator accepts either representation only
-when its blocks total the original 221,745-byte state payload. Loading first
-reads and validates the complete 225,745-byte file and writes its history
-sidecar before applying any state blocks, so a truncated or oversized file
-cannot leave the running engine partially deserialized. The recovered DOS and
-Windows file-descriptor implementations remain unchanged.
-
-## Save compatibility
-
-The original save is a fixed 225,745-byte stream: 221,745 bytes of registered
-state blocks followed by the 4,000-byte history file. The portable target
-retains that ordering and size.
-
-Watcom used one-byte packing for engine records. Portable engine structures
-therefore use scoped one-byte packing, with compile-time checks on every
-structured record present in the save registry. Most registered blocks can
-then be transferred unchanged.
-
-`figure_rec` and `arrow_rec` are the exceptions. Their runtime forms contain
-native pointers so they can safely run on 64-bit hosts, while the file format
-has 32-bit process-local image-pointer slots. `c2_save_compat` packs and
-unpacks those two arrays explicitly. Pointer values are not durable game
-state: each non-null pointer is written as the little-endian marker `1`, read
-as a temporary non-null marker, and rebound to the graphics loaded for the
-current battle before use. Every other byte remains unchanged.
-
-Unity tests cover the native-pointer conversion, normalized byte-for-byte
-round trips, host stream behavior, case-insensitive overwrite, and save-list
-enumeration. The optional `C2_TEST_SAVE_FIXTURE` CMake path enables the same
-round-trip check against an original 225,745-byte save without committing
-copyrighted game data. A Debug-only semantic smoke test additionally drives
-the recovered filename editor, save action, state mutation, load action, and
-city-loop re-entry through ordinary host input. It checks the file through the
-user-data service and verifies that the loaded province and view state match
-the state observed at save completion.
-
-Portable extensions must not be appended silently to this format. If new
-state becomes necessary, introduce an explicitly versioned container or
-sidecar while continuing to accept the original stream.
+      if (/\.sav$/i.test(name)) {
+        // Either the original 225,745-byte layout or the port's container
+        // (FlatBuffer with identifier "C2SV" at offset 4, docs/save-format.md).
+        const isLegacy = data.byteLength === 225745;
+        const head = new Uint8Array(data.buffer ?? data, data.byteOffset ?? 0, Math.min(8, data.byteLength));
+        const isContainer = data.byteLength > 8 && head[4] === 0x43 && head[5] === 0x32 && head[6] === 0x53 && head[7] === 0x56;
+        if (!isLegacy && !isContainer) throw new Error(`${name} is not a Caesar II save`);
+      }

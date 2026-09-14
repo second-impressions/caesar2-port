@@ -13,8 +13,19 @@ Packagers: declare these as bundled, e.g. `Provides: bundled(nuked-opl3)`.
 | `libsmacker/` | https://github.com/GregKennedy/libsmacker | commit `76094fb9` (1.2.0 + fixes, 2023) | LGPL-2.1-or-later (`COPYING`) | `patches/0001..0003`: decoder robustness fixes carried in the [second-impressions fork](https://github.com/second-impressions/libsmacker); submitted upstream |
 | `nuked-opl3/` | https://github.com/nukeykt/Nuked-OPL3 | 1.8 | LGPL-2.1-or-later (`LICENSE`) | none |
 | `font8x8/` | https://github.com/dhepper/font8x8 | `font8x8_basic.h` | Public domain | none |
+| `flatcc/` | https://github.com/dvidelabs/flatcc | 0.6.3 (pinned in `flake.nix` independently of the nixpkgs lock, so the dev-shell compiler and the bundled runtime agree) | Apache-2.0 (`LICENSE`, `NOTICE`) | none; runtime subset only (see below) |
 
 Only the files the port compiles are kept: `smacker.c`, `smacker.h`,
-`smk_malloc.h` from libsmacker; `opl3.c`, `opl3.h` from Nuked OPL3. To update
+`smk_malloc.h` from libsmacker; `opl3.c`, `opl3.h` from Nuked OPL3. From flatcc
+only the FlatBuffers *runtime* is kept -- `src/runtime/{builder,emitter,
+refmap,verifier}.c` and `include/flatcc/` without the JSON printer/parser,
+the compiler API header and the portable headers they alone need -- which
+upstream documents as the drop-in form for consumers. Distributions package
+flatcc for native hosts, but Emscripten has no port and the runtime is what
+the save format links on every target, so it is bundled like the decoders.
+The `flatcc` *compiler* is a development-time tool only: the accessors it
+generates from `src/platform/common/c2_save.fbs` are checked in under
+`src/platform/common/c2_save_gen/`; `tools/regen-save-schema.sh` refreshes
+them and `tests/test_save_schema.py` checks they are current. To update
 one, replace the files from upstream, re-apply `patches/` where present, and
 record the new version here.

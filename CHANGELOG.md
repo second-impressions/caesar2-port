@@ -6,6 +6,27 @@ what changed for them, not which files moved.
 
 ## Unreleased
 
+- The game's limit on walkers out at once is gone from the port. The original
+  keeps 200 slots for every tax collector, vigile, market trader and business
+  walker in the city, and a large city -- around 200 forums, prefectures,
+  markets and businesses -- fills them, after which some markets and
+  businesses are never served no matter how many are built. The port now has
+  1,000 slots (a build-time setting). Below the old limit the
+  game plays exactly as before: the slots only decide when a building is
+  refused, never how many walkers it sends.
+- Saves use a new file format. It keeps the same `.sav` name, carries a
+  version and a checksum, checks every value it reads, and is written in one
+  piece so an interrupted save cannot destroy the slot it was replacing. The
+  yearly-graph history now travels inside each save instead of a separate
+  `history.dat`, so loading a save brings its own graphs with it. Saves from
+  the original game and from earlier versions of the port load as before;
+  saves written by the port no longer open in the original DOS or Windows
+  game. An old `history.dat` in the user-data folder is ignored.
+- A market or business that was handed the same walker slot it had just
+  freed retired its new walker on the spot and then waited its usual four
+  months before trying again. It now keeps that walker. This does not
+  change how many walkers a city can have out at once.
+
 ## 1.0.3 - 2026-09-09
 
 - Installed GOG copies now provide music, speech and movies automatically:

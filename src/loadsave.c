@@ -880,7 +880,7 @@ void act_cancel_file_op(void) { out1 = 1; }
 int savegame(char *save_filename)
 {
 #if PORT_FEAT_DEBUG_OBSERVATION
-    size_t save_mismatch_offset;
+    const char *save_mismatch_part;
     int save_state_verified = 0;
 #endif
 #if !PORT_PLATFORM
@@ -927,10 +927,10 @@ int savegame(char *save_filename)
 #if PORT_FEAT_DEBUG_OBSERVATION
     save_state_verified = c2_port_save_state_file_matches(
         save_filename, savegame_entries, C2_SAVE_REGISTRY_CAPACITY, figure_list, arrow_list,
-        &save_mismatch_offset);
+        &save_mismatch_part);
     if (!save_state_verified) {
-        fprintf(stderr, "save readback differs at offset %zu\n",
-                save_mismatch_offset);
+        fprintf(stderr, "save readback differs in %s\n",
+                save_mismatch_part ? save_mismatch_part : "(unreadable)");
     }
 #endif
 #else
@@ -971,7 +971,7 @@ int savegame(char *save_filename)
 int loadgame(char *save_filename)
 {
 #if PORT_FEAT_DEBUG_OBSERVATION
-    size_t load_mismatch_offset;
+    const char *load_mismatch_part;
     int load_state_verified = 0;
 #endif
 #if !PORT_PLATFORM
@@ -989,10 +989,10 @@ int loadgame(char *save_filename)
 #if PORT_FEAT_DEBUG_OBSERVATION
     load_state_verified = c2_port_save_state_file_matches(
         save_filename, savegame_entries, C2_SAVE_REGISTRY_CAPACITY, figure_list, arrow_list,
-        &load_mismatch_offset);
+        &load_mismatch_part);
     if (!load_state_verified) {
-        fprintf(stderr, "loaded state differs at offset %zu\n",
-                load_mismatch_offset);
+        fprintf(stderr, "loaded state differs in %s\n",
+                load_mismatch_part ? load_mismatch_part : "(unreadable)");
     }
 #endif
 #else
@@ -1040,10 +1040,10 @@ int loadgame(char *save_filename)
     if (load_state_verified) {
         load_state_verified = c2_port_save_state_file_matches(
             save_filename, savegame_entries, C2_SAVE_REGISTRY_CAPACITY, figure_list, arrow_list,
-            &load_mismatch_offset);
+            &load_mismatch_part);
         if (!load_state_verified) {
-            fprintf(stderr, "post-load state differs at offset %zu\n",
-                    load_mismatch_offset);
+            fprintf(stderr, "post-load state differs in %s\n",
+                    load_mismatch_part ? load_mismatch_part : "(unreadable)");
         }
     }
 #endif
@@ -1428,9 +1428,7 @@ int out_of_sync(void)
 // FUNCTION: C2WIN 0x00483fd3 REORDERED
 void setup_history_data(void)
 {
-#if PORT_PLATFORM
-    int history_buffer[1000];
-#else
+#if !PORT_PLATFORM
     int history_fd;
 #endif
     int i;
@@ -1438,9 +1436,9 @@ void setup_history_data(void)
     for (i = 0; i < 5; i++)
         history_entry[i] = 0;
 #if PORT_PLATFORM
-    memset(history_buffer, 0, sizeof(history_buffer));
-    if (writefile("history.dat", (char *)history_buffer,
-                  sizeof(history_buffer)) != sizeof(history_buffer)) return;
+    /* The ring lives in memory and travels with the save; there is no
+     * history.dat on the portable target. */
+    c2_port_history_reset();
 #else
     history_fd = open("history.dat", O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0x180);
     if (history_fd == -1) return;
@@ -1468,8 +1466,8 @@ void save_history(void)
 
     file_offset = history_end_ptr * 20;
 #if PORT_PLATFORM
-    if (write_to_file("history.dat", (char *)history_entry, 0x14,
-                      file_offset) != 0x14) return;
+    (void)file_offset;
+    c2_port_history_store(history_entry, history_end_ptr);
 #else
     history_fd = open("history.dat", O_WRONLY | O_CREAT | O_BINARY, 0x180);
     if (history_fd == -1) return;
@@ -1492,7 +1490,7 @@ void save_history(void)
 void get_history_in_buffer(int *history_buf)
 {
 #if PORT_PLATFORM
-    read_userfile("history.dat", history_buf, 0xfa0, 0);
+    c2_port_history_copy(history_buf);
 #else
     int history_fd;
 

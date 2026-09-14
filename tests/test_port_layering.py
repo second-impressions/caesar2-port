@@ -113,7 +113,7 @@ def test_dependencies_come_from_the_build_host():
     assert "find_package(ZLIB REQUIRED)" in cmake
     assert "add_subdirectory(third_party" not in cmake
     bundled = sorted(p.name for p in (ROOT / "third_party").iterdir() if p.is_dir())
-    assert bundled == ["font8x8", "libsmacker", "nuked-opl3"]
+    assert bundled == ["flatcc", "font8x8", "libsmacker", "nuked-opl3"]
     provenance = (ROOT / "third_party/README.md").read_text()
     for name in bundled:
         assert f"`{name}/`" in provenance

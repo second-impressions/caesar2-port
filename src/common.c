@@ -1,5 +1,6 @@
 
 #include "c2_tu_prefix_common.h"
+#include "c2_citizen_index.h"
 #include "c2_data.h"
 #include "c2_types.h"
 
@@ -71,8 +72,8 @@ int create_citizen(int type, int x, int y, unsigned char is_barb)
 
     ref = (y * 0x50 + x) * 0x14;
     terrain = CM_CELL((ref)).terrain;
-    citizen_a = (unsigned char)CM_CELL((ref)).citizen_a;
-    citizen_b = (unsigned char)CM_CELL((ref)).citizen_b;
+    citizen_a = PORT_CITIZEN_CAST(PORT_CELL_CITIZEN_A(ref));
+    citizen_b = PORT_CITIZEN_CAST(PORT_CELL_CITIZEN_B(ref));
     if (citizen_a != 0 && citizen_b != 0)
         return 0;
     if ((terrain & 0x8b) != 0)
@@ -84,7 +85,7 @@ int create_citizen(int type, int x, int y, unsigned char is_barb)
         if ((terrain & 0x54) != 0)
             return 0;
     }
-    for (created_citizen_no = 1; created_citizen_no < 0xC9; created_citizen_no++) {
+    for (created_citizen_no = 1; created_citizen_no < PORT_CITIZEN_SLOTS; created_citizen_no++) {
         if (citizen_list[created_citizen_no].exists == 0) {
             citizen_list[created_citizen_no].exists = 1;
             citizen_list[created_citizen_no].evolve_timer = (evolve_count + rand128) & 0x7fff;
@@ -98,9 +99,9 @@ int create_citizen(int type, int x, int y, unsigned char is_barb)
             citizen_list[created_citizen_no].speed = 5;
             citizen_list[created_citizen_no].state = 0;
             if (citizen_a == 0) {
-                CM_CELL((ref)).citizen_a = created_citizen_no;
+                PORT_CELL_CITIZEN_A(ref) = created_citizen_no;
             } else {
-                CM_CELL((ref)).citizen_b = created_citizen_no;
+                PORT_CELL_CITIZEN_B(ref) = created_citizen_no;
             }
             CM_CELL((ref)).edge_bits = CM_CELL((ref)).edge_bits | 1;
             if (is_barb != 0) {
@@ -369,12 +370,15 @@ void remove_figure(int figure_idx)
 // FUNCTION: C2WIN 0x0046a055
 void remove_citizen(int n)
 {
-    if (CM_CELL(citizen_list[n].map_ref).citizen_a == n) {
-        CM_CELL(citizen_list[n].map_ref).citizen_a = 0;
-    } else if (CM_CELL(citizen_list[n].map_ref).citizen_b == n) {
-        CM_CELL(citizen_list[n].map_ref).citizen_b = 0;
+    if (PORT_CELL_CITIZEN_A(citizen_list[n].map_ref) == n) {
+        PORT_CELL_CITIZEN_A(citizen_list[n].map_ref) = 0;
+    } else if (PORT_CELL_CITIZEN_B(citizen_list[n].map_ref) == n) {
+        PORT_CELL_CITIZEN_B(citizen_list[n].map_ref) = 0;
     }
     clear_citizen(&citizen_list[n]);
+#if PORT_FEAT_WIDE_CITIZEN_INDEX
+    PORT_CITIZEN_TARGET(n) = 0;
+#endif
 }
 
 // Releases an army's region-map cell and clears its record.
@@ -422,6 +426,12 @@ void clear_arrow_list(void)
 void check_citizen_list(void)
 {
     int i;
+#if PORT_FEAT_WIDE_CITIZEN_INDEX
+    for (i = 0; i < PORT_CITY_CELLS; i++) {
+        c2_cell_citizen_a[i] = 0;
+        c2_cell_citizen_b[i] = 0;
+    }
+#else
     /* Clear citizen slots in city_map (unrolled 4x, 20 bytes/cell) */
     for (i = 0; i < 128000; i += 80) {
         CM_CELL((i)).citizen_a = 0;
@@ -433,17 +443,18 @@ void check_citizen_list(void)
         CM_CELL((i + 3 * CITY_CELL_BYTES)).citizen_a = 0;
         CM_CELL((i + 3 * CITY_CELL_BYTES)).citizen_b = 0;
     }
+#endif
     /* Re-assign citizens to their map cells */
-    for (citizen_no = 1; citizen_no < 201; citizen_no++) {
+    for (citizen_no = 1; citizen_no < PORT_CITIZEN_SLOTS; citizen_no++) {
         if (citizen_list[citizen_no].exists != 0) {
-            citizen_a = (unsigned char)CM_CELL(citizen_list[citizen_no].map_ref).citizen_a;
-            citizen_b = (unsigned char)CM_CELL(citizen_list[citizen_no].map_ref).citizen_b;
+            citizen_a = PORT_CITIZEN_CAST(PORT_CELL_CITIZEN_A(citizen_list[citizen_no].map_ref));
+            citizen_b = PORT_CITIZEN_CAST(PORT_CELL_CITIZEN_B(citizen_list[citizen_no].map_ref));
             if (citizen_a == 0) {
-                CM_CELL(citizen_list[citizen_no].map_ref).citizen_a = citizen_no;
+                PORT_CELL_CITIZEN_A(citizen_list[citizen_no].map_ref) = citizen_no;
                 continue;
             }
             if (citizen_b == 0) {
-                CM_CELL(citizen_list[citizen_no].map_ref).citizen_b = citizen_no;
+                PORT_CELL_CITIZEN_B(citizen_list[citizen_no].map_ref) = citizen_no;
                 continue;
             }
             clear_citizen(&citizen_list[citizen_no]);
@@ -489,7 +500,7 @@ void clear_citizen_list(void)
 {
     int i;
 
-    for (citizen_no = 1; citizen_no < 0xC9; citizen_no++) {
+    for (citizen_no = 1; citizen_no < PORT_CITIZEN_SLOTS; citizen_no++) {
         remove_citizen(citizen_no);
     }
 }

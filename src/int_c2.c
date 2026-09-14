@@ -1,4 +1,5 @@
 
+#include "c2_citizen_index.h"
 #include "c2_data.h"
 #include "c2_types.h"
 
@@ -74,7 +75,7 @@ void citizen_intelligence(void)
     no_of_rioters    = (no_of_rioters    > 1);
     no_of_barbarians = (no_of_barbarians > 1);
     no_of_citizens = 0;
-    for (citizen_no = 0; citizen_no < 0xc9; citizen_no++) {
+    for (citizen_no = 0; citizen_no < PORT_CITIZEN_SLOTS; citizen_no++) {
         if (citizen_list[citizen_no].exists != 0) {
             no_of_citizens++;
             if (citizen_list[citizen_no].type <= 0 || citizen_list[citizen_no].type >= 8) remove_citizen(citizen_no);
@@ -412,7 +413,7 @@ void s06_quell_trouble(void)
     citizen_list[citizen_no].action_kind = 1;
     if (citizen_maraude_to_target(2) == 0) {
     } else if (citizen_list[citizen_no].flag_bits & 1) {
-        citizen_a = citizen_list[citizen_no].target_kind;
+        citizen_a = PORT_CITIZEN_TARGET(citizen_no);
         if (citizen_list[citizen_a].exists != 0 &&
             citizen_list[citizen_no].target_marker ==
                 citizen_list[citizen_a].evolve_timer) {
@@ -431,7 +432,7 @@ void s06_quell_trouble(void)
             if (citizen_a == 0) {
                 citizen_list[citizen_no].state_idx = 2;
             } else {
-                citizen_list[citizen_no].target_kind = citizen_a;
+                PORT_CITIZEN_TARGET(citizen_no) = citizen_a;
                 citizen_list[citizen_no].target_marker =
                     citizen_list[citizen_a].evolve_timer;
                 citizen_list[citizen_no].dest_x =
@@ -460,7 +461,7 @@ void s07_army_patrol(void)
             citizen_a = find_enemy(citizen_list[citizen_no].x,
                                    citizen_list[citizen_no].y, 10);
             if (citizen_a != 0) {
-                citizen_list[citizen_no].target_kind = citizen_a;
+                PORT_CITIZEN_TARGET(citizen_no) = citizen_a;
                 citizen_list[citizen_no].target_marker =
                     citizen_list[citizen_a].evolve_timer;
                 citizen_list[citizen_no].dest_x =
@@ -507,7 +508,7 @@ void s08_vigile_patrol(void)
             citizen_a = find_enemy(citizen_list[citizen_no].x,
                                    citizen_list[citizen_no].y, 10);
             if (citizen_a != 0) {
-                citizen_list[citizen_no].target_kind = citizen_a;
+                PORT_CITIZEN_TARGET(citizen_no) = citizen_a;
                 citizen_list[citizen_no].target_marker =
                     citizen_list[citizen_a].evolve_timer;
                 citizen_list[citizen_no].dest_x =
@@ -545,18 +546,18 @@ void s09_fire_fight(void)
     } else {
         if (citizen_list[citizen_no].flag_bits & 2) {
             citizen_list[citizen_no].state_idx = 9;
-            citizen_list[citizen_no].target_kind = 0;
+            PORT_CITIZEN_TARGET(citizen_no) = 0;
             citizen_list[citizen_no].flag_bits &= 0xfd;
         }
         if (citizen_list[citizen_no].flag_bits & 1) {
             if (putting_out_fire() != 0) {
                 citizen_list[citizen_no].action_kind = 0;
-                citizen_list[citizen_no].target_kind = 0;
+                PORT_CITIZEN_TARGET(citizen_no) = 0;
             } else {
                 if (confirm_fire_target() != 0) {
                     citizen_list[citizen_no].action_kind = 1;
                 } else {
-                    citizen_list[citizen_no].target_kind = 0;
+                    PORT_CITIZEN_TARGET(citizen_no) = 0;
                     citizen_list[citizen_no].action_kind = 0;
                     citizen_list[citizen_no].target_ref = 0;
                     if (test_fire_zones() != 0) {
@@ -565,7 +566,7 @@ void s09_fire_fight(void)
                             citizen_list[citizen_no].dest_y = z_y;
                             citizen_list[citizen_no].target_ref = z_ptr;
                             citizen_list[citizen_no].wf_active = 0;
-                            citizen_list[citizen_no].target_kind = 1;
+                            PORT_CITIZEN_TARGET(citizen_no) = 1;
                             citizen_list[citizen_no].action_kind = 1;
                         }
                     } else {
@@ -1403,7 +1404,7 @@ int find_enemy(int center_x, int center_y, int radius)
     max_y = center_y + radius;        if (max_y >= 0x50) max_y = 0x4f;
     best_dist = radius + 1;
     enemy_idx = 0;
-    for (enemy_citizen = 0; enemy_citizen < 0xc9; enemy_citizen++) {
+    for (enemy_citizen = 0; enemy_citizen < PORT_CITIZEN_SLOTS; enemy_citizen++) {
         if (citizen_list[enemy_citizen].exists != 0
          && (citizen_list[enemy_citizen].type == 3
           || citizen_list[enemy_citizen].type == 7)
@@ -1720,8 +1721,8 @@ int try_this_citymap_square(int cell_offset, int movement_kind, int unused_arg)
     int cell_ref;
 
     (void)unused_arg;
-    citizen_a = (short)(unsigned char)(*(struct city_cell *)((unsigned char *)city_map + (cell_offset))).citizen_a;
-    citizen_b = (short)(unsigned char)(*(struct city_cell *)((unsigned char *)city_map + (cell_offset))).citizen_b;
+    citizen_a = (short)PORT_CITIZEN_CAST(PORT_CELL_CITIZEN_A(cell_offset));
+    citizen_b = (short)PORT_CITIZEN_CAST(PORT_CELL_CITIZEN_B(cell_offset));
     terrain   = (*(struct city_cell *)((unsigned char *)city_map + (cell_offset))).terrain;
 
     if (citizen_a != 0) handle_collision(citizen_a);
@@ -1860,14 +1861,10 @@ void fight_barbarian(int other_idx)
 // FUNCTION: C2WIN 0x0040ab44
 void move_citizen(void)
 {
-    if ((*(struct city_cell *)((unsigned char *)city_map +
-        citizen_list[citizen_no].map_ref)).citizen_a == citizen_no) {
-        (*(struct city_cell *)((unsigned char *)city_map +
-            citizen_list[citizen_no].map_ref)).citizen_a = 0;
-    } else if ((*(struct city_cell *)((unsigned char *)city_map +
-        citizen_list[citizen_no].map_ref)).citizen_b == citizen_no) {
-        (*(struct city_cell *)((unsigned char *)city_map +
-            citizen_list[citizen_no].map_ref)).citizen_b = 0;
+    if (PORT_CELL_CITIZEN_A(citizen_list[citizen_no].map_ref) == citizen_no) {
+        PORT_CELL_CITIZEN_A(citizen_list[citizen_no].map_ref) = 0;
+    } else if (PORT_CELL_CITIZEN_B(citizen_list[citizen_no].map_ref) == citizen_no) {
+        PORT_CELL_CITIZEN_B(citizen_list[citizen_no].map_ref) = 0;
     }
 
     switch (citizen_list[citizen_no].world_dir) {
@@ -1916,14 +1913,10 @@ void move_citizen(void)
         break;
     }
 
-    if ((*(struct city_cell *)((unsigned char *)city_map +
-        citizen_list[citizen_no].map_ref)).citizen_a == 0) {
-        (*(struct city_cell *)((unsigned char *)city_map +
-            citizen_list[citizen_no].map_ref)).citizen_a = citizen_no;
-    } else if ((*(struct city_cell *)((unsigned char *)city_map +
-        citizen_list[citizen_no].map_ref)).citizen_b == 0) {
-        (*(struct city_cell *)((unsigned char *)city_map +
-            citizen_list[citizen_no].map_ref)).citizen_b = citizen_no;
+    if (PORT_CELL_CITIZEN_A(citizen_list[citizen_no].map_ref) == 0) {
+        PORT_CELL_CITIZEN_A(citizen_list[citizen_no].map_ref) = citizen_no;
+    } else if (PORT_CELL_CITIZEN_B(citizen_list[citizen_no].map_ref) == 0) {
+        PORT_CELL_CITIZEN_B(citizen_list[citizen_no].map_ref) = citizen_no;
     } else {
         high_beep();
         remove_citizen(citizen_no);
@@ -2026,7 +2019,13 @@ void get_dirc_from_army_wf_run(void);
 // FUNCTION: C2WIN 0x0040b607
 int city_test_for_road(int cell_x, int cell_y, int cell_offset, signed char heading)
 {
+#if PORT_FEAT_WIDE_CITIZEN_INDEX
+    /* Columns 1 and 2 hold citizen indices; a byte would fold index 256 to
+     * "nobody here". Only the road flag in column 0 and zero-tests are used. */
+    unsigned short road_list[8][3];
+#else
     char road_list[8][3];
+#endif
     signed char reverse_dir;
     signed char road_dir;
     int i;
@@ -2039,29 +2038,29 @@ int city_test_for_road(int cell_x, int cell_y, int cell_offset, signed char head
     if (cell_y > 0) {
         if ((*(struct city_cell *)((unsigned char *)city_map + ((cell_offset - 1600)))).terrain & 0x20) {
             road_list[0][0] = 1;
-            road_list[0][1] = (*(struct city_cell *)((unsigned char *)city_map + ((cell_offset - 1600)))).citizen_a;
-            road_list[0][2] = (*(struct city_cell *)((unsigned char *)city_map + ((cell_offset - 1600)))).citizen_b;
+            road_list[0][1] = PORT_CELL_CITIZEN_A(cell_offset - 1600);
+            road_list[0][2] = PORT_CELL_CITIZEN_B(cell_offset - 1600);
         }
     }
     if (cell_x < 0x4f) {
         if ((*(struct city_cell *)((unsigned char *)city_map + ((cell_offset + 20)))).terrain & 0x20) {
             road_list[2][0] = 1;
-            road_list[2][1] = (*(struct city_cell *)((unsigned char *)city_map + ((cell_offset + 20)))).citizen_a;
-            road_list[2][2] = (*(struct city_cell *)((unsigned char *)city_map + ((cell_offset + 20)))).citizen_b;
+            road_list[2][1] = PORT_CELL_CITIZEN_A(cell_offset + 20);
+            road_list[2][2] = PORT_CELL_CITIZEN_B(cell_offset + 20);
         }
     }
     if (cell_y < 0x4f) {
         if ((*(struct city_cell *)((unsigned char *)city_map + ((cell_offset + 1600)))).terrain & 0x20) {
             road_list[4][0] = 1;
-            road_list[4][1] = (*(struct city_cell *)((unsigned char *)city_map + ((cell_offset + 1600)))).citizen_a;
-            road_list[4][2] = (*(struct city_cell *)((unsigned char *)city_map + ((cell_offset + 1600)))).citizen_a;
+            road_list[4][1] = PORT_CELL_CITIZEN_A(cell_offset + 1600);
+            road_list[4][2] = PORT_CELL_CITIZEN_A(cell_offset + 1600);
         }
     }
     if (cell_x > 0) {
         if ((*(struct city_cell *)((unsigned char *)city_map + ((cell_offset - 20)))).terrain & 0x20) {
             road_list[6][0] = 1;
-            road_list[6][1] = (*(struct city_cell *)((unsigned char *)city_map + ((cell_offset - 20)))).citizen_a;
-            road_list[6][2] = (*(struct city_cell *)((unsigned char *)city_map + ((cell_offset - 20)))).citizen_b;
+            road_list[6][1] = PORT_CELL_CITIZEN_A(cell_offset - 20);
+            road_list[6][2] = PORT_CELL_CITIZEN_B(cell_offset - 20);
         }
     }
 
@@ -3063,7 +3062,7 @@ int confirm_fire_target(void)
 {
     int cell_offset;
 
-    if (citizen_list[citizen_no].target_kind == 0) return 0;
+    if (PORT_CITIZEN_TARGET(citizen_no) == 0) return 0;
     cell_offset = citizen_list[citizen_no].target_ref;
     if ((*(struct city_cell *)((unsigned char *)city_map + ((cell_offset)))).base_kind >= 8)
         return 0;
@@ -3078,7 +3077,7 @@ int confirm_fire_target(void)
 // FUNCTION: C2WIN 0x0040ef01
 int is_fire_covered(int cell_offset)
 {
-    for (temp_citizen = 1; temp_citizen < 0xc9; temp_citizen++) {
+    for (temp_citizen = 1; temp_citizen < PORT_CITIZEN_SLOTS; temp_citizen++) {
         if (citizen_list[temp_citizen].exists != 0
          && citizen_list[temp_citizen].state_idx == 9
          && citizen_list[temp_citizen].target_ref == cell_offset) {

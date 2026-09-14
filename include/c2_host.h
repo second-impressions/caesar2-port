@@ -166,6 +166,9 @@ int c2_host_user_file_write(const char *filename, const void *buffer,
 int c2_host_user_file_write_at(const char *filename, const void *buffer,
                                size_t size, size_t offset);
 int c2_host_user_file_exists(const char *filename);
+/* Atomic replace and delete; both return 0 when the host cannot. */
+int c2_host_user_file_rename(const char *from, const char *to);
+int c2_host_user_file_remove(const char *filename);
 size_t c2_host_user_file_list(const char *pattern, char *names,
                               size_t name_capacity, size_t max_names);
 struct c2_host_user_stream *c2_host_user_stream_open(

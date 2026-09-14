@@ -1,5 +1,6 @@
 extern int current_no_of_irregulars;
 extern int current_no_of_regulars;
+#include "c2_citizen_index.h"
 #include "c2_data.h"
 #include "c2_types.h"
 #if PORT_FEAT_BUILD_STAMP
@@ -3788,14 +3789,14 @@ void show_people_query_panel(void)
         draw_a_rect(i * 0x28 + 0x31,
                     (query_panel_reduction + 9) * 0x10 + 0x19,
                     0x16, 0x1e, 0x14);
-        citizen_a = (short)(unsigned char)q_people_list[i];
+        citizen_a = (short)PORT_CITIZEN_CAST(PORT_Q_PEOPLE(i));
         write_image(SCREEN_PEOPLE_DATA(display_mode),
                     citizen_list[citizen_a].image_id,
                     i * 0x28 + 0x37,
                     (query_panel_reduction + 9) * 0x10 + 0x20);
     }
 
-    citizen_a = (short)(unsigned char)q_people_list[queried_person];
+    citizen_a = (short)PORT_CITIZEN_CAST(PORT_Q_PEOPLE(queried_person));
 
     draw_a_box(queried_person * 0x28 + 0x2e,
                (query_panel_reduction + 9) * 0x10 + 0x16,
@@ -4135,7 +4136,11 @@ int test_range_for_road(int x, int y, int range);
 // FUNCTION: C2WIN 0x0042dbbf
 void get_query_info(void)
 {
+#if PORT_FEAT_WIDE_CITIZEN_INDEX
+    unsigned short occupant_b;
+#else
     unsigned char occupant_b;
+#endif
     int no_x;
     int no_y;
     int line_stride;
@@ -4143,7 +4148,11 @@ void get_query_info(void)
     int pop_value;
     int subx;
     int suby;
+#if PORT_FEAT_WIDE_CITIZEN_INDEX
+    unsigned short occupant_a;
+#else
     unsigned char occupant_a;
+#endif
     int local_x;
     int local_y;
     unsigned char size;
@@ -4233,14 +4242,14 @@ void get_query_info(void)
 
     queried_person = 0;
     q_no_of_people = 0;
-    occupant_a = ((unsigned char *)city_map)[ptr + 7];
-    occupant_b = ((unsigned char *)city_map)[ptr + 8];
+    occupant_a = PORT_CELL_CITIZEN_A(ptr);
+    occupant_b = PORT_CELL_CITIZEN_B(ptr);
     if (occupant_a) {
-        q_people_list[q_no_of_people] = occupant_a;
+        PORT_Q_PEOPLE(q_no_of_people) = occupant_a;
         q_no_of_people++;
     }
     if (occupant_b) {
-        q_people_list[q_no_of_people] = occupant_b;
+        PORT_Q_PEOPLE(q_no_of_people) = occupant_b;
         q_no_of_people++;
     }
 
@@ -4265,14 +4274,14 @@ void get_query_info(void)
         for (gmn_x = local_x; gmn_x < local_x + no_x; gmn_x++, ptr += 20) {
             if (q_no_of_people >= 6) break;
             if (gmn_x == act_start_x && gmn_y == act_start_y) continue;
-            occupant_a = ((unsigned char *)city_map)[ptr + 7];
-            occupant_b = ((unsigned char *)city_map)[ptr + 8];
+            occupant_a = PORT_CELL_CITIZEN_A(ptr);
+            occupant_b = PORT_CELL_CITIZEN_B(ptr);
             if (occupant_a) {
-                q_people_list[q_no_of_people] = occupant_a;
+                PORT_Q_PEOPLE(q_no_of_people) = occupant_a;
                 q_no_of_people++;
             }
             if (occupant_b) {
-                q_people_list[q_no_of_people] = occupant_b;
+                PORT_Q_PEOPLE(q_no_of_people) = occupant_b;
                 q_no_of_people++;
             }
         }

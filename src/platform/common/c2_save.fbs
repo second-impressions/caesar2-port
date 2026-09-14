@@ -1,0 +1,139 @@
+// Caesar II port save format.
+//
+// This schema is the specification. A save file is one FlatBuffer with this
+// root, followed by a 4-byte little-endian CRC32 (IEEE, as zlib) of the
+// buffer. The FlatBuffers verifier bounds-checks every offset before any
+// field is read; the CRC catches damage the verifier cannot see, such as a
+// flipped bit inside a grid.
+//
+// Principles (docs/save-format.md):
+//   - game state, not engine memory: no pointers, no derived state;
+//   - every index bounded when read, by the engine adapter's validation;
+//   - one monotonic format_version; every older version stays loadable,
+//     every save is written at the current version;
+//   - fields are only ever added (with defaults) or deprecated, never
+//     renumbered or retyped.
+//
+// Field names follow include/entities.h. Byte-image vectors carry recovered
+// engine records exactly as the engine holds them (1-byte packed,
+// little-endian, no padding, no pointers); they are the parts not yet given
+// individual fields and are documented, per record, in entities.h.
+
+namespace c2.save;
+
+// One city-map cell (entities.h: struct city_cell_fields). Who stands on the
+// cell (citizen_a/citizen_b in the engine) is derived from the citizen
+// records and is not stored. `industrial` keeps the engine byte, which on
+// wall cells is a trample counter; on market and business cells it is the
+// envoy index and is carried in `envoy` instead.
+struct CityCell {
+  base_kind:ubyte;
+  terrain:ubyte;
+  road_aqueduct:ubyte;
+  edge_bits:ubyte;
+  extra_edge:ubyte;
+  activity_a:ubyte;
+  activity_b:ubyte;
+  building:ubyte;
+  range_flag:ubyte;
+  fpu_flag:ubyte;
+  entertainment:ubyte;
+  education:ubyte;
+  health:ubyte;
+  land_value:ubyte;
+  fire:ubyte;
+  security:ubyte;
+  industrial:ubyte;
+  business:ubyte;
+  envoy:ushort;          // citizen index of the walker this market/business last sent out; 0 = none
+}
+
+// One citizen (walker) record (entities.h: struct citizen_rec, 58 bytes).
+// Slot 0 is the "nobody" sentinel and is always empty. Bytes the engine
+// never reads (+0x1C..0x1D, +0x25, +0x37..0x39) are not stored.
+struct Citizen {
+  exists:ubyte;
+  xp:byte;
+  type:byte;             // 1..7, index into citizen_intelligences[]
+  world_dir:byte;
+  x:byte;
+  y:byte;
+  map_ref:int;           // byte offset of the cell stood on: < 128000, multiple of 20
+  pixel_x:ubyte;
+  pixel_y:ubyte;
+  dest_x:byte;
+  dest_y:byte;
+  saved_state_idx:ubyte;
+  wait_count:byte;
+  state_idx:byte;
+  wf_active:ubyte;
+  wf_step:byte;
+  wf_length:byte;
+  wf_steps:[ubyte:8];    // 16 4-bit headings
+  speed:byte;
+  speed_count:byte;
+  speed_phase:byte;
+  flag_bits:byte;
+  action_kind:ubyte;
+  is_barbarian:ubyte;
+  state_timer:byte;
+  market_demand_a:byte;
+  market_demand_b:byte;
+  target_ref:int;        // cell offset of the action target, or 0
+  target:ushort;         // citizen index of the chase target, or 0 (engine byte target_kind, widened)
+  target_count:ubyte;
+  evolve_timer:short;
+  target_marker:short;
+  name_id:ubyte;
+  state:ubyte;
+  image_id:short;
+  wobble_counter:ubyte;
+}
+
+// One monthly history sample (evolver.c: history_entry[]). Oldest first;
+// the engine's ring indices are derived from the count on load.
+struct HistorySample {
+  population:int;
+  denarii:int;
+  pop_tax:int;
+  ind_tax:int;
+  year:int;
+}
+
+table Save {
+  format_version:uint = 1;
+  engine_version:string;         // informational
+
+  // Registry scalars: every entry of savegame_entries that is not carried by
+  // a vector below, in registry order, concatenated. Layout is that of the
+  // writing build; a reader whose registry differs refuses the file.
+  scalars:[ubyte];
+
+  city_map:[CityCell];           // 6400 cells, row-major, 80 x 80
+  region_map:[ubyte];            // 3600 region cells x 8 bytes (struct region_cell)
+  battle_map:[ubyte];            // 2704 battle cells x 4 bytes (struct battle_cell)
+
+  citizens:[Citizen];            // pool + 1 entries; a reader with a smaller pool drops the tail
+
+  armies:[ubyte];                // 26 x 175 bytes (struct army_rec)
+  army_routes:[ubyte];           // 10 x 346 bytes (struct army_route_rec)
+  units:[ubyte];                 // 51 x 78 bytes (struct unit_rec)
+
+  // Battle figures and missiles. The engine records hold sprite-data
+  // pointers at +0x0A/+0x0E (figure) and +0x08 (arrow); those bytes are
+  // removed here and rebuilt from sprite_kind on entering the battle view.
+  figures:[ubyte];               // 201 x 80 bytes: figure_rec without its two pointers
+  figure_secondary_sprite:[bool];// 201: whether the figure's secondary sprite is in use
+  arrows:[ubyte];                // 201 x 41 bytes: arrow_rec without its pointer
+
+  messages:[ubyte];              // 16 x 8 bytes (struct msg_slot)
+  fire_zones:[ubyte];            // 100
+  industry:[ubyte];              // 16 x 48 bytes (struct industry_rec)
+  slave_requirements:[ubyte];    // 8 x 8 bytes (struct slave_req)
+
+  history:[HistorySample];       // up to 200, oldest first
+}
+
+root_type Save;
+file_identifier "C2SV";
+file_extension "sav";

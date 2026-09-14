@@ -6,6 +6,9 @@ extern struct figure_rec figure_list[];
 extern short our_battle_army;
 extern struct army_rec army_list[];
 extern short their_battle_army;
+#if PORT_PLATFORM
+#include "c2_port_save.h"
+#endif
 #include "c2_data.h"
 
 #if PLATFORM_WINDOWS
@@ -1169,13 +1172,22 @@ void rebuild_figures_image_data(void)
             sprite_kind = figure_list[figure_no].sprite_kind;
             if (sprite_kind == 7) {
                 figure_list[figure_no].arrow_data_ptr = figure7_data;
+#if PORT_PLATFORM
+                /* After a load the pointer is NULL; the save carries the bit. */
+                if (figure_list[figure_no].sprite_data_ptr != 0 || c2_figure_secondary_sprite[figure_no]) figure_list[figure_no].sprite_data_ptr = figure8_data;
+#else
                 if (figure_list[figure_no].sprite_data_ptr != 0) figure_list[figure_no].sprite_data_ptr = figure8_data;
+#endif
             } else if (sprite_kind == 1) { figure_list[figure_no].arrow_data_ptr = figure1_data;
             } else if (sprite_kind == 2) { figure_list[figure_no].arrow_data_ptr = figure2_data;
             } else if (sprite_kind == 3) { figure_list[figure_no].arrow_data_ptr = figure3_data;
             } else if (sprite_kind == 4) {
                 figure_list[figure_no].arrow_data_ptr = figure4_data;
+#if PORT_PLATFORM
+                if (figure_list[figure_no].sprite_data_ptr != 0 || c2_figure_secondary_sprite[figure_no]) figure_list[figure_no].sprite_data_ptr = figure5_data;
+#else
                 if (figure_list[figure_no].sprite_data_ptr != 0) figure_list[figure_no].sprite_data_ptr = figure5_data;
+#endif
             } else if (sprite_kind == 5) { figure_list[figure_no].arrow_data_ptr = figure5_data;
             } else if (sprite_kind == 6) { figure_list[figure_no].arrow_data_ptr = figure6_data; }
         }

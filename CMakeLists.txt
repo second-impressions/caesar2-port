@@ -170,6 +170,17 @@ add_executable(c2-xmi-render EXCLUDE_FROM_ALL tools/c2-xmi-render.c)
 target_compile_features(c2-xmi-render PRIVATE c_std_11)
 target_link_libraries(c2-xmi-render PRIVATE c2_xmidi)
 
+# FlatBuffers runtime for the save format. The schema compiler's output is
+# checked in under src/platform/common/c2_save_gen/; regenerate it with
+# tools/regen-save-schema.sh when c2_save.fbs changes.
+add_library(c2_flatcc STATIC
+    third_party/flatcc/src/runtime/builder.c
+    third_party/flatcc/src/runtime/emitter.c
+    third_party/flatcc/src/runtime/refmap.c
+    third_party/flatcc/src/runtime/verifier.c)
+target_compile_features(c2_flatcc PRIVATE c_std_11)
+target_include_directories(c2_flatcc SYSTEM PUBLIC third_party/flatcc/include)
+
 add_library(c2_libsmacker STATIC third_party/libsmacker/smacker.c)
 target_compile_features(c2_libsmacker PRIVATE c_std_11)
 target_include_directories(c2_libsmacker PUBLIC third_party)
@@ -197,6 +208,12 @@ option(PORT_FIX_LARGE_XMI_ASSETS
     "Accept official XMIDI assets larger than the legacy tune buffer" ON)
 option(C2_FIX_MOSAIC_RANDOM_SENTINEL
     "Define the mosaic walk's accidental byte-64 sentinel explicitly" ON)
+option(PORT_FIX_MARKET_ENVOY_SELF_KILL
+    "Stop markets and businesses retiring the walker they just sent out" ON)
+option(PORT_FEAT_WIDE_CITIZEN_INDEX
+    "Keep walker indices in 16-bit side tables so the pool can exceed 254" ON)
+set(PORT_CITIZEN_POOL 1000 CACHE STRING
+    "Walker slots when PORT_FEAT_WIDE_CITIZEN_INDEX is on (200..65534; the original has 200)")
 option(PORT_ENABLE_ARROW_KEY_SCROLL
     "Use held arrow keys to pan the active map instead of moving the cursor" ON)
 option(PORT_ENABLE_POSIX_DEBUG_CRASH_HANDLER
@@ -248,6 +265,17 @@ if(C2_FIX_MOSAIC_RANDOM_SENTINEL)
     add_compile_definitions(C2_FIX_MOSAIC_RANDOM_SENTINEL=1)
 else()
     add_compile_definitions(C2_FIX_MOSAIC_RANDOM_SENTINEL=0)
+endif()
+if(PORT_FIX_MARKET_ENVOY_SELF_KILL)
+    add_compile_definitions(PORT_FIX_MARKET_ENVOY_SELF_KILL=1)
+else()
+    add_compile_definitions(PORT_FIX_MARKET_ENVOY_SELF_KILL=0)
+endif()
+if(PORT_FEAT_WIDE_CITIZEN_INDEX)
+    add_compile_definitions(PORT_FEAT_WIDE_CITIZEN_INDEX=1
+        PORT_CITIZEN_POOL=${PORT_CITIZEN_POOL})
+else()
+    add_compile_definitions(PORT_FEAT_WIDE_CITIZEN_INDEX=0)
 endif()
 if(PORT_ENABLE_ARROW_KEY_SCROLL)
     add_compile_definitions(PORT_FEAT_ARROW_KEY_SCROLL=1)
@@ -358,6 +386,7 @@ add_executable(caesar2
     src/platform/common/c2_port_app.c
     src/platform/common/c2_port_audio.c
     src/platform/common/c2_port_bugfixes.c
+    src/platform/common/c2_port_citizen_index.c
     src/platform/common/c2_port_compat.c
     src/platform/common/c2_port_input.c
     src/platform/common/c2_port_keymap.c
@@ -365,6 +394,7 @@ add_executable(caesar2
     src/platform/common/c2_port_music.c
     src/platform/common/c2_port_music_recorded.c
     src/platform/common/c2_port_save.c
+    src/platform/common/c2_save_v1.c
     src/platform/common/c2_port_save_compat.c
     src/platform/common/c2_port_pause.c
     src/platform/common/c2_port_selection.c
@@ -508,6 +538,7 @@ target_link_libraries(caesar2 PRIVATE
     c2_import_core
     c2_text_bundle
     c2_libsmacker
+    c2_flatcc
     c2_xmidi
     SDL3::SDL3)
 
@@ -616,6 +647,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         src/platform/common/c2_port_app.c
         src/platform/common/c2_port_audio.c
         src/platform/common/c2_port_bugfixes.c
+        src/platform/common/c2_port_citizen_index.c
         src/platform/common/c2_port_compat.c
         src/platform/common/c2_port_input.c
         src/platform/common/c2_port_keymap.c
@@ -881,7 +913,8 @@ if(BUILD_TESTING)
     add_executable(c2-save-compat-test
         tests/c2_save_compat_test.c
         src/platform/common/c2_port_save_compat.c
-        src/platform/common/c2_port_save_registry.c)
+        src/platform/common/c2_port_save_registry.c
+        src/platform/common/c2_save_v1.c)
     target_compile_features(c2-save-compat-test PRIVATE c_std_11)
     target_compile_definitions(c2-save-compat-test PRIVATE PORT_PLATFORM_LINUX=1)
     target_include_directories(c2-save-compat-test PRIVATE
@@ -890,6 +923,7 @@ if(BUILD_TESTING)
     if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         target_compile_options(c2-save-compat-test PRIVATE -fms-extensions)
     endif()
+    target_link_libraries(c2-save-compat-test PRIVATE c2_flatcc ZLIB::ZLIB c2_unity_framework)
     add_test(NAME save-compat COMMAND c2-save-compat-test)
     if(C2_TEST_SAVE_FIXTURE)
         set_tests_properties(save-compat PROPERTIES
@@ -898,19 +932,17 @@ if(BUILD_TESTING)
 
     add_executable(c2-port-save-test
         tests/c2_port_save_test.c
-        src/platform/common/c2_port_mouse.c
         src/platform/common/c2_port_save_compat.c
-        src/platform/common/c2_port_save.c
-        src/platform/common/c2_port_save_registry.c
-        src/platform/sdl3/c2_sdl_audio.c
-        src/platform/sdl3/c2_sdl_host.c)
+        src/platform/common/c2_save_v1.c)
     target_compile_features(c2-port-save-test PRIVATE c_std_11)
     target_compile_definitions(c2-port-save-test PRIVATE PORT_PLATFORM_LINUX=1)
     target_include_directories(c2-port-save-test PRIVATE
         include
-        src/platform/common
-        src/platform/sdl3)
-    target_link_libraries(c2-port-save-test PRIVATE SDL3::SDL3 c2_window_icon)
+        src/platform/common)
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
+        target_compile_options(c2-port-save-test PRIVATE -fms-extensions)
+    endif()
+    target_link_libraries(c2-port-save-test PRIVATE c2_flatcc ZLIB::ZLIB c2_unity_framework)
     add_test(NAME port-save COMMAND c2-port-save-test)
 
     add_executable(c2-user-files-test
