@@ -62,9 +62,7 @@ works out what it has:
   inserted,
 - a disc image: `.iso`, or `.bin` with or without its `.cue`, also inside a
   `.zip`,
-- a `.zip` of an installed folder,
-- a `.c2assets` pack, which can carry several languages of speech in one file
-  (`tools/c2-assets.py build`, see [docs/localization.md](docs/localization.md)).
+- a `.zip` of an installed folder.
 
 Disc images and archives are imported once and reused on later starts. Saves,
 screenshots and settings live in the same place:

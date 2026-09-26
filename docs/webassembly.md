@@ -55,14 +55,11 @@ cmake --build build/port/wasm-release
 
 On first visit the page offers **Load game data**: one drop zone (also the
 splash card itself) plus *Browse folder* / *Browse file*. Anything goes in —
-an installation folder, ZIP, optimized `.c2assets` pack, ISO, or a BIN with
-or without its CUE — and the importer classifies it by content. It imports and
+an installation folder, ZIP, ISO, or a BIN with or without its CUE — and the importer classifies it by content. It imports and
 validates data into OPFS before starting the game; afterwards the same button
 reads **Replace game data**. There is no way to build game data into the
 page: every build asks the player for their own, which is also what the
-smoke tests do. A multi-profile `.c2assets` pack can carry all text/speech
-languages and DOS, Win95, Mac, or custom video sets in one deduplicated
-container.
+smoke tests do.
 
 For assertions, semantic observations, and the recovered province-selection
 smoke test:
@@ -74,7 +71,7 @@ exactly as a player's drop would, so a run starts from nothing every time:
 ```bash
 emcmake cmake --preset wasm-debug -B build/port/wasm-debug
 cmake --build build/port/wasm-debug
-data=/path/to/caesar2.iso     # or a ZIP, a .c2assets pack, a BIN
+data=/path/to/caesar2.iso     # or a ZIP, a BIN
 node tools/smoke-wasm.mjs build/port/wasm-debug province chromium "$data"
 node tools/smoke-wasm.mjs build/port/wasm-debug city chromium "$data"
 node tools/smoke-wasm.mjs build/port/wasm-debug music chromium "$data"

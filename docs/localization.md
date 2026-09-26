@@ -32,14 +32,6 @@ is compiled in and chosen at run time, and nothing else differs. Keeping
 language out of engine control flow keeps saves portable across
 distributions.
 
-## Packs
-
-A `.c2assets` pack (`tools/c2-assets.py build`) can carry several languages
-of speech in one deduplicated container; a *profile* selects one. With text
-compiled in, a profile decides only the speech (and, for the detection
-default, which `C2.ENG` the text language is read from). The launcher's
-*Speech* row and `--asset-profile` choose it.
-
 ## Validation
 
 Build-time bundled-data configuration checks for canonical `C2.ENG` and
