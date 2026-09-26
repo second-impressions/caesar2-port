@@ -27,6 +27,20 @@ void c2_port_wait_vblank(void);
 int c2_port_save_screenshot(const char *filename);
 int check_user_file_exists(const char *filename);
 void *c2_port_load_asset(const char *filename, size_t *size_out);
+/* PORT_FEAT_WINDOWS_ART: whether a 6-bit VGA palette, or the .256 file of
+ * that name, is the Windows 95 version's (entry 0 magenta). */
+int c2_port_palette_is_windows(const unsigned char *palette);
+int c2_port_art_is_windows(const char *palette_file);
+/* Keep only the window (x, y, width, height) of the full-screen picture in
+ * internal_screen; the rest becomes the palette's black. */
+void c2_port_show_only_window(int x, int y, int width, int height,
+                              const unsigned char *palette);
+/* Crop the picture just drawn to that window only if it is Windows art:
+ * its palette file is a Windows palette and the picture itself leaves the
+ * area outside the window empty (index 0). A DOS picture fills the whole
+ * screen and is never touched. Returns whether it cropped. */
+int c2_port_crop_windows_picture(const char *palette_file,
+                                 int x, int y, int width, int height);
 unsigned int c2_port_scroll_keys(void);
 #if PORT_FIX_PAUSED_MUSIC_VARIETY
 int c2_port_paused_music_branch(int base, int count,

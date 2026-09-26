@@ -23,6 +23,9 @@ what changed for them, not which files moved.
 - Launcher: three pages instead of one crowded list: Play, Game data and
   Settings. Nothing overlaps the key reference any more, and a disc in a
   drive that the system has also mounted is listed once.
+- With only the 1998 Windows disc, the empire map is shown as the Windows
+  version showed it, without the artists' note "11,45 620x380" beside it,
+  and the water moves as it did there. DOS game data looks as before.
 - Speech can be chosen when the game data has several languages: in the
   launcher, on the web page and with `--speech`. Without a choice it
   follows the text language.

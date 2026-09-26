@@ -153,7 +153,14 @@ the same hybrid disc:
   only one of the 32 full-screen pictures drawn differently.
 
 The Windows art still plays; it is the fallback for the 1998 disc, not a
-choice.
+choice. With it the port does what the Windows engine did
+(`PORT_FEAT_WINDOWS_ART`): the empire map shows only the 620x380 window, and
+the water rotates 0x40-0x47 and 0x97-0x99 on both maps. Both switch on
+only for Windows art: the map palettes (`cityfixt.256`, `provfixt.256`) and
+`empire.256` as loaded are Windows palettes (entry 0 magenta), and the empire
+picture must also leave everything outside that window empty. DOS pictures
+and palettes are drawn and rotated exactly as before; the province selection
+screen from DOS data is byte-identical with and without the feature.
 
 ## Sorting
 

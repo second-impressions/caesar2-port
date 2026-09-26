@@ -21,6 +21,74 @@ char *c2_port_version_line(void)
     return c2_port_version_text;
 }
 
+int readfile(const char *filename, void *buffer, int size, int offset);
+
+int c2_port_palette_is_windows(const unsigned char *palette)
+{
+    return palette != NULL && palette[0] == 0x3f && palette[1] == 0 && palette[2] == 0x3f;
+}
+
+int c2_port_art_is_windows(const char *palette_file)
+{
+    unsigned char head[3];
+    return readfile(palette_file, head, (int)sizeof(head), 0) == (int)sizeof(head) &&
+           c2_port_palette_is_windows(head);
+}
+
+int c2_port_crop_windows_picture(const char *palette_file,
+                                 int x, int y, int width, int height)
+{
+    unsigned char palette[0x300];
+    long outside = 0;
+    long empty = 0;
+    int row;
+    int column;
+
+    if (internal_screen == NULL || !c2_port_art_is_windows(palette_file)) return 0;
+    for (row = 0; row < 0x1e0; row++) {
+        const unsigned char *line = internal_screen + row * screen_width;
+        for (column = 0; column < screen_width; column++) {
+            if (row >= y && row < y + height && column >= x && column < x + width) continue;
+            outside++;
+            empty += line[column] == 0;
+        }
+    }
+    /* The Windows EMPIRE.PL8 leaves 71009 of those 71600 pixels empty (the
+     * rest is the artists' note); the DOS one draws its border there. */
+    if (outside == 0 || empty * 10 < outside * 9) return 0;
+    if (readfile(palette_file, palette, (int)sizeof(palette), 0) != (int)sizeof(palette)) return 0;
+    c2_port_show_only_window(x, y, width, height, palette);
+    return 1;
+}
+
+void c2_port_show_only_window(int x, int y, int width, int height,
+                              const unsigned char *palette)
+{
+    const int rows = 0x1e0;
+    unsigned char black = 0;
+    int i;
+    int row;
+
+    if (internal_screen == NULL || palette == NULL) return;
+    for (i = 1; i < 256; i++) {
+        if (palette[i * 3] == 0 && palette[i * 3 + 1] == 0 && palette[i * 3 + 2] == 0) {
+            black = (unsigned char)i;
+            break;
+        }
+    }
+    for (row = 0; row < rows; row++) {
+        unsigned char *line = internal_screen + row * screen_width;
+        if (row < y || row >= y + height) {
+            memset(line, black, (size_t)screen_width);
+            continue;
+        }
+        if (x > 0) memset(line, black, (size_t)x);
+        if (x + width < screen_width) {
+            memset(line + x + width, black, (size_t)(screen_width - x - width));
+        }
+    }
+}
+
 void *c2_port_load_asset(const char *filename, size_t *size_out)
 {
     unsigned char *data;

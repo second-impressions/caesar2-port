@@ -254,6 +254,21 @@
  * choice when the data has both (src/platform/common/c2_port_music_recorded.c). */
 #define PORT_FEAT_RECORDED_MUSIC PORT_PLATFORM
 
+/* The Windows 95 version's art (all the 1998 US disc has) was drawn for the
+ * Windows engine, and the recovered Windows code shows two places where that
+ * engine presented it differently. Portable builds do the same when the art
+ * in use is Windows art, which its palettes give away (entry 0 is the
+ * magenta transparency key; no DOS palette has it), and only then: DOS
+ * pictures and DOS palettes are drawn and rotated exactly as before.
+ * - the empire map: show_initreg_box shows only the 620x380 window at
+ *   (11,45) of EMPIRE.PL8 (blit_window_area). The rest of the Windows
+ *   picture has no border and carries the artists' note of that rectangle;
+ * - the water: cycle_map_colours rotates 0x40-0x47 and 0x97-0x99 on both
+ *   maps, and the Windows province tiles use a copy of the water colours at
+ *   0x96-0x9d, of which 0x97-0x99 move.
+ * docs/game-data-library.md, "Why DOS graphics win". */
+#define PORT_FEAT_WINDOWS_ART PORT_PLATFORM
+
 /* Loading restarts the portable engine loop. A mouse button still held from
  * the load dialog can reach the province builder without its preceding press,
  * making the recovered empty-tool path restore an uninitialized treasury
