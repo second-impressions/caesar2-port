@@ -1,5 +1,10 @@
 # User-supplied game data and durable WebAssembly storage
 
+The store, pack and pack-builder sections below (*Active asset view*,
+*Browser storage*, *Optimized asset pack*, *Pack builder*) are superseded
+by `game-data-library.md`. The input formats, validation and measurements
+still apply.
+
 ## Scope
 
 The portable build should accept:

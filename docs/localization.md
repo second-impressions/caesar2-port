@@ -32,6 +32,15 @@ is compiled in and chosen at run time, and nothing else differs. Keeping
 language out of engine control flow keeps saves portable across
 distributions.
 
+## Speech
+
+The game data can hold several languages at once: every import adds its
+language's text and speech to the library (`docs/game-data-library.md`). The
+launcher's *Speech* row, the web page's Speech choice and `--speech TAG`
+choose which one plays. Without a choice the speech follows the text
+language when the data has it, else English, else the first language; the
+automatic text language in turn follows the speech's `C2.ENG`.
+
 ## Validation
 
 Build-time bundled-data configuration checks for canonical `C2.ENG` and

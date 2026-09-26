@@ -55,11 +55,19 @@ cmake --build build/port/wasm-release
 
 On first visit the page offers **Load game data**: one drop zone (also the
 splash card itself) plus *Browse folder* / *Browse file*. Anything goes in —
-an installation folder, ZIP, ISO, or a BIN with or without its CUE — and the importer classifies it by content. It imports and
-validates data into OPFS before starting the game; afterwards the same button
-reads **Replace game data**. There is no way to build game data into the
-page: every build asks the player for their own, which is also what the
-smoke tests do.
+an installation folder, ZIP, ISO, a BIN with or without its CUE, a Mac Toast
+image or a `.c2assets` file — and the importer classifies it by content. The
+page copies the upload into OPFS and reloads; the runtime then merges it into
+the game-data library (`docs/game-data-library.md`) with `--prepare-assets`,
+and the page reads the library's summary. More can be dropped later: what is
+new or better is added. Settings → Game data exports the library as one
+`.c2assets` download (`--export-game-data`) or removes it. There is no way
+to build game data into the page: every build asks the player for their
+own, which is also what the smoke tests do.
+
+The runtime runs once per page load (the game, an import or an export), and
+nothing may read file contents from OPFS on the page's main thread: Firefox
+never answers such a read.
 
 For assertions, semantic observations, and the recovered province-selection
 smoke test:

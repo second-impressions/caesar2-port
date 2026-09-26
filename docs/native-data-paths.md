@@ -1,5 +1,12 @@
 # Native asset onboarding and data paths
 
+Work items 2 and 3 (the extraction target and `active.json`) and the open
+questions about copying installations and removing unused data are
+superseded by `game-data-library.md`, which is implemented: imports merge
+into `<user data>/game-data/library`, `asset-source.txt` is migrated and
+deleted, and the launcher offers Remove. The directory schema, portable
+mode and override precedence below are still proposals.
+
 ## Scope
 
 The browser target has a complete data story: the shell owns source

@@ -219,10 +219,10 @@ asset without changing the reconstruction or mutating the asset.
 
 CDs from August 1996 on carry a second, Windows 95 tree, `C2WIN95/`, beside
 the DOS one; the 1998 US pressing has only that tree, at the root. Its
-`HD/` and `PL8/` are the same art with the palette remapped around
-Windows' reserved entries (fewer colours; useless to the DOS renderer, and
-the host keeps preferring the DOS files). Two things in it are worth
-having:
+`HD/` and `PL8/` are the same art re-quantized for Windows, and worse
+for this engine (`game-data-library.md`, *Why DOS graphics win*): the
+library keeps the DOS files whenever it has them. Two things in it are
+worth having:
 
 - **`RAW/CITYPRO0..2.RAW`, `FORUM0..2.RAW`, `BATTLE0.RAW`, `INTRO.RAW`**
   — the Windows version's music: headerless 8-bit unsigned mono PCM at
@@ -254,14 +254,17 @@ having:
   switches in place.
 - **`SMK/BATTLOST`, `BATTWON`, `LOSEGAME`, `PROMOTE`, `WINGAME`** at
   500x240 where the DOS files are 320x152. Mode-2 movies (`do_vga_smacked_anim`)
-  are scaled into the VGA box anyway, so `start_smacking` plays whichever
-  file has more pixels (`c2_host_asset_windows_*`), scaling any frame size
-  into the 640x365 box the DOS movie occupies. The same-size Windows
-  re-encodes have fewer colours and are not preferred; movies drawn 1:1
-  (the intro, the message window) keep their DOS files.
+  are scaled into the VGA box anyway, so the copy with more pixels is the
+  better one, and `start_smacking` scales any frame size into the 640x365
+  box the DOS movie occupies. The same-size Windows re-encodes have fewer
+  colours and are not preferred; movies drawn 1:1 (the intro, the message
+  window) keep their DOS files. The Mac CDs carry four of the five at
+  500x240 with a higher bitrate still. Which copy plays is decided when
+  the game data is imported (`docs/game-data-library.md`): the library
+  keeps one file per movie, and the player loads it.
 
-The importer extracts everything with a game extension, so both trees
-are already in every disc-image cache; only the reading side needed to
+The importer used to extract everything with a game extension, so both
+trees were in every disc-image cache and only the reading side needed to
 know.
 
 ## Intended dependency direction
