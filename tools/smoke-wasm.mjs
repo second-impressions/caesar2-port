@@ -27,6 +27,7 @@ const smokeResults = {
   restart: "restart after exit completed",
   save: "save/load disk and full-state verification restored",
   prepare: "asset preparation completed without starting the game",
+  export: "game data exported",
 };
 if (!(smokeKind in smokeResults)) {
   throw new Error(`unknown smoke kind '${smokeKind}'`);
@@ -37,7 +38,11 @@ if (!["chromium", "firefox"].includes(browserKind)) {
 if (!gameData) {
   throw new Error("usage: smoke-wasm.mjs BUILD KIND chromium|firefox GAME-DATA (a disc image, ZIP or pack)");
 }
-const profile = await mkdtemp(`${tmpdir()}/caesar2-wasm-smoke-`);
+// C2_SMOKE_PROFILE (Firefox) and C2_SMOKE_PORT keep one browser profile and
+// origin across runs: an upgrade test imports with one build and opens the
+// same storage with the next.
+const keepProfile = process.env.C2_SMOKE_PROFILE;
+const profile = keepProfile ?? await mkdtemp(`${tmpdir()}/caesar2-wasm-smoke-`);
 let server;
 let browser;
 
@@ -336,7 +341,7 @@ try {
   }
   server = spawn("python3", [
     `${root}/tools/serve-wasm.py`, build, "--entry", entries[0],
-    "--port", "0", "--game-data", gameData
+    "--port", process.env.C2_SMOKE_PORT ?? "0", "--game-data", gameData
   ], { stdio: ["ignore", "pipe", "inherit"] });
   const servedUrl = await waitForLine(server.stdout, (line) => {
     const match = line.match(/Serving (http:\/\/\S+\.html)/);
@@ -352,7 +357,7 @@ try {
   console.log(`WebAssembly ${smokeKind} smoke passed in ${browserKind}`);
 } finally {
   await Promise.all([stop(browser), stop(server)]);
-  await rm(profile, {
+  if (!keepProfile) await rm(profile, {
     recursive: true,
     force: true,
     maxRetries: 5,
