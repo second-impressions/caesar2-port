@@ -330,6 +330,20 @@ static enum c2_source_kind sniff_file(const char *path)
                  fread(pvd, 1, sizeof(pvd), file) == sizeof(pvd) &&
                  memcmp(pvd + 1, "CD001", 5) == 0) kind = C2_SOURCE_ISO;
     }
+    if (kind == C2_SOURCE_NONE) {
+        /* A Macintosh disc image: an Apple partition map, or bare HFS. */
+        unsigned char mac[1026];
+#if PORT_PLATFORM_WIN32
+        int at_start = _fseeki64(file, 0, SEEK_SET) == 0;
+#else
+        int at_start = fseeko(file, 0, SEEK_SET) == 0;
+#endif
+        if (at_start && fread(mac, 1, sizeof(mac), file) == sizeof(mac) &&
+            ((mac[0] == 'E' && mac[1] == 'R' && mac[512] == 'P' && mac[513] == 'M') ||
+             (mac[1024] == 'B' && mac[1025] == 'D'))) {
+            kind = C2_SOURCE_ISO;
+        }
+    }
     fclose(file);
     if (kind == C2_SOURCE_NONE && extension_is(path, ".cue")) kind = C2_SOURCE_CUE;
     return kind;

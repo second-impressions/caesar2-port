@@ -598,12 +598,17 @@ static void test_optical_mounts_are_read_from_the_mount_table(void)
           "/dev/sr0 /run/media/me/CAESAR\\040II iso9660 ro 0 0\n"
           "tmpfs /run tmpfs rw 0 0\n", f);
     fclose(f);
+    /* /dev/sr0 is listed as a device, so its mounted volume is the same
+     * drive and gets no row of its own; /dev/sr1's volume does. */
     strcpy(paths[0], "/dev/sr0");
     count = c2_cdrom_optical_mounts_in(path, paths, 4, 1);
-    TEST_ASSERT_EQUAL_INT(3, count);
+    TEST_ASSERT_EQUAL_INT(2, count);
     TEST_ASSERT_EQUAL_STRING("/dev/sr0", paths[0]);
-    TEST_ASSERT_EQUAL_STRING("/run/media/me/CAESAR II", paths[1]);
-    TEST_ASSERT_EQUAL_STRING("/media/udfdisc", paths[2]);
+    TEST_ASSERT_EQUAL_STRING("/media/udfdisc", paths[1]);
+    /* Without the device listed, the volume is the way in. */
+    count = c2_cdrom_optical_mounts_in(path, paths, 4, 0);
+    TEST_ASSERT_EQUAL_INT(2, count);
+    TEST_ASSERT_EQUAL_STRING("/run/media/me/CAESAR II", paths[0]);
     /* A mounted volume counts as a disc; a random directory is not a device. */
     TEST_ASSERT_TRUE(c2_cdrom_drive_has_disc(dir));
     TEST_ASSERT_FALSE(c2_cdrom_is_device_path(dir));

@@ -59,6 +59,10 @@ struct c2_cdrom_reader {
     uint64_t fingerprint;
 };
 
+/* An Apple partition map with an HFS partition, or a bare HFS volume: the
+ * Macintosh CDs. c2_iso_catalog_open reads them when no ISO-9660 volume
+ * is present. *volume_end receives the byte size the volume spans. */
+int c2_hfs_probe(const struct c2_source_reader *source, uint64_t *volume_end);
 int c2_iso_catalog_open(const struct c2_source_reader *source,
                         struct c2_iso_catalog *catalog,
                         char *error, size_t error_capacity);
@@ -145,6 +149,13 @@ int c2_iso_extract(const struct c2_source_reader *source,
                    const char *destination,
                    const struct c2_import_progress *progress,
                    char *error, size_t error_capacity);
+
+/* Write every file under source_dir into a new deflated ZIP, `first`
+ * (relative, may be NULL) as the first entry and the rest in path order. */
+int c2_zip_write_tree(const char *source_dir, const char *zip_path,
+                      const char *first,
+                      const struct c2_import_progress *progress,
+                      char *error, size_t error_capacity);
 /* How a user-supplied path will be imported. Classification looks at
  * content (ZIP/ISO/raw-sector signatures), not just extensions, and a file
  * inside an installation resolves to that installation's root. */

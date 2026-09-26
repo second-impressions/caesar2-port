@@ -135,8 +135,10 @@ static int safe_path(const char *input, char *output, size_t capacity)
         if (out && out + 1 < capacity) output[out++] = '/';
         if (out + length >= capacity) return 0;
         while (length--) {
+            /* UTF-8 names (the French Mac disc is "Caesar\u2122 II
+             * 1.0.toast") are fine; control characters are not. */
             unsigned char c = (unsigned char)*start++;
-            if (c < 0x20 || c >= 0x7f) return 0;
+            if (c < 0x20 || c == 0x7f) return 0;
             output[out++] = (char)c;
         }
     }
@@ -396,7 +398,8 @@ static int disc_image_kind(const char *normalized)
     const char *dot = strrchr(normalized, '.');
     if (!dot) return 0;
     if (SDL_strcasecmp(dot, ".cue") == 0) return C2_ZIP_CUE_IMAGE;
-    if (SDL_strcasecmp(dot, ".iso") == 0) return C2_ZIP_ISO_IMAGE;
+    if (SDL_strcasecmp(dot, ".iso") == 0 || SDL_strcasecmp(dot, ".toast") == 0 ||
+        SDL_strcasecmp(dot, ".cdr") == 0 || SDL_strcasecmp(dot, ".img") == 0) return C2_ZIP_ISO_IMAGE;
     return 0;
 }
 
@@ -757,4 +760,219 @@ fail:
     free_items(items, count);
     close_archive(archive);
     return 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Writer                                                              */
+
+struct zip_written {
+    char *name;
+    uint32_t crc;
+    uint64_t compressed;
+    uint64_t size;
+    uint64_t offset;
+    unsigned method;
+};
+
+static void put16(unsigned char *p, unsigned value)
+{
+    p[0] = (unsigned char)(value & 0xff);
+    p[1] = (unsigned char)((value >> 8) & 0xff);
+}
+
+static void put32(unsigned char *p, uint32_t value)
+{
+    put16(p, value & 0xffff);
+    put16(p + 2, (value >> 16) & 0xffff);
+}
+
+static int compare_names(const void *a, const void *b)
+{
+    return strcmp(*(char *const *)a, *(char *const *)b);
+}
+
+/* Deflate one whole file; store it when deflating does not help. */
+static int pack_entry(const unsigned char *data, size_t size,
+                      unsigned char **out, size_t *out_size, unsigned *method)
+{
+    z_stream z;
+    uLong bound;
+    unsigned char *buffer;
+    memset(&z, 0, sizeof(z));
+    if (deflateInit2(&z, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -15, 8,
+                     Z_DEFAULT_STRATEGY) != Z_OK) return 0;
+    bound = deflateBound(&z, (uLong)size);
+    buffer = malloc(bound ? bound : 1);
+    if (!buffer) { deflateEnd(&z); return 0; }
+    z.next_in = (Bytef *)data;
+    z.avail_in = (uInt)size;
+    z.next_out = buffer;
+    z.avail_out = (uInt)bound;
+    if (deflate(&z, Z_FINISH) != Z_STREAM_END) {
+        deflateEnd(&z); free(buffer); return 0;
+    }
+    deflateEnd(&z);
+    if (z.total_out >= size) {
+        free(buffer);
+        *out = NULL;
+        *out_size = size;
+        *method = ZIP_METHOD_STORED;
+        return 1;
+    }
+    *out = buffer;
+    *out_size = z.total_out;
+    *method = ZIP_METHOD_DEFLATE;
+    return 1;
+}
+
+int c2_zip_write_tree(const char *source_dir, const char *zip_path,
+                      const char *first,
+                      const struct c2_import_progress *progress,
+                      char *error, size_t error_capacity)
+{
+    char **found;
+    char **names = NULL;
+    struct zip_written *written = NULL;
+    int found_count = 0;
+    size_t count = 0;
+    size_t i;
+    uint64_t total = 0;
+    uint64_t done = 0;
+    uint64_t offset = 0;
+    uint64_t directory_size = 0;
+    FILE *out = NULL;
+    unsigned char *data = NULL;
+    int ok = 0;
+
+    found = SDL_GlobDirectory(source_dir, NULL, 0, &found_count);
+    if (!found) { set_error(error, error_capacity, "could not list the game data"); return 0; }
+    names = calloc((size_t)found_count + 1, sizeof(*names));
+    written = calloc((size_t)found_count + 1, sizeof(*written));
+    if (!names || !written) goto done;
+    for (i = 0; i < (size_t)found_count; i++) {
+        char path[C2_IMPORT_MAX_PATH * 2];
+        SDL_PathInfo info;
+        char *c;
+        for (c = found[i]; *c; c++) if (*c == '\\') *c = '/';
+        if (snprintf(path, sizeof(path), "%s/%s", source_dir, found[i]) >= (int)sizeof(path) ||
+            !SDL_GetPathInfo(path, &info) || info.type != SDL_PATHTYPE_FILE) continue;
+        names[count] = found[i];
+        total += info.size;
+        count++;
+    }
+    qsort(names, count, sizeof(*names), compare_names);
+    if (first) {
+        for (i = 0; i < count; i++) {
+            if (strcmp(names[i], first) == 0) {
+                char *keep = names[i];
+                memmove(names + 1, names, i * sizeof(*names));
+                names[0] = keep;
+                break;
+            }
+        }
+    }
+    if (count == 0 || count > 0xfffe) { set_error(error, error_capacity, "nothing to export"); goto done; }
+    out = fopen(zip_path, "wb");
+    if (!out) { set_error(error, error_capacity, "could not create the archive"); goto done; }
+    for (i = 0; i < count; i++) {
+        char path[C2_IMPORT_MAX_PATH * 2];
+        unsigned char header[30];
+        unsigned char *packed = NULL;
+        size_t packed_size = 0;
+        size_t size;
+        size_t name_length = strlen(names[i]);
+        FILE *in;
+        SDL_PathInfo info;
+        snprintf(path, sizeof(path), "%s/%s", source_dir, names[i]);
+        if (!SDL_GetPathInfo(path, &info) || info.size > C2_IMPORT_MAX_BYTES) {
+            set_error(error, error_capacity, "a game-data file is too large"); goto done;
+        }
+        size = (size_t)info.size;
+        data = malloc(size ? size : 1);
+        in = fopen(path, "rb");
+        if (!data || !in || fread(data, 1, size, in) != size) {
+            if (in) fclose(in);
+            set_error(error, error_capacity, "could not read a game-data file"); goto done;
+        }
+        fclose(in);
+        written[i].name = names[i];
+        written[i].size = size;
+        written[i].crc = (uint32_t)crc32(crc32(0L, Z_NULL, 0), data, (uInt)size);
+        written[i].offset = offset;
+        if (!pack_entry(data, size, &packed, &packed_size, &written[i].method)) {
+            set_error(error, error_capacity, "could not compress a game-data file"); goto done;
+        }
+        written[i].compressed = packed_size;
+        if (offset + 30 + name_length + packed_size > 0xffffffffu) {
+            free(packed);
+            set_error(error, error_capacity, "the archive would exceed 4 GiB"); goto done;
+        }
+        memset(header, 0, sizeof(header));
+        put32(header, ZIP_LOCAL_HEADER);
+        put16(header + 4, 20);
+        put16(header + 6, 0x0800);
+        put16(header + 8, written[i].method);
+        put16(header + 12, 0x21);           /* 1980-01-01: reproducible */
+        put32(header + 14, written[i].crc);
+        put32(header + 18, (uint32_t)packed_size);
+        put32(header + 22, (uint32_t)size);
+        put16(header + 26, (unsigned)name_length);
+        if (fwrite(header, 1, sizeof(header), out) != sizeof(header) ||
+            fwrite(names[i], 1, name_length, out) != name_length ||
+            fwrite(packed ? packed : data, 1, packed_size, out) != packed_size) {
+            free(packed);
+            set_error(error, error_capacity, "could not write the archive"); goto done;
+        }
+        free(packed);
+        free(data);
+        data = NULL;
+        offset += 30 + name_length + packed_size;
+        done += size;
+        if (progress && progress->update) {
+            progress->update(progress->userdata, "Writing the game-data archive",
+                             done, total, i + 1, count);
+        }
+    }
+    for (i = 0; i < count; i++) {
+        unsigned char header[46];
+        size_t name_length = strlen(written[i].name);
+        memset(header, 0, sizeof(header));
+        put32(header, ZIP_CENTRAL_HEADER);
+        put16(header + 4, 20);
+        put16(header + 6, 20);
+        put16(header + 8, 0x0800);
+        put16(header + 10, written[i].method);
+        put16(header + 14, 0x21);
+        put32(header + 16, written[i].crc);
+        put32(header + 20, (uint32_t)written[i].compressed);
+        put32(header + 24, (uint32_t)written[i].size);
+        put16(header + 28, (unsigned)name_length);
+        put32(header + 42, (uint32_t)written[i].offset);
+        if (fwrite(header, 1, sizeof(header), out) != sizeof(header) ||
+            fwrite(written[i].name, 1, name_length, out) != name_length) {
+            set_error(error, error_capacity, "could not write the archive"); goto done;
+        }
+        directory_size += sizeof(header) + name_length;
+    }
+    {
+        unsigned char end[22];
+        memset(end, 0, sizeof(end));
+        put32(end, ZIP_END_RECORD);
+        put16(end + 8, (unsigned)count);
+        put16(end + 10, (unsigned)count);
+        put32(end + 12, (uint32_t)directory_size);
+        put32(end + 16, (uint32_t)offset);
+        if (fwrite(end, 1, sizeof(end), out) != sizeof(end)) {
+            set_error(error, error_capacity, "could not write the archive"); goto done;
+        }
+    }
+    ok = 1;
+done:
+    free(data);
+    if (out && fclose(out) != 0) ok = 0;
+    if (!ok && out) SDL_RemovePath(zip_path);
+    free(written);
+    free(names);
+    SDL_free(found);
+    return ok;
 }
