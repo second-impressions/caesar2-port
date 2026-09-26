@@ -6,6 +6,35 @@ what changed for them, not which files moved.
 
 ## Unreleased
 
+- Game data is one collection now, and you can add to it: an English and a
+  German disc give you both languages' speech to choose from, a 1996 CD adds
+  the Windows soundtrack and the larger movies to an older one, and adding a
+  disc you already have changes nothing. Where two copies of a file differ,
+  the better one is kept: the DOS original over the Windows 95 re-encode,
+  a newer release over an older one, the larger version of a movie that is
+  shown enlarged anyway.
+- The Macintosh CDs can be added (a Toast or ISO image, or the disc in a
+  drive). They bring the best-looking versions of four of the full-screen
+  movies, and their soundtrack and speech are converted; they need a PC
+  copy beside them to play.
+- Export writes all your game data as one `.c2assets` file, a plain ZIP, to
+  move it to another computer or into the browser; importing it adds it
+  back. Remove deletes the game data and keeps saves and settings.
+- Launcher: three pages instead of one crowded list: Play, Game data and
+  Settings. Nothing overlaps the key reference any more, and a disc in a
+  drive that the system has also mounted is listed once.
+- With only the 1998 Windows disc, the empire map is shown as the Windows
+  version showed it, without the artists' note "11,45 620x380" beside it,
+  and the water moves as it did there. DOS game data looks as before.
+- Speech can be chosen when the game data has several languages: in the
+  launcher, on the web page and with `--speech`. Without a choice it
+  follows the text language.
+- Earlier imports are moved into the collection on the first start, in the
+  launcher and in the browser alike; nothing needs importing again.
+- `--game-data` adds its source to the collection; `--asset-root` reads a
+  folder in place. `--asset-profile` and version-1 `.c2assets` packs are
+  gone, as is the script that built them.
+
 ## 1.0.3 - 2026-09-09
 
 - Installed GOG copies now provide music, speech and movies automatically:

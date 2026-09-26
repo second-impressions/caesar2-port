@@ -14,8 +14,11 @@
     const card = document.getElementById("card");
     const detectedRow = document.getElementById("detected-row");
     const playButton = document.getElementById("play-button");
-    const profileRow = document.getElementById("profile-row");
-    const profileSelect = document.getElementById("profile-select");
+    const speechRowMain = document.getElementById("speech-row");
+    const speechSelectMain = document.getElementById("speech-select-main");
+    const speechRow = document.getElementById("speech-setting");
+    const speechSelect = document.getElementById("speech-select");
+    const exportButton = document.getElementById("export-button");
     const languageSelect = document.getElementById("language-select");
     const musicSelect = document.getElementById("music-select");
     const musicHint = document.getElementById("music-hint");
@@ -33,21 +36,23 @@
     const query = new URLSearchParams(location.search);
     const smokeOutput = query.has("smoke-test") ? [] : null;
     const BUILD_VERSION = "@C2_VERSION_STRING@";
-    const ACTIVE_SOURCE = "c2.active-source.v1";
+    /* The upload to import after the reload that follows copying it. */
     const PENDING_SOURCE = "c2.pending-source.v1";
-    const ACTIVE_PROFILE = "c2.active-profile.v1";
-    const ACTIVE_ORIGIN = "c2.active-origin.v1";
+    const SPEECH = "c2.speech.v1";
+    /* Before the library the page remembered its source and where it came
+     * from; these keys are read once for the migration, then removed. */
+    const LEGACY_ACTIVE_SOURCE = "c2.active-source.v1";
+    const LEGACY_KEYS = ["c2.active-source.v1", "c2.active-profile.v1", "c2.active-origin.v1", "c2.pending-origin.v1"];
     const THEME_CHOICE = "c2.theme.v1";
     const SCALING_MODE = "c2.scaling.v1";
     const TEXT_LANGUAGE = "c2.text-language.v1";
     const MUSIC_SOURCE = "c2.music.v1";
     const CONFIRM_CLOSE = "c2.confirm-close.v1";
-    const AUTOSTART_SOURCE = "c2.autostart.v1";
-    const PENDING_ORIGIN = "c2.pending-origin.v1";
+    const AUTOSTART = "c2.autostart.v1";
     let runtimeReady = false;
     let gameRunning = false;
     let preparingAssets = false;
-    let chosenSourceLabel = "";
+    let exporting = false;
     let scalingMode = localStorage.getItem(SCALING_MODE) === "fractional" ? "fractional" : "integer";
     let pausedByChrome = false;
     let engineHasRun = false;
@@ -123,122 +128,54 @@
       }
       return null;
     }
-    async function descendCaseInsensitive(root, parts) {
-      let dir = root;
-      for (const part of parts) {
-        dir = await childCaseInsensitive(dir, part, "directory");
-        if (!dir) return null;
-      }
-      return dir;
-    }
-    async function hasFileWithExtension(dir, extension) {
-      if (!dir) return false;
-      for await (const [name, handle] of dir.entries()) {
-        if (handle.kind === "file" && name.toLowerCase().endsWith(extension)) return true;
-      }
-      return false;
-    }
     /*
-     * The original installer copied only the HD tree; XMI music, RAW speech
-     * and the movies stayed on the CD. Report what a source lacks so silence
-     * is explained rather than mysterious.
+     * What the game data holds is decided in C (docs/game-data-library.md):
+     * every import is merged into /persistent/game-data/library and the
+     * runtime writes a summary beside it, one fact per line. The page only
+     * reads that summary.
      */
-    /*
-     * The two soundtracks: the DOS scores (XMI/) and the Windows version's
-     * recordings (RAW/CITYPRO0.RAW; in C2WIN95/RAW/ on the CDs that have
-     * both trees).
-     */
-    async function musicSources(root, base) {
-      const xmi = await descendCaseInsensitive(root, ["XMI"]);
-      const xmidi = (await hasFileWithExtension(xmi, ".xmi")) || (await hasFileWithExtension(base, ".xmi"));
-      let recorded = false;
-      for (const path of [["RAW"], ["C2WIN95", "RAW"]]) {
-        const dir = await descendCaseInsensitive(root, path);
-        if (dir && await childCaseInsensitive(dir, "CITYPRO0.RAW", "file")) recorded = true;
-      }
-      return {xmidi, recorded};
-    }
-    async function missingMedia(root, base, music) {
-      const missing = [];
-      const speech = await descendCaseInsensitive(root, ["RAW"]);
-      if (!music.xmidi && !music.recorded) missing.push("music");
-      if (!(await hasFileWithExtension(speech, ".raw")) && !(await hasFileWithExtension(base, ".raw"))) missing.push("speech");
-      return missing;
-    }
-    async function hashFile(file) {
-      const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
-      return [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, "0")).join("");
-    }
-    const languageNames = {en:"English", de:"German", fr:"French", it:"Italian", es:"Spanish"};
-    /*
-     * C2.ENG differs per release, so its digest identifies both the language
-     * and the release group the loaded data came from.
-     */
-    const knownEditions = {
-      "581da6ed8e43630ba074ddbada2b269448c729159739e951aa29cbf714b6c6bd":
-        {language:"English", edition:"Europe/OEM and 1995–1996 rerelease"},
-      "3c448a3caba887a0a9f792af070aa058d13b1f678d74b06f09d1f5cfd92252c3":
-        {language:"English", edition:"1996–1997 rerelease"},
-      "d1a7af206a1c9e0beed6fa6f3cd67992585539de2583e8044c3a29eaa51bcf8c":
-        {language:"English", edition:"Europe original"},
-      "9f54949256035951c815ca347e52fbba410b565867afc478a1f9254e8f0288d5":
-        {language:"French", edition:"France"},
-      "93d435839b253e4fea9bda74211bef18072dcbd23f2ebed5fc10dff459bd248b":
-        {language:"German", edition:"Germany rerelease"},
-      "0c0f5a4a6ba9ff9e986a9cea8a748db83e323eab24a83b7a2de86fff53d3b0f5":
-        {language:"German", edition:"Germany original"},
-      "e26ac14fd8ff64860cc0b78b55373bd20ea7c2e6fa81558e4393b1a5165a7219":
-        {language:"German", edition:"Germany, Windows 95 tree"},
-      "bbf703a7fbb1f06f700040863b4f7ca38406a64e4d4cfaa3ddf2534dba787347":
-        {language:"English", edition:"1998 US rerelease (Windows version only)"}
-    };
-    async function sourceInfo(source) {
-      if (!source?.startsWith("/persistent/")) return {available:false, profiles:[]};
+    const emptySummary = () => ({playable:false, languages:[], music:{dos:false, windows:false}, movies:0, enhanced:0, bytes:0});
+    async function readSummary() {
+      const summary = emptySummary();
       try {
-        const root = await descendCaseInsensitive(await opfsRoot(), source.slice(12).split("/").filter(Boolean));
-        if (!root) return {available:false, profiles:[]};
-        const packIndex = await childCaseInsensitive(root, "C2PACK.IDX", "file");
-        if (packIndex) {
-          const text = await (await packIndex.getFile()).text();
-          const rows = [...text.matchAll(/^PROFILE\t([^\t\r\n]+)\t?([^\r\n]*)/gm)];
-          const components = new Set();
-          for (const row of rows) {
-            for (const part of (row[2] || "").split(",")) if (part) components.add(part);
-          }
-          return {
-            available: rows.length > 0,
-            profiles: rows.map(row => row[1]),
-            components: [...components]
-          };
-        }
-        const direct = await descendCaseInsensitive(root, []);
-        const dos = await descendCaseInsensitive(root, ["HD"]);
-        const win = await descendCaseInsensitive(root, ["C2WIN95", "HD"]);
-        const candidates = [
-          [direct, "Installed game directory"],
-          [dos, win ? "DOS/Win95 hybrid CD" : "DOS CD layout"],
-          [win, "Windows 95 CD layout"],
-        ];
-        for (const [base, layout] of candidates) {
-          if (!base) continue;
-          const text = await childCaseInsensitive(base, "C2.ENG", "file");
-          const help = await childCaseInsensitive(base, "HELP.ENG", "file");
-          if (text && help) {
-            const known = knownEditions[await hashFile(await text.getFile())];
-            const music = await musicSources(root, base);
-            return {
-              available: true,
-              profiles: [],
-              language: known?.language || "Unrecognised text data",
-              edition: known?.edition || "Unrecognised release",
-              layout,
-              music,
-              missing: await missingMedia(root, base, music)
-            };
-          }
+        const local = await directoryAt("game-data/local", false);
+        const text = await (await (await local.getFileHandle("summary")).getFile()).text();
+        const lines = text.split("\n");
+        if (lines[0] !== "c2-game-data 1") return summary;
+        for (const line of lines.slice(1)) {
+          const words = line.split(" ");
+          if (words[0] === "playable") summary.playable = words[1] === "1";
+          else if (words[0] === "language") {
+            summary.languages.push({tag: words[1], speech: words[2] === "speech", tree: words[3],
+                                    version: words.slice(4).join(" ")});
+          } else if (words[0] === "music") summary.music[words[1]] = true;
+          else if (words[0] === "movies") { summary.movies = +words[1]; summary.enhanced = +words[2]; }
+          else if (words[0] === "bytes") summary.bytes = +words[1];
         }
       } catch {}
-      return {available:false, profiles:[]};
+      return summary;
+    }
+    /* Game data from before the library: caches in game-data/<key>/ and a
+     * folder import left in incoming/. The runtime folds them in once. */
+    async function legacyGameData() {
+      if (localStorage.getItem(LEGACY_ACTIVE_SOURCE)) return true;
+      try {
+        const dir = await directoryAt("game-data", false);
+        for await (const [name] of dir.entries()) if (/^[0-9a-f]{16}$/.test(name)) return true;
+      } catch {}
+      return false;
+    }
+    const languageNames = {en:"English", de:"German", fr:"French", it:"Italian", es:"Spanish", und:"Unknown language"};
+    function speechLanguages(summary) {
+      return summary.languages.filter(l => l.speech);
+    }
+    /* The speech that plays: the choice, else the text language, else English, else the first. */
+    function activeSpeech(summary) {
+      const speech = speechLanguages(summary).map(l => l.tag);
+      const wanted = localStorage.getItem(SPEECH) || localStorage.getItem(TEXT_LANGUAGE) || "";
+      if (speech.includes(wanted)) return wanted;
+      if (speech.includes("en")) return "en";
+      return speech[0] || "";
     }
     function formatBytes(bytes) {
       if (bytes < 1024) return `${bytes} B`;
@@ -269,8 +206,8 @@
         operationDetail.textContent = suffix;
       }
     }
-    function showOperationError(message) {
-      operationTitle.textContent = "Import failed";
+    function showOperationError(message, title = "Import failed") {
+      operationTitle.textContent = title;
       operationProgress.hidden = true;
       operationDetail.textContent = message;
       operationClose.hidden = false;
@@ -301,13 +238,6 @@
       if (await navigator.storage.persisted()) return true;
       return navigator.storage.persist();
     }
-    function folderName(entries) {
-      return entries[0]?.path.split("/")[0] || "";
-    }
-    /* The origin is the label of the choice the user pressed, nothing invented. */
-    function rememberOrigin(name) {
-      localStorage.setItem(PENDING_ORIGIN, JSON.stringify({kind: chosenSourceLabel, name}));
-    }
     function inputEntries(files) {
       return [...files].map(file => ({file, path: file.webkitRelativePath || file.name}));
     }
@@ -335,16 +265,18 @@
         updateOperation(loaded, total, ` · ${done}/${entries.length} files`);
       }
       localStorage.setItem(PENDING_SOURCE, `/persistent/incoming/${generation}`);
-      rememberOrigin(folderName(entries));
       requestPersistence().catch(() => {});
       location.href = location.pathname + smokeQuery();
     }
-    /* Same signatures the native importer sniffs: ZIP, raw CD sector, ISO-9660. */
+    /* Same signatures the native importer sniffs: ZIP, raw CD sector,
+     * ISO-9660, and the Macintosh discs' HFS behind an Apple partition map. */
     async function fileLooksImportable(file) {
-      const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+      const head = new Uint8Array(await file.slice(0, 1026).arrayBuffer());
       if (head[0] === 0x50 && head[1] === 0x4b && head[2] === 3 && head[3] === 4) return "zip";
       const sync = [0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0];
-      if (head.length === 16 && sync.every((b, i) => head[i] === b) && (head[15] === 1 || head[15] === 2)) return "bin";
+      if (head.length >= 16 && sync.every((b, i) => head[i] === b) && (head[15] === 1 || head[15] === 2)) return "bin";
+      if (head.length === 1026 && ((head[0] === 0x45 && head[1] === 0x52 && head[512] === 0x50 && head[513] === 0x4d) ||
+                                   (head[1024] === 0x42 && head[1025] === 0x44))) return "hfs";
       const pvd = new Uint8Array(await file.slice(16 * 2048, 16 * 2048 + 6).arrayBuffer());
       if (String.fromCharCode(...pvd.slice(1, 6)) === "CD001") return "iso";
       if (/\.cue$/i.test(file.name)) return "cue";
@@ -364,7 +296,7 @@
         if (/\.(eng|exe|dat|pl8|raw|xmi|smk)$/i.test(name) || unknown.length > 1) {
           throw new Error(`${name} is part of an installation; use Browse folder or drop the whole folder`);
         }
-        throw new Error(`${name} is not a Caesar II disc image, ZIP or .c2assets pack`);
+        throw new Error(`${name} is not a Caesar II disc image, ZIP or .c2assets file`);
       }
       // A BIN is enough on its own; a CUE beside it is copied but not required.
       let primary = selected.find((_, i) => kinds[i] === "bin")
@@ -388,7 +320,6 @@
         updateOperation(loaded, total, ` · ${done}/${selected.length} files`);
       }
       localStorage.setItem(PENDING_SOURCE, `/persistent/incoming/${generation}/${primary.name}`);
-      rememberOrigin(selected.map(f => f.name).join(", "));
       requestPersistence().catch(() => {});
       location.href = location.pathname + smokeQuery();
     }
@@ -418,13 +349,11 @@
       if (directories.length > 1) throw new Error("Drop one folder at a time");
       if (directories.length === 1) {
         if (entries.length > 1) throw new Error("Drop either a folder or files, not both");
-        chosenSourceLabel = "Dropped folder";
         const collected = [];
         await collectEntry(directories[0], "", collected);
         await importFolder(collected);
         return;
       }
-      chosenSourceLabel = "Dropped file";
       await importFiles(dataTransfer.files);
     }
     function zipStore(files) {
@@ -615,42 +544,34 @@
       requestPersistence().catch(() => {});
       userDataStatus.textContent = `Imported ${count} user-data file${count === 1 ? "" : "s"}.`;
     }
-    function originLabel() {
-      try {
-        const stored = JSON.parse(localStorage.getItem(ACTIVE_ORIGIN) || "null");
-        if (stored?.kind) return stored.name ? `${stored.kind} · ${stored.name}` : stored.kind;
-      } catch {}
-      return null;
-    }
-    /* Show what the loader actually recognised in the currently loaded data. */
+    /* What the game data holds, as the runtime reports it. */
     async function updateAssetsSummary() {
-      const source = localStorage.getItem(ACTIVE_SOURCE);
-      const info = source ? await sourceInfo(source) : {available:false, profiles:[]};
+      const summary = await readSummary();
+      const has = summary.languages.length > 0;
       assetsSummary.replaceChildren();
-      // Loading a second set only makes sense once the current one is removed.
-      assetsLoaded.hidden = !info.available;
-      assetsEmpty.hidden = info.available;
-      sourceDropTitle.textContent = info.available
-        ? "Drop new game data here to replace the current set"
+      assetsLoaded.hidden = !has;
+      assetsEmpty.hidden = has;
+      sourceDropTitle.textContent = has
+        ? "Drop more game data here: what is new or better is added"
         : "Drop your Caesar II folder, disc image or ZIP here";
-      if (!info.available) return;
+      exportButton.disabled = !summary.playable || gameRunning;
+      if (!has) return summary;
       const rows = [];
-      const origin = originLabel();
-      if (origin) rows.push(["Loaded", origin]);
-      if (info.profiles?.length) {
-        rows.push(["Languages", info.profiles.map(name => languageNames[name] || name).join(", ")]);
-        if (info.components?.length) rows.push(["Contents", info.components.sort().join(", ")]);
-      } else if (info.language) {
-        rows.push(["Language", info.language]);
-      }
-      if (info.edition) rows.push(["Edition", info.edition]);
-      if (info.layout) rows.push(["Layout", info.layout]);
+      const speech = speechLanguages(summary);
+      rows.push(["Speech", speech.length ? speech.map(l => `${languageNames[l.tag] || l.tag} (${l.version})`).join(", ") : "none"]);
+      rows.push(["Music", summary.music.dos && summary.music.windows ? "DOS (1995) and Windows (1996)"
+        : summary.music.dos ? "DOS (1995)" : summary.music.windows ? "Windows (1996)" : "none"]);
+      rows.push(["Movies", summary.enhanced ? `${summary.movies}, ${summary.enhanced} larger than the originals` : `${summary.movies}`]);
+      rows.push(["Size", formatBytes(summary.bytes)]);
+      if (!summary.playable) rows.push(["Missing", "a PC installation or disc: this is not enough to play"]);
       for (const [term, value] of rows) {
         const dt = document.createElement("dt"); dt.textContent = term;
         const dd = document.createElement("dd"); dd.textContent = value;
         assetsSummary.append(dt, dd);
       }
-      configureMusicChoice(info.music);
+      configureMusicChoice(summary.music);
+      configureSpeechChoice(summary);
+      return summary;
     }
     const settingsTabs = [...document.querySelectorAll(".c2-settings-tab")];
     function selectSettingsPane(pane, focus = false) {
@@ -695,46 +616,25 @@
       openSettings("assets");
     }
     async function forgetAssets() {
-      if (!confirm("Delete cached/imported game data? Saves and settings will be kept.")) return;
+      if (!confirm("Remove all game data? Saves and settings will be kept.")) return;
       settingsDialog.close();
       const root = await opfsRoot();
-      const targets = [];
-      for (const name of ["game-data", "incoming"]) {
-        try {
-          const dir = await root.getDirectoryHandle(name);
-          for await (const [child] of dir.entries()) targets.push([name, child]);
-        } catch {}
-      }
-      let removed = 0;
-      beginOperation("Removing game data", targets.length);
-      updateOperation(0, targets.length, ` · 0/${targets.length} items`);
-      for (const [parent, child] of targets) {
-        try {
-          const dir = await root.getDirectoryHandle(parent);
-          await dir.removeEntry(child, {recursive:true});
-        } catch {}
-        removed++;
-        updateOperation(removed, targets.length,
-          ` · ${removed}/${targets.length} items`);
-      }
+      beginOperation("Removing game data", 0, "Deleting…");
       for (const name of ["game-data", "incoming"]) {
         try { await root.removeEntry(name, {recursive:true}); } catch {}
       }
-      localStorage.removeItem(ACTIVE_SOURCE);
-      localStorage.removeItem(ACTIVE_PROFILE);
-      localStorage.removeItem(ACTIVE_ORIGIN);
+      for (const key of LEGACY_KEYS) localStorage.removeItem(key);
+      localStorage.removeItem(SPEECH);
       await updateAssetsSummary();
-      assetsStatus.textContent = removed === 1
-        ? "Removed the game data."
-        : `Removed ${removed} sets of game data.`;
+      assetsStatus.textContent = "Removed the game data.";
       endOperation();
-      showMainWindow({available:false, profiles:[]});
+      showMainWindow(emptySummary());
       openSettings("assets");
     }
-    function gameArgs(source) {
-      const args = ["--game-data", source];
-      const profile = localStorage.getItem(ACTIVE_PROFILE);
-      if (profile) args.push("--asset-profile", profile);
+    function gameArgs() {
+      const args = [];
+      const speech = localStorage.getItem(SPEECH);
+      if (speech) args.push("--speech", speech);
       const language = localStorage.getItem(TEXT_LANGUAGE);
       if (language) args.push("--language", language);
       const music = localStorage.getItem(MUSIC_SOURCE);
@@ -751,42 +651,73 @@
       if (smoke === "save") args.push("--save-load-smoke-test");
       return args;
     }
-    async function startGame(source, skipValidation = false) {
+    /*
+     * The runtime runs once per page: the game, an import or an export.
+     * After one of them the page reloads to run the next.
+     */
+    function reloadFor(key) {
+      if (key) sessionStorage.setItem(key, "1");
+      location.replace(location.pathname + smokeQuery());
+    }
+    async function startGame() {
       if (!runtimeReady || gameRunning) return;
-      if (!skipValidation && !(await sourceInfo(source)).available) {
-        localStorage.removeItem(ACTIVE_SOURCE);
-        showMainWindow({available:false, profiles:[]}, "Cached game data is no longer available.");
+      if (!(await readSummary()).playable) {
+        showMainWindow(await readSummary(), "The game data is not enough to play yet.");
         return;
       }
       if (engineHasRun) {
-        // The recovered engine initialises its globals once and SDL is shut
-        // down when it exits, so a second run needs a fresh runtime.
-        sessionStorage.setItem(AUTOSTART_SOURCE, source);
         showMessage("Restarting…");
-        location.reload();
+        reloadFor(AUTOSTART);
         return;
       }
       engineHasRun = true;
       gameRunning = true; panel.hidden = true;
       document.body.classList.add("playing");
       showMessage("Starting…");
-      Module.callMain(gameArgs(source));
+      Module.callMain(gameArgs());
     }
     /*
-     * Import and cache an uploaded source without starting the engine, then
+     * Add an uploaded source to the library (or, with none, fold in game
+     * data from before the library) without starting the engine, then
      * reload into the main window so the user decides when to play.
      */
     function prepareAssets(source) {
       if (!runtimeReady || gameRunning) return;
+      engineHasRun = true;
       preparingAssets = true;
       panel.hidden = false;
-      showMessage("Checking game data…");
+      showMessage("Adding game data…");
       pendingImportError = undefined;
-      beginOperation("Checking game data", 0, "Reading source catalog…");
-      const args = ["--game-data", source, "--prepare-assets"];
-      const profile = localStorage.getItem(ACTIVE_PROFILE);
-      if (profile) args.push("--asset-profile", profile);
+      beginOperation("Reading the game data", 0, "Reading source catalog…");
+      const args = ["--prepare-assets"];
+      if (source) args.unshift("--game-data", source);
       Module.callMain(args);
+    }
+    /* Settings > Game data > Export: the library, zipped, as a download. */
+    const EXPORT_PATH = "/persistent/export/caesar2.c2assets";
+    async function exportGameData() {
+      if (!runtimeReady || gameRunning) return;
+      if (engineHasRun) { reloadFor("c2.export.v1"); return; }
+      engineHasRun = true;
+      exporting = true;
+      settingsDialog.close();
+      pendingImportError = undefined;
+      await directoryAt("export");
+      beginOperation("Writing the game-data archive", 0, "Starting…");
+      Module.callMain(["--export-game-data", EXPORT_PATH]);
+    }
+    async function downloadExport() {
+      const dir = await directoryAt("export", false);
+      const file = await (await dir.getFileHandle("caesar2.c2assets")).getFile();
+      const url = URL.createObjectURL(file);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "caesar2.c2assets";
+      document.body.append(link);
+      link.click();
+      link.remove();
+      // The file stays until the next page load; the download reads it.
+      setTimeout(() => URL.revokeObjectURL(url), 600_000);
     }
     /*
      * Settings > General > Text language. The game text is compiled into
@@ -815,8 +746,7 @@
       }
     };
     function configureMusicChoice(music) {
-      const available = music || {xmidi: true, recorded: true};  // packs: not inspected
-      const has = {dos: available.xmidi, windows: available.recorded};
+      const has = {dos: music.dos, windows: music.windows};
       const stored = localStorage.getItem(MUSIC_SOURCE);
       const preferred = stored === "windows" || stored === "recorded" ? "windows" : "dos";
       for (const option of musicSelect.options) option.disabled = !has[option.value];
@@ -824,7 +754,7 @@
       musicSelect.disabled = !(has.dos && has.windows);
       musicHint.textContent = has.dos && has.windows
         ? "Two different soundtracks. The 1995 one is played by a synthesizer and follows your city's mood; the 1996 one was recorded with real instruments for the Windows release and repeats three pieces."
-        : has.windows ? "This game data has the 1996 Windows music only (the 1998 disc)."
+        : has.windows ? "This game data has the 1996 Windows music only (the 1998 disc, or a Mac disc)."
         : has.dos ? "This game data has the 1995 DOS music only (discs before August 1996)."
         : "This game data has no music.";
     }
@@ -842,22 +772,20 @@
       const stored = localStorage.getItem(TEXT_LANGUAGE) || "";
       languageSelect.value = languages.some(([tag]) => tag === stored) ? stored : "";
     }
-    function configureAssetChoices(info) {
-      profileSelect.replaceChildren();
-      profileRow.hidden = true;
-      if (info.profiles?.length) {
-        const stored = localStorage.getItem(ACTIVE_PROFILE);
-        for (const name of info.profiles) {
+    /* Speech: one choice per language the game data has voices for. */
+    function configureSpeechChoice(summary) {
+      const speech = speechLanguages(summary);
+      for (const select of [speechSelect, speechSelectMain]) {
+        select.replaceChildren();
+        for (const l of speech) {
           const option = document.createElement("option");
-          option.value = name; option.textContent = languageNames[name] || name;
-          profileSelect.append(option);
+          option.value = l.tag; option.textContent = languageNames[l.tag] || l.tag;
+          select.append(option);
         }
-        profileSelect.value = info.profiles.includes(stored) ? stored : info.profiles[0];
-        localStorage.setItem(ACTIVE_PROFILE, profileSelect.value);
-        if (info.profiles.length > 1) profileRow.hidden = false;
-      } else {
-        localStorage.removeItem(ACTIVE_PROFILE);
+        select.value = activeSpeech(summary);
       }
+      speechRow.hidden = speech.length < 2;
+      speechRowMain.hidden = speech.length < 2;
     }
     /* Keep Play focusable so its tooltip can point at the assets button. */
     function setPlayEnabled(enabled) {
@@ -871,57 +799,38 @@
     function showMessage(text) {
       status.textContent = text || "";
     }
-    function describeInfo(info) {
+    function describeSummary(summary) {
       const parts = [];
-      if (info.profiles?.length > 1) parts.push(`${info.profiles.length} languages`);
-      else if (info.language) parts.push(info.language);
-      if (info.edition) parts.push(info.edition);
-      else if (info.layout) parts.push(info.layout);
-      if (info.missing?.length) parts.push(`no ${info.missing.join(" or ")} files`);
+      const speech = speechLanguages(summary);
+      if (speech.length > 1) parts.push(`speech in ${speech.map(l => languageNames[l.tag] || l.tag).join(", ")}`);
+      else if (speech.length) parts.push(`${languageNames[speech[0].tag] || speech[0].tag} ${speech[0].version}`);
+      if (summary.music.dos && summary.music.windows) parts.push("both soundtracks");
+      if (summary.enhanced) parts.push(`${summary.enhanced} larger movies`);
       return parts.join(" · ");
     }
-    function missingMediaMessage(info) {
-      if (!info.missing?.length) return "";
-      return `This installation has no ${info.missing.join(" or ")} files: the original ` +
-        "installer left them on the CD. Load the disc image or the whole disc folder for sound.";
+    function missingMessage(summary) {
+      if (!summary.languages.length) return "";
+      if (!summary.playable) return "This game data is not enough to play: add a PC installation or disc.";
+      const missing = [];
+      if (!summary.music.dos && !summary.music.windows) missing.push("music");
+      if (!speechLanguages(summary).length) missing.push("speech");
+      if (!missing.length) return "";
+      return `There are no ${missing.join(" or ")} files: the original installer left them on the CD. ` +
+        "Add the disc image or the whole disc folder for sound.";
     }
-    function showMainWindow(info, message) {
-      configureAssetChoices(info);
-      setPlayEnabled(info.available);
-      assetsButton.textContent = info.available ? "Replace game data" : "Load game data";
-      const detected = info.available ? describeInfo(info) : "";
+    function showMainWindow(summary, message) {
+      configureSpeechChoice(summary);
+      setPlayEnabled(summary.playable);
+      assetsButton.textContent = summary.languages.length ? "Game data" : "Load game data";
+      const detected = summary.playable ? describeSummary(summary) : "";
       detectedRow.textContent = detected;
       detectedRow.hidden = !detected;
-      showMessage(message || (info.available ? missingMediaMessage(info)
+      showMessage(message || (summary.languages.length ? missingMessage(summary)
         : "Load your Caesar II game data to play, or drop it here."));
       panel.hidden = false;
     }
-    async function showReady(source, message) {
-      const info = source ? await sourceInfo(source) : {available:false, profiles:[]};
-      if (!info.available) {
-        localStorage.removeItem(ACTIVE_SOURCE);
-        showMainWindow({available:false, profiles:[]},
-          source ? "Cached game data is no longer available." : undefined);
-        return;
-      }
-      showMainWindow(info, message);
-    }
-    /*
-     * Play must work whenever usable data exists: the remembered source, any
-     * previously imported cache directory.
-     */
-    async function discoverSource() {
-      const remembered = localStorage.getItem(ACTIVE_SOURCE);
-      if (remembered && (await sourceInfo(remembered)).available) return remembered;
-      try {
-        const cache = await (await opfsRoot()).getDirectoryHandle("game-data");
-        for await (const [name, handle] of cache.entries()) {
-          if (handle.kind !== "directory") continue;
-          const candidate = `/persistent/game-data/${name}`;
-          if ((await sourceInfo(candidate)).available) return candidate;
-        }
-      } catch {}
-      return null;
+    async function showReady(message) {
+      showMainWindow(await readSummary(), message);
     }
     async function bootstrap() {
       if (query.get("storage-check") === "1") {
@@ -929,24 +838,38 @@
         catch (e) { console.error(`browser durable files missing: ${e}`); }
         panel.hidden = false; showMessage("Storage check complete."); return;
       }
-      const autostart = sessionStorage.getItem(AUTOSTART_SOURCE);
-      if (autostart) {
-        sessionStorage.removeItem(AUTOSTART_SOURCE);
-        await startGame(autostart);
+      // A finished export is downloaded; nothing keeps the copy afterwards.
+      try { await (await opfsRoot()).removeEntry("export", {recursive:true}); } catch {}
+      if (sessionStorage.getItem(AUTOSTART)) {
+        sessionStorage.removeItem(AUTOSTART);
+        await startGame();
+        return;
+      }
+      if (sessionStorage.getItem("c2.export.v1")) {
+        sessionStorage.removeItem("c2.export.v1");
+        await exportGameData();
         return;
       }
       const pending = localStorage.getItem(PENDING_SOURCE);
       if (pending) { prepareAssets(pending); return; }
-      const source = await discoverSource();
+      if (await legacyGameData()) {
+        // A folder imported before the library lived in incoming/: add it.
+        const old = localStorage.getItem(LEGACY_ACTIVE_SOURCE);
+        for (const key of LEGACY_KEYS) localStorage.removeItem(key);
+        prepareAssets(old && old.startsWith("/persistent/incoming/") ? old : null);
+        return;
+      }
+      const summary = await readSummary();
       /*
        * tools/smoke-wasm.mjs: run a smoke against whatever game data is in
        * the browser's storage; with none, the page waits at Load game data
        * for the tool to upload some (the query survives that import).
        */
       const smoke = query.get("smoke-test");
-      if (smoke && source) {
-        if (smoke === "prepare") prepareAssets(source);
-        else await startGame(source, true);
+      if (smoke && summary.playable) {
+        if (smoke === "prepare") prepareAssets(null);
+        else if (smoke === "export") await exportGameData();
+        else await startGame();
         return;
       }
       if (smoke && query.get("smoke-data")) {
@@ -959,9 +882,7 @@
         importFiles([new File([await response.blob()], name)]).catch(importFailed);
         return;
       }
-      if (source) localStorage.setItem(ACTIVE_SOURCE, source);
-      else localStorage.removeItem(ACTIVE_SOURCE);
-      await showReady(source);
+      showMainWindow(summary);
       if (query.has("choose-data")) openAssetsModal();
     }
 
@@ -1042,10 +963,16 @@
         applyTheme(input.value);
       };
     }
-    profileSelect.onchange = () => localStorage.setItem(ACTIVE_PROFILE, profileSelect.value);
-    for (const [id, input, label] of [["folder-button", folderInput, "Folder"],
-                                     ["file-button", fileInput, "File"]]) {
-      document.getElementById(id).onclick = () => { chosenSourceLabel = label; input.click(); };
+    /* Speech is chosen on the card and in Settings > Game data alike. */
+    for (const select of [speechSelect, speechSelectMain]) {
+      select.onchange = async () => {
+        localStorage.setItem(SPEECH, select.value);
+        configureSpeechChoice(await readSummary());
+      };
+    }
+    exportButton.onclick = () => exportGameData().catch(importFailed);
+    for (const [id, input] of [["folder-button", folderInput], ["file-button", fileInput]]) {
+      document.getElementById(id).onclick = () => input.click();
     }
     /* Anything can be dropped on the splash card or the settings drop zone. */
     for (const target of [card, sourceDrop]) {
@@ -1065,9 +992,8 @@
       });
     }
     playButton.onclick = () => {
-      const source = localStorage.getItem(ACTIVE_SOURCE);
       if (playDisabled()) { openAssetsModal(); return; }
-      if (source) startGame(source);
+      startGame();
     };
     assetsButton.onclick = openAssetsModal;
     document.getElementById("about-button").onclick = () => { setChromePause(true); aboutDialog.showModal(); };
@@ -1150,27 +1076,17 @@
           : "";
         updateOperation(completedKiB * 1024, totalKiB * 1024, suffix);
       },
-      async onSourceReady(resolved, original) {
-        const active = resolved.replace(/\/ACTIVE-[^/]+$/, "");
-        localStorage.setItem(ACTIVE_SOURCE, active);
+      /* An import (or migration) finished: everything uploaded is in the
+       * library now, so the uploads go. */
+      async onLibraryChanged() {
         localStorage.removeItem(PENDING_SOURCE);
-        const origin = localStorage.getItem(PENDING_ORIGIN);
-        if (origin) localStorage.setItem(ACTIVE_ORIGIN, origin);
-        else localStorage.removeItem(ACTIVE_ORIGIN);
-        localStorage.removeItem(PENDING_ORIGIN);
-        if (original.startsWith("/persistent/incoming/files-")) {
-          try {
-            const generation = original.slice("/persistent/incoming/".length).split("/")[0];
-            const incoming = await (await opfsRoot()).getDirectoryHandle("incoming");
-            await incoming.removeEntry(generation, {recursive:true});
-          } catch {}
-        }
+        try { await (await opfsRoot()).removeEntry("incoming", {recursive:true}); } catch {}
         // Do not await: a storage-permission prompt must not stall the shell.
         requestPersistence().catch(() => {});
         if (preparingAssets) {
           preparingAssets = false;
           if (query.get("smoke-test") === "prepare") {
-            await showReady(active);
+            await showReady();
             const message = playDisabled()
               ? "asset preparation left play disabled"
               : "asset preparation completed without starting the game";
@@ -1178,28 +1094,37 @@
             smokeOutput.push(message); console.log(message);
             return;
           }
-          // Reload so the imported data is served by a fresh runtime and the
-          // user returns to the main window instead of straight into the game.
+          // Reload so the user returns to the main window with a fresh
+          // runtime instead of going straight into the game.
           updateOperation(0, 0, "Complete");
-          showMessage("Game data imported.");
+          showMessage("Game data added.");
           location.replace(location.pathname + smokeQuery());
         }
       },
+      async onExportReady(path) {
+        exporting = false;
+        updateOperation(0, 0, "Complete");
+        await downloadExport();
+        endOperation();
+        showMessage(`Exported the game data as ${path.split("/").pop()}.`);
+        if (query.get("smoke-test") === "export") {
+          const message = "game data exported";
+          smokeOutput.push(message); console.log(message);
+        }
+      },
       onAbort(reason) {
-        const importFailure = preparingAssets;
+        const importFailure = preparingAssets || exporting;
         const message = pendingImportError || reason || "Invalid game data";
-        gameRunning = false; preparingAssets = false; panel.hidden = false;
+        const what = exporting ? "Export" : "Import";
+        gameRunning = false; preparingAssets = false; exporting = false; panel.hidden = false;
         document.body.classList.remove("playing");
         localStorage.removeItem(PENDING_SOURCE);
-        localStorage.removeItem(PENDING_ORIGIN);
-        const previous = localStorage.getItem(ACTIVE_SOURCE);
         if (importFailure) {
-          showOperationError(message);
-          showReady(previous, `Import failed: ${message}.` +
-            (previous ? " Your previous game data is still available." : ""));
+          showOperationError(message, `${what} failed`);
+          showReady(`${what} failed: ${message}. The game data you had is unchanged.`);
         } else {
           endOperation();
-          showReady(previous, `Start failed: ${message}.`);
+          showReady(`Start failed: ${message}.`);
         }
         pendingImportError = undefined;
       },
@@ -1209,7 +1134,7 @@
       async onGameExit() {
         gameRunning = false;
         document.body.classList.remove("playing");
-        await showReady(localStorage.getItem(ACTIVE_SOURCE));
+        await showReady();
         if (query.get("smoke-test") === "restart") {
           const key = "c2.restart-smoke.v1";
           if (sessionStorage.getItem(key)) {

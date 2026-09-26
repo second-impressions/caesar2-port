@@ -182,12 +182,12 @@ int c2_cdrom_find_drives(char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max)
 #else /* POSIX */
 
 #include <fcntl.h>
+#include <limits.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #if PORT_PLATFORM_LINUX
-#include <limits.h>
 #include <linux/cdrom.h>
 #include <sys/ioctl.h>
 #endif
@@ -282,7 +282,7 @@ static int add_path(char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max, int cou
 static int optical_filesystem(const char *type)
 {
     return strcmp(type, "iso9660") == 0 || strcmp(type, "cd9660") == 0 ||
-           strcmp(type, "udf") == 0;
+           strcmp(type, "udf") == 0 || strcmp(type, "hfs") == 0;
 }
 
 /* Mount points of optical volumes. */
@@ -309,6 +309,24 @@ static int optical_mounts(char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max, i
 }
 
 #if !PORT_PLATFORM_MACOS
+/* Whether `device` (a mount table's source, maybe a symlink such as
+ * /dev/cdrom) is one of the device paths already listed. */
+static int listed_device(char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int count,
+                         const char *device)
+{
+    char wanted[PATH_MAX];
+    int i;
+    for (i = 0; i < count; i++) {
+        if (strcmp(paths[i], device) == 0) return 1;
+    }
+    if (device[0] != '/' || !realpath(device, wanted)) return 0;
+    for (i = 0; i < count; i++) {
+        char have[PATH_MAX];
+        if (realpath(paths[i], have) && strcmp(have, wanted) == 0) return 1;
+    }
+    return 0;
+}
+
 int c2_cdrom_optical_mounts_in(const char *mounts_path,
                                char paths[][C2_CDROM_DRIVE_PATH_CAPACITY], int max, int count)
 {
@@ -330,6 +348,9 @@ int c2_cdrom_optical_mounts_in(const char *mounts_path,
             if (*p) *p++ = '\0';
         }
         if (!optical_filesystem(fields[2])) continue;
+        /* A disc already listed by its device is one drive, not two: the
+         * device reads the whole disc and needs nothing mounted. */
+        if (listed_device(paths, count, fields[0])) continue;
         for (in = fields[1]; *in && out + 1 < sizeof(decoded); in++) {
             if (in[0] == '\\' && in[1] == '0' && in[2] == '4' && in[3] == '0') { decoded[out++] = ' '; in += 3; }
             else decoded[out++] = *in;
@@ -397,9 +418,20 @@ int c2_cdrom_open(const char *path, struct c2_cdrom_reader *reader,
         if (sector[0] == 255) break;
     }
     if (!found) {
+        /* A Macintosh CD: HFS behind an Apple partition map. */
+        struct c2_source_reader probe;
+        uint64_t end = 0;
+        reader->size = (uint64_t)1 << 40;
+        c2_cdrom_source(reader, &probe);
+        if (c2_hfs_probe(&probe, &end) && end > 1024 &&
+            cdrom_read_raw(reader, 0, sector, sizeof(sector))) {
+            reader->size = (end + C2_CDROM_SECTOR - 1) / C2_CDROM_SECTOR * C2_CDROM_SECTOR;
+            reader->fingerprint = fnv1a(1469598103934665603ULL, sector, sizeof(sector));
+            return 1;
+        }
         c2_cdrom_close(reader);
         set_error(error, error_capacity,
-                  "no ISO-9660 data track was found on the disc");
+                  "no ISO-9660 or Macintosh data track was found on the disc");
         return 0;
     }
     reader->size = (uint64_t)read_le32(sector + 80) * C2_CDROM_SECTOR;

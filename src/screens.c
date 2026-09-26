@@ -5,6 +5,10 @@ extern int current_no_of_regulars;
 #if PORT_FEAT_BUILD_STAMP
 extern char *c2_port_version_line(void);
 #endif
+#if PORT_FEAT_WINDOWS_ART
+extern int c2_port_crop_windows_picture(const char *palette_file,
+                                        int x, int y, int width, int height);
+#endif
 
 int history_graph_years[5] = { 10, 20, 50, 100, 200 };
 
@@ -893,6 +897,11 @@ void show_initreg_box(void)
 void reshow_initreg_box(void)
 {
     show_pl8file("empire.pl8", 0x1e0);
+#if PORT_FEAT_WINDOWS_ART
+    /* Windows art: the Windows engine showed only this window of the
+     * picture (the blit_window_area above). DOS pictures are left whole. */
+    c2_port_crop_windows_picture("empire.256", 0xb, 0x2d, 0x26c, 0x17c);
+#endif
     show_regions_in_empire();
     show_regions_on_offer();
 #if PLATFORM_WINDOWS
@@ -2187,6 +2196,11 @@ void forum_empire_screen(void)
 void basic_empire_screen(void)
 {
     show_pl8file("empire.pl8", 0x1e0);
+#if PORT_FEAT_WINDOWS_ART
+    /* The same picture in the forum: outside that window the Windows art
+     * has no border, only the artists' note. DOS pictures are left whole. */
+    c2_port_crop_windows_picture("empire.256", 0xb, 0x2d, 0x26c, 0x17c);
+#endif
     show_regions_in_empire();
     show_empire_top_slab();
     show_empire_bottom_slab();

@@ -8,15 +8,19 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import ssl
+from urllib.parse import unquote
 
 
 class Caesar2Handler(SimpleHTTPRequestHandler):
     # --game-data FILE is served at /smoke-data/<name>, for the page to
     # import when a smoke test starts in a browser that has none.
     game_data: Path | None = None
+    # The name as given (a symlink keeps its own); the page asks for it
+    # percent-encoded, so "Caesar II (Europe).zip" works too.
+    game_data_name: str = ""
 
     def translate_path(self, path: str) -> str:
-        if self.game_data and path.split("?", 1)[0] == f"/smoke-data/{self.game_data.name}":
+        if self.game_data and unquote(path.split("?", 1)[0]) == f"/smoke-data/{self.game_data_name}":
             return str(self.game_data)
         return super().translate_path(path)
 
@@ -65,6 +69,7 @@ def main() -> None:
         if not args.game_data.is_file():
             raise SystemExit(f"{args.game_data} is not a file")
         Caesar2Handler.game_data = args.game_data.resolve()
+        Caesar2Handler.game_data_name = args.game_data.name
     handler = partial(Caesar2Handler, directory=str(directory))
     server = ThreadingHTTPServer((args.bind, args.port), handler)
     scheme = "http"

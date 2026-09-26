@@ -74,7 +74,8 @@ enum c2_host_arrow_key {
 
 struct c2_host_config {
     const char *title;
-    const char *asset_root;
+    const char *asset_root;     /* a game-data library, or a raw tree read in place */
+    const char *speech;         /* speech language wished for; NULL or "" = pick */
     const char *user_data_root;
     int logical_width;
     int logical_height;
@@ -149,16 +150,6 @@ void c2_host_audio_set_master_gain(float gain);
 uint64_t c2_host_asset_size(const char *filename);
 size_t c2_host_asset_read(const char *filename, void *buffer,
                           size_t size, size_t offset);
-/* The CDs from mid-1996 carry a second, Windows 95 tree (C2WIN95/) beside
- * the DOS one. Its PL8/HD assets are palette-remapped for Windows and
- * useless to the recovered DOS renderer, but its RAW/ has the recorded
- * music the DOS build never had, and some of its SMK/ movies are larger.
- * A plain lookup searches the DOS media directory, then the Windows one;
- * the Windows variant of a file both trees have is reached by name here.
- * Size 0: no such variant (single-tree data, packs). */
-uint64_t c2_host_asset_windows_size(const char *filename);
-size_t c2_host_asset_windows_read(const char *filename, void *buffer,
-                                  size_t size, size_t offset);
 size_t c2_host_user_file_read(const char *filename, void *buffer,
                               size_t size, size_t offset);
 int c2_host_user_file_write(const char *filename, const void *buffer,

@@ -83,6 +83,10 @@ void forum_explanations(int department_idx, int highlight_flag);
 // Starts a UI frame by advancing the cycle count, restoring the mouse background, polling input,
 // and advancing the random-number generator.
 // FUNCTION: C2 0x3d399
+#if PORT_FEAT_WINDOWS_ART
+extern int c2_port_palette_is_windows(const unsigned char *palette);
+#endif
+
 // FUNCTION: C2WIN 0x0040f7f0
 void gloop_start(void)
 {
@@ -427,6 +431,17 @@ void main_game_loop(void)
     refresh_svga_screen();
 
     if (!scrolling && colour_cycle_delay1(0x3c) != 0 && c2inf.paused == 0) {
+#if PORT_FEAT_WINDOWS_ART
+        /* Windows art rotates as cycle_map_colours did in the Windows
+         * engine; with DOS art (a DOS palette) the ranges below are kept.
+         * The map's palette as loaded tells which: set_palette blacks out
+         * entry 0 of the active one. */
+        if (c2_port_palette_is_windows((const unsigned char *)
+                                       (map_mode == 0 ? city_palette : region_palette))) {
+            cycle_colours(0x40, 0x47);
+            cycle_colours(0x97, 0x99);
+        } else
+#endif
         if (map_mode == 0) { cycle_colours(0x40, 0x47); }
         else { cycle_colours(0x41, 0x43); }
         pulse_red(0x48, 6);

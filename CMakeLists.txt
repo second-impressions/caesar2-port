@@ -180,7 +180,7 @@ add_library(c2_import_core STATIC
     src/platform/sdl3/c2_zip.c
     src/platform/sdl3/c2_import_fs.c
     src/platform/sdl3/c2_cdrom_fs.c
-    src/platform/sdl3/c2_pack.c)
+    src/platform/sdl3/c2_library.c)
 target_compile_features(c2_import_core PRIVATE c_std_11)
 target_include_directories(c2_import_core PUBLIC include)
 target_link_libraries(c2_import_core PUBLIC ZLIB::ZLIB SDL3::SDL3)
@@ -910,7 +910,7 @@ if(BUILD_TESTING)
         include
         src/platform/common
         src/platform/sdl3)
-    target_link_libraries(c2-port-save-test PRIVATE SDL3::SDL3 c2_window_icon)
+    target_link_libraries(c2-port-save-test PRIVATE SDL3::SDL3 c2_window_icon c2_import_core)
     add_test(NAME port-save COMMAND c2-port-save-test)
 
     add_executable(c2-user-files-test
@@ -924,7 +924,7 @@ if(BUILD_TESTING)
         include
         src/platform/common
         src/platform/sdl3)
-    target_link_libraries(c2-user-files-test PRIVATE SDL3::SDL3 c2_window_icon)
+    target_link_libraries(c2-user-files-test PRIVATE SDL3::SDL3 c2_window_icon c2_import_core)
     add_test(NAME user-files COMMAND c2-user-files-test)
 
     add_executable(c2-import-test tests/c2_import_test.c)
@@ -933,6 +933,13 @@ if(BUILD_TESTING)
     target_include_directories(c2-import-test PRIVATE include)
     target_link_libraries(c2-import-test PRIVATE c2_import_core)
     add_test(NAME import-readers COMMAND c2-import-test)
+
+    add_executable(c2-library-test tests/c2_library_test.c)
+    target_compile_features(c2-library-test PRIVATE c_std_11)
+    target_compile_definitions(c2-library-test PRIVATE PORT_PLATFORM=1 ${C2_PLATFORM_LEAF}=1)
+    target_include_directories(c2-library-test PRIVATE include)
+    target_link_libraries(c2-library-test PRIVATE c2_import_core c2_unity_framework)
+    add_test(NAME game-data-library COMMAND c2-library-test)
 
     add_executable(c2-sdl-audio-test
         tests/c2_sdl_audio_test.c

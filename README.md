@@ -63,11 +63,23 @@ works out what it has:
 - a disc image: `.iso`, or `.bin` with or without its `.cue`, also inside a
   `.zip`,
 - a `.zip` of an installed folder,
-- a `.c2assets` pack, which can carry several languages of speech in one file
-  (`tools/c2-assets.py build`, see [docs/localization.md](docs/localization.md)).
+- a `.c2assets` file, which the launcher and the web page export (below).
 
-Disc images and archives are imported once and reused on later starts. Saves,
-screenshots and settings live in the same place:
+You can add more than one. Everything goes into one collection of game data:
+each language's text and speech, both soundtracks, and the best copy of every
+movie. A German disc added to an English one gives you German speech to choose;
+the 1996 CDs add the Windows soundtrack and larger movies; the Macintosh CD
+(a Toast or ISO image, or the disc itself) adds its higher-quality movies,
+though it cannot be played on its own. Adding a disc again, or an older one,
+changes nothing.
+
+**Export** (launcher → Game data, or the web page's Settings → Game data)
+writes the whole collection as one `.c2assets` file, a ZIP any archive tool
+opens, to move your game data to another computer or into the browser.
+**Remove** deletes it; saves and settings stay.
+
+The collection lives in `game-data/` inside the user-data directory. Saves,
+screenshots and settings live in that directory too:
 
 | | |
 |---|---|
@@ -102,11 +114,14 @@ your desktop and can be resized freely. Integer scaling, the default, keeps
 square pixels and leaves a border until the next multiple fits; fractional
 scaling fills the window instead. Both settings are remembered.
 
-On the command line, `caesar2 [SOURCE]` starts with a given game-data source.
-The other options are `--fullscreen`, `--fractional-scaling`,
-`--skip-launcher`, `--mouse-lock` (confine the pointer to the game area),
-`--user-data-dir PATH`, `--language TAG` (`en`, `de`, `fr`), `--music
-dos|windows`, `--asset-profile NAME` (speech in a multi-profile pack) and
+On the command line, `caesar2 [SOURCE]` or `--game-data SOURCE` adds a
+source to the collection first; `--prepare-assets` stops after that, and
+`--export-game-data FILE` writes the collection to a `.c2assets` file. The
+other options are `--fullscreen`, `--fractional-scaling`, `--skip-launcher`,
+`--mouse-lock` (confine the pointer to the game area), `--user-data-dir PATH`,
+`--language TAG` (`en`, `de`, `fr`), `--speech TAG` (the voices, when the
+game data has several languages), `--music dos|windows`, `--asset-root DIR`
+(read a folder as it is, without adding it; for development) and
 `--version`.
 
 ## Something wrong?

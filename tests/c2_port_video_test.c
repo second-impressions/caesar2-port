@@ -3,9 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* The movie player's two portable decisions, with its statics in reach:
- * which of a movie's two files (DOS or Windows 95 tree) to play, and how a
- * frame of any size lands in the doubled VGA screen. */
+/* The movie player with its statics in reach: it plays the file the game
+ * data holds (which copy that is was settled at import, see
+ * tests/c2_import_test.c), and a frame of any size lands in the doubled
+ * VGA screen. */
 #include "../src/platform/common/c2_port_video.c"
 
 /* The engine globals and functions c2_port_video.c reaches for. */
@@ -29,27 +30,26 @@ int c2_host_audio_queue_pcm(int v, const void *d, size_t s, int r, int c, int b,
 { (void)v; (void)d; (void)s; (void)r; (void)c; (void)b; (void)f; return 0; }
 void c2_host_audio_stop_voice(int v) { (void)v; }
 
-/* The game data: a name, its bytes, in the DOS tree and/or the Windows one. */
-struct fake { const char *name; int windows; unsigned char bytes[16]; size_t size; };
+/* The game data: a name and its bytes. */
+struct fake { const char *name; unsigned char bytes[16]; size_t size; };
 static struct fake files[8];
 static size_t file_count;
 
-static void add_smk(const char *name, int windows, unsigned long width, unsigned long height)
+static void add_smk(const char *name, unsigned long width, unsigned long height)
 {
     struct fake *f = &files[file_count++];
     f->name = name;
-    f->windows = windows;
     memcpy(f->bytes, "SMK2", 4);
     f->bytes[4] = width & 0xff; f->bytes[5] = (width >> 8) & 0xff; f->bytes[6] = 0; f->bytes[7] = 0;
     f->bytes[8] = height & 0xff; f->bytes[9] = (height >> 8) & 0xff; f->bytes[10] = 0; f->bytes[11] = 0;
     f->size = 12;
 }
 
-static const struct fake *find(const char *name, int windows)
+static const struct fake *find(const char *name)
 {
     size_t i;
     for (i = 0; i < file_count; i++) {
-        if (files[i].windows == windows && strcmp(files[i].name, name) == 0) return &files[i];
+        if (strcmp(files[i].name, name) == 0) return &files[i];
     }
     return NULL;
 }
@@ -62,14 +62,12 @@ static size_t read_from(const struct fake *f, void *buffer, size_t size, size_t 
     return size;
 }
 
-uint64_t c2_host_asset_size(const char *name) { const struct fake *f = find(name, 0); return f ? f->size : 0; }
-size_t c2_host_asset_read(const char *name, void *b, size_t s, size_t o) { return read_from(find(name, 0), b, s, o); }
-uint64_t c2_host_asset_windows_size(const char *name) { const struct fake *f = find(name, 1); return f ? f->size : 0; }
-size_t c2_host_asset_windows_read(const char *name, void *b, size_t s, size_t o) { return read_from(find(name, 1), b, s, o); }
+uint64_t c2_host_asset_size(const char *name) { const struct fake *f = find(name); return f ? f->size : 0; }
+size_t c2_host_asset_read(const char *name, void *b, size_t s, size_t o) { return read_from(find(name), b, s, o); }
 
 void *c2_port_load_asset(const char *name, size_t *size_out)
 {
-    const struct fake *f = find(name, 0);
+    const struct fake *f = find(name);
     void *data;
     if (!f) return NULL;
     data = malloc(f->size);
@@ -91,46 +89,19 @@ void tearDown(void)
     internal_screen = NULL;
 }
 
-static unsigned long chosen_pixels(const char *name, int mode)
+static void test_the_movie_in_the_game_data_is_played_in_every_mode(void)
 {
-    size_t size = 0;
-    unsigned char *data = load_movie_asset(name, mode, &size);
-    unsigned long pixels = smk_header_pixels(data, size);
-    free(data);
-    return pixels;
-}
-
-static void test_mode_2_takes_the_larger_windows_movie(void)
-{
-    add_smk("battwon.smk", 0, 320, 152);
-    add_smk("battwon.smk", 1, 500, 240);
-    TEST_ASSERT_EQUAL_UINT32(500ul * 240ul, chosen_pixels("battwon.smk", 2));
-}
-
-static void test_modes_drawn_one_to_one_keep_the_dos_movie(void)
-{
-    add_smk("message.smk", 0, 320, 152);
-    add_smk("message.smk", 1, 500, 240);
-    TEST_ASSERT_EQUAL_UINT32(320ul * 152ul, chosen_pixels("message.smk", 1));
-    TEST_ASSERT_EQUAL_UINT32(320ul * 152ul, chosen_pixels("message.smk", 0));
-}
-
-static void test_same_size_windows_reencode_is_not_preferred(void)
-{
-    add_smk("congrat.smk", 0, 320, 152);
-    add_smk("congrat.smk", 1, 320, 152);
-    /* Equal pixels: the DOS file, which has more colours. */
-    TEST_ASSERT_EQUAL_PTR(find("congrat.smk", 0)->bytes[4], find("congrat.smk", 1)->bytes[4]);
-    {
+    int mode;
+    add_smk("battwon.smk", 500, 240);
+    for (mode = 0; mode <= 2; mode++) {
         size_t size = 0;
-        unsigned char *data = load_movie_asset("congrat.smk", 2, &size);
+        unsigned char *data = load_movie_asset("battwon.smk", mode, &size);
         TEST_ASSERT_NOT_NULL(data);
+        TEST_ASSERT_EQUAL_size_t(12, size);
+        TEST_ASSERT_EQUAL_UINT8(500 & 0xff, data[4]);
         free(data);
     }
-    /* Only one tree: what there is. */
-    file_count = 0;
-    add_smk("wingame.smk", 0, 500, 240);
-    TEST_ASSERT_EQUAL_UINT32(500ul * 240ul, chosen_pixels("wingame.smk", 2));
+    TEST_ASSERT_NULL(load_movie_asset("missing.smk", 2, &(size_t){0}));
 }
 
 static void test_vga_frame_fills_the_doubled_box_from_any_size(void)
@@ -172,9 +143,7 @@ static void test_vga_frame_fills_the_doubled_box_from_any_size(void)
 int main(void)
 {
     UNITY_BEGIN();
-    RUN_TEST(test_mode_2_takes_the_larger_windows_movie);
-    RUN_TEST(test_modes_drawn_one_to_one_keep_the_dos_movie);
-    RUN_TEST(test_same_size_windows_reencode_is_not_preferred);
+    RUN_TEST(test_the_movie_in_the_game_data_is_played_in_every_mode);
     RUN_TEST(test_vga_frame_fills_the_doubled_box_from_any_size);
     return UNITY_END();
 }

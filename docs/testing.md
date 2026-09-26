@@ -67,6 +67,15 @@ SDL_VIDEODRIVER=dummy C2_SETUP_SCREENSHOT=/tmp/launcher.png \
   ./build/port/linux-debug/caesar2 --game-data /path/to/CAESAR2.ISO --user-data-dir /tmp/ud
 ```
 
+`C2_SETUP_PAGE=data` or `settings` opens the launcher on that page. With
+`--game-data` the frame is taken once the import has finished.
+
+`--game-data` adds its source to the game-data library under the user-data
+directory; `--asset-root` reads a library or an installation in place and
+adds nothing. `--prepare-assets` stops after the import and prints what the
+library holds. How to test every kind of source, including a simulated
+CD-ROM drive, is in `game-data-library.md`.
+
 ## Test suites
 
 To register the semantic smoke tests with CTest, configure with
