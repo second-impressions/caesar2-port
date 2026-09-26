@@ -27,6 +27,27 @@ static int memory_read(void *userdata, uint64_t offset, void *buffer,
     return 1;
 }
 
+static SDL_EnumerationResult SDLCALL remove_child(void *userdata, const char *dirname,
+                                                  const char *fname)
+{
+    char path[1024];
+    SDL_PathInfo info;
+    (void)userdata;
+    size_t n = strlen(dirname);
+    snprintf(path, sizeof(path), "%s%s%s", dirname, n && dirname[n - 1] == '/' ? "" : "/", fname);
+    if (SDL_GetPathInfo(path, &info) && info.type == SDL_PATHTYPE_DIRECTORY) {
+        SDL_EnumerateDirectory(path, remove_child, NULL);
+    }
+    SDL_RemovePath(path);
+    return SDL_ENUM_CONTINUE;
+}
+
+static void remove_tree(const char *path)
+{
+    SDL_EnumerateDirectory(path, remove_child, NULL);
+    SDL_RemovePath(path);
+}
+
 static void le16(unsigned char *p, unsigned value)
 {
     p[0] = (unsigned char)value;
@@ -212,40 +233,6 @@ static void test_zip_extracts_one_outer_directory(void)
     remove("c2-import-test.zip");
 }
 
-static void test_pack_activates_default_profile(void)
-{
-    FILE *file;
-    char active[256];
-    char error[128];
-    char text[5] = {0};
-    remove("c2-pack-test/ACTIVE-en/.c2-object-map");
-    remove("c2-pack-test/ACTIVE-en");
-    remove("c2-pack-test/OBJECTS/00000001.BIN");
-    remove("c2-pack-test/OBJECTS");
-    remove("c2-pack-test/C2PACK.IDX");
-    remove("c2-pack-test");
-    TEST_ASSERT_TRUE(SDL_CreateDirectory("c2-pack-test/OBJECTS"));
-    file = fopen("c2-pack-test/OBJECTS/00000001.BIN", "wb");
-    TEST_ASSERT_NOT_NULL(file); fwrite("text", 1, 4, file); fclose(file);
-    file = fopen("c2-pack-test/C2PACK.IDX", "wb");
-    TEST_ASSERT_NOT_NULL(file);
-    fputs("C2PACK1\nDEFAULT_LANGUAGE\ten\nCOMPONENT\tcore/default\n"
-          "FILE\tC2.ENG\t00000001.BIN\nPROFILE\ten\tcore/default\nEND\n", file);
-    fclose(file);
-    TEST_ASSERT_TRUE_MESSAGE(c2_pack_activate("c2-pack-test", NULL,
-                                               active, sizeof(active),
-                                               error, sizeof(error)), error);
-    file = fopen("c2-pack-test/ACTIVE-en/.c2-object-map", "rb");
-    TEST_ASSERT_NOT_NULL(file); fread(text, 1, 4, file); fclose(file);
-    TEST_ASSERT_EQUAL_MEMORY("C2.E", text, 4);
-    remove("c2-pack-test/ACTIVE-en/.c2-object-map");
-    remove("c2-pack-test/ACTIVE-en");
-    remove("c2-pack-test/OBJECTS/00000001.BIN");
-    remove("c2-pack-test/OBJECTS");
-    remove("c2-pack-test/C2PACK.IDX");
-    remove("c2-pack-test");
-}
-
 static void test_gog_installation_imports_embedded_cd_image(void)
 {
     struct memory_source memory;
@@ -284,23 +271,22 @@ static void test_gog_installation_imports_embedded_cd_image(void)
     TEST_ASSERT_EQUAL_STRING("GOG installation (embedded CD image)",
                              c2_source_kind_name(kind));
 
-    TEST_ASSERT_TRUE_MESSAGE(c2_import_path("c2-gog-install-test",
-                                            "c2-gog-cache", NULL, NULL,
-                                            root, sizeof(root),
-                                            error, sizeof(error)), error);
+    {
+        int in_place = 1;
+        remove_tree("c2-gog-stage");
+        TEST_ASSERT_TRUE_MESSAGE(c2_import_stage("c2-gog-install-test", "c2-gog-stage", NULL,
+                                                 root, sizeof(root), &in_place,
+                                                 error, sizeof(error)), error);
+        TEST_ASSERT_FALSE(in_place);
+        TEST_ASSERT_EQUAL_STRING("c2-gog-stage", root);
+    }
     snprintf(path, sizeof(path), "%s/HD/C2.ENG", root);
     file = fopen(path, "rb");
     TEST_ASSERT_NOT_NULL_MESSAGE(file, path);
     TEST_ASSERT_EQUAL_size_t(4, fread(value, 1, 4, file));
     fclose(file);
     TEST_ASSERT_EQUAL_STRING("text", value);
-    remove(path);
-    snprintf(path, sizeof(path), "%s/HD/HELP.ENG", root); remove(path);
-    snprintf(path, sizeof(path), "%s/HD", root); remove(path);
-    snprintf(path, sizeof(path), "%s/.complete", root); remove(path);
-    remove(root);
-    remove("c2-gog-cache/game-data");
-    remove("c2-gog-cache");
+    remove_tree("c2-gog-stage");
     remove("c2-gog-install-test/game.gog");
     remove("c2-gog-install-test/C2.ENG");
     remove("c2-gog-install-test/HELP.ENG");
@@ -543,26 +529,23 @@ static void check_wrapped_cue_image(unsigned method, unsigned expected_rewinds)
     TEST_ASSERT_EQUAL_UINT(expected_rewinds, stream.rewinds);
     c2_zip_stream_close(&stream);
 
-    /* End to end through the importer into a cache directory. */
-    remove("c2-wrapped-cache/game-data");
+    /* End to end through the importer's staging. */
+    remove_tree("c2-wrapped-stage");
     {
         char root[512];
-        TEST_ASSERT_TRUE_MESSAGE(c2_import_path("c2-wrapped.zip", "c2-wrapped-cache",
-                                                NULL, NULL, root, sizeof(root),
-                                                error, sizeof(error)), error);
+        int in_place = 1;
+        TEST_ASSERT_TRUE_MESSAGE(c2_import_stage("c2-wrapped.zip", "c2-wrapped-stage", NULL,
+                                                 root, sizeof(root), &in_place,
+                                                 error, sizeof(error)), error);
+        TEST_ASSERT_FALSE(in_place);
         snprintf(entry, sizeof(entry), "%s/HD/C2.ENG", root);
         file = fopen(entry, "rb");
         TEST_ASSERT_NOT_NULL_MESSAGE(file, entry);
         TEST_ASSERT_EQUAL_size_t(4, fread(text, 1, 4, file));
         fclose(file);
         TEST_ASSERT_EQUAL_STRING("text", text);
-        remove(entry);
-        snprintf(entry, sizeof(entry), "%s/HD", root); remove(entry);
-        snprintf(entry, sizeof(entry), "%s/.complete", root); remove(entry);
-        remove(root);
     }
-    remove("c2-wrapped-cache/game-data");
-    remove("c2-wrapped-cache");
+    remove_tree("c2-wrapped-stage");
     remove("c2-wrapped.zip");
     free(raw);
     free(iso_memory.data);
@@ -623,7 +606,6 @@ int main(void)
     RUN_TEST(test_iso_catalog_reads_nested_file);
     RUN_TEST(test_cue_accepts_observed_modes);
     RUN_TEST(test_zip_extracts_one_outer_directory);
-    RUN_TEST(test_pack_activates_default_profile);
     RUN_TEST(test_gog_installation_imports_embedded_cd_image);
     RUN_TEST(test_raw_sector_adapter_feeds_iso_reader);
     RUN_TEST(test_cdrom_reader_serves_iso_sectors);

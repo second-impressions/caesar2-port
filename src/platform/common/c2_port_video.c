@@ -140,50 +140,13 @@ static void copy_vga_frame(const unsigned char *pixels, int left, int top)
     }
 }
 
-/* Smacker header: "SMK2", width, height (little-endian 32-bit). */
-static unsigned long smk_header_pixels(const unsigned char *header, size_t size)
-{
-    unsigned long width;
-    unsigned long height;
-
-    if (size < 12 || memcmp(header, "SMK2", 4) != 0) return 0;
-    width = header[4] | ((unsigned long)header[5] << 8) |
-            ((unsigned long)header[6] << 16) | ((unsigned long)header[7] << 24);
-    height = header[8] | ((unsigned long)header[9] << 8) |
-             ((unsigned long)header[10] << 16) | ((unsigned long)header[11] << 24);
-    return width * height;
-}
-
-/* The movie file to play: the DOS one, unless the Windows 95 tree has the
- * same movie with more pixels and the mode scales it anyway (mode 2). The
- * same-size Windows re-encodes have fewer colours, so they are not
- * preferred; a movie drawn 1:1 (modes 0 and 1) keeps its DOS size. */
+/* The movie file to play. Which copy that is (the DOS one, or a larger
+ * Windows 95 or Mac encode of a movie that is scaled anyway) was decided
+ * when the game data was imported (docs/game-data-library.md). */
 static unsigned char *load_movie_asset(const char *filename, int mode,
                                        size_t *size_out)
 {
-    unsigned char dos_header[12];
-    unsigned char windows_header[12];
-    uint64_t windows_size;
-    unsigned char *data;
-    size_t size;
-
-    if (mode == 2) {
-        windows_size = c2_host_asset_windows_size(filename);
-        if (windows_size >= 12 && windows_size <= SIZE_MAX &&
-            c2_host_asset_read(filename, dos_header, sizeof(dos_header), 0) == sizeof(dos_header) &&
-            c2_host_asset_windows_read(filename, windows_header, sizeof(windows_header), 0) == sizeof(windows_header) &&
-            smk_header_pixels(windows_header, sizeof(windows_header)) >
-                smk_header_pixels(dos_header, sizeof(dos_header))) {
-            size = (size_t)windows_size;
-            data = malloc(size);
-            if (data != NULL &&
-                c2_host_asset_windows_read(filename, data, size, 0) == size) {
-                *size_out = size;
-                return data;
-            }
-            free(data);
-        }
-    }
+    (void)mode;
     return c2_port_load_asset(filename, size_out);
 }
 

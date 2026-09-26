@@ -63,9 +63,8 @@ static int runtime_path(const char *path)
     };
     const char *dot;
     size_t i;
-    if (SDL_strcasecmp(path, "C2PACK.JSN") == 0 ||
-        SDL_strcasecmp(path, "C2PACK.IDX") == 0) return 1;
-    if (SDL_strncasecmp(path, "OBJECTS/", 8) == 0) return 1;
+    const char *name = strrchr(path, '/');
+    if (SDL_strcasecmp(name ? name + 1 : path, "C2ASSETS") == 0) return 1;
     dot = strrchr(path, '.');
     if (!dot) return 0;
     for (i = 0; i < sizeof(extensions) / sizeof(extensions[0]); i++) {
@@ -164,16 +163,6 @@ static int join_path(char *output, size_t capacity, const char *left, const char
     return result >= 0 && (size_t)result < capacity;
 }
 
-static uint64_t source_key(const char *path, const SDL_PathInfo *info)
-{
-    uint64_t hash = 1469598103934665603ULL;
-    const unsigned char *p = (const unsigned char *)path;
-    while (*p) { hash ^= *p++; hash *= 1099511628211ULL; }
-    hash ^= info->size; hash *= 1099511628211ULL;
-    hash ^= (uint64_t)info->modify_time; hash *= 1099511628211ULL;
-    return hash;
-}
-
 static int import_iso_file(const char *path, const char *destination,
                            const struct c2_import_progress *progress,
                            char *error, size_t error_capacity)
@@ -245,6 +234,56 @@ static int child_of_type(char *out, size_t capacity, const char *directory,
     SDL_EnumerateDirectory(directory, probe_child, &probe);
     if (!probe.found[0] || !join_path(out, capacity, directory, probe.found)) return 0;
     return SDL_GetPathInfo(out, &info) && info.type == wanted;
+}
+
+struct names_probe {
+    char names[64][256];
+    int count;
+};
+
+static SDL_EnumerationResult SDLCALL collect_directory_name(void *userdata,
+                                                           const char *dirname,
+                                                           const char *fname)
+{
+    struct names_probe *probe = userdata;
+    char path[C2_IMPORT_PATH_CAPACITY];
+    SDL_PathInfo info;
+    if (probe->count >= 64) return SDL_ENUM_SUCCESS;
+    if (!join_path(path, sizeof(path), dirname, fname) ||
+        !SDL_GetPathInfo(path, &info) || info.type != SDL_PATHTYPE_DIRECTORY ||
+        strlen(fname) >= sizeof(probe->names[0])) return SDL_ENUM_CONTINUE;
+    strcpy(probe->names[probe->count++], fname);
+    return SDL_ENUM_CONTINUE;
+}
+
+struct movie_probe {
+    int found;
+};
+
+static SDL_EnumerationResult SDLCALL probe_movie(void *userdata,
+                                                 const char *dirname,
+                                                 const char *fname)
+{
+    struct movie_probe *probe = userdata;
+    (void)dirname;
+    if (extension_is(fname, ".smk")) {
+        probe->found = 1;
+        return SDL_ENUM_SUCCESS;
+    }
+    return SDL_ENUM_CONTINUE;
+}
+
+/* A folder of Smacker files, directly or in SMK/: the Mac movies. */
+static int has_movies(const char *directory)
+{
+    struct movie_probe probe;
+    char smk[C2_IMPORT_PATH_CAPACITY];
+    probe.found = 0;
+    SDL_EnumerateDirectory(directory, probe_movie, &probe);
+    if (!probe.found && child_of_type(smk, sizeof(smk), directory, "SMK", SDL_PATHTYPE_DIRECTORY)) {
+        SDL_EnumerateDirectory(smk, probe_movie, &probe);
+    }
+    return probe.found;
 }
 
 static int has_core_files(const char *directory)
@@ -353,11 +392,36 @@ static enum c2_source_kind sniff_file(const char *path)
  * beside game.gog, the complete original CD as an ISO image. Prefer that
  * image so importing the installation also supplies XMI music, RAW speech,
  * and the rest of the CD media. */
+/* An installation somewhere below `directory`: a Mac install keeps HD/
+ * inside Data/, and a mounted Mac CD holds its installs two folders down. */
+static int nested_installation(const char *directory, int depth)
+{
+    struct names_probe *probe;
+    int i;
+    int found = 0;
+    if (depth <= 0) return 0;
+    probe = calloc(1, sizeof(*probe));
+    if (!probe) return 0;
+    SDL_EnumerateDirectory(directory, collect_directory_name, probe);
+    for (i = 0; i < probe->count && !found; i++) {
+        char child[C2_IMPORT_PATH_CAPACITY];
+        if (!join_path(child, sizeof(child), directory, probe->names[i])) continue;
+        if (layout_at(child) || nested_installation(child, depth - 1)) found = 1;
+    }
+    free(probe);
+    return found;
+}
+
 static int classify_installation(const char *start, enum c2_source_kind *kind,
                                  char *root, size_t root_capacity)
 {
     char image[C2_IMPORT_PATH_CAPACITY];
-    if (!resolve_install_root(start, root, root_capacity)) return 0;
+    if (!resolve_install_root(start, root, root_capacity)) {
+        if (!nested_installation(start, 3)) return 0;
+        snprintf(root, root_capacity, "%s", start);
+        *kind = C2_SOURCE_DIRECTORY;
+        return 1;
+    }
     if (child_of_type(image, sizeof(image), root, "game.gog", SDL_PATHTYPE_FILE) &&
         sniff_file(image) == C2_SOURCE_ISO) {
         *kind = C2_SOURCE_GOG_DIRECTORY;
@@ -383,12 +447,25 @@ int c2_import_classify(const char *path, enum c2_source_kind *kind,
     }
     if (!SDL_GetPathInfo(path, &info)) { set_error(error, error_capacity, "game-data source does not exist"); return 0; }
     if (info.type == SDL_PATHTYPE_DIRECTORY) {
-        if (child_of_type(probe, sizeof(probe), path, "C2PACK.IDX", SDL_PATHTYPE_FILE)) {
-            *kind = C2_SOURCE_PACK_DIRECTORY;
+        char library[C2_IMPORT_PATH_CAPACITY];
+        if (child_of_type(probe, sizeof(probe), path, "C2ASSETS", SDL_PATHTYPE_FILE)) {
+            *kind = C2_SOURCE_LIBRARY;
             snprintf(root, root_capacity, "%s", path);
             return 1;
         }
+        /* A game-data root: the library sits one level down. */
+        if (child_of_type(library, sizeof(library), path, "library", SDL_PATHTYPE_DIRECTORY) &&
+            child_of_type(probe, sizeof(probe), library, "C2ASSETS", SDL_PATHTYPE_FILE)) {
+            *kind = C2_SOURCE_LIBRARY;
+            snprintf(root, root_capacity, "%s", library);
+            return 1;
+        }
         if (classify_installation(path, kind, root, root_capacity)) return 1;
+        if (has_movies(path)) {
+            *kind = C2_SOURCE_MOVIES;
+            snprintf(root, root_capacity, "%s", path);
+            return 1;
+        }
         set_error(error, error_capacity, "no Caesar II installation was found in this folder");
         return 0;
     }
@@ -413,7 +490,8 @@ const char *c2_source_kind_name(enum c2_source_kind kind)
     switch (kind) {
     case C2_SOURCE_DIRECTORY: return "Installation folder";
     case C2_SOURCE_GOG_DIRECTORY: return "GOG installation (embedded CD image)";
-    case C2_SOURCE_PACK_DIRECTORY: return "Asset pack folder";
+    case C2_SOURCE_LIBRARY: return "Game data library";
+    case C2_SOURCE_MOVIES: return "Movies";
     case C2_SOURCE_ZIP: return "ZIP archive";
     case C2_SOURCE_ISO: return "Disc image (ISO)";
     case C2_SOURCE_RAW_BIN: return "Disc image (BIN)";
@@ -568,99 +646,54 @@ static int import_zip(const char *zip_path, const char *destination,
     }
 }
 
-int c2_import_path(const char *source_path, const char *cache_root,
-                   const char *asset_profile,
-                   const struct c2_import_progress *progress,
-                   char *asset_root, size_t asset_root_capacity,
-                   char *error, size_t error_capacity)
+int c2_import_stage(const char *source_path, const char *staging_dir,
+                    const struct c2_import_progress *progress,
+                    char *root, size_t root_capacity, int *in_place,
+                    char *error, size_t error_capacity)
 {
-    SDL_PathInfo info;
-    char game_data_root[C2_IMPORT_PATH_CAPACITY];
-    char destination[C2_IMPORT_PATH_CAPACITY];
-    char marker[C2_IMPORT_PATH_CAPACITY];
-    char key[32];
-    char root[C2_IMPORT_PATH_CAPACITY];
-    char import_source[C2_IMPORT_PATH_CAPACITY];
+    char found[C2_IMPORT_PATH_CAPACITY];
+    char image[C2_IMPORT_PATH_CAPACITY];
     enum c2_source_kind kind;
-    FILE *done;
     int ok;
 
-    if (!c2_import_classify(source_path, &kind, root, sizeof(root), error, error_capacity)) return 0;
+    *in_place = 0;
+    if (!c2_import_classify(source_path, &kind, found, sizeof(found), error, error_capacity)) return 0;
     switch (kind) {
-    case C2_SOURCE_PACK_DIRECTORY:
-        return c2_pack_activate(root, asset_profile, asset_root, asset_root_capacity,
-                                error, error_capacity);
     case C2_SOURCE_DIRECTORY:
-        if (strlen(root) >= asset_root_capacity) return 0;
-        strcpy(asset_root, root);
+    case C2_SOURCE_LIBRARY:
+    case C2_SOURCE_MOVIES:
+        if (strlen(found) >= root_capacity) { set_error(error, error_capacity, "path is too long"); return 0; }
+        strcpy(root, found);
+        *in_place = 1;
         return 1;
-    case C2_SOURCE_GOG_DIRECTORY:
-        if (!child_of_type(import_source, sizeof(import_source), root,
-                           "game.gog", SDL_PATHTYPE_FILE)) {
-            set_error(error, error_capacity, "GOG game.gog disc image is missing");
-            return 0;
-        }
-        break;
-    case C2_SOURCE_CDROM: {
-        /* Key the cache by the disc's primary volume descriptor: the
-         * device path is identical for every disc in the drive and the
-         * device node reports no useful size or modify time. */
-        struct c2_cdrom_reader cdrom;
-        if (!c2_cdrom_open(source_path, &cdrom, error, error_capacity)) return 0;
-        snprintf(key, sizeof(key), "%016llx",
-                 (unsigned long long)cdrom.fingerprint);
-        c2_cdrom_close(&cdrom);
-        break;
-    }
     default:
-        snprintf(import_source, sizeof(import_source), "%s", source_path);
         break;
     }
-    if (kind != C2_SOURCE_CDROM) {
-        if (!SDL_GetPathInfo(import_source, &info)) {
-            set_error(error, error_capacity, "game-data source does not exist"); return 0;
-        }
-        snprintf(key, sizeof(key), "%016llx",
-                 (unsigned long long)source_key(import_source, &info));
-    }
-    if (!join_path(game_data_root, sizeof(game_data_root), cache_root, "game-data") ||
-        !join_path(destination, sizeof(destination), game_data_root, key) ||
-        !join_path(marker, sizeof(marker), destination, ".complete")) return 0;
-    if (SDL_GetPathInfo(marker, NULL)) goto activate;
-    if (!make_parents(marker) || (!SDL_CreateDirectory(destination) && !SDL_GetPathInfo(destination, NULL))) {
-        set_error(error, error_capacity, "could not create game-data cache"); return 0;
+    if (strlen(staging_dir) >= root_capacity) { set_error(error, error_capacity, "path is too long"); return 0; }
+    if (!SDL_CreateDirectory(staging_dir) && !SDL_GetPathInfo(staging_dir, NULL)) {
+        set_error(error, error_capacity, "could not create the staging folder"); return 0;
     }
     switch (kind) {
     case C2_SOURCE_CDROM:
-        ok = import_cdrom_device(source_path, destination, progress, error, error_capacity); break;
+        ok = import_cdrom_device(source_path, staging_dir, progress, error, error_capacity); break;
     case C2_SOURCE_ZIP:
-        ok = import_zip(import_source, destination, progress, error, error_capacity); break;
+        ok = import_zip(source_path, staging_dir, progress, error, error_capacity); break;
     case C2_SOURCE_GOG_DIRECTORY:
+        if (!child_of_type(image, sizeof(image), found, "game.gog", SDL_PATHTYPE_FILE)) {
+            set_error(error, error_capacity, "GOG game.gog disc image is missing");
+            return 0;
+        }
+        ok = import_iso_file(image, staging_dir, progress, error, error_capacity); break;
     case C2_SOURCE_ISO:
-        ok = import_iso_file(import_source, destination, progress, error, error_capacity); break;
+        ok = import_iso_file(source_path, staging_dir, progress, error, error_capacity); break;
     case C2_SOURCE_RAW_BIN:
-        ok = import_raw_bin(import_source, destination, progress, error, error_capacity); break;
+        ok = import_raw_bin(source_path, staging_dir, progress, error, error_capacity); break;
     case C2_SOURCE_CUE:
-        ok = import_cue(import_source, destination, progress, error, error_capacity); break;
+        ok = import_cue(source_path, staging_dir, progress, error, error_capacity); break;
     default:
         set_error(error, error_capacity, "unsupported game-data source type"); return 0;
     }
     if (!ok) return 0;
-    done = fopen(marker, "wb");
-    if (!done) return 0;
-    if (fclose(done) != 0) return 0;
-
-activate:
-    {
-        char index_path[C2_IMPORT_PATH_CAPACITY];
-        if (join_path(index_path, sizeof(index_path), destination, "C2PACK.IDX") &&
-            SDL_GetPathInfo(index_path, NULL)) {
-            return c2_pack_activate(destination, asset_profile,
-                                    asset_root, asset_root_capacity,
-                                    error, error_capacity);
-        }
-    }
-    if (strlen(destination) >= asset_root_capacity) return 0;
-    strcpy(asset_root, destination);
+    strcpy(root, staging_dir);
     return 1;
 }

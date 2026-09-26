@@ -161,9 +161,10 @@ int c2_zip_write_tree(const char *source_dir, const char *zip_path,
  * inside an installation resolves to that installation's root. */
 enum c2_source_kind {
     C2_SOURCE_NONE = 0,
-    C2_SOURCE_DIRECTORY,      /* installation folder, used in place */
+    C2_SOURCE_DIRECTORY,      /* installation folder or disc tree, read in place */
     C2_SOURCE_GOG_DIRECTORY,  /* GOG installation with an embedded game.gog ISO */
-    C2_SOURCE_PACK_DIRECTORY, /* unpacked .c2assets (C2PACK.IDX) */
+    C2_SOURCE_LIBRARY,        /* a library or an unzipped .c2assets (C2ASSETS) */
+    C2_SOURCE_MOVIES,         /* a folder of .SMK movies only (the Mac set) */
     C2_SOURCE_ZIP,            /* installation ZIP, .c2assets, or wrapped image */
     C2_SOURCE_ISO,            /* 2048-byte-sector image */
     C2_SOURCE_RAW_BIN,        /* 2352-byte-sector image; CUE not required */
@@ -178,13 +179,13 @@ int c2_import_classify(const char *path, enum c2_source_kind *kind,
                        char *error, size_t error_capacity);
 const char *c2_source_kind_name(enum c2_source_kind kind);
 
-int c2_import_path(const char *source_path, const char *cache_root,
-                   const char *asset_profile,
-                   const struct c2_import_progress *progress,
-                   char *asset_root, size_t asset_root_capacity,
-                   char *error, size_t error_capacity);
-int c2_pack_activate(const char *pack_root, const char *profile,
-                     char *active_root, size_t active_root_capacity,
-                     char *error, size_t error_capacity);
+/* Make a source readable as a directory tree. Folders are read in place
+ * (*in_place = 1, root is the folder); images, ZIPs and drives are
+ * extracted into staging_dir, which root then names. Only files the game
+ * can use are extracted. */
+int c2_import_stage(const char *source_path, const char *staging_dir,
+                    const struct c2_import_progress *progress,
+                    char *root, size_t root_capacity, int *in_place,
+                    char *error, size_t error_capacity);
 
 #endif

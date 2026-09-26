@@ -106,9 +106,9 @@ static int runtime_path(const char *path)
     };
     const char *dot;
     size_t i;
-    if (SDL_strcasecmp(path, "C2PACK.JSN") == 0 ||
-        SDL_strcasecmp(path, "C2PACK.IDX") == 0) return 1;
-    if (SDL_strncasecmp(path, "OBJECTS/", 8) == 0) return 1;
+    const char *name = strrchr(path, '/');
+    /* A .c2assets carries its format marker at the root. */
+    if (SDL_strcasecmp(name ? name + 1 : path, "C2ASSETS") == 0) return 1;
     dot = strrchr(path, '.');
     if (!dot) return 0;
     for (i = 0; i < sizeof(extensions) / sizeof(extensions[0]); i++) {

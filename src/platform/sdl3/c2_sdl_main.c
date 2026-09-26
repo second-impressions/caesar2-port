@@ -14,6 +14,7 @@
 
 #include "c2_host.h"
 #include "c2_import.h"
+#include "c2_library.h"
 #include "c2_port.h"
 #include "c2_port_app.h"
 #if PORT_FEAT_DEBUG_CRASH_HANDLER
@@ -80,8 +81,11 @@ EMSCRIPTEN_KEEPALIVE const char *c2_browser_text_languages(void)
     return list;
 }
 
-extern void c2_browser_source_ready(const char *resolved,
-                                    const char *original);
+/* The library changed (an import or a migration finished); the page reads
+ * /persistent/game-data/local/summary again. */
+extern void c2_browser_library_changed(void);
+/* An export finished and the archive is at `path` in OPFS. */
+extern void c2_browser_export_ready(const char *path);
 extern void c2_browser_import_progress(const char *phase,
                                        unsigned int completed_kib,
                                        unsigned int total_kib,
@@ -109,10 +113,13 @@ struct c2_sdl_app {
     struct c2_sdl_smoke smoke;
     int smoke_failed;
 #endif
-    char asset_source[4096];
+    char game_data_root[4096];  /* holds library/ and local/ */
+    char asset_root[4096];      /* --asset-root: read in place instead */
+    char import_source[4096];   /* --game-data: add this first */
+    char export_path[4096];     /* --export-game-data */
     char user_data_root[4096];
     char screenshot_filename[4096];
-    char asset_profile[128];
+    char speech[16];            /* speech language wished for; "" = pick */
     char text_language[16];   /* "" = detect from the game data */
     char music_source[16];    /* "recorded" or "xmidi"; "" = the default */
     int headless;
@@ -153,10 +160,12 @@ static bool SDLCALL push_pointer_event(void *userdata, SDL_Event *event)
 #endif
 
 static int parse_arguments(int argc, char *argv[], const char **asset_root,
+                           const char **import_source,
+                           const char **export_path,
                            const char **user_data_root,
                            char **default_user_data_root,
                            const char **screenshot_filename,
-                           const char **asset_profile,
+                           const char **speech,
                            const char **text_language,
                            const char **music_source,
                            int *crash_test,
@@ -167,11 +176,13 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
 {
     int i;
 
+    /* C2_ASSET_ROOT and --asset-root read game data in place (tests,
+     * development); --game-data and a bare path add it to the library. */
     *asset_root = getenv("C2_ASSET_ROOT");
-    *explicit_source = *asset_root != NULL && **asset_root != '\0';
-    if (!*explicit_source) {
-        *asset_root = ".";
-    }
+    if (*asset_root != NULL && **asset_root == '\0') *asset_root = NULL;
+    *import_source = NULL;
+    *export_path = NULL;
+    *explicit_source = *asset_root != NULL;
     *skip_launcher = 0;
     *user_data_root = getenv("C2_USER_DATA_DIR");
     if (*user_data_root == NULL || **user_data_root == '\0') {
@@ -185,7 +196,7 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
     *smoke_kind = 0;
     *prepare_only = 0;
     *screenshot_filename = NULL;
-    *asset_profile = getenv("C2_ASSET_PROFILE");
+    *speech = NULL;
     *text_language = NULL;
     *music_source = NULL;
     *crash_test = 0;
@@ -234,14 +245,18 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
         } else if (strcmp(argv[i], "--crash-test") == 0) {
             *crash_test = 1;
 #endif
-        } else if ((strcmp(argv[i], "--asset-root") == 0 ||
-                    strcmp(argv[i], "--game-data") == 0) && i + 1 < argc) {
+        } else if (strcmp(argv[i], "--asset-root") == 0 && i + 1 < argc) {
             *asset_root = argv[++i];
             *explicit_source = 1;
+        } else if (strcmp(argv[i], "--game-data") == 0 && i + 1 < argc) {
+            *import_source = argv[++i];
+            *explicit_source = 1;
+        } else if (strcmp(argv[i], "--export-game-data") == 0 && i + 1 < argc) {
+            *export_path = argv[++i];
         } else if (strcmp(argv[i], "--user-data-dir") == 0 && i + 1 < argc) {
             *user_data_root = argv[++i];
-        } else if (strcmp(argv[i], "--asset-profile") == 0 && i + 1 < argc) {
-            *asset_profile = argv[++i];
+        } else if (strcmp(argv[i], "--speech") == 0 && i + 1 < argc) {
+            *speech = argv[++i];
         } else if (strcmp(argv[i], "--language") == 0 && i + 1 < argc) {
             *text_language = argv[++i];
         } else if (strcmp(argv[i], "--music") == 0 && i + 1 < argc) {
@@ -249,12 +264,13 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
         } else if (strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
             *screenshot_filename = argv[++i];
         } else if (argv[i][0] != '-') {
-            *asset_root = argv[i];
+            *import_source = argv[i];
             *explicit_source = 1;
         } else {
 #if PORT_FEAT_DEBUG_OBSERVATION
             fprintf(stderr,
-                    "usage: %s [--headless] [--game-data SOURCE] "
+                    "usage: %s [--headless] [--game-data SOURCE] [--asset-root DIR] "
+                    "[--export-game-data FILE] [--speech TAG] "
                     "[--user-data-dir PATH] [--screenshot FILE] "
                     "[--mouse-lock|--no-mouse-lock] [--prepare-assets] "
                     "[--skip-launcher] [--fullscreen] [--fractional-scaling] "
@@ -267,7 +283,8 @@ static int parse_arguments(int argc, char *argv[], const char **asset_root,
                     argv[0]);
 #else
             fprintf(stderr,
-                    "usage: %s [--headless] [--game-data SOURCE] "
+                    "usage: %s [--headless] [--game-data SOURCE] [--asset-root DIR] "
+                    "[--export-game-data FILE] [--speech TAG] "
                     "[--user-data-dir PATH] [--screenshot FILE] "
                     "[--mouse-lock|--no-mouse-lock] [--prepare-assets] "
                     "[--skip-launcher] [--fullscreen] [--fractional-scaling] "
@@ -339,31 +356,14 @@ static void chomp(char *text)
     while (length && (text[length - 1] == '\n' || text[length - 1] == '\r')) text[--length] = '\0';
 }
 
-/* asset-source.txt: line 1 the source, optional line 2 the pack profile. */
-static int load_saved_asset_source(const char *user_root, char *source, size_t capacity,
-                                   char *profile, size_t profile_capacity)
-{
-    char path[4096];
-    FILE *file;
-    if (snprintf(path, sizeof(path), "%s/asset-source.txt", user_root) >= (int)sizeof(path)) return 0;
-    file = fopen(path, "rb");
-    if (!file) return 0;
-    if (!fgets(source, (int)capacity, file)) { fclose(file); return 0; }
-    chomp(source);
-    if (profile && profile_capacity && !profile[0]) {
-        if (fgets(profile, (int)profile_capacity, file)) chomp(profile);
-        else profile[0] = '\0';
-    }
-    fclose(file);
-    return source[0] != '\0';
-}
-
-/* launcher.ini: the display choices the launcher offers. Missing keys keep
- * the defaults (windowed, integer scaling). */
+/* launcher.ini: the choices the launcher offers. Missing keys keep the
+ * defaults (windowed, integer scaling, text and speech picked from the
+ * game data). */
 static void load_display_settings(const char *user_root, int *fullscreen,
                                   int *fractional_scaling,
                                   char *text_language, size_t language_capacity,
-                                  char *music_source, size_t music_capacity)
+                                  char *music_source, size_t music_capacity,
+                                  char *speech, size_t speech_capacity)
 {
     char path[4096];
     char line[256];
@@ -384,6 +384,9 @@ static void load_display_settings(const char *user_root, int *fullscreen,
         } else if (strncmp(line, "music=", 6) == 0 && music_source &&
                    strlen(line + 6) < music_capacity) {
             strcpy(music_source, line + 6);
+        } else if (strncmp(line, "speech=", 7) == 0 && speech &&
+                   strlen(line + 7) < speech_capacity) {
+            strcpy(speech, strcmp(line + 7, "auto") == 0 ? "" : line + 7);
         }
     }
     fclose(file);
@@ -397,28 +400,49 @@ static void save_display_settings(const struct c2_sdl_app *app)
     SDL_CreateDirectory(app->user_data_root);
     file = fopen(path, "wb");
     if (!file) return;
-    fprintf(file, "fullscreen=%d\nscaling=%s\nlanguage=%s\nmusic=%s\n", app->fullscreen ? 1 : 0,
+    fprintf(file, "fullscreen=%d\nscaling=%s\nlanguage=%s\nmusic=%s\nspeech=%s\n", app->fullscreen ? 1 : 0,
             app->fractional_scaling ? "fractional" : "integer",
             app->text_language[0] ? app->text_language : "auto",
-            app->music_source[0] ? app->music_source : "dos");
+            app->music_source[0] ? app->music_source : "dos",
+            app->speech[0] ? app->speech : "auto");
     fclose(file);
 }
 
-static void save_asset_source(const struct c2_sdl_app *app)
+/*
+ * Before the library, the launcher remembered its source in
+ * asset-source.txt and kept one extracted copy per source beside it. Those
+ * copies are merged into the library; the remembered source only matters
+ * when it was a folder read in place, which never had a copy.
+ */
+static void migrate_legacy_game_data(struct c2_sdl_app *app)
 {
     char path[4096];
+    char source[4096];
+    char error[512];
     FILE *file;
+    int migrated = c2_library_migrate(app->game_data_root, NULL, error, sizeof(error));
+    if (migrated > 0) printf("moved %d earlier import(s) into the game-data library\n", migrated);
     if (snprintf(path, sizeof(path), "%s/asset-source.txt", app->user_data_root) >= (int)sizeof(path)) return;
-    file = fopen(path, "wb");
+    file = fopen(path, "rb");
     if (!file) return;
-    fprintf(file, "%s\n%s\n", app->asset_source, app->asset_profile);
+    source[0] = '\0';
+    if (fgets(source, (int)sizeof(source), file)) chomp(source);
     fclose(file);
+    if (source[0] && migrated <= 0) {
+        SDL_PathInfo info;
+        if (SDL_GetPathInfo(source, &info) && info.type == SDL_PATHTYPE_DIRECTORY &&
+            !c2_library_import(app->game_data_root, source, NULL, error, sizeof(error))) {
+            fprintf(stderr, "could not add the earlier game data '%s': %s\n", source, error);
+        }
+    }
+    SDL_RemovePath(path);
 }
 #endif
 
 /*
- * Import and cache the selected game data without starting the engine so the
- * shell can validate an upload and return to its main window.
+ * Import (--game-data) or export (--export-game-data) without starting the
+ * engine: the browser page's way to fill the library, and a command line
+ * way on native builds.
  */
 #if PORT_PLATFORM_WASM
 struct c2_browser_progress_state {
@@ -451,10 +475,10 @@ static void publish_import_progress(void *userdata, const char *phase,
 
 static int prepare_assets(struct c2_sdl_app *app)
 {
-    char resolved_asset_root[4096];
-    char import_error[512];
-    const char *cache_root;
+    char error[512];
     const struct c2_import_progress *progress_ptr = NULL;
+    struct c2_library_summary summary;
+    int ok = 1;
 #if PORT_PLATFORM_WASM
     struct c2_import_progress progress;
     struct c2_browser_progress_state progress_state;
@@ -462,66 +486,66 @@ static int prepare_assets(struct c2_sdl_app *app)
     progress.update = publish_import_progress;
     progress.userdata = &progress_state;
     progress_ptr = &progress;
+    /* Caches from before the library: fold them in once. */
+    c2_library_migrate(app->game_data_root, progress_ptr, error, sizeof(error));
 #endif
-
+    error[0] = '\0';
+    if (app->import_source[0]) {
+        ok = c2_library_import(app->game_data_root, app->import_source, progress_ptr,
+                               error, sizeof(error));
+        if (!ok) {
+            fprintf(stderr, "could not import game data '%s': %s\n", app->import_source, error);
 #if PORT_PLATFORM_WASM
-    cache_root = "/persistent";
-#else
-    cache_root = app->user_data_root;
+            c2_browser_import_error(error);
 #endif
-    if (!c2_import_path(app->asset_source, cache_root,
-                        app->asset_profile[0] ? app->asset_profile : NULL,
-                        progress_ptr,
-                        resolved_asset_root, sizeof(resolved_asset_root),
-                        import_error, sizeof(import_error))) {
-        fprintf(stderr, "could not import game data '%s': %s\n",
-                app->asset_source, import_error);
-#if PORT_PLATFORM_WASM
-        c2_browser_import_error(import_error);
-#endif
-        return 0;
+        }
     }
+    if (ok && app->export_path[0]) {
+        ok = c2_library_export(app->game_data_root, app->export_path, progress_ptr,
+                               error, sizeof(error));
+        if (!ok) {
+            fprintf(stderr, "could not export the game data: %s\n", error);
 #if PORT_PLATFORM_WASM
-    c2_browser_source_ready(resolved_asset_root, app->asset_source);
+            c2_browser_import_error(error);
 #endif
-    printf("prepared game data: %s\n", resolved_asset_root);
-    return 1;
+        } else {
+            printf("exported game data: %s\n", app->export_path);
+#if PORT_PLATFORM_WASM
+            c2_browser_export_ready(app->export_path);
+#endif
+        }
+    }
+    c2_library_describe(app->game_data_root, &summary);
+#if PORT_PLATFORM_WASM
+    if (ok) c2_browser_library_changed();
+#endif
+    if (ok) {
+        int i;
+        printf("prepared game data: %s%s\n", summary.playable ? "playable" : "incomplete",
+               summary.music_windows ? ", Windows music" : "");
+        for (i = 0; i < summary.language_count; i++) {
+            printf("  %s %s %s\n", summary.languages[i].tag,
+                   summary.languages[i].speech ? "speech" : "text", summary.languages[i].version);
+        }
+    }
+    return ok;
 }
 
 static int start_runtime(struct c2_sdl_app *app)
 {
-    char resolved_asset_root[4096];
-    char import_error[512];
     struct c2_host_config host_config;
     char title[160];
-    const char *cache_root;
+    const char *speech;
 
-#if PORT_PLATFORM_WASM
-    cache_root = "/persistent";
-#else
-    cache_root = app->user_data_root;
-#endif
     app->last_error[0] = '\0';
-    if (!c2_import_path(app->asset_source, cache_root,
-                        app->asset_profile[0] ? app->asset_profile : NULL,
-                        NULL,
-                        resolved_asset_root, sizeof(resolved_asset_root),
-                        import_error, sizeof(import_error))) {
-        fprintf(stderr, "could not import game data '%s': %s\n",
-                app->asset_source, import_error);
-        snprintf(app->last_error, sizeof(app->last_error), "%s", import_error);
-#if PORT_PLATFORM_WASM
-        c2_browser_import_error(import_error);
-#endif
-        return 0;
-    }
-#if PORT_PLATFORM_WASM
-    c2_browser_source_ready(resolved_asset_root, app->asset_source);
-#endif
+    /* The speech wished for; failing that the chosen text language, so a
+     * German text choice brings German voices when the data has them. */
+    speech = app->speech[0] ? app->speech : app->text_language;
     memset(&host_config, 0, sizeof(host_config));
     snprintf(title, sizeof(title), "Caesar II %s", C2_VERSION_STRING);
     host_config.title = title;
-    host_config.asset_root = resolved_asset_root;
+    host_config.asset_root = app->asset_root[0] ? app->asset_root : app->game_data_root;
+    host_config.speech = speech;
     host_config.user_data_root = app->user_data_root;
     host_config.logical_width = C2_SCREEN_WIDTH;
     host_config.logical_height = C2_SCREEN_HEIGHT;
@@ -546,9 +570,6 @@ static int start_runtime(struct c2_sdl_app *app)
         c2_host_shutdown();
         return 0;
     }
-#if !PORT_PLATFORM_WASM
-    save_asset_source(app);
-#endif
     app->host_initialized = 1;
 #if PORT_PLATFORM_WASM
     if (!SDL_AddEventWatch(push_pointer_event, app)) {
@@ -634,9 +655,9 @@ static int open_launcher(struct c2_sdl_app *app, const char *error)
     if (error == NULL) error = last_crash_report(app);
 #endif
     config.version = C2_VERSION_STRING;
-    config.source = app->asset_source;
-    config.cache_root = app->user_data_root;
-    config.asset_profile = app->asset_profile[0] ? app->asset_profile : NULL;
+    config.game_data_root = app->game_data_root;
+    config.pending_source = app->import_source[0] ? app->import_source : NULL;
+    config.speech = app->speech;
     config.text_language = app->text_language;
     config.music_source = app->music_source;
     config.error = error;
@@ -650,8 +671,9 @@ static int open_launcher(struct c2_sdl_app *app, const char *error)
 static void print_source_hint(void)
 {
     fprintf(stderr,
-            "Start with --game-data pointing at an installed Caesar II folder, "
-            "a ZIP/ISO/CUE image, an asset pack, or a CD-ROM drive.\n");
+            "Add game data with --game-data: an installed Caesar II folder, a "
+            "disc image (ISO, BIN/CUE, Mac Toast), a ZIP, a .c2assets file, or a "
+            "CD-ROM drive.\n");
 }
 #endif
 
@@ -707,9 +729,11 @@ static int storage_main(void *unused)
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 {
     const char *asset_root;
+    const char *import_source;
+    const char *export_path;
     const char *user_data_root;
     const char *screenshot_filename;
-    const char *asset_profile;
+    const char *speech;
     const char *text_language;
     const char *music_source;
     int crash_test;
@@ -721,7 +745,6 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     int prepare_only;
     int skip_launcher;
     int explicit_source;
-    int saved_source = 0;
 
 #if PORT_PLATFORM_WIN32
     /* Before the first printf: this executable is windowed, so what it
@@ -750,9 +773,10 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
         fprintf(stderr, "warning: could not install debug crash handlers\n");
     }
 #endif
-    if (!parse_arguments(argc, argv, &asset_root, &user_data_root,
+    if (!parse_arguments(argc, argv, &asset_root, &import_source, &export_path,
+                         &user_data_root,
                          &c2_app.default_user_data_root,
-                         &screenshot_filename, &asset_profile,
+                         &screenshot_filename, &speech,
                          &text_language, &music_source, &crash_test,
                          &headless, &mouse_lock, &fractional_scaling,
                          &smoke_kind, &prepare_only, &skip_launcher,
@@ -761,23 +785,15 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     }
 
     snprintf(c2_app.user_data_root, sizeof(c2_app.user_data_root), "%s", user_data_root);
-    if (asset_profile && *asset_profile) {
-        snprintf(c2_app.asset_profile, sizeof(c2_app.asset_profile), "%s", asset_profile);
-    } else {
-        c2_app.asset_profile[0] = '\0';
-    }
-#if !PORT_PLATFORM_WASM
-    if (!explicit_source &&
-        load_saved_asset_source(user_data_root, c2_app.asset_source,
-                                sizeof(c2_app.asset_source),
-                                c2_app.asset_profile, sizeof(c2_app.asset_profile))) {
-        asset_root = c2_app.asset_source;
-        saved_source = 1;
-    }
+#if PORT_PLATFORM_WASM
+    snprintf(c2_app.game_data_root, sizeof(c2_app.game_data_root), "/persistent/game-data");
+#else
+    snprintf(c2_app.game_data_root, sizeof(c2_app.game_data_root), "%s/game-data", user_data_root);
 #endif
-    if (asset_root != c2_app.asset_source) {
-        snprintf(c2_app.asset_source, sizeof(c2_app.asset_source), "%s", asset_root);
-    }
+    snprintf(c2_app.asset_root, sizeof(c2_app.asset_root), "%s", asset_root ? asset_root : "");
+    snprintf(c2_app.import_source, sizeof(c2_app.import_source), "%s", import_source ? import_source : "");
+    snprintf(c2_app.export_path, sizeof(c2_app.export_path), "%s", export_path ? export_path : "");
+    if (export_path) prepare_only = 1;
     if (screenshot_filename) {
         snprintf(c2_app.screenshot_filename, sizeof(c2_app.screenshot_filename), "%s", screenshot_filename);
     } else {
@@ -791,7 +807,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
         int saved_fractional = 0;
         load_display_settings(user_data_root, &saved_fullscreen, &saved_fractional,
                               c2_app.text_language, sizeof(c2_app.text_language),
-                              c2_app.music_source, sizeof(c2_app.music_source));
+                              c2_app.music_source, sizeof(c2_app.music_source),
+                              c2_app.speech, sizeof(c2_app.speech));
         if (fullscreen < 0) fullscreen = saved_fullscreen;
         if (fractional_scaling < 0) fractional_scaling = saved_fractional;
     }
@@ -839,13 +856,15 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
         }
     }
 #endif
+    if (speech) snprintf(c2_app.speech, sizeof(c2_app.speech), "%s", speech);
+    /* The library names language folders with the text catalogue's tags. */
+    c2_library_set_language_detector(c2_port_text_detect);
     c2_app.smoke_kind = smoke_kind;
     c2_app.prepare_only = prepare_only;
     c2_app.skip_launcher = skip_launcher;
     c2_app.launcher_active = 0;
     c2_app.last_error[0] = '\0';
     (void)explicit_source;
-    (void)saved_source;
 #if PORT_PLATFORM_WASM
     SDL_SetAtomicInt(&c2_app.storage_result, 0);
     SDL_SetAtomicInt(&c2_app.prepare_result, 0);
@@ -853,6 +872,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     if (c2_app.storage_thread == NULL) return SDL_APP_FAILURE;
     return SDL_APP_CONTINUE;
 #else
+    migrate_legacy_game_data(&c2_app);
     if (c2_app.prepare_only) {
         SDL_AppResult prepared = prepare_assets(&c2_app)
             ? SDL_APP_SUCCESS : SDL_APP_FAILURE;
@@ -863,7 +883,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     if (c2_app.headless || c2_app.skip_launcher) {
         /* Non-interactive runs must never open a dialog: fail fast with a
          * non-zero exit so CI and smoke runs cannot hang. */
-        if (!start_runtime(&c2_app)) {
+        if ((c2_app.import_source[0] && !prepare_assets(&c2_app)) ||
+            !start_runtime(&c2_app)) {
             print_source_hint();
             SDL_free(c2_app.default_user_data_root);
             c2_app.default_user_data_root = NULL;
@@ -871,17 +892,13 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
         }
         return SDL_APP_CONTINUE;
     }
-    /* Interactive: show the launcher first. The implicit "." default only
-     * counts as a source when the working directory really holds the game,
-     * so first-run users see "none selected" instead of a cryptic error. */
-    if (!explicit_source && !saved_source &&
-        !c2_setup_source_looks_valid(c2_app.asset_source)) {
-        c2_app.asset_source[0] = '\0';
-    }
+    /* Interactive: show the launcher first; it adds --game-data itself,
+     * with progress. */
     if (!open_launcher(&c2_app, NULL)) {
         /* No usable display for the launcher; fall back to a direct start so
          * a scripted --game-data invocation still works. */
-        if (!start_runtime(&c2_app)) {
+        if ((c2_app.import_source[0] && !prepare_assets(&c2_app)) ||
+            !start_runtime(&c2_app)) {
             print_source_hint();
             SDL_free(c2_app.default_user_data_root);
             c2_app.default_user_data_root = NULL;
@@ -943,10 +960,8 @@ SDL_AppResult SDL_AppIterate(void *appstate)
     if (app->launcher_active) {
         enum c2_setup_result setup = c2_setup_iterate();
         if (setup == C2_SETUP_RUNNING) return SDL_APP_CONTINUE;
-        snprintf(app->asset_source, sizeof(app->asset_source), "%s",
-                 c2_setup_selected_source());
-        snprintf(app->asset_profile, sizeof(app->asset_profile), "%s",
-                 c2_setup_selected_profile());
+        app->import_source[0] = '\0';  /* the launcher added it */
+        snprintf(app->speech, sizeof(app->speech), "%s", c2_setup_selected_speech());
         app->fullscreen = c2_setup_selected_fullscreen();
         app->fractional_scaling = c2_setup_selected_fractional_scaling();
         snprintf(app->text_language, sizeof(app->text_language), "%s",

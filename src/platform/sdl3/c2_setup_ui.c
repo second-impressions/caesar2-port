@@ -4,6 +4,7 @@
 #if !PORT_PLATFORM_WASM
 
 #include "c2_import.h"
+#include "c2_library.h"
 #include "c2_sdl_host.h"
 
 #include <stdio.h>
@@ -13,6 +14,13 @@
 /* Public-domain 8x8 glyphs (Daniel Hepper / Marcel Sondaar / IBM VGA). */
 #include "font8x8/font8x8_basic.h"
 
+/*
+ * Three pages in one 480x440 window: the main page (Play, Game data,
+ * Settings, Quit), the game-data page (add, choose speech and music,
+ * export, remove) and the settings page (text, display). Esc goes back.
+ * What the game data holds comes from the shared library
+ * (c2_library_describe); nothing here knows how it is laid out.
+ */
 #define UI_WIDTH 480
 #define UI_HEIGHT 440
 #define UI_SCALE 2
@@ -20,33 +28,60 @@
 #define UI_GLYPH 8
 #define UI_BUTTON_HEIGHT 22
 #define UI_BUTTON_GAP 6
-/* The game-data block above the buttons: kind, version, release note,
- * media note, each on its own line from UI_DATA_TOP; the status line has a
- * row of its own below them, so nothing is ever drawn over anything. */
-#define UI_DATA_TOP 72
+/* The summary block: four lines from UI_INFO_TOP; the status line has a
+ * row of its own below them, then at most eight buttons, then the key
+ * reference from UI_LEGEND_TOP. Nothing is drawn over anything. */
+#define UI_INFO_TOP 72
 #define UI_LINE 12
-#define UI_STATUS_TOP (UI_DATA_TOP + 4 * UI_LINE + 2)
+#define UI_INFO_LINES 4
+#define UI_STATUS_TOP (UI_INFO_TOP + UI_INFO_LINES * UI_LINE + 2)
 #define UI_BUTTONS_TOP (UI_STATUS_TOP + UI_LINE + 2)
-#define UI_MAX_BUTTONS 12
+#define UI_MAX_BUTTONS 8
+#define UI_LEGEND_TOP (UI_BUTTONS_TOP + UI_MAX_BUTTONS * (UI_BUTTON_HEIGHT + UI_BUTTON_GAP))
 #define UI_MAX_DRIVES 2
 #define UI_PATH_CAPACITY 4096
+
+/* Optical drives come and go (USB readers); poll while the menu is idle. */
+#define UI_DRIVE_RESCAN_MS 2000
 
 enum setup_state {
     SETUP_MENU = 0,
     SETUP_DIALOG,
-    SETUP_IMPORT
+    SETUP_WORK
+};
+
+enum page {
+    PAGE_MAIN = 0,
+    PAGE_DATA,
+    PAGE_SETTINGS
+};
+
+enum job {
+    JOB_IMPORT = 0,
+    JOB_EXPORT,
+    JOB_REMOVE
+};
+
+enum dialog {
+    DIALOG_ADD = 0,
+    DIALOG_EXPORT
 };
 
 enum button_kind {
     BUTTON_PLAY = 0,
-    BUTTON_TEXT,
-    BUTTON_MUSIC,
-    BUTTON_LANGUAGE,
-    BUTTON_DISPLAY,
-    BUTTON_SCALING,
-    BUTTON_CHOOSE,
+    BUTTON_DATA,
+    BUTTON_SETTINGS,
+    BUTTON_QUIT,
+    BUTTON_BACK,
     BUTTON_DRIVE,
-    BUTTON_QUIT
+    BUTTON_ADD,
+    BUTTON_SPEECH,
+    BUTTON_MUSIC,
+    BUTTON_EXPORT,
+    BUTTON_REMOVE,
+    BUTTON_TEXT,
+    BUTTON_DISPLAY,
+    BUTTON_SCALING
 };
 
 struct button {
@@ -55,10 +90,9 @@ struct button {
     char hint[32];
     char drive[C2_CDROM_DRIVE_PATH_CAPACITY];
     int enabled;
+    int warning;
     SDL_FRect rect;
 };
-
-static const char *profile_label(const char *tag);
 
 /* The launcher font is ASCII: fold the po's native name ("Fran\u00e7ais"). */
 static const char *language_label(const char *tag, char *out, size_t capacity)
@@ -100,9 +134,6 @@ static const char *language_label(const char *tag, char *out, size_t capacity)
     return out;
 }
 
-/* Optical drives come and go (USB readers); poll while the menu is idle. */
-#define UI_DRIVE_RESCAN_MS 2000
-
 struct rgb { Uint8 r, g, b; };
 
 static const struct rgb COLOR_BACKGROUND = { 22, 20, 28 };
@@ -127,31 +158,21 @@ static struct {
     SDL_Mutex *mutex;
 
     enum setup_state state;
+    enum page page;
     enum c2_setup_result result;
-    int quit_after_import;
+    int quit_after_work;
 
     char version[64];
-    char source[UI_PATH_CAPACITY];
-    char source_kind[64];     /* "Installation folder", "CD-ROM drive /dev/sr0" */
-    int source_is_disc;       /* image or drive: what is missing never left it */
-    char detected[128];       /* c2.eng version line, once imported */
-    char detected_note[128];  /* its second line ("Updated Pre-Win95 version.") */
-    char media_note[96];      /* "no music or speech files", when so */
-    int startup_check;        /* silent validation of the preselected source */
-    char cache_root[UI_PATH_CAPACITY];
-    char asset_profile[128];
-    char profiles[8][32];     /* from C2PACK.IDX when the data is a pack */
-    int profile_count;
+    char game_data_root[UI_PATH_CAPACITY];
+    struct c2_library_summary summary;
+    char speech[C2_LIBRARY_TAG_CAPACITY];  /* "" = the default pick */
     char text_language[16];   /* compiled-in text; "" follows the game data */
-    char music_source[16];    /* "recorded" or "xmidi"; "" = the default */
-    int music_xmidi;          /* the data has the DOS scores (XMI/) */
-    int music_recorded;       /* ...and/or the Windows recordings (RAW/) */
-    char detected_language[16];
+    char music_source[16];    /* "windows" or "dos"; "" = the default */
     int fullscreen;
     int fractional_scaling;
+    int confirm_remove;       /* Remove pressed once; Enter again removes */
     char status[256];
     const struct rgb *status_color;
-    int source_ready;
 
     struct button buttons[UI_MAX_BUTTONS];
     int button_count;
@@ -162,71 +183,23 @@ static struct {
     Uint64 next_drive_scan;
 
     /* Dialog callback state (written from SDL's dialog thread). */
+    enum dialog dialog_kind;
     int dialog_done;
     char dialog_path[UI_PATH_CAPACITY];
 
-    /* Import worker state (written from the import thread). */
+    /* Worker state (written from the worker thread). */
     SDL_Thread *thread;
-    int play_after_import;
+    enum job job;
+    char job_path[UI_PATH_CAPACITY];
     char phase[64];
     uint64_t completed_bytes;
     uint64_t total_bytes;
     size_t completed_files;
     size_t total_files;
-    int import_done;
-    int import_ok;
-    char import_error[512];
-    char resolved[UI_PATH_CAPACITY];
+    int work_done;
+    int work_ok;
+    char work_error[512];
 } ui;
-
-/* ------------------------------------------------------------------ */
-/* Layout probe                                                        */
-
-struct child_probe {
-    const char *wanted;
-    char found[512];
-};
-
-static SDL_EnumerationResult SDLCALL probe_child(void *userdata,
-                                                 const char *dirname,
-                                                 const char *fname)
-{
-    struct child_probe *probe = userdata;
-    (void)dirname;
-    if (SDL_strcasecmp(fname, probe->wanted) == 0) {
-        snprintf(probe->found, sizeof(probe->found), "%s", fname);
-        return SDL_ENUM_SUCCESS;
-    }
-    return SDL_ENUM_CONTINUE;
-}
-
-static int child_path(char *out, size_t capacity, const char *directory,
-                      const char *name, SDL_PathType wanted_type)
-{
-    struct child_probe probe;
-    SDL_PathInfo info;
-    size_t n = strlen(directory);
-    probe.wanted = name;
-    probe.found[0] = '\0';
-    SDL_EnumerateDirectory(directory, probe_child, &probe);
-    if (!probe.found[0]) return 0;
-    if (snprintf(out, capacity, "%s%s%s", directory,
-                 n && (directory[n - 1] == '/' || directory[n - 1] == '\\') ? "" : "/",
-                 probe.found) >= (int)capacity) return 0;
-    return SDL_GetPathInfo(out, &info) && info.type == wanted_type;
-}
-
-int c2_setup_source_looks_valid(const char *path)
-{
-    enum c2_source_kind kind;
-    char root[UI_PATH_CAPACITY];
-    char a[UI_PATH_CAPACITY];
-    if (path == NULL || path[0] == '\0') return 0;
-    /* An already-activated cache/pack directory only carries the object
-     * map; the classifier looks for installation layouts. */
-    if (child_path(a, sizeof(a), path, ".c2-object-map", SDL_PATHTYPE_FILE)) return 1;
-    return c2_import_classify(path, &kind, root, sizeof(root), NULL, 0);
-}
 
 /* ------------------------------------------------------------------ */
 /* Text rendering                                                      */
@@ -347,6 +320,7 @@ static void add_button(enum button_kind kind, const char *label,
     struct button *button;
     if (ui.button_count >= UI_MAX_BUTTONS) return;
     button = &ui.buttons[ui.button_count];
+    memset(button, 0, sizeof(*button));
     button->kind = kind;
     snprintf(button->label, sizeof(button->label), "%s", label);
     snprintf(button->hint, sizeof(button->hint), "%s", hint ? hint : "");
@@ -360,92 +334,122 @@ static void add_button(enum button_kind kind, const char *label,
     ui.button_count++;
 }
 
-/* Only drives that currently hold a disc are worth a row. */
+/* Only drives that hold a disc are worth a row; one row per drive (the
+ * device is listed, its mounted volume is not: c2_cdrom_find_drives). */
 static void scan_drives(void)
 {
-    char present[UI_MAX_DRIVES][C2_CDROM_DRIVE_PATH_CAPACITY];
-    int present_count = c2_cdrom_find_drives(present, UI_MAX_DRIVES);
+    char present[UI_MAX_DRIVES * 2][C2_CDROM_DRIVE_PATH_CAPACITY];
+    int present_count = c2_cdrom_find_drives(present, UI_MAX_DRIVES * 2);
     int i;
     ui.drive_count = 0;
-    for (i = 0; i < present_count; i++) {
+    for (i = 0; i < present_count && ui.drive_count < UI_MAX_DRIVES; i++) {
+        enum c2_source_kind kind;
+        char root[UI_PATH_CAPACITY];
         present[i][C2_CDROM_DRIVE_PATH_CAPACITY - 1] = '\0';
         if (!c2_cdrom_drive_has_disc(present[i])) continue;
-        /* A mounted volume is offered only when it holds the game: any
-         * disc is mounted, and the device path cannot say what is on it
-         * without spinning it up. */
+        /* A mounted volume is offered only when it holds the game. */
         if (!c2_cdrom_is_device_path(present[i]) &&
-            !c2_setup_source_looks_valid(present[i])) continue;
-        memcpy(ui.drives[ui.drive_count++], present[i],
-               C2_CDROM_DRIVE_PATH_CAPACITY);
+            !c2_import_classify(present[i], &kind, root, sizeof(root), NULL, 0)) continue;
+        memcpy(ui.drives[ui.drive_count++], present[i], C2_CDROM_DRIVE_PATH_CAPACITY);
     }
     ui.next_drive_scan = SDL_GetTicks() + UI_DRIVE_RESCAN_MS;
 }
 
-/* The user never has to say what kind of data they have: one chooser
- * accepts a file inside an installation, a disc image, a ZIP or a pack and
- * the importer classifies it; inserted discs are offered automatically. */
-/* "" is the default, which is the DOS music. */
 static int music_is_windows(const char *choice)
 {
     return strcmp(choice, "windows") == 0 || strcmp(choice, "recorded") == 0;
 }
 
+static int speech_count(void)
+{
+    int i;
+    int count = 0;
+    for (i = 0; i < ui.summary.language_count; i++) count += ui.summary.languages[i].speech != 0;
+    return count;
+}
+
+/* The speech that plays: the wish, else the text choice, else the pick. */
+static const char *active_speech(void)
+{
+    return c2_library_pick_speech(&ui.summary, ui.speech[0] ? ui.speech : ui.text_language);
+}
+
+static const char *language_name(const char *tag, char *out, size_t capacity)
+{
+    if (strcmp(tag, "und") == 0) {
+        snprintf(out, capacity, "unknown language");
+        return out;
+    }
+    return language_label(tag, out, capacity);
+}
+
 static void rebuild_buttons(void)
 {
     enum button_kind focused_kind = BUTTON_PLAY;
+    char label[64];
+    char name[48];
     int i;
     if (ui.focus >= 0 && ui.focus < ui.button_count) {
         focused_kind = ui.buttons[ui.focus].kind;
     }
     ui.button_count = 0;
-    add_button(BUTTON_PLAY, "Play", "Enter", NULL, ui.source_ready);
-    {
-        char label[64];
-        char name[48];
+    switch (ui.page) {
+    case PAGE_MAIN:
+        add_button(BUTTON_PLAY, "Play", "Enter", NULL, ui.summary.playable);
+        add_button(BUTTON_DATA, "Game data...",
+                   ui.summary.playable ? "" : "add yours here", NULL, 1);
+        add_button(BUTTON_SETTINGS, "Settings...", "", NULL, 1);
+        add_button(BUTTON_QUIT, "Quit", "Esc", NULL, 1);
+        break;
+    case PAGE_DATA:
+        for (i = 0; i < ui.drive_count; i++) {
+            snprintf(label, sizeof(label), "Add the disc in %.*s",
+                     (int)sizeof(label) - 18, ui.drives[i]);
+            add_button(BUTTON_DRIVE, label, "", ui.drives[i], 1);
+        }
+        add_button(BUTTON_ADD, "Add game data...", "or drop it here", NULL, 1);
+        if (speech_count() > 1) {
+            snprintf(label, sizeof(label), "Speech: %s",
+                     language_name(active_speech(), name, sizeof(name)));
+            add_button(BUTTON_SPEECH, label, "Enter to change", NULL, 1);
+        }
+        if (ui.summary.music_dos || ui.summary.music_windows) {
+            /* Two soundtracks by two composers, each named after the
+             * version it was written for: a choice when the data has both,
+             * a statement when it has one. */
+            int both = ui.summary.music_dos && ui.summary.music_windows;
+            int windows = both ? music_is_windows(ui.music_source) : !ui.summary.music_dos;
+            add_button(BUTTON_MUSIC,
+                       windows ? "Music: Windows version (1996)" : "Music: DOS version (1995)",
+                       both ? "Enter to change" : "", NULL, both);
+        }
+        add_button(BUTTON_EXPORT, "Export game data...", ".c2assets", NULL, ui.summary.playable);
+        add_button(BUTTON_REMOVE,
+                   ui.confirm_remove ? "Remove all game data?" : "Remove game data...",
+                   ui.confirm_remove ? "Enter to remove" : "", NULL,
+                   ui.summary.language_count > 0 || ui.summary.bytes > 0);
+        ui.buttons[ui.button_count - 1].warning = ui.confirm_remove;
+        add_button(BUTTON_BACK, "Back", "Esc", NULL, 1);
+        break;
+    case PAGE_SETTINGS:
         if (ui.text_language[0]) {
             snprintf(label, sizeof(label), "Text: %s",
                      language_label(ui.text_language, name, sizeof(name)));
-        } else if (ui.detected_language[0]) {
+        } else if (ui.summary.language_count) {
             snprintf(label, sizeof(label), "Text: Automatic (%s)",
-                     language_label(ui.detected_language, name, sizeof(name)));
+                     language_name(active_speech(), name, sizeof(name)));
         } else {
             snprintf(label, sizeof(label), "Text: Automatic");
         }
         add_button(BUTTON_TEXT, label, "Enter to change", NULL, 1);
+        add_button(BUTTON_DISPLAY, ui.fullscreen ? "Display: Fullscreen" : "Display: Windowed",
+                   "F11 to toggle", NULL, 1);
+        add_button(BUTTON_SCALING,
+                   ui.fractional_scaling ? "Scaling: Fractional" : "Scaling: Integer",
+                   "F10 to toggle", NULL, 1);
+        add_button(BUTTON_BACK, "Back", "Esc", NULL, 1);
+        break;
     }
-    if (ui.music_xmidi || ui.music_recorded) {
-        /* The two soundtracks are different music, not two renderings of
-         * one, so each is named after the version it was written for: a
-         * choice when the data has both, a statement when it has one. */
-        int both = ui.music_xmidi && ui.music_recorded;
-        int windows = both ? music_is_windows(ui.music_source) : !ui.music_xmidi;
-        add_button(BUTTON_MUSIC,
-                   windows ? "Music: Windows version (1996)"
-                           : "Music: DOS version (1995)",
-                   both ? "Enter to change" : "",
-                   NULL, both);
-    }
-    if (ui.profile_count > 1) {
-        char label[64];
-        snprintf(label, sizeof(label), "Speech: %s", profile_label(ui.asset_profile));
-        add_button(BUTTON_LANGUAGE, label, "Enter to change", NULL, 1);
-    }
-    add_button(BUTTON_DISPLAY,
-               ui.fullscreen ? "Display: Fullscreen" : "Display: Windowed",
-               "F11 to toggle", NULL, 1);
-    add_button(BUTTON_SCALING,
-               ui.fractional_scaling ? "Scaling: Fractional" : "Scaling: Integer",
-               "F10 to toggle", NULL, 1);
-    add_button(BUTTON_CHOOSE, ui.source_ready ? "Replace game data..."
-                                              : "Choose game data...",
-               "or drop a file here", NULL, 1);
-    for (i = 0; i < ui.drive_count; i++) {
-        char label[64];
-        snprintf(label, sizeof(label), "Use the disc at %.*s",
-                 (int)sizeof(label) - 18, ui.drives[i]);
-        add_button(BUTTON_DRIVE, label, "", ui.drives[i], 1);
-    }
-    add_button(BUTTON_QUIT, "Quit", "Esc", NULL, 1);
     ui.focus = -1;
     for (i = 0; i < ui.button_count; i++) {
         if (ui.buttons[i].kind == focused_kind && ui.buttons[i].enabled) {
@@ -453,8 +457,26 @@ static void rebuild_buttons(void)
             break;
         }
     }
-    if (ui.focus < 0) ui.focus = ui.source_ready ? 0 : 1;
+    for (i = 0; ui.focus < 0 && i < ui.button_count; i++) {
+        if (ui.buttons[i].enabled) ui.focus = i;
+    }
     ui.hover = -1;
+}
+
+static void refresh_summary(void)
+{
+    c2_library_describe(ui.game_data_root, &ui.summary);
+    /* A speech wish the data cannot grant is dropped, not kept hidden. */
+    if (ui.speech[0] && strcmp(active_speech(), ui.speech) != 0) ui.speech[0] = '\0';
+}
+
+static void set_page(enum page page)
+{
+    ui.page = page;
+    ui.confirm_remove = 0;
+    ui.focus = -1;
+    set_status("", &COLOR_MUTED);
+    rebuild_buttons();
 }
 
 /* Re-list drives while idle so plugging in a USB reader shows up without a
@@ -473,305 +495,15 @@ static void poll_drives(void)
 }
 
 /* ------------------------------------------------------------------ */
-/* Source description                                                  */
+/* Work: importing, exporting, removing                                */
 
-static int extension_is(const char *path, const char *extension)
-{
-    const char *dot = strrchr(path, '.');
-    return dot && SDL_strcasecmp(dot, extension) == 0;
-}
-
-static void describe_source_kind(void)
-{
-    char probe[UI_PATH_CAPACITY];
-    char root[UI_PATH_CAPACITY];
-    enum c2_source_kind kind;
-    ui.source_kind[0] = '\0';
-    ui.source_is_disc = 0;
-    if (!ui.source[0]) return;
-    if (child_path(probe, sizeof(probe), ui.source, ".c2-object-map", SDL_PATHTYPE_FILE)) {
-        snprintf(ui.source_kind, sizeof(ui.source_kind), "Game data pack (.c2assets)");
-        return;
-    }
-    if (!c2_import_classify(ui.source, &kind, root, sizeof(root), NULL, 0)) {
-        snprintf(ui.source_kind, sizeof(ui.source_kind), "Unrecognized game data");
-        return;
-    }
-    ui.source_is_disc = kind == C2_SOURCE_CDROM || kind == C2_SOURCE_ISO ||
-                        kind == C2_SOURCE_RAW_BIN || kind == C2_SOURCE_CUE ||
-                        kind == C2_SOURCE_GOG_DIRECTORY;
-    switch (kind) {
-    case C2_SOURCE_CDROM:
-        snprintf(ui.source_kind, sizeof(ui.source_kind), "CD-ROM drive %.40s", ui.source);
-        break;
-    case C2_SOURCE_ZIP: {
-        enum c2_zip_content content = C2_ZIP_EMPTY;
-        char entry[512];
-        c2_zip_probe(ui.source, &content, entry, sizeof(entry), NULL, 0);
-        snprintf(ui.source_kind, sizeof(ui.source_kind), "%s",
-                 content == C2_ZIP_CUE_IMAGE ? "ZIP archive (CUE/BIN disc dump)"
-               : content == C2_ZIP_ISO_IMAGE ? "ZIP archive (ISO disc dump)"
-               : extension_is(ui.source, ".c2assets") ? "Game data pack (.c2assets)"
-               : "ZIP archive (installation)");
-        break;
-    }
-    case C2_SOURCE_DIRECTORY:
-        if (child_path(probe, sizeof(probe), root, "C2WIN95", SDL_PATHTYPE_DIRECTORY)) {
-            snprintf(ui.source_kind, sizeof(ui.source_kind), "Installation folder (DOS + Win95 CD)");
-        } else if (child_path(probe, sizeof(probe), root, "HD", SDL_PATHTYPE_DIRECTORY)) {
-            snprintf(ui.source_kind, sizeof(ui.source_kind), "Installation folder (CD layout)");
-        } else {
-            snprintf(ui.source_kind, sizeof(ui.source_kind), "Installation folder");
-        }
-        break;
-    default:
-        snprintf(ui.source_kind, sizeof(ui.source_kind), "%s", c2_source_kind_name(kind));
-        break;
-    }
-}
-
-/* Locate C2.ENG under an activated root: plain, DOS CD, hybrid, or the
- * object map an asset pack activation writes. */
-static int find_c2_eng(const char *root, char *out, size_t capacity)
-{
-    char a[UI_PATH_CAPACITY];
-    char b[UI_PATH_CAPACITY];
-    FILE *map;
-    char line[1024];
-    if (child_path(out, capacity, root, "C2.ENG", SDL_PATHTYPE_FILE)) return 1;
-    if (child_path(a, sizeof(a), root, "HD", SDL_PATHTYPE_DIRECTORY) &&
-        child_path(out, capacity, a, "C2.ENG", SDL_PATHTYPE_FILE)) return 1;
-    if (child_path(a, sizeof(a), root, "C2WIN95", SDL_PATHTYPE_DIRECTORY) &&
-        child_path(b, sizeof(b), a, "HD", SDL_PATHTYPE_DIRECTORY) &&
-        child_path(out, capacity, b, "C2.ENG", SDL_PATHTYPE_FILE)) return 1;
-    if (!child_path(a, sizeof(a), root, ".c2-object-map", SDL_PATHTYPE_FILE)) return 0;
-    map = fopen(a, "rb");
-    if (!map) return 0;
-    while (fgets(line, sizeof(line), map)) {
-        char *tab = strchr(line, '\t');
-        char *end;
-        if (!tab) continue;
-        *tab++ = '\0';
-        end = strpbrk(tab, "\r\n");
-        if (end) *end = '\0';
-        if (SDL_strcasecmp(line, "C2.ENG") == 0) {
-            fclose(map);
-            return snprintf(out, capacity, "%s/%s", root, tab) < (int)capacity;
-        }
-    }
-    fclose(map);
-    return 0;
-}
-
-/* The launcher font is ASCII-only, and C2.ENG is CP437 (the game's own
- * font order: "Française" spells its ç as 0x87). Strip the accents from
- * the letters the localized version lines use rather than show '?'. */
-static char fold_cp437(unsigned char c)
-{
-    static const char table[] =
-        /* 0x80 */ "CueaaaaceeeiiiAA"
-        /* 0x90 */ "EaAooouuyOU$$$Pf"
-        /* 0xa0 */ "aiounN";
-    if (c >= ' ' && c < 0x7f) return (char)c;
-    if (c >= 0x80 && c < 0x80 + sizeof(table) - 1) return table[c - 0x80];
-    if (c == 0xe1) return 's'; /* sharp s */
-    return '?';
-}
-
-/* Entry `list`, word `word` of the recovered Textfile format: a table of
- * 24-bit offsets at +8, then NUL-separated strings; mirrors font_list(). */
-static int eng_string(const unsigned char *buf, size_t size, int list,
-                      int word, char *out, size_t capacity)
-{
-    size_t p;
-    size_t e;
-    size_t table = (size_t)list * 4 + 8;
-    if (size < 8 || memcmp(buf, "Textfile", 8) != 0 || table + 3 > size) return 0;
-    p = (size_t)buf[table] | ((size_t)buf[table + 1] << 8) | ((size_t)buf[table + 2] << 16);
-    if (p == 0 || p >= size) return 0;
-    while (word > 0) {
-        if (p >= size) return 0;
-        if (buf[p] == 0 && (buf[p - 1] >= ' ' || buf[p - 1] == 0)) word--;
-        p++;
-    }
-    while (p < size && buf[p] < ' ') p++;
-    e = p;
-    while (e < size && buf[e] != 0 && e - p + 1 < capacity) {
-        out[e - p] = fold_cp437(buf[e]);
-        e++;
-    }
-    out[e - p] = '\0';
-    return e > p;
-}
-
-/* A pack activation resolves to <pack>/ACTIVE-<profile>; list the pack's
- * profiles so a language row can be offered. Non-pack data has none. */
-static void detect_profiles(const char *root)
-{
-    char pack[UI_PATH_CAPACITY];
-    char index[UI_PATH_CAPACITY];
-    FILE *file;
-    char line[1024];
-    ui.profile_count = 0;
-    if (strlen(root) >= sizeof(pack)) return;
-    strcpy(pack, root);
-    if (!child_path(index, sizeof(index), pack, "C2PACK.IDX", SDL_PATHTYPE_FILE)) {
-        char *slash = strrchr(pack, '/');
-        if (!slash) return;
-        *slash = '\0';
-        if (!child_path(index, sizeof(index), pack, "C2PACK.IDX", SDL_PATHTYPE_FILE)) return;
-    }
-    file = fopen(index, "rb");
-    if (!file) return;
-    while (fgets(line, sizeof(line), file) &&
-           ui.profile_count < (int)(sizeof(ui.profiles) / sizeof(ui.profiles[0]))) {
-        char *name;
-        char *end;
-        if (strncmp(line, "PROFILE\t", 8) != 0) continue;
-        name = line + 8;
-        end = strpbrk(name, "\t\r\n");
-        if (end) *end = '\0';
-        if (!*name) continue;
-        snprintf(ui.profiles[ui.profile_count++], sizeof(ui.profiles[0]), "%s", name);
-    }
-    fclose(file);
-    if (ui.profile_count && !ui.asset_profile[0]) {
-        /* The activation picked the pack default; mirror it so the row
-         * shows what is actually active. */
-        const char *active = strrchr(root, '-');
-        if (active && active[1]) {
-            snprintf(ui.asset_profile, sizeof(ui.asset_profile), "%s", active + 1);
-        }
-    }
-}
-
-static const char *profile_label(const char *tag)
-{
-    static const struct { const char *tag; const char *label; } names[] = {
-        { "en", "English" }, { "de", "Deutsch" }, { "fr", "Francais" },
-        { "it", "Italiano" }, { "es", "Espanol" }, { "nl", "Nederlands" },
-        { "pl", "Polski" }
-    };
-    size_t i;
-    for (i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
-        if (SDL_strcasecmp(names[i].tag, tag) == 0) return names[i].label;
-    }
-    return tag;
-}
-
-static void detect_version(const char *root)
-{
-    char path[UI_PATH_CAPACITY];
-    unsigned char *buf;
-    size_t size;
-    FILE *file;
-    char version[64];
-    char date[64];
-    snprintf(ui.detected, sizeof(ui.detected), "version unknown");
-    ui.detected_note[0] = '\0';
-    if (!find_c2_eng(root, path, sizeof(path))) return;
-    file = fopen(path, "rb");
-    if (!file) return;
-    buf = malloc(65536);
-    if (!buf) { fclose(file); return; }
-    size = fread(buf, 1, 65536, file);
-    fclose(file);
-    {
-        const char *tag = c2_port_text_detect(buf, size);
-        snprintf(ui.detected_language, sizeof(ui.detected_language), "%s", tag ? tag : "");
-    }
-    /* "Caesar II - version 1.02 - 2nd Feb 96" and, on some discs, a second
-     * line such as "Updated Pre-Win95 version.": each gets a row of its own.
-     * The window's title already says Caesar II. */
-    if (eng_string(buf, size, 0x0b, 0, version, sizeof(version))) {
-        const char *text = version;
-        if (SDL_strncasecmp(text, "Caesar II - ", 12) == 0) text += 12;
-        snprintf(ui.detected, sizeof(ui.detected), "%s", text);
-        if (eng_string(buf, size, 0x0b, 1, date, sizeof(date))) {
-            snprintf(ui.detected_note, sizeof(ui.detected_note), "%s", date);
-        }
-    }
-    free(buf);
-}
-
-/* Any file with the extension directly in dir or in its sub-directory. */
-static int has_media(const char *root, const char *subdir, const char *pattern)
-{
-    char dir[UI_PATH_CAPACITY];
-    char **entries;
-    int count;
-    int found;
-    int pass;
-
-    for (pass = 0; pass < 2; pass++) {
-        if (pass == 0) {
-            snprintf(dir, sizeof(dir), "%s", root);
-        } else if (!child_path(dir, sizeof(dir), root, subdir, SDL_PATHTYPE_DIRECTORY)) {
-            break;
-        }
-        entries = SDL_GlobDirectory(dir, pattern, SDL_GLOB_CASEINSENSITIVE, &count);
-        found = entries != NULL && count > 0;
-        SDL_free(entries);
-        if (found) return 1;
-    }
-    return 0;
-}
-
-/* The original installer copied only the HD tree; XMI music and RAW speech
- * stayed on the CD. Say so instead of leaving the silence unexplained. Music
- * is either soundtrack: the DOS scores or the Windows version's recordings
- * (Sierra's 1998 US pressing has only the latter). */
-static void detect_media(const char *root)
-{
-    char map[UI_PATH_CAPACITY];
-    int music;
-    int speech;
-
-    ui.media_note[0] = '\0';
-    ui.music_xmidi = 0;
-    ui.music_recorded = 0;
-    if (child_path(map, sizeof(map), root, ".c2-object-map", SDL_PATHTYPE_FILE) ||
-        child_path(map, sizeof(map), root, "C2PACK.IDX", SDL_PATHTYPE_FILE)) {
-        return; /* packs and object-mapped caches carry what they list */
-    }
-    /* The DOS scores; the Windows version's recordings, which the CDs from
-     * August 1996 keep in C2WIN95/RAW and the 1998 pressing at the root. */
-    ui.music_xmidi = has_media(root, "XMI", "*.xmi");
-    ui.music_recorded = has_media(root, "RAW", "citypro0.raw") ||
-                        (child_path(map, sizeof(map), root, "C2WIN95", SDL_PATHTYPE_DIRECTORY) &&
-                         has_media(map, "RAW", "citypro0.raw"));
-    music = ui.music_xmidi || ui.music_recorded;
-    speech = has_media(root, "RAW", "*.raw");
-    if (music && speech) return;
-    snprintf(ui.media_note, sizeof(ui.media_note), "No %s files%s",
-             !music && !speech ? "music or speech" : !music ? "music" : "speech",
-             ui.source_is_disc ? " on this disc" : ": they stayed on the CD");
-}
-
-static void refresh_source(void)
-{
-    ui.source_ready = c2_setup_source_looks_valid(ui.source);
-    ui.detected[0] = '\0';
-    ui.detected_note[0] = '\0';
-    ui.media_note[0] = '\0';
-    ui.profile_count = 0;
-    describe_source_kind();
-    if (ui.source[0] && !ui.source_ready) {
-        set_status("No Caesar II game data was found at this location.",
-                   &COLOR_ERROR);
-    }
-}
-
-/* ------------------------------------------------------------------ */
-/* Import worker                                                       */
-
-static void import_progress(void *userdata, const char *phase,
-                            uint64_t completed, uint64_t total,
-                            size_t completed_files, size_t total_files)
+static void work_progress(void *userdata, const char *phase,
+                          uint64_t completed, uint64_t total,
+                          size_t completed_files, size_t total_files)
 {
     (void)userdata;
     SDL_LockMutex(ui.mutex);
-    snprintf(ui.phase, sizeof(ui.phase), "%s", phase ? phase : "Importing");
+    snprintf(ui.phase, sizeof(ui.phase), "%s", phase ? phase : "Working");
     ui.completed_bytes = completed;
     ui.total_bytes = total;
     ui.completed_files = completed_files;
@@ -779,92 +511,112 @@ static void import_progress(void *userdata, const char *phase,
     SDL_UnlockMutex(ui.mutex);
 }
 
-static int import_main(void *userdata)
+static int work_main(void *userdata)
 {
     struct c2_import_progress progress;
-    char resolved[UI_PATH_CAPACITY];
     char error[512];
-    int ok;
+    int ok = 0;
     (void)userdata;
-    progress.update = import_progress;
+    progress.update = work_progress;
     progress.userdata = NULL;
     error[0] = '\0';
-    ok = c2_import_path(ui.source, ui.cache_root,
-                        ui.asset_profile[0] ? ui.asset_profile : NULL,
-                        &progress, resolved, sizeof(resolved),
-                        error, sizeof(error));
-    if (ok && !c2_setup_source_looks_valid(resolved)) {
-        ok = 0;
-        snprintf(error, sizeof(error),
-                 "the imported data does not contain C2.ENG and HELP.ENG");
+    switch (ui.job) {
+    case JOB_IMPORT:
+        ok = c2_library_import(ui.game_data_root, ui.job_path, &progress, error, sizeof(error));
+        break;
+    case JOB_EXPORT:
+        ok = c2_library_export(ui.game_data_root, ui.job_path, &progress, error, sizeof(error));
+        break;
+    case JOB_REMOVE:
+        ok = c2_library_remove(ui.game_data_root);
+        if (!ok) snprintf(error, sizeof(error), "some files could not be deleted");
+        break;
     }
     SDL_LockMutex(ui.mutex);
-    ui.import_ok = ok;
-    snprintf(ui.resolved, sizeof(ui.resolved), "%s", ok ? resolved : "");
-    snprintf(ui.import_error, sizeof(ui.import_error), "%s", error);
-    ui.import_done = 1;
+    ui.work_ok = ok;
+    snprintf(ui.work_error, sizeof(ui.work_error), "%s", error);
+    ui.work_done = 1;
     SDL_UnlockMutex(ui.mutex);
     return 0;
 }
 
-static void start_import(int play_after)
+static void start_work(enum job job, const char *path, const char *phase)
 {
     SDL_LockMutex(ui.mutex);
-    ui.import_done = 0;
-    ui.import_ok = 0;
-    ui.import_error[0] = '\0';
-    ui.resolved[0] = '\0';
-    snprintf(ui.phase, sizeof(ui.phase), "Checking game data");
+    ui.work_done = 0;
+    ui.work_ok = 0;
+    ui.work_error[0] = '\0';
+    snprintf(ui.phase, sizeof(ui.phase), "%s", phase);
     ui.completed_bytes = ui.total_bytes = 0;
     ui.completed_files = ui.total_files = 0;
     SDL_UnlockMutex(ui.mutex);
-    ui.play_after_import = play_after;
-    ui.state = SETUP_IMPORT;
+    ui.job = job;
+    snprintf(ui.job_path, sizeof(ui.job_path), "%s", path ? path : "");
+    ui.state = SETUP_WORK;
+    ui.confirm_remove = 0;
     set_status("", &COLOR_MUTED);
-    ui.thread = SDL_CreateThread(import_main, "caesar2-import", NULL);
+    ui.thread = SDL_CreateThread(work_main, "caesar2-game-data", NULL);
     if (ui.thread == NULL) {
         ui.state = SETUP_MENU;
-        set_status("Could not start the import thread.", &COLOR_ERROR);
+        set_status("Could not start the worker thread.", &COLOR_ERROR);
     }
 }
 
-static void finish_import(void)
+static void add_source(const char *path)
+{
+    start_work(JOB_IMPORT, path, "Reading the game data");
+}
+
+static void finish_work(void)
 {
     int ok;
     char error[512];
+    char message[400];
+    int before = ui.summary.language_count;
+    int was_playable = ui.summary.playable;
     SDL_WaitThread(ui.thread, NULL);
     ui.thread = NULL;
     SDL_LockMutex(ui.mutex);
-    ok = ui.import_ok;
-    snprintf(error, sizeof(error), "%s", ui.import_error);
+    ok = ui.work_ok;
+    snprintf(error, sizeof(error), "%s", ui.work_error);
     SDL_UnlockMutex(ui.mutex);
     ui.state = SETUP_MENU;
-    if (ui.quit_after_import) {
+    if (ui.quit_after_work) {
         ui.result = C2_SETUP_QUIT;
         return;
     }
-    if (ok) {
-        ui.source_ready = 1;
-        if (ui.play_after_import) {
-            ui.result = C2_SETUP_PLAY;
-            return;
-        }
-        detect_version(ui.resolved);
-        detect_media(ui.resolved);
-        detect_profiles(ui.resolved);
-        if (ui.startup_check) {
-            ui.startup_check = 0;
+    refresh_summary();
+    switch (ui.job) {
+    case JOB_IMPORT:
+        if (!ok) {
+            snprintf(message, sizeof(message), "Could not add that: %.300s", error);
+            set_status(message, &COLOR_ERROR);
+        } else if (!ui.summary.playable) {
+            set_status("Added, but this is not enough to play: add a PC installation or disc.",
+                       &COLOR_ERROR);
         } else {
-            set_status("Game data is ready. Press Play to start.", &COLOR_OK);
+            set_status(ui.summary.language_count > before ? "Added. Press Play to start."
+                                                          : "Added what was new or better.",
+                       &COLOR_OK);
         }
-        ui.focus = 0;
-    } else {
-        ui.startup_check = 0;
-        char message[256];
-        snprintf(message, sizeof(message), "Import failed: %.230s", error);
-        set_status(message, &COLOR_ERROR);
-        ui.source_ready = c2_setup_source_looks_valid(ui.source);
+        break;
+    case JOB_EXPORT:
+        if (ok) {
+            snprintf(message, sizeof(message), "Exported to %s", ui.job_path);
+            set_status(message, &COLOR_OK);
+        } else {
+            snprintf(message, sizeof(message), "Export failed: %.300s", error);
+            set_status(message, &COLOR_ERROR);
+        }
+        break;
+    case JOB_REMOVE:
+        set_status(ok ? "Game data removed. Saves and settings were kept."
+                      : "Some game data could not be removed.",
+                   ok ? &COLOR_OK : &COLOR_ERROR);
+        break;
     }
+    /* Just became playable: Enter starts the game. */
+    if (ui.summary.playable && !was_playable && ui.page == PAGE_MAIN) ui.focus = -1;
     rebuild_buttons();
 }
 
@@ -885,46 +637,31 @@ static void SDLCALL dialog_closed(void *userdata,
     SDL_UnlockMutex(ui.mutex);
 }
 
-static void open_dialog(void)
+static void open_dialog(enum dialog kind)
 {
     /* One dialog for everything. A file inside an installation (C2.ENG,
-     * CAESAR2.EXE, ...) selects that installation. */
-    static const SDL_DialogFileFilter filters[] = {
-        { "Caesar II game data (C2.ENG, ISO, BIN, CUE, ZIP, C2ASSETS)",
-          "eng;exe;iso;bin;cue;img;zip;c2assets" },
+     * CAESAR2.EXE, ...) adds that installation. */
+    static const SDL_DialogFileFilter add_filters[] = {
+        { "Caesar II game data (C2.ENG, ISO, BIN, CUE, Toast, ZIP, C2ASSETS)",
+          "eng;exe;iso;bin;cue;img;toast;cdr;zip;c2assets" },
         { "All files", "*" }
+    };
+    static const SDL_DialogFileFilter export_filters[] = {
+        { "Caesar II game data", "c2assets" }
     };
     SDL_LockMutex(ui.mutex);
     ui.dialog_done = 0;
     ui.dialog_path[0] = '\0';
     SDL_UnlockMutex(ui.mutex);
+    ui.dialog_kind = kind;
     ui.state = SETUP_DIALOG;
     set_status("", &COLOR_MUTED);
-    SDL_ShowOpenFileDialog(dialog_closed, NULL, ui.window, filters, 2, NULL,
-                           false);
-}
-
-/* A picked/dropped path becomes the source; installation files collapse
- * to their root so the remembered source is the folder itself. */
-static void select_path(const char *path)
-{
-    enum c2_source_kind kind;
-    char root[UI_PATH_CAPACITY];
-    char error[256];
-    if (!c2_import_classify(path, &kind, root, sizeof(root), error, sizeof(error))) {
-        snprintf(ui.source, sizeof(ui.source), "%s", path);
-        ui.source_ready = 0;
-        ui.detected[0] = '\0';
-        describe_source_kind();
-        set_status(error, &COLOR_ERROR);
-        rebuild_buttons();
-        return;
+    if (kind == DIALOG_EXPORT) {
+        SDL_ShowSaveFileDialog(dialog_closed, NULL, ui.window, export_filters, 1,
+                               "caesar2.c2assets");
+    } else {
+        SDL_ShowOpenFileDialog(dialog_closed, NULL, ui.window, add_filters, 2, NULL, false);
     }
-    snprintf(ui.source, sizeof(ui.source), "%s",
-             kind == C2_SOURCE_DIRECTORY || kind == C2_SOURCE_GOG_DIRECTORY
-                 ? root : path);
-    refresh_source();
-    start_import(0);
 }
 
 static void finish_dialog(void)
@@ -938,11 +675,37 @@ static void finish_dialog(void)
         rebuild_buttons();
         return;
     }
-    select_path(path);
+    if (ui.dialog_kind == DIALOG_EXPORT) {
+        size_t n = strlen(path);
+        if (n < 9 || SDL_strcasecmp(path + n - 9, ".c2assets") != 0) {
+            if (n + 9 < sizeof(path)) strcat(path, ".c2assets");
+        }
+        start_work(JOB_EXPORT, path, "Writing the game-data archive");
+    } else {
+        add_source(path);
+    }
 }
 
 /* ------------------------------------------------------------------ */
 /* Input                                                               */
+
+static void cycle_speech(void)
+{
+    const char *current = active_speech();
+    int i;
+    int start = -1;
+    for (i = 0; i < ui.summary.language_count; i++) {
+        if (strcmp(ui.summary.languages[i].tag, current) == 0) start = i;
+    }
+    for (i = 1; i <= ui.summary.language_count; i++) {
+        const struct c2_library_language *l =
+            &ui.summary.languages[(start + i) % ui.summary.language_count];
+        if (l->speech) {
+            snprintf(ui.speech, sizeof(ui.speech), "%s", l->tag);
+            break;
+        }
+    }
+}
 
 static void activate(int index)
 {
@@ -950,20 +713,49 @@ static void activate(int index)
     if (index < 0 || index >= ui.button_count) return;
     button = &ui.buttons[index];
     if (!button->enabled || ui.state != SETUP_MENU) return;
+    if (button->kind != BUTTON_REMOVE) ui.confirm_remove = 0;
     switch (button->kind) {
     case BUTTON_PLAY:
-        start_import(1);
+        ui.result = C2_SETUP_PLAY;
         break;
-    case BUTTON_DISPLAY:
-        ui.fullscreen = !ui.fullscreen;
+    case BUTTON_DATA:
+        set_page(PAGE_DATA);
+        break;
+    case BUTTON_SETTINGS:
+        set_page(PAGE_SETTINGS);
+        break;
+    case BUTTON_BACK:
+        set_page(PAGE_MAIN);
+        break;
+    case BUTTON_QUIT:
+        ui.result = C2_SETUP_QUIT;
+        break;
+    case BUTTON_DRIVE:
+        add_source(button->drive);
+        break;
+    case BUTTON_ADD:
+        open_dialog(DIALOG_ADD);
+        break;
+    case BUTTON_EXPORT:
+        open_dialog(DIALOG_EXPORT);
+        break;
+    case BUTTON_REMOVE:
+        if (!ui.confirm_remove) {
+            ui.confirm_remove = 1;
+            set_status("Saves and settings are kept. Press Enter again to remove.", &COLOR_ERROR);
+            rebuild_buttons();
+        } else {
+            start_work(JOB_REMOVE, NULL, "Removing game data");
+        }
+        break;
+    case BUTTON_SPEECH:
+        cycle_speech();
         rebuild_buttons();
         break;
-    case BUTTON_SCALING:
-        ui.fractional_scaling = !ui.fractional_scaling;
+    case BUTTON_MUSIC:
+        snprintf(ui.music_source, sizeof(ui.music_source), "%s",
+                 music_is_windows(ui.music_source) ? "dos" : "windows");
         rebuild_buttons();
-        break;
-    case BUTTON_CHOOSE:
-        open_dialog();
         break;
     case BUTTON_TEXT: {
         /* Automatic, then each compiled-in language, then Automatic again. */
@@ -982,30 +774,13 @@ static void activate(int index)
         rebuild_buttons();
         break;
     }
-    case BUTTON_MUSIC:
-        snprintf(ui.music_source, sizeof(ui.music_source), "%s",
-                 music_is_windows(ui.music_source) ? "dos" : "windows");
+    case BUTTON_DISPLAY:
+        ui.fullscreen = !ui.fullscreen;
         rebuild_buttons();
         break;
-    case BUTTON_LANGUAGE: {
-        int i;
-        int current = -1;
-        for (i = 0; i < ui.profile_count; i++) {
-            if (SDL_strcasecmp(ui.profiles[i], ui.asset_profile) == 0) current = i;
-        }
-        snprintf(ui.asset_profile, sizeof(ui.asset_profile), "%s",
-                 ui.profiles[(current + 1) % ui.profile_count]);
-        ui.startup_check = 1; /* quiet re-activation */
-        start_import(0);
-        break;
-    }
-    case BUTTON_DRIVE:
-        snprintf(ui.source, sizeof(ui.source), "%s", button->drive);
-        ui.source_ready = 1;
-        start_import(0);
-        break;
-    case BUTTON_QUIT:
-        ui.result = C2_SETUP_QUIT;
+    case BUTTON_SCALING:
+        ui.fractional_scaling = !ui.fractional_scaling;
+        rebuild_buttons();
         break;
     }
 }
@@ -1017,6 +792,13 @@ static void move_focus(int direction)
     for (i = 0; i < ui.button_count; i++) {
         index = (index + direction + ui.button_count) % ui.button_count;
         if (ui.buttons[index].enabled) {
+            if (ui.confirm_remove && ui.buttons[index].kind != BUTTON_REMOVE) {
+                ui.confirm_remove = 0;
+                set_status("", &COLOR_MUTED);
+                ui.focus = index;
+                rebuild_buttons();
+                return;
+            }
             ui.focus = index;
             return;
         }
@@ -1037,10 +819,23 @@ static int button_at(float x, float y)
 
 static void request_quit(void)
 {
-    if (ui.state == SETUP_IMPORT) {
-        ui.quit_after_import = 1;
+    if (ui.state == SETUP_WORK) {
+        ui.quit_after_work = 1;
     } else {
         ui.result = C2_SETUP_QUIT;
+    }
+}
+
+static void go_back(void)
+{
+    if (ui.confirm_remove) {
+        ui.confirm_remove = 0;
+        set_status("", &COLOR_MUTED);
+        rebuild_buttons();
+    } else if (ui.page != PAGE_MAIN) {
+        set_page(PAGE_MAIN);
+    } else {
+        request_quit();
     }
 }
 
@@ -1054,7 +849,7 @@ void c2_setup_handle_event(const SDL_Event *event)
         request_quit();
         break;
     case SDL_EVENT_DROP_FILE:
-        if (ui.state == SETUP_MENU && event->drop.data) select_path(event->drop.data);
+        if (ui.state == SETUP_MENU && event->drop.data) add_source(event->drop.data);
         break;
     case SDL_EVENT_KEY_DOWN:
         if (ui.state != SETUP_MENU) break;
@@ -1074,7 +869,16 @@ void c2_setup_handle_event(const SDL_Event *event)
             activate(ui.focus);
             break;
         case SDLK_ESCAPE:
-            request_quit();
+        case SDLK_BACKSPACE:
+            go_back();
+            break;
+        case SDLK_F11:
+            ui.fullscreen = !ui.fullscreen;
+            rebuild_buttons();
+            break;
+        case SDLK_F10:
+            ui.fractional_scaling = !ui.fractional_scaling;
+            rebuild_buttons();
             break;
         default:
             break;
@@ -1100,6 +904,66 @@ void c2_setup_handle_event(const SDL_Event *event)
 /* ------------------------------------------------------------------ */
 /* Rendering                                                           */
 
+/* What the game data holds, one fact per line, as c2_library reports it. */
+static int summary_lines(char lines[UI_INFO_LINES][96], const struct rgb *colors[UI_INFO_LINES])
+{
+    int n = 0;
+    int i;
+    char names[80];
+    size_t used = 0;
+    const struct c2_library_summary *s = &ui.summary;
+
+    if (s->language_count == 0) {
+        snprintf(lines[n], 96, "None yet. Add an installed folder, a disc image");
+        colors[n++] = &COLOR_MUTED;
+        snprintf(lines[n], 96, "(ISO, BIN/CUE, Mac Toast), a ZIP or .c2assets,");
+        colors[n++] = &COLOR_MUTED;
+        snprintf(lines[n], 96, "or insert the CD. Drop any of them on this window.");
+        colors[n++] = &COLOR_MUTED;
+        return n;
+    }
+    names[0] = '\0';
+    for (i = 0; i < s->language_count; i++) {
+        char name[48];
+        if (!s->languages[i].speech) continue;
+        language_name(s->languages[i].tag, name, sizeof(name));
+        used += (size_t)snprintf(names + used, sizeof(names) - used, "%s%s",
+                                 used ? ", " : "", name);
+        if (used >= sizeof(names)) break;
+    }
+    snprintf(lines[n], 96, "Speech: %s", names[0] ? names : "none");
+    colors[n++] = names[0] ? &COLOR_TEXT : &COLOR_ERROR;
+    snprintf(lines[n], 96, "Music: %s",
+             s->music_dos && s->music_windows ? "DOS (1995) and Windows (1996)"
+             : s->music_dos ? "DOS (1995)"
+             : s->music_windows ? "Windows (1996)" : "none");
+    colors[n++] = s->music_dos || s->music_windows ? &COLOR_TEXT : &COLOR_ERROR;
+    if (s->movies_enhanced) {
+        snprintf(lines[n], 96, "Movies: %d, %d of them larger than the originals",
+                 s->movies, s->movies_enhanced);
+    } else {
+        snprintf(lines[n], 96, "Movies: %d", s->movies);
+    }
+    colors[n++] = s->movies ? &COLOR_TEXT : &COLOR_ERROR;
+    if (!s->playable) {
+        snprintf(lines[n], 96, "Not enough to play: add a PC installation or disc.");
+        colors[n++] = &COLOR_ERROR;
+    } else if (ui.page == PAGE_DATA) {
+        char size[32];
+        const char *speech = active_speech();
+        char version[64] = "";
+        for (i = 0; i < s->language_count; i++) {
+            if (strcmp(s->languages[i].tag, speech) == 0) {
+                snprintf(version, sizeof(version), "%s", s->languages[i].version);
+            }
+        }
+        format_bytes(size, sizeof(size), s->bytes);
+        snprintf(lines[n], 96, "%s%s%s on disk", version, version[0] ? ", " : "", size);
+        colors[n++] = &COLOR_MUTED;
+    }
+    return n;
+}
+
 static void render_menu(void)
 {
     int i;
@@ -1108,14 +972,15 @@ static void render_menu(void)
         const struct rgb *fill = !button->enabled ? &COLOR_BUTTON_DISABLED
                                : i == ui.hover ? &COLOR_BUTTON_HOVER
                                : &COLOR_BUTTON;
-        const struct rgb *text = button->enabled ? &COLOR_TEXT : &COLOR_MUTED;
+        const struct rgb *text = !button->enabled ? &COLOR_MUTED
+                               : button->warning ? &COLOR_ERROR : &COLOR_TEXT;
         int x = (int)button->rect.x;
         int y = (int)button->rect.y;
         int w = (int)button->rect.w;
         int h = (int)button->rect.h;
         fill_rect(x, y, w, h, fill);
         if (i == ui.focus && ui.state == SETUP_MENU) {
-            outline_rect(x, y, w, h, &COLOR_FOCUS);
+            outline_rect(x, y, w, h, button->warning ? &COLOR_ERROR : &COLOR_FOCUS);
         }
         draw_text(x + 10, y + (h - UI_GLYPH) / 2, 1, text, button->label);
         if (button->hint[0]) {
@@ -1123,15 +988,23 @@ static void render_menu(void)
                       y + (h - UI_GLYPH) / 2, 1, &COLOR_MUTED, button->hint);
         }
     }
-    if (ui.state == SETUP_DIALOG) {
-        draw_text(UI_MARGIN, UI_HEIGHT - 44, 1, &COLOR_MUTED,
-                  "Waiting for the file dialog...");
+}
+
+static void draw_key_table(int x, int y, int key_width, const char *heading,
+                           const char *const (*rows)[2], size_t count)
+{
+    size_t i;
+    draw_text(x, y, 1, &COLOR_MUTED, heading);
+    for (i = 0; i < count; i++) {
+        draw_text(x, y + 14 + (int)i * 12, 1, &COLOR_TEXT, rows[i][0]);
+        draw_text(x + key_width * UI_GLYPH, y + 14 + (int)i * 12, 1, &COLOR_MUTED, rows[i][1]);
     }
 }
 
 /*
- * Two key tables under a rule: what the game answers to, and how this
- * window is driven. Keys in text colour, meanings muted, one per line.
+ * Key tables under a rule: what the game answers to (on the main and
+ * settings pages), and how this window is driven. Keys in text colour,
+ * meanings muted.
  */
 static void render_key_reference(void)
 {
@@ -1141,31 +1014,40 @@ static void render_key_reference(void)
         { "Ctrl+1..5", "Window size 1x..5x" },
         { "Ctrl+0",    "Largest that fits" },
     };
-    static const char *const launcher_keys[][2] = {
+    static const char *const main_keys[][2] = {
         { "Arrows, Tab", "Move" },
         { "Enter",       "Select" },
         { "Esc",         "Quit" },
     };
-    const int top = UI_HEIGHT - 80;
+    static const char *const page_keys[][2] = {
+        { "Arrows, Tab", "Move" },
+        { "Enter",       "Select" },
+        { "Esc",         "Back" },
+    };
+    const int top = UI_LEGEND_TOP + 4;
     const int right = UI_WIDTH / 2 + 24;
-    size_t i;
 
     fill_rect(UI_MARGIN, top, UI_WIDTH - 2 * UI_MARGIN, 1, &COLOR_RULE);
-    draw_text(UI_MARGIN, top + 8, 1, &COLOR_MUTED, "In game");
-    draw_text(right, top + 8, 1, &COLOR_MUTED, "This window");
-    for (i = 0; i < sizeof(game_keys) / sizeof(game_keys[0]); i++) {
-        int y = top + 22 + (int)i * 12;
-        draw_text(UI_MARGIN, y, 1, &COLOR_TEXT, game_keys[i][0]);
-        draw_text(UI_MARGIN + 11 * UI_GLYPH, y, 1, &COLOR_MUTED, game_keys[i][1]);
+    if (ui.page == PAGE_DATA) {
+        draw_key_table(UI_MARGIN, top + 8, 13, "This window", page_keys,
+                       sizeof(page_keys) / sizeof(page_keys[0]));
+        draw_text(right, top + 8, 1, &COLOR_MUTED, "Drop a folder, image,");
+        draw_text(right, top + 22, 1, &COLOR_MUTED, "ZIP or .c2assets on");
+        draw_text(right, top + 34, 1, &COLOR_MUTED, "this window to add it.");
+        return;
     }
-    for (i = 0; i < sizeof(launcher_keys) / sizeof(launcher_keys[0]); i++) {
-        int y = top + 22 + (int)i * 12;
-        draw_text(right, y, 1, &COLOR_TEXT, launcher_keys[i][0]);
-        draw_text(right + 13 * UI_GLYPH, y, 1, &COLOR_MUTED, launcher_keys[i][1]);
+    draw_key_table(UI_MARGIN, top + 8, 11, "In game", game_keys,
+                   sizeof(game_keys) / sizeof(game_keys[0]));
+    if (ui.page == PAGE_MAIN) {
+        draw_key_table(right, top + 8, 13, "This window", main_keys,
+                       sizeof(main_keys) / sizeof(main_keys[0]));
+    } else {
+        draw_key_table(right, top + 8, 13, "This window", page_keys,
+                       sizeof(page_keys) / sizeof(page_keys[0]));
     }
 }
 
-static void render_import(void)
+static void render_work(void)
 {
     char phase[64];
     char line[128];
@@ -1200,7 +1082,7 @@ static void render_import(void)
         snprintf(line, sizeof(line), "%s / %s   %u / %u files",
                  done, total, (unsigned)completed_files, (unsigned)total_files);
     } else {
-        /* Indeterminate: directory/pack sources have nothing to copy. */
+        /* Indeterminate: cataloguing, or removing. */
         int sweep = (int)((SDL_GetTicks() / 8) % (Uint64)(bar_w + 60)) - 60;
         int x0 = sweep < 0 ? bar_x : bar_x + sweep;
         int x1 = bar_x + sweep + 60;
@@ -1210,12 +1092,12 @@ static void render_import(void)
     }
     outline_rect(bar_x, bar_y, bar_w, bar_h, &COLOR_RULE);
     draw_text(UI_MARGIN, bar_y + bar_h + 12, 1, &COLOR_MUTED, line);
-    if (ui.quit_after_import) {
+    if (ui.quit_after_work) {
         draw_text(UI_MARGIN, bar_y + bar_h + 36, 1, &COLOR_ERROR,
-                  "Quitting once the import has finished.");
-    } else {
+                  "Quitting once this has finished.");
+    } else if (ui.job == JOB_IMPORT) {
         draw_text(UI_MARGIN, bar_y + bar_h + 36, 1, &COLOR_MUTED,
-                  "The import runs once; later starts reuse the cached copy.");
+                  "Only what is new or better is kept.");
     }
 }
 
@@ -1223,7 +1105,11 @@ static void render(void)
 {
     char line[160];
     char shown[128];
+    char lines[UI_INFO_LINES][96];
+    const struct rgb *colors[UI_INFO_LINES];
     const int max_chars = (UI_WIDTH - 2 * UI_MARGIN) / UI_GLYPH;
+    int count;
+    int i;
 
     SDL_SetRenderDrawColor(ui.renderer, COLOR_BACKGROUND.r, COLOR_BACKGROUND.g,
                            COLOR_BACKGROUND.b, 255);
@@ -1234,48 +1120,37 @@ static void render(void)
     draw_text(UI_MARGIN, 36, 1, &COLOR_MUTED, line);
     fill_rect(UI_MARGIN, 52, UI_WIDTH - 2 * UI_MARGIN, 1, &COLOR_RULE);
 
-    draw_text(UI_MARGIN, UI_DATA_TOP - UI_LINE, 1, &COLOR_MUTED, "Game data");
-    if (ui.source[0]) {
-        int y = UI_DATA_TOP;
-        fit_text(shown, sizeof(shown), ui.source_kind, max_chars);
-        draw_text(UI_MARGIN, y, 1, &COLOR_TEXT, shown);
-        y += UI_LINE;
-        if (ui.detected[0]) {
-            fit_text(shown, sizeof(shown), ui.detected, max_chars);
-            draw_text(UI_MARGIN, y, 1, &COLOR_TEXT, shown);
-            y += UI_LINE;
-            if (ui.detected_note[0]) {
-                fit_text(shown, sizeof(shown), ui.detected_note, max_chars);
-                draw_text(UI_MARGIN, y, 1, &COLOR_TEXT, shown);
-                y += UI_LINE;
-            }
-            if (ui.media_note[0]) {
-                fit_text(shown, sizeof(shown), ui.media_note, max_chars);
-                draw_text(UI_MARGIN, y, 1, &COLOR_ERROR, shown);
-            }
-        } else if (ui.source_ready) {
-            draw_text(UI_MARGIN, y, 1, &COLOR_MUTED,
-                      ui.state == SETUP_IMPORT ? "Checking..." : "Not imported yet");
+    draw_text(UI_MARGIN, UI_INFO_TOP - UI_LINE, 1, &COLOR_MUTED,
+              ui.page == PAGE_SETTINGS ? "Settings" : "Game data");
+    if (ui.page != PAGE_SETTINGS) {
+        count = summary_lines(lines, colors);
+        for (i = 0; i < count; i++) {
+            fit_text(shown, sizeof(shown), lines[i], max_chars);
+            draw_text(UI_MARGIN, UI_INFO_TOP + i * UI_LINE, 1, colors[i], shown);
         }
     } else {
-        draw_text(UI_MARGIN, UI_DATA_TOP, 1, &COLOR_MUTED,
-                  "None selected. Choose below, or drop it on this window:");
-        draw_text(UI_MARGIN, UI_DATA_TOP + UI_LINE, 1, &COLOR_MUTED,
-                  "installed folder, ISO/BIN image, ZIP or .c2assets pack.");
+        draw_text(UI_MARGIN, UI_INFO_TOP, 1, &COLOR_MUTED,
+                  "Text is built in; speech and pictures come from");
+        draw_text(UI_MARGIN, UI_INFO_TOP + UI_LINE, 1, &COLOR_MUTED,
+                  "the game data. Automatic follows the speech.");
     }
     if (ui.status[0]) {
-        /* The status may end in a path (a crash report): keep its tail. */
+        /* The status may end in a path (an export, a crash report): keep
+         * its tail. */
         fit_path(shown, sizeof(shown), ui.status, max_chars);
         draw_text(UI_MARGIN, UI_STATUS_TOP, 1, ui.status_color, shown);
     }
 
-    if (ui.state == SETUP_IMPORT) {
-        render_import();
+    if (ui.state == SETUP_WORK) {
+        render_work();
     } else {
         render_menu();
+        if (ui.state == SETUP_DIALOG) {
+            draw_text(UI_MARGIN, UI_STATUS_TOP, 1, &COLOR_MUTED,
+                      "Waiting for the file dialog...");
+        }
+        render_key_reference();
     }
-
-    if (ui.state != SETUP_IMPORT) render_key_reference();
     SDL_RenderPresent(ui.renderer);
 }
 
@@ -1305,6 +1180,7 @@ int c2_setup_open(const struct c2_setup_config *config)
     int width;
     int height;
     SDL_Mutex *mutex;
+    const char *page;
     if (ui.open) return 1;
     /* The mutex outlives close(): a native file dialog that is still open
      * when the launcher is torn down may deliver its callback later, and it
@@ -1314,25 +1190,19 @@ int c2_setup_open(const struct c2_setup_config *config)
     ui.mutex = mutex ? mutex : SDL_CreateMutex();
     ui.focus = -1;
     ui.hover = -1;
-    snprintf(ui.version, sizeof(ui.version), "%s",
-             config->version ? config->version : "");
-    snprintf(ui.source, sizeof(ui.source), "%s",
-             config->source ? config->source : "");
-    snprintf(ui.cache_root, sizeof(ui.cache_root), "%s",
-             config->cache_root ? config->cache_root : ".");
-    snprintf(ui.asset_profile, sizeof(ui.asset_profile), "%s",
-             config->asset_profile ? config->asset_profile : "");
+    snprintf(ui.version, sizeof(ui.version), "%s", config->version ? config->version : "");
+    snprintf(ui.game_data_root, sizeof(ui.game_data_root), "%s",
+             config->game_data_root ? config->game_data_root : "game-data");
+    snprintf(ui.speech, sizeof(ui.speech), "%s", config->speech ? config->speech : "");
     snprintf(ui.text_language, sizeof(ui.text_language), "%s",
              config->text_language ? config->text_language : "");
     snprintf(ui.music_source, sizeof(ui.music_source), "%s",
              config->music_source ? config->music_source : "");
-    ui.detected_language[0] = '\0';
     ui.fullscreen = config->fullscreen != 0;
     ui.fractional_scaling = config->fractional_scaling != 0;
 
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
-        fprintf(stderr, "launcher: SDL video initialization failed: %s\n",
-                SDL_GetError());
+        fprintf(stderr, "launcher: SDL video initialization failed: %s\n", SDL_GetError());
         return 0;
     }
     snprintf(title, sizeof(title), "Caesar II %s", ui.version);
@@ -1342,8 +1212,7 @@ int c2_setup_open(const struct c2_setup_config *config)
     if (!SDL_CreateWindowAndRenderer(title, width, height,
                                      SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY,
                                      &ui.window, &ui.renderer)) {
-        fprintf(stderr, "launcher: window creation failed: %s\n",
-                SDL_GetError());
+        fprintf(stderr, "launcher: window creation failed: %s\n", SDL_GetError());
         SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
         return 0;
     }
@@ -1367,22 +1236,18 @@ int c2_setup_open(const struct c2_setup_config *config)
     ui.state = SETUP_MENU;
     ui.result = C2_SETUP_RUNNING;
     ui.status_color = &COLOR_MUTED;
+    /* C2_SETUP_PAGE=data|settings opens on that page (screenshots). */
+    page = SDL_getenv("C2_SETUP_PAGE");
+    ui.page = page && strcmp(page, "data") == 0 ? PAGE_DATA
+            : page && strcmp(page, "settings") == 0 ? PAGE_SETTINGS : PAGE_MAIN;
     scan_drives();
-    refresh_source();
+    refresh_summary();
     rebuild_buttons();
     if (config->error && config->error[0]) {
-        SDL_PathInfo info;
         set_status(config->error, &COLOR_ERROR);
-        if (SDL_GetPathInfo(ui.source, &info) &&
-            info.type == SDL_PATHTYPE_DIRECTORY) {
-            detect_version(ui.source);
-            detect_media(ui.source);
-        }
-    } else if (ui.source_ready) {
-        /* Validate the remembered/preselected source right away so the
-         * version line is populated; instant on a cache hit. */
-        ui.startup_check = 1;
-        start_import(0);
+    }
+    if (config->pending_source && config->pending_source[0]) {
+        add_source(config->pending_source);
     }
     render();
     return 1;
@@ -1409,12 +1274,12 @@ static void capture_frame_if_asked(void)
 enum c2_setup_result c2_setup_iterate(void)
 {
     if (!ui.open) return C2_SETUP_QUIT;
-    if (ui.state == SETUP_IMPORT) {
+    if (ui.state == SETUP_WORK) {
         int done;
         SDL_LockMutex(ui.mutex);
-        done = ui.import_done;
+        done = ui.work_done;
         SDL_UnlockMutex(ui.mutex);
-        if (done) finish_import();
+        if (done) finish_work();
     } else if (ui.state == SETUP_DIALOG) {
         int done;
         SDL_LockMutex(ui.mutex);
@@ -1431,14 +1296,9 @@ enum c2_setup_result c2_setup_iterate(void)
     return ui.result;
 }
 
-const char *c2_setup_selected_source(void)
+const char *c2_setup_selected_speech(void)
 {
-    return ui.source;
-}
-
-const char *c2_setup_selected_profile(void)
-{
-    return ui.asset_profile;
+    return ui.speech;
 }
 
 const char *c2_setup_selected_text_language(void)
@@ -1487,13 +1347,11 @@ void c2_setup_close(void)
 int c2_setup_open(const struct c2_setup_config *config) { (void)config; return 0; }
 void c2_setup_handle_event(const SDL_Event *event) { (void)event; }
 enum c2_setup_result c2_setup_iterate(void) { return C2_SETUP_QUIT; }
-const char *c2_setup_selected_source(void) { return ""; }
-const char *c2_setup_selected_profile(void) { return ""; }
+const char *c2_setup_selected_speech(void) { return ""; }
 const char *c2_setup_selected_text_language(void) { return ""; }
 const char *c2_setup_selected_music_source(void) { return ""; }
 int c2_setup_selected_fullscreen(void) { return 0; }
 int c2_setup_selected_fractional_scaling(void) { return 0; }
 void c2_setup_close(void) {}
-int c2_setup_source_looks_valid(const char *path) { (void)path; return 0; }
 
 #endif

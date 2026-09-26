@@ -158,6 +158,7 @@ static void test_cd_and_win95_layouts_are_detected(void)
     TEST_ASSERT_TRUE(SDL_CreateDirectory("c2-layout-test/C2WIN95/SMK"));
     TEST_ASSERT_TRUE(SDL_CreateDirectory("c2-layout-test/SMK"));
     write_test_asset("c2-layout-test/C2WIN95/HD/C2.ENG", 'W');
+    write_test_asset("c2-layout-test/C2WIN95/HD/C2_START.DAT", 'S');
     write_test_asset("c2-layout-test/C2WIN95/HD/Windows.Dat", 'N');
     write_test_asset("c2-layout-test/C2WIN95/HD/Empire.PL8", 'W');
     write_test_asset("c2-layout-test/C2WIN95/SMK/Intro.SMK", 'W');
@@ -178,17 +179,13 @@ static void test_cd_and_win95_layouts_are_detected(void)
     TEST_ASSERT_EQUAL_UINT8('D', byte);
     TEST_ASSERT_EQUAL_size_t(1, c2_host_asset_read("caesar.opl", &byte, 1, 0));
     TEST_ASSERT_EQUAL_UINT8('O', byte);
-    /* The DOS tree wins a plain lookup; what only the Windows tree has (the
-     * recorded music) is found through it; and the Windows copy of a file
-     * both trees have is reachable as the Windows variant. */
+    /* Read in place (--asset-root), the DOS tree wins a plain lookup and
+     * what only the Windows tree has (the recorded music) is found behind
+     * it. Which copy of a movie is better is decided at import. */
     TEST_ASSERT_EQUAL_size_t(1, c2_host_asset_read("voice.raw", &byte, 1, 0));
     TEST_ASSERT_EQUAL_UINT8('D', byte);
     TEST_ASSERT_EQUAL_size_t(1, c2_host_asset_read("citypro0.raw", &byte, 1, 0));
     TEST_ASSERT_EQUAL_UINT8('M', byte);
-    TEST_ASSERT_EQUAL_UINT64(1, c2_host_asset_windows_size("intro.smk"));
-    TEST_ASSERT_EQUAL_size_t(1, c2_host_asset_windows_read("intro.smk", &byte, 1, 0));
-    TEST_ASSERT_EQUAL_UINT8('W', byte);
-    TEST_ASSERT_EQUAL_UINT64(0, c2_host_asset_windows_size("caesar.opl"));
     c2_host_shutdown();
     remove_layout_test(); remove_test_files();
 }

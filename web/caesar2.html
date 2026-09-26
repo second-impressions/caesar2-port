@@ -30,7 +30,7 @@
       <h1>Caesar II</h1>
       <p id="status" class="c2-hint" role="status">Load your Caesar II game data to play.</p>
       <p id="detected-row" class="c2-hint" hidden></p>
-      <p id="profile-row" hidden><label>Speech<select id="profile-select"></select></label></p>
+      <p id="speech-row" hidden><label>Speech<select id="speech-select-main" aria-label="Speech"></select></label></p>
       <div class="c2-action-grid">
         <button id="play-button" type="button" aria-disabled="true" data-tooltip="Load game data first" data-placement="bottom">Play</button>
         <button id="assets-button" class="secondary outline" type="button">Load game data</button>
@@ -63,7 +63,7 @@
                 <option value="">Automatic</option>
               </select>
             </div>
-            <p class="c2-hint">Automatic follows the game data. Speech and illustrations always come from the game data.</p>
+            <p class="c2-hint">Automatic follows the speech. Speech and pictures come from the game data.</p>
             <div class="c2-settings-row">
               <span class="c2-settings-label">Ask before closing the tab</span>
               <input id="confirm-close-toggle" type="checkbox" role="switch">
@@ -88,6 +88,10 @@
             <p id="assets-status" class="c2-hint" role="status"></p>
             <div id="assets-loaded" class="c2-stack" hidden>
               <dl id="assets-summary"></dl>
+              <div id="speech-setting" class="c2-settings-row" hidden>
+                <span class="c2-settings-label">Speech</span>
+                <select id="speech-select" aria-label="Speech"></select>
+              </div>
               <div class="c2-settings-row">
                 <span class="c2-settings-label">Music</span>
                 <select id="music-select" aria-label="Music">
@@ -97,21 +101,26 @@
               </div>
               <p id="music-hint" class="c2-hint"></p>
               <div class="c2-settings-row">
-                <span class="c2-settings-label">Loaded game data</span>
+                <span class="c2-settings-label">All game data as one file</span>
+                <button id="export-button" class="c2-compact-action outline" type="button">Export</button>
+              </div>
+              <p class="c2-hint">A .c2assets file is your game data in a ZIP: for moving it to another of your devices.</p>
+              <div class="c2-settings-row">
+                <span class="c2-settings-label">Game data</span>
                 <button id="forget-button" class="c2-compact-action outline" type="button">Remove</button>
               </div>
             </div>
             <p id="assets-empty" class="c2-hint">No game data has been loaded yet.</p>
             <div id="source-drop" class="c2-drop-zone c2-stack">
               <strong id="source-drop-title">Drop your Caesar II folder, disc image or ZIP here</strong>
-              <small>Installed folder &middot; ISO or BIN disc image &middot; ZIP &middot; .c2assets pack</small>
+              <small>Installed folder &middot; ISO, BIN or Mac Toast disc image &middot; ZIP &middot; .c2assets</small>
               <div class="c2-inline-actions">
                 <button id="folder-button" class="c2-compact-action secondary outline" type="button">Browse folder</button>
                 <button id="file-button" class="c2-compact-action secondary outline" type="button">Browse file</button>
               </div>
             </div>
             <input id="folder-input" type="file" webkitdirectory multiple>
-            <input id="file-input" type="file" accept=".zip,.c2assets,.iso,.bin,.cue,.img" multiple>
+            <input id="file-input" type="file" accept=".zip,.c2assets,.iso,.bin,.cue,.img,.toast,.cdr" multiple>
           </section>
           <section id="pane-userdata" class="c2-settings-pane c2-stack" role="tabpanel" aria-labelledby="tab-userdata" hidden>
             <div class="c2-settings-row">

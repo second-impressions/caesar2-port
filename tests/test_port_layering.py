@@ -187,7 +187,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "navigator.storage.getDirectory" in shell
     assert "navigator.storage.persist" in shell
     assert 'id="folder-input"' in shell
-    assert 'id="file-input" type="file" accept=".zip,.c2assets,.iso,.bin,.cue,.img" multiple' in shell
+    assert 'id="file-input" type="file" accept=".zip,.c2assets,.iso,.bin,.cue,.img,.toast,.cdr" multiple' in shell
     assert "webkitdirectory" in shell
     # One drop zone and two browse actions replace the per-format buttons;
     # the importer classifies content itself.
@@ -197,7 +197,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "webkitGetAsEntry" in shell
     assert 'id="operation-dialog"' in shell
     assert 'id="operation-progress"' in shell
-    assert "beginOperation(\"Checking game data\", 0, \"Reading source catalog…\")" in shell
+    assert "beginOperation(\"Reading the game data\", 0, \"Reading source catalog…\")" in shell
     assert "elapsed" not in shell
     assert "onImportProgress(phase, completedKiB, totalKiB" in shell
     assert "onImportError(message)" in shell
@@ -213,7 +213,7 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "Load your Caesar II game data to play." in shell
     assert "Preparing…" not in shell
     assert "Load game data" in shell
-    assert "Replace game data" in shell
+    assert "Replace game data" not in shell  # imports add to the library
     assert "Change assets" not in shell
     # Play stays disabled and explains itself until validated data exists.
     assert 'data-tooltip="Load game data first"' in shell
@@ -227,11 +227,24 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "SDL_GetAtomicInt(&app->prepare_result)" in sdl_main
     assert "prepare-assets-rejects-missing-source" in cmake
     assert "startGame(pending" not in shell
-    # Play is offered for remembered or cached data.
-    assert "async function discoverSource" in shell
-    assert '/persistent/game-data/${name}' in shell
+    # The page keeps no knowledge of the game data's layout: C merges every
+    # import into one library and writes a summary the page reads
+    # (docs/game-data-library.md). Nothing about a source is remembered.
+    assert "async function readSummary" in shell
+    assert '"game-data/local"' in shell
+    assert '"c2-game-data 1"' in shell
+    assert "discoverSource" not in shell
+    assert "sourceInfo" not in shell
+    assert "knownEditions" not in shell
+    assert "c2.active-source.v1" in shell and "LEGACY_KEYS" in shell
+    assert "rememberOrigin" not in shell
     assert 'id="forget-button"' in shell
-    assert "Loaded game data" in shell
+    assert 'id="export-button"' in shell
+    assert '"--export-game-data", EXPORT_PATH' in shell
+    assert "onExportReady(path)" in shell
+    assert "onLibraryChanged()" in shell
+    assert '"--game-data"' in shell
+    assert 'return "hfs"' in shell
     assert 'id="play-button" type="button" aria-disabled="true"' in shell
     assert 'id="pane-userdata"' in shell
     # Every settings pane occupies the same grid cell, so the dialog is as
@@ -341,21 +354,20 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert 'id="include-settings"' not in shell
     assert 'id="user-downloads"' not in shell
     assert "Download all saves" not in shell
-    assert 'id="profile-select"' in shell
-    assert 'id="profile-input"' not in shell
+    assert 'id="speech-select"' in shell
+    assert 'id="speech-select-main"' in shell
+    assert '"--speech"' in shell
+    assert 'id="profile-select"' not in shell
+    assert "--asset-profile" not in shell
     assert 'id="single-language"' not in shell
     assert 'id="language-label"' not in shell
-    assert "knownEditions" in shell
-    # The assets modal reports what was actually loaded.
+    # The assets modal reports what the library holds.
     assert 'id="assets-summary"' in shell
     assert "updateAssetsSummary" in shell
-    assert "originLabel" in shell
-    assert '["Edition", info.edition]' in shell
-    assert 'rows.push(["Layout", info.layout])' in shell
-    assert "DOS/Win95 hybrid CD" in shell
-    assert 'assetsButton.textContent = info.available ? "Replace game data" : "Load game data"' in shell
+    assert "originLabel" not in shell
+    assert 'rows.push(["Speech"' in shell
+    assert 'assetsButton.textContent = summary.languages.length ? "Game data" : "Load game data"' in shell
     assert "Change assets" not in shell
-    assert "sourceInfo" in shell
     assert '<title>Caesar II — @C2_VERSION_STRING@</title>' in shell
     assert 'id="about-dialog"' in shell
     assert "❧" not in shell
@@ -444,11 +456,11 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     # The assets modal owns its own state: summary plus removal, or choices.
     assert 'id="assets-loaded"' in shell
     assert "No game data has been loaded yet" in shell
-    assert "Drop new game data here to replace the current set" in shell
+    assert "Drop more game data here: what is new or better is added" in shell
     assert 'function refreshSettings()' in shell   # fills the summary as the dialog opens
     assert "updateAssetsSummary().catch(error =>" in shell
-    assert 'beginOperation("Removing game data", targets.length)' in shell
-    assert "updateOperation(removed, targets.length" in shell
+    assert 'beginOperation("Removing game data", 0, "Deleting…")' in shell
+    assert 'root.removeEntry(name, {recursive:true})' in shell
     assert "@media (prefers-color-scheme: light)" in shell
     assert ':root:not([data-theme])' in shell
     assert 'localStorage.getItem("c2.theme.v1")' in shell
@@ -456,14 +468,15 @@ def test_wasm_shell_owns_import_switching_and_save_export():
     assert "--c2-backdrop-blur" in shell
     assert "--c2-backdrop-playing: .25" in shell
     assert "body.playing::before" in shell
-    # Provenance is the label of the choice the user pressed, never invented.
+    # Nothing about where game data came from is kept or shown.
     assert "Previously imported game data" not in shell
-    assert "chosenSourceLabel = label; input.click()" in shell
+    assert "chosenSourceLabel" not in shell
+    assert "PENDING_ORIGIN" not in shell
     assert "Module.callMain" in shell
     assert "noInitialRun: true" in shell
     # A stopped SDL/engine instance is not reinitialized in-place.
     assert "if (engineHasRun)" in shell
-    assert "sessionStorage.setItem(AUTOSTART_SOURCE, source)" in shell
+    assert "reloadFor(AUTOSTART)" in shell
     assert "location.reload();" in shell
     # Right-click belongs to a running game only; elsewhere the browser keeps
     # its ordinary context menu.
